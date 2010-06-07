@@ -18,6 +18,8 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	printf("result: %s", result);
+	printf("result: %s\n", result);
+	free(result);
+
 	return EXIT_SUCCESS;
 }

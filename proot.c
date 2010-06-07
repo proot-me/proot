@@ -31,6 +31,7 @@
 #include <sys/stat.h> /* lstat(2), S_ISLNK(), */
 #include <stdlib.h>   /* free(3), */
 #include <errno.h>    /* errno(3), */
+#include <stdarg.h>   /* va_*(3), */
 
 #define MAX_READLINK 1024 /* TODO: extract from GlibC sources. */
 
@@ -47,8 +48,8 @@ static char *next_component(const char **cursor, int *is_final)
 	const char *component_end = NULL;
 
 	/* Sanity checks. */
-	assert(cursor   != NULL);
-	assert(is_final != NULL);
+	if (cursor == NULL || is_final == NULL)
+		return NULL;
 
 	/* Skip leading path separators. */
 	while (**cursor != '\0' && **cursor == '/')
@@ -77,9 +78,81 @@ static char *next_component(const char **cursor, int *is_final)
 	return strndup(component_start, component_end - component_start);
 }
 
-static void pop_component(char *path) { }
-static void push_component(char *path, char *component) { }
-static char *join_components(const char *a, ...) { return NULL; }
+/**
+ * This function removes the last component of @path. Technically it
+ * adds an end-of-string ('\0') right before the last component, thus
+ * there is no memory management at all.
+ */
+static void pop_component(char *path)
+{
+	int offset = 0;
+
+	/* Sanity checks. */
+	if (path == NULL)
+		return;
+
+	offset = strlen(path) - 1;
+
+	/* Skip trailing path separators. */
+	while (offset > 0 && path[offset] == '/')
+		offset--;
+
+	/* Search for the previous path separator. */
+	while (offset > 0 && path[offset] != '/')
+		offset--;
+
+	/* Cut the end of the string before the last component. */
+	path[offset] = '\0';
+}
+
+/**
+ * This functions concatenates a variadic number of paths, it adds a
+ * path separator in between when needed.
+ */
+static char *join_paths(int number_paths, ...)
+{
+	char *result = NULL;
+	va_list paths;
+	int i = 0;
+
+	/* Parse the list of variadic arugments. */
+	va_start(paths, number_paths);
+	for (i = 0; i < number_paths; i++) {
+		const char *path   = NULL;
+		int need_separator = 0;
+		int lenght = 0;
+
+		path = va_arg(paths, const char *);
+		if (path == NULL)
+			continue;
+
+		/* This is the first iteration, so let's allocate some
+		 * memory to copy the entry as is. */
+		if (result == NULL) {
+			result = strdup(path);
+			continue;
+		}
+
+		/* Check if a path separator is needed. */
+		lenght = strlen(result);
+		if (result[lenght] != '/' && path[0] != '/') {
+			need_separator = 1;
+			lenght++;
+		}
+		lenght += strlen(path);
+
+		result = realloc(result, lenght + 1);
+		if (result == NULL)
+			return NULL;
+
+		if (need_separator)
+			strcat(result, "/");
+		strcat(result, path);
+	}
+	va_end(paths);
+
+	return result;
+}
 
 /**
  * This function returns a buffer allocated with malloc(3) that
@@ -105,14 +178,19 @@ char *canonicalize(const char *new_root,
 	const char *cursor = NULL;
 	int is_final = 0;
 
+#ifdef DEBUG
+#include <stdio.h>
+	printf("%s %s %d %s %d\n", new_root, fake_path, deref_final, relative_to, nb_readlink);
+#endif
+
 	/* Sanity checks. */
-	assert(fake_path != NULL);
-	assert(new_root  != NULL && new_root[0] == '/');
+	if (fake_path == NULL || new_root == NULL || new_root[0] != '/')
+		return NULL;
 
 	/* Absolutize relative 'fake_path'. */
 	if (fake_path[0] != '/') {
-		assert(relative_to != NULL);
-		assert(relative_to[0] == '/');
+		if (relative_to == NULL || relative_to[0] == '/')
+			return NULL;
 
 		result = strdup(relative_to);
 	}
@@ -127,6 +205,7 @@ char *canonicalize(const char *new_root,
 	while (!is_final) {
 		char *current = NULL;
 		char *real_entry = NULL;
+		char *old_result = NULL;
 		char referee[PATH_MAX];
 		struct stat statl;
 		int status = 0;
@@ -146,7 +225,7 @@ char *canonicalize(const char *new_root,
 			goto skip;
 		}
 
-		real_entry = join_components(new_root, result, current);
+		real_entry = join_paths(3, new_root, result, current);
 		if (real_entry == NULL) {
 			free(result);
 			result = NULL;
@@ -163,7 +242,9 @@ char *canonicalize(const char *new_root,
 		if (status < 0
 		    || !S_ISLNK(statl.st_mode)
 		    || (is_final && !deref_final)) {
-			push_component(result, current);
+			old_result = result;
+			result = join_paths(2, old_result, current);
+			free(old_result);
 			goto skip;
 		}
 
@@ -184,7 +265,9 @@ char *canonicalize(const char *new_root,
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
 		   absolute link then it is relative to 'result'. */
-		result = canonicalize(new_root, referee, 0, result, nb_readlink++);
+		old_result = result;
+		result = canonicalize(new_root, referee, 1, old_result, ++nb_readlink);
+		free(old_result);
 
 	skip:
 		free(current);
@@ -209,18 +292,31 @@ char *canonicalize(const char *new_root,
  */
 char *proot(const char *new_root, const char *fake_path, int deref_final)
 {
-	char *result1 = NULL;
-	char *result2 = NULL;
+	char *result1  = NULL;
+	char *result2  = NULL;
+	char *fake_cwd = NULL;
+	char real_root[PATH_MAX];
 	char cwd[PATH_MAX];
+	int lenght = 0;
+
+	if (realpath(new_root, real_root) == NULL)
+		return NULL;
 
 	if (getcwd(cwd, PATH_MAX) == NULL)
 		return NULL;
 
-	result1 = canonicalize(new_root, fake_path, deref_final, cwd, 0);
+	/* Ensure the current working directory is within the new root. */
+	lenght = strlen(real_root);
+	if (strncpy(cwd, real_root, lenght) == 0)
+		fake_cwd = cwd + lenght;
+	else
+		fake_cwd = NULL;
+
+	result1 = canonicalize(real_root, fake_path, deref_final, fake_cwd, 0);
 	if (result1 == NULL)
 		return NULL;
 
-	result2 = join_components(new_root, result1);
+	result2 = join_paths(2, real_root, result1);
 	free(result1);
 
 	return result2;
