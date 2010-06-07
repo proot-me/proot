@@ -123,7 +123,7 @@ static char *join_paths(int number_paths, ...)
 	for (i = 0; i < number_paths; i++) {
 		const char *path   = NULL;
 		int need_separator = 0;
-		int lenght = 0;
+		int length = 0;
 
 		path = va_arg(paths, const char *);
 		if (path == NULL)
@@ -137,14 +137,14 @@ static char *join_paths(int number_paths, ...)
 		}
 
 		/* Check if a path separator is needed. */
-		lenght = strlen(result);
-		if (result[lenght] != '/' && path[0] != '/') {
+		length = strlen(result);
+		if (result[length] != '/' && path[0] != '/') {
 			need_separator = 1;
-			lenght++;
+			length++;
 		}
-		lenght += strlen(path);
+		length += strlen(path);
 
-		result = realloc(result, lenght + 1);
+		result = realloc(result, length + 1);
 		if (result == NULL) {
 			/* Errors and free(3) are handled by the caller. */
 			return NULL;
@@ -314,7 +314,7 @@ char *proot(const char *new_root, const char *fake_path, int deref_final)
 	char *fake_cwd = NULL;
 	char real_root[PATH_MAX];
 	char cwd[PATH_MAX];
-	int lenght = 0;
+	int length = 0;
 
 	if (realpath(new_root, real_root) == NULL)
 		return NULL;
@@ -323,13 +323,13 @@ char *proot(const char *new_root, const char *fake_path, int deref_final)
 		return NULL;
 
 	/* Ensure the current working directory is within the new root. */
-	lenght = strlen(real_root);
-	if (strncpy(cwd, real_root, lenght) != 0) {
+	length = strlen(real_root);
+	if (strncpy(cwd, real_root, length) != 0) {
 		errno = EPERM;
 		return NULL;
 	}
 
-	fake_cwd = cwd + lenght;
+	fake_cwd = cwd + length;
 
 	result1 = canonicalize(real_root, fake_path, deref_final, fake_cwd, 0);
 	if (result1 == NULL)
