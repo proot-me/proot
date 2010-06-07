@@ -48,8 +48,10 @@ static char *next_component(const char **cursor, int *is_final)
 	const char *component_end = NULL;
 
 	/* Sanity checks. */
-	if (cursor == NULL || is_final == NULL)
+	if (cursor == NULL || is_final == NULL) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	/* Skip leading path separators. */
 	while (**cursor != '\0' && **cursor == '/')
@@ -59,6 +61,7 @@ static char *next_component(const char **cursor, int *is_final)
 	 * if fake_path is equivalent to '/'. */
 	if (**cursor == '\0') {
 		*is_final = 1;
+		/* Errors and free(3) are handled by the caller. */
 		return strdup(".");
 	}
 
@@ -74,7 +77,7 @@ static char *next_component(const char **cursor, int *is_final)
 
 	*is_final = (**cursor == '\0');
 
-	/* Errors and freeing are handled by the caller. */
+	/* Errors and free(3) are handled by the caller. */
 	return strndup(component_start, component_end - component_start);
 }
 
@@ -142,8 +145,10 @@ static char *join_paths(int number_paths, ...)
 		lenght += strlen(path);
 
 		result = realloc(result, lenght + 1);
-		if (result == NULL)
+		if (result == NULL) {
+			/* Errors and free(3) are handled by the caller. */
 			return NULL;
+		}
 
 		if (need_separator)
 			strcat(result, "/");
@@ -183,22 +188,33 @@ char *canonicalize(const char *new_root,
 	printf("%s %s %d %s %d\n", new_root, fake_path, deref_final, relative_to, nb_readlink);
 #endif
 
-	/* Sanity checks. */
-	if (fake_path == NULL || new_root == NULL || new_root[0] != '/')
+	/* Avoid infinite loop on circular links. */
+	if (nb_readlink > MAX_READLINK) {
+		errno = ELOOP;
 		return NULL;
+	}
+
+	/* Sanity checks. */
+	if (fake_path == NULL || new_root == NULL || new_root[0] != '/') {
+		errno = EINVAL;
+		return NULL;
+	}
 
 	/* Absolutize relative 'fake_path'. */
 	if (fake_path[0] != '/') {
-		if (relative_to == NULL || relative_to[0] == '/')
+		if (relative_to == NULL || relative_to[0] == '/') {
+			errno = EINVAL;
 			return NULL;
-
+		}
 		result = strdup(relative_to);
 	}
 	else
 		result = strdup("");
 
-	if (result == NULL)
+	if (result == NULL) {
+		/* errno is already set. */
 		return NULL;
+	}
 
 	/* Canonicalize recursely 'fake_path' into 'result'. */
 	cursor = fake_path;
@@ -212,6 +228,7 @@ char *canonicalize(const char *new_root,
 
 		current = next_component(&cursor, &is_final);
 		if (current == NULL) {
+			/* errno is already set. */
 			free(result);
 			result = NULL;
 			goto skip;
@@ -227,6 +244,7 @@ char *canonicalize(const char *new_root,
 
 		real_entry = join_paths(3, new_root, result, current);
 		if (real_entry == NULL) {
+			/* errno is already set. */
 			free(result);
 			result = NULL;
 			goto skip;
@@ -252,10 +270,9 @@ char *canonicalize(const char *new_root,
 		   canonicalize to ensure we are not going outside the
 		   new root. */
 		status = readlink(real_entry, referee, sizeof(referee));
-		if (status == -1
-		    || status == sizeof(referee)
-		    || nb_readlink > MAX_READLINK) {
-			errno = ELOOP;
+		if (status == -1 || status == sizeof(referee)) {
+			/* errno is already set except when the
+			   content is truncated to sizeof(referee). */
 			free(result);
 			result = NULL;
 			goto skip;
@@ -307,10 +324,12 @@ char *proot(const char *new_root, const char *fake_path, int deref_final)
 
 	/* Ensure the current working directory is within the new root. */
 	lenght = strlen(real_root);
-	if (strncpy(cwd, real_root, lenght) == 0)
-		fake_cwd = cwd + lenght;
-	else
-		fake_cwd = NULL;
+	if (strncpy(cwd, real_root, lenght) != 0) {
+		errno = EPERM;
+		return NULL;
+	}
+
+	fake_cwd = cwd + lenght;
 
 	result1 = canonicalize(real_root, fake_path, deref_final, fake_cwd, 0);
 	if (result1 == NULL)
