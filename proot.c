@@ -138,7 +138,7 @@ static char *join_paths(int number_paths, ...)
 
 		/* Check if a path separator is needed. */
 		length = strlen(result);
-		if (result[length] != '/' && path[0] != '/') {
+		if (result[length - 1] != '/' && path[0] != '/') {
 			need_separator = 1;
 			length++;
 		}
