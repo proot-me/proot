@@ -202,7 +202,7 @@ char *canonicalize(const char *new_root,
 
 	/* Absolutize relative 'fake_path'. */
 	if (fake_path[0] != '/') {
-		if (relative_to == NULL || relative_to[0] == '/') {
+		if (relative_to == NULL || relative_to[0] != '/') {
 			errno = EINVAL;
 			return NULL;
 		}
@@ -319,17 +319,26 @@ char *proot(const char *new_root, const char *fake_path, int deref_final)
 	if (realpath(new_root, real_root) == NULL)
 		return NULL;
 
-	if (getcwd(cwd, PATH_MAX) == NULL)
-		return NULL;
-
-	/* Ensure the current working directory is within the new root. */
-	length = strlen(real_root);
-	if (strncpy(cwd, real_root, length) != 0) {
-		errno = EPERM;
-		return NULL;
+	if (fake_path[0] == '/') {
+		fake_cwd = NULL;
 	}
+	else {
+		if (getcwd(cwd, PATH_MAX) == NULL)
+			return NULL;
 
-	fake_cwd = cwd + length;
+		/* Ensure the current working directory is within the new root. */
+		length = strlen(real_root);
+		if (strncmp(cwd, real_root, length) != 0) {
+			errno = EPERM;
+			return NULL;
+		}
+
+		fake_cwd = cwd + length;
+
+		/* Special case when cwd == real_root. */
+		if (fake_cwd[0] == '\0')
+			fake_cwd = "/";
+	}
 
 	result1 = canonicalize(real_root, fake_path, deref_final, fake_cwd, 0);
 	if (result1 == NULL)
