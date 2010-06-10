@@ -173,11 +173,11 @@ static char *join_paths(int number_paths, ...)
  * @nb_readlink -- should be 0 at the initial call -- is greater than
  * MAX_READLINK or if there is not enough memory to do the job.
  */
-char *canonicalize(const char *new_root,
-		   const char *fake_path,
-		   int deref_final,
-		   const char *relative_to,
-		   int nb_readlink)
+static char *canonicalize(const char *new_root,
+			  const char *fake_path,
+			  int deref_final,
+			  const char *relative_to,
+			  int nb_readlink)
 {
 	char *result;
 	const char *cursor = NULL;
