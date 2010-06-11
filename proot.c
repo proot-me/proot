@@ -277,7 +277,7 @@ static char *canonicalize(const char *new_root,
 			result = NULL;
 			goto skip;
 		}
-		referee[sizeof(referee) - 1] = '\0';
+		referee[status] = '\0';
 
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
