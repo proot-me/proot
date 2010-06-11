@@ -26,73 +26,67 @@
 
 #include <unistd.h>   /* readlink(2), lstat(2), readlink(2), getwd(3), */
 #include <assert.h>   /* assert(3), */
-#include <string.h>   /* strcmp(3), */
+#include <string.h>   /* strcmp(3), strcpy(3), strncpy(3), */
 #include <limits.h>   /* PATH_MAX, */
 #include <sys/stat.h> /* lstat(2), S_ISLNK(), */
-#include <stdlib.h>   /* free(3), */
+#include <stdlib.h>   /* realpath(3), */
 #include <errno.h>    /* errno(3), */
 #include <stdarg.h>   /* va_*(3), */
-
-#define MAX_READLINK 1024 /* TODO: extract from GlibC sources. */
+#include <sys/param.h> /* MAXSYMLINKS, */
+#include <stddef.h>   /* ptrdiff_t, */
 
 /**
- * This function returns a buffer allocated with malloc(3) that
- * contains the first path component pointed to by @cursor, this later
- * updated to point to the next component for a further call. Also,
- * this function updates the write-only parameter @is_final to
- * indicate if it is the last component of the path.
+ * This function copies in @component the first path component pointed
+ * to by @cursor, this later is updated to point to the next component
+ * for a further call. Also, this function set @is_final to true if it
+ * is the last component of the path. This function returns -1 on
+ * error and errno is set, otherwise it returns 0.
  */
-static char *next_component(const char **cursor, int *is_final)
+static inline int next_component(char component[NAME_MAX], const char **cursor, int *is_final)
 {
-	const char *component_start = NULL;
-	const char *component_end = NULL;
+	const char *start = NULL;
+	ptrdiff_t length  = 0;
 
 	/* Sanity checks. */
-	if (cursor == NULL || is_final == NULL) {
-		errno = EINVAL;
-		return NULL;
-	}
+	assert(component != NULL && cursor != NULL && is_final != NULL);
 
 	/* Skip leading path separators. */
 	while (**cursor != '\0' && **cursor == '/')
 		(*cursor)++;
 
-	/* This very special case could happen only
-	 * if fake_path is equivalent to '/'. */
-	if (**cursor == '\0') {
-		*is_final = 1;
-		/* Errors and free(3) are handled by the caller. */
-		return strdup(".");
-	}
-
 	/* Find the next component. */
-	component_start = *cursor;
+	start = *cursor;
 	while (**cursor != '\0' && **cursor != '/')
 		(*cursor)++;
-	component_end = *cursor;
+	length = *cursor - start;
+
+	if (length >= NAME_MAX) {
+		errno = ENAMETOOLONG;
+		return -1;
+	}
+
+	/* Extract the component. */
+	strncpy(component, start, length);
+	component[length] = '\0';
 
 	/* Skip trailing path separators. */
 	while (**cursor != '\0' && **cursor == '/')
 		(*cursor)++;
 
 	*is_final = (**cursor == '\0');
-
-	/* Errors and free(3) are handled by the caller. */
-	return strndup(component_start, component_end - component_start);
+	return 0;
 }
 
 /**
- * This function removes the last component of @path. Technically it
- * adds an end-of-string ('\0') right before the last component, thus
- * there is no memory management at all.
+ * This function puts end-of-string ('\0') right before the last
+ * component of @path.
  */
-static void pop_component(char *path)
+static inline void pop_component(char *path)
 {
 	int offset = 0;
 
 	/* Sanity checks. */
-	if (path == NULL)
-		return;
+	assert(path != NULL);
 
 	offset = strlen(path) - 1;
 
@@ -109,146 +103,123 @@ static void pop_component(char *path)
 }
 
 /**
- * This functions concatenates a variadic number of paths, it adds a
- * path separator in between when needed.
+ * This functions copies in @result the concatenation of several paths
+ * (@number_paths) and adds a path separator ('/') in between when
+ * needed. This function returns -1 on error and errno is set,
+ * otherwise it returns 0.
  */
-static char *join_paths(int number_paths, ...)
+static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 {
-	char *result = NULL;
 	va_list paths;
+	size_t length = 0;
 	int i = 0;
 
-	/* Parse the list of variadic arugments. */
-	va_start(paths, number_paths);
+	result[0] = '\0';
+
+	/* Parse the list of variadic arguments. */
+	va_start(paths, result);
 	for (i = 0; i < number_paths; i++) {
 		const char *path   = NULL;
 		int need_separator = 0;
-		int length = 0;
+		size_t old_length  = 0;
 
 		path = va_arg(paths, const char *);
 		if (path == NULL)
 			continue;
 
-		/* This is the first iteration, so let's allocate some
-		 * memory to copy the entry as is. */
-		if (result == NULL) {
-			result = strdup(path);
-			continue;
-		}
-
 		/* Check if a path separator is needed. */
-		length = strlen(result);
-		if (result[length - 1] != '/' && path[0] != '/') {
+		if (length > 0 && result[length - 1] != '/' && path[0] != '/')
 			need_separator = 1;
-			length++;
-		}
-		length += strlen(path);
 
-		result = realloc(result, length + 1);
-		if (result == NULL) {
-			/* Errors and free(3) are handled by the caller. */
-			return NULL;
+		old_length = length;
+		length += strlen(path) + need_separator;
+		if (length >= PATH_MAX) {
+			errno = ENAMETOOLONG;
+			return -1;
 		}
 
-		if (need_separator)
-			strcat(result, "/");
-		strcat(result, path);
+		if (need_separator != 0) {
+			strcat(result + old_length, "/");
+			old_length++;
+		}
+		strcat(result + old_length, path);
 	}
 	va_end(paths);
 
-	return result;
+	return 0;
 }
 
 /**
- * This function returns a buffer allocated with malloc(3) that
- * contains the canonicalization (see `man 3 realpath`) of @fake_path
- * regarding to @new_root. The path to canonicalize could be either
- * absolute or relative to @relative_to. When the last component of
- * @fake_path is a link, it is dereferenced only if @deref_final is
- * true -- it is usefull for syscalls like lstat(2).
- *
- * The special value NULL is returned and errno is set either if a
- * broken link is encountered or if a component of a pathname exceeded
- * NAME_MAX characters or if the number of encountered symbolic links
- * @nb_readlink -- should be 0 at the initial call -- is greater than
- * MAX_READLINK or if there is not enough memory to do the job.
+ * This function copies in @result the anonicalization (see `man 3
+ * realpath`) of @fake_path regarding to @new_root. The path to
+ * canonicalize could be either absolute or relative to @result. When
+ * the last component of @fake_path is a link, it is dereferenced only
+ * if @deref_final is true -- it is usefull for syscalls like
+ * lstat(2). The parameter @nb_readlink should be set to 0 unless you
+ * know what you are doing. This function returns -1 on error and
+ * errno is set, otherwise it returns 0.
  */
-static char *canonicalize(const char *new_root,
-			  const char *fake_path,
-			  int deref_final,
-			  const char *relative_to,
-			  int nb_readlink)
+static int canonicalize(const char *new_root,
+			const char *fake_path,
+			int deref_final,
+			char result[PATH_MAX],
+			unsigned int nb_readlink)
 {
-	char *result;
 	const char *cursor = NULL;
 	int is_final = 0;
 
-#ifdef DEBUG
-#include <stdio.h>
-	printf("%s %s %d %s %d\n", new_root, fake_path, deref_final, relative_to, nb_readlink);
-#endif
-
 	/* Avoid infinite loop on circular links. */
-	if (nb_readlink > MAX_READLINK) {
+	if (nb_readlink > MAXSYMLINKS) {
 		errno = ELOOP;
-		return NULL;
+		return -1;
 	}
 
 	/* Sanity checks. */
-	if (fake_path == NULL || new_root == NULL || new_root[0] != '/') {
+	if (  fake_path == NULL || result == NULL
+	    || new_root == NULL || new_root[0] != '/') {
 		errno = EINVAL;
-		return NULL;
+		return -1;
 	}
 
-	/* Absolutize relative 'fake_path'. */
 	if (fake_path[0] != '/') {
-		if (relative_to == NULL || relative_to[0] != '/') {
+		/* Ensure 'result' contains an absolute base of the relative fake path. */
+		if (result[0] != '/') {
 			errno = EINVAL;
-			return NULL;
+			return -1;
 		}
-		result = strdup(relative_to);
 	}
 	else
-		result = strdup("");
-
-	if (result == NULL) {
-		/* errno is already set. */
-		return NULL;
-	}
+		strcpy(result, "/");
 
 	/* Canonicalize recursely 'fake_path' into 'result'. */
 	cursor = fake_path;
 	while (!is_final) {
-		char *current = NULL;
-		char *real_entry = NULL;
-		char *old_result = NULL;
-		char referee[PATH_MAX];
+		char component[NAME_MAX];
+		char real_entry[PATH_MAX];
+		char tmp[PATH_MAX];
 		struct stat statl;
 		int status = 0;
 
-		current = next_component(&cursor, &is_final);
-		if (current == NULL) {
-			/* errno is already set. */
-			free(result);
-			result = NULL;
-			goto skip;
-		}
+#ifdef DEBUG
+#include <stdio.h>
+	printf("%s %s %d %s %d\n", new_root, cursor, deref_final, result, nb_readlink);
+#endif
+		status = next_component(component, &cursor, &is_final);
+		if (status != 0)
+			return -1; /* errno is already set. */
 
-		if (strcmp(current, ".") == 0)
-			goto skip;
+		if (strcmp(component, ".") == 0)
+			continue;
 
-		if (strcmp(current, "..") == 0) {
+		if (strcmp(component, "..") == 0) {
 			pop_component(result);
-			goto skip;
+			continue;
 		}
 
-		real_entry = join_paths(3, new_root, result, current);
-		if (real_entry == NULL) {
-			/* errno is already set. */
-			free(result);
-			result = NULL;
-			goto skip;
-		}
+		status = join_paths(3, real_entry, new_root, result, component);
+		if (status != 0)
+			return -1; /* errno is already set. */
+
 		status = lstat(real_entry, &statl);
 
 		/* Nothing special to do if it's not a link or if we
@@ -257,95 +228,85 @@ static char *canonicalize(const char *new_root,
 		   later condition does not apply to intermediate path
 		   components. Errors are explicitly ignored since
 		   they should be handled by the caller. */
-		if (status < 0
-		    || !S_ISLNK(statl.st_mode)
-		    || (is_final && !deref_final)) {
-			old_result = result;
-			result = join_paths(2, old_result, current);
-			free(old_result);
-			goto skip;
+		if (status < 0 || !S_ISLNK(statl.st_mode) || (is_final && !deref_final)) {
+			strcpy(tmp, result);
+			status = join_paths(2, result, tmp, component);
+			if (status != 0)
+				return -1; /* errno is already set. */
+			continue;
 		}
 
 		/* It's a link, so we have to dereference *and*
 		   canonicalize to ensure we are not going outside the
 		   new root. */
-		status = readlink(real_entry, referee, sizeof(referee));
-		if (status == -1 || status == sizeof(referee)) {
-			/* errno is already set except when the
-			   content is truncated to sizeof(referee). */
-			free(result);
-			result = NULL;
-			goto skip;
+		status = readlink(real_entry, tmp, sizeof(tmp));
+		switch (status) {
+		case -1:
+			return -1; /* errno is already set. */
+
+		case sizeof(tmp):
+			/* The content is truncated. */
+			errno = ENAMETOOLONG;
+			return -1;
+
+		default:
+			/* Terminate correctly the string. */
+			tmp[status] = '\0';
 		}
-		referee[status] = '\0';
 
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
-		   absolute link then it is relative to 'result'. */
-		old_result = result;
-		result = canonicalize(new_root, referee, 1, old_result, ++nb_readlink);
-		free(old_result);
-
-	skip:
-		free(current);
-
-		if (real_entry != NULL)
-			free(real_entry);
-
-		/* An exception occured due to either a broken link or
-		 * a path name too long. */
-		if (result == NULL)
-			break;
+		   absolute link so it is relative to 'result'. */
+		status = canonicalize(new_root, tmp, 1, result, ++nb_readlink);
+		if (status != 0)
+			return -1; /* errno is set. */
 	}
 
-	return result;
+	return 0;
 }
 
 /**
- * This function returns a buffer allocated with malloc(3) that
- * contains basically "join(@new_root, canonicalize(@fake_path))".
- * See the documentation of canonicalize() for the meaning of
- * @deref_final.
+ * This function copies in @result the equivalent of "@new_root /
+ * canonicalize(@fake_path))". If @fake_path is not absolute then it
+ * is relative to the current working directory. See the documentation
+ * of canonicalize() for the meaning of @deref_final.
  */
-char *proot(const char *new_root, const char *fake_path, int deref_final)
+int proot(char result[PATH_MAX], const char *new_root, const char *fake_path, int deref_final)
 {
-	char *result1  = NULL;
-	char *result2  = NULL;
-	char *fake_cwd = NULL;
 	char real_root[PATH_MAX];
-	char cwd[PATH_MAX];
+	char tmp[PATH_MAX];
 	int length = 0;
+	int status = 0;
 
 	if (realpath(new_root, real_root) == NULL)
-		return NULL;
+		return -1; /* errno is already set. */
 
-	if (fake_path[0] == '/') {
-		fake_cwd = NULL;
-	}
-	else {
-		if (getcwd(cwd, PATH_MAX) == NULL)
-			return NULL;
+	if (fake_path[0] != '/') {
+		if (getcwd(tmp, PATH_MAX) == NULL)
+			return -1; /* errno is already set. */
 
 		/* Ensure the current working directory is within the new root. */
 		length = strlen(real_root);
-		if (strncmp(cwd, real_root, length) != 0) {
+		if (strncmp(tmp, real_root, length) != 0) {
 			errno = EPERM;
-			return NULL;
+			return -1;
 		}
 
-		fake_cwd = cwd + length;
+		strcpy(result, tmp + length);
 
 		/* Special case when cwd == real_root. */
-		if (fake_cwd[0] == '\0')
-			fake_cwd = "/";
+		if (result[0] == '\0')
+			strcpy(result, "/");
 	}
 
-	result1 = canonicalize(real_root, fake_path, deref_final, fake_cwd, 0);
-	if (result1 == NULL)
-		return NULL;
+	status = canonicalize(real_root, fake_path, deref_final, result, 0);
+	if (status != 0)
+		return -1; /* errno is already set. */
 
-	result2 = join_paths(2, real_root, result1);
-	free(result1);
+	strcpy(tmp, result);
+	status = join_paths(2, result, real_root, tmp);
+	if (status != 0)
+		return -1; /* errno is already set. */
 
-	return result2;
+	return 0;
 }
