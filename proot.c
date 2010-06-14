@@ -299,6 +299,8 @@ int proot(char result[PATH_MAX], const char *new_root, const char *fake_path, in
 		if (result[0] == '\0')
 			strcpy(result, "/");
 	}
+	else
+		strcpy(result, "/");
 
 	status = canonicalize(real_root, fake_path, deref_final, result, 0);
 	if (status != 0)
