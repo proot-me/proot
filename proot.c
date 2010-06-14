@@ -135,6 +135,7 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 		length += strlen(path) + need_separator;
 		if (length >= PATH_MAX) {
 			errno = ENAMETOOLONG;
+			va_end(paths);
 			return -1;
 		}
 
