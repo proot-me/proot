@@ -1,14 +1,21 @@
-CC = gcc
-LD = $(CC)
-CFLAGS = 
+CC       = gcc
+LD       = $(CC)
+CPPFLAGS = -D`uname -m`
+CFLAGS   = -Wall
+LDFLAGS  =
 
-OBJECTS = proot.o test.o
+OBJECTS = main.o syscall.o
 
 proot: $(OBJECTS)
-	$(LD) $(OBJECTS) -o $@
+	$(LD) $(LDFLAGS) $(OBJECTS) -o $@
 
 %.o: %.c
-	$(CC) $(CFLAGS) $< -c -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
+
+######################################################################
+# Phony targets follow.
+
+.PHONY: clean
 
 clean:
-	rm -f $(OBJECTS) proot
+	rm -f $(OBJECTS) proot *.gcno *.gcda *.info
