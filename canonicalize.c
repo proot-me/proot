@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  *
  * Author: Cedric VINCENT (cedric.vincent@st.com)
- * Inspired by: realpath() from the GNU C Library. 
+ * Inspired by: realpath() from the GNU C Library.
  */
 
 #include <unistd.h>   /* readlink(2), lstat(2), readlink(2), getwd(3), */

@@ -62,10 +62,10 @@ unsigned long get_syscall_arg(pid_t pid, enum arg_number arg_number)
 	}
 
 	result = ptrace(PTRACE_PEEKUSER, pid, arg_offset[arg_number], NULL);
-        if (errno != 0) {
-                perror("proot -- ptrace(PEEKUSER)");
-                exit(EXIT_FAILURE);
-        }
+	if (errno != 0) {
+		perror("proot -- ptrace(PEEKUSER)");
+		exit(EXIT_FAILURE);
+	}
 
 	return result;
 }
@@ -84,10 +84,10 @@ void set_syscall_arg(pid_t pid, enum arg_number arg_number, unsigned long value)
 	}
 
 	status = ptrace(PTRACE_POKEUSER, pid, arg_offset[arg_number], value);
-        if (status < 0) {
-                perror("proot -- ptrace(POKEUSER)");
-                exit(EXIT_FAILURE);
-        }
+	if (status < 0) {
+		perror("proot -- ptrace(POKEUSER)");
+		exit(EXIT_FAILURE);
+	}
 }
 
 #if 0

@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 		status = execvp(argv[1], argv + 1);
 		perror("proot -- execvp()");
 		exit(EXIT_FAILURE);
-		
+
 	default: /* parent */
 		break;
 	}
