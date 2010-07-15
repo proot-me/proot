@@ -28,8 +28,10 @@
 #include <stdio.h>      /* puts(3), */
 #include <sys/wait.h>   /* wait(2), */
 #include <sys/ptrace.h> /* ptrace(2), */
+#include <limits.h>     /* PATH_MAX, */
+#include <string.h>     /* strcmp(3), */
 
-#include "syscall.h" /* get_syscall_number(), ARG_SYSNUM, */
+#include "syscall.h"
 
 static void print_usage()
 {
@@ -41,13 +43,13 @@ static void print_usage()
 
 int main(int argc, char *argv[])
 {
-	unsigned long syscall = -1;
+	unsigned long sysnum = -1;
 	int child_status = 0;
 	long status = 0;
 	int signal = 0;
 	pid_t pid = 0;
 
-	void *buffer;
+	char *child_buffer = NULL;
 
 	if (argc < 2) {
 		print_usage();
@@ -139,20 +141,35 @@ int main(int argc, char *argv[])
 			signal = 0;
 
 			/* Check if we are either entering or exiting a syscall.
-			   Currently it doesn't support multi-process programs. */
-			if (syscall == -1) {
-				syscall = get_syscall_arg(pid, ARG_SYSNUM);
+			   Currently it doesn't support multi-process programs.
+			   The following code is only for demonstration/test purpose. */
+			if (sysnum == -1) {
+				char path[PATH_MAX + 1];
 
-				buffer = alloc_buffer(pid, 64);
-				printf("proot: %p = alloc(%d, %d)\n", buffer, pid, 64);
+				sysnum = get_child_sysarg(pid, ARG_SYSNUM);
+				if (sysnum != 2 /* open */)
+					continue;
+
+				copy_from_child(pid, path,
+						(void *)get_child_sysarg(pid, ARG_1),
+						PATH_MAX);
+				path[PATH_MAX] = 0;
+
+				if (strcmp(path, ".") == 0) {
+					child_buffer = alloc_in_child(pid, sizeof("/tmp"));
+					copy_to_child(pid, child_buffer, "/tmp", sizeof("/tmp"));
+					set_child_sysarg(pid, ARG_1, (unsigned long)child_buffer);
+				}
+
+				printf("proot: open(%s)\n", path);
 			}
 			else {
-				printf("proot: syscall(%ld) = 0x%lx\n",
-				       syscall, get_syscall_arg(pid, ARG_RESULT));
-				syscall = -1;
+				if (child_buffer != NULL) {
+					free_in_child(pid, child_buffer, sizeof("/tmp"));
+					child_buffer = NULL;
+				}
 
-				printf("proot: free(%d, %p, %d)\n", pid, buffer, 64);
-				free_buffer(pid, buffer, 64);
+				sysnum = -1;
 			}
 		}
 		else {

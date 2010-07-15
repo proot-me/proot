@@ -43,8 +43,8 @@
 	 + offsetof(struct user_regs_struct, reg_name))
 
 /**
- * Specify the offset in the USER area of each register used for
- * syscall argument passing. */
+ * Specify the offset in the child's USER area of each register used
+ * for syscall argument passing. */
 size_t arg_offset[] = {
 	USER_REGS_OFFSET(REG_ARG_SYSNUM),
 	USER_REGS_OFFSET(REG_ARG_1),
@@ -58,9 +58,9 @@ size_t arg_offset[] = {
 
 /**
  * Return the @arg_number-th argument of the current syscall in the
- * @pid process.
+ * child process @pid.
  */
-unsigned long get_syscall_arg(pid_t pid, enum arg_number arg_number)
+unsigned long get_child_sysarg(pid_t pid, enum arg_number arg_number)
 {
 	unsigned long result;
 
@@ -79,10 +79,10 @@ unsigned long get_syscall_arg(pid_t pid, enum arg_number arg_number)
 }
 
 /**
- * Set the @arg_number-th argument of the current syscall in the @pid
- * process to @value.
+ * Set the @arg_number-th argument of the current syscall in the child
+ * process @pid to @value.
  */
-void set_syscall_arg(pid_t pid, enum arg_number arg_number, unsigned long value)
+void set_child_sysarg(pid_t pid, enum arg_number arg_number, unsigned long value)
 {
 	unsigned long status;
 
@@ -100,9 +100,9 @@ void set_syscall_arg(pid_t pid, enum arg_number arg_number, unsigned long value)
 
 /**
  * This function returns an uninitialized buffer of @size bytes
- * allocated into the stack of the child @pid.
+ * allocated into the stack of the child process @pid.
  */
-void *alloc_buffer(pid_t pid, size_t size)
+void *alloc_in_child(pid_t pid, size_t size)
 {
 	unsigned long stack_pointer;
 	unsigned long status;
@@ -133,7 +133,7 @@ void *alloc_buffer(pid_t pid, size_t size)
 /**
  * This function frees the memory allocated by alloc_buffer().
  */
-void free_buffer(pid_t pid, void *buffer, size_t size)
+void free_in_child(pid_t pid, void *buffer, size_t size)
 {
 	unsigned long stack_pointer;
 	unsigned long status;
@@ -153,6 +153,101 @@ void free_buffer(pid_t pid, void *buffer, size_t size)
 	}
 
 	return;
+}
+
+/**
+ * Copy @nb_bytes bytes from the buffer @from into the memory space of
+ * the child process @pid at its address @to_child.
+ */
+void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb_bytes)
+{
+	unsigned long *src = (unsigned long *)from;
+
+	unsigned long nb_trailing_bytes;
+	unsigned long nb_full_words;
+	unsigned long status, word, i, j;
+
+	unsigned char *last_dest_word;
+	unsigned char *last_src_word;
+
+	nb_trailing_bytes = nb_bytes % sizeof(unsigned long);
+	nb_full_words     = (nb_bytes - nb_trailing_bytes) / sizeof(unsigned long);
+
+	/* Copy one word by one word, except for the last one. */
+	for (i = 0; i < nb_full_words; i++) {
+		status = ptrace(PTRACE_POKEDATA, pid, to_child + i, src[i]);
+		if (status < 0) {
+			perror("proot -- ptrace(POKEDATA)");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	/* Copy the bytes in the last word carefully since I have
+	 * overwrite only the relevant ones. */
+
+	word = ptrace(PTRACE_PEEKDATA, pid, to_child + i, NULL);
+	if (errno != 0) {
+		perror("proot -- ptrace(PEEKDATA)");
+		exit(EXIT_FAILURE);
+	}
+
+	last_dest_word = (unsigned char *)&word;
+	last_src_word  = (unsigned char *)&src[i];
+
+	for (j = 0; j < nb_trailing_bytes; j++)
+		last_dest_word[j] = last_src_word[j];
+
+	status = ptrace(PTRACE_POKEDATA, pid, to_child + i, word);
+	if (status < 0) {
+		perror("proot -- ptrace(POKEDATA)");
+		exit(EXIT_FAILURE);
+	}
+}
+
+/**
+ * Copy @nb_bytes bytes into the buffer @to from the memory space of
+ * the child process @pid at its address @from_child.
+ */
+void copy_from_child(pid_t pid, void *to, const void *from_child, unsigned long nb_bytes)
+{
+	unsigned long *src  = (unsigned long *)from_child;
+	unsigned long *dest = (unsigned long *)to;
+
+	unsigned long nb_trailing_bytes;
+	unsigned long nb_full_words;
+	unsigned long word;
+	unsigned long i;
+
+	unsigned char *last_dest_word;
+	unsigned char *last_src_word;
+
+	nb_trailing_bytes = nb_bytes % sizeof(unsigned long);
+	nb_full_words     = (nb_bytes - nb_trailing_bytes) / sizeof(unsigned long);
+
+	/* Copy one word by one word, except for the last one. */
+	for (i = 0; i < nb_full_words; i++) {
+		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+		if (errno != 0) {
+			perror("proot -- ptrace(PEEKDATA)");
+			exit(EXIT_FAILURE);
+		}
+		dest[i] = word;
+	}
+
+	/* Copy the bytes from the last word carefully since I have to
+	 * not overwrite the bytes lying beyond the @to buffer. */
+
+	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+	if (errno != 0) {
+		perror("proot -- ptrace(PEEKDATA)");
+		exit(EXIT_FAILURE);
+	}
+
+	last_dest_word = (unsigned char *)&dest[i];
+	last_src_word  = (unsigned char *)&word;
+
+	for (i = 0; i < nb_trailing_bytes; i++)
+		last_dest_word[i] = last_src_word[i];
 }
 
 #if 0

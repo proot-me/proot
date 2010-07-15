@@ -1,7 +1,7 @@
 CC       = gcc
 LD       = $(CC)
 CPPFLAGS = -D$(ARCH)=1
-CFLAGS   = -Wall
+CFLAGS   = -Wall -O0 -g
 LDFLAGS  =
 
 ARCH     = `uname -m`

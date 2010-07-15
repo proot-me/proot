@@ -17,10 +17,13 @@ enum arg_number {
 	ARG_LAST  = ARG_RESULT
 };
 
-extern unsigned long get_syscall_arg(pid_t pid, enum arg_number arg_number);
-extern void set_syscall_arg(pid_t pid, enum arg_number arg_number, unsigned long value);
+extern unsigned long get_child_sysarg(pid_t pid, enum arg_number arg_number);
+extern void set_child_sysarg(pid_t pid, enum arg_number arg_number, unsigned long value);
 
-extern void *alloc_buffer(pid_t pid, size_t size);
-extern void free_buffer(pid_t pid, void *buffer, size_t size);
+extern void *alloc_in_child(pid_t pid, size_t size);
+extern void free_in_child(pid_t pid, void *buffer, size_t size);
+
+extern void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb_bytes);
+extern void copy_from_child(pid_t pid, void *to, const void *from_child, unsigned long nb_bytes);
 
 #endif /* SYSCALL_H */
