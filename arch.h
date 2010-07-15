@@ -25,7 +25,7 @@
 #ifndef ARCH_H
 #define ARCH_H
 
-/* Specify the registers used for syscall argument passing. */
+/* Specify the ABI registers (syscall argument passing, stack pointer). */
 #if defined(x86_64)
 	#define REG_ARG_SYSNUM	orig_rax
 	#define REG_ARG_1	rdi
@@ -35,6 +35,7 @@
 	#define REG_ARG_5	r9
 	#define REG_ARG_6	r8
 	#define REG_ARG_RESULT	rax
+	#define REG_SP		rsp
 #elif defined(i386) || defined(i486) || defined(i586) || defined(i686)
 	#warning "Untested architecture"
 	#define REG_ARG_SYSNUM	orig_eax
@@ -45,6 +46,7 @@
 	#define REG_ARG_5	edi
 	#define REG_ARG_6	ebp
 	#define REG_ARG_RESULT	eax
+	#define REG_SP		esp
 #elif defined(sh4)
 	#warning "Untested architecture"
 	#define REG_ARG_SYSNUM	r4
@@ -55,6 +57,7 @@
 	#define REG_ARG_5	r1
 	#define REG_ARG_6	r2
 	#define REG_ARG_RESULT	r0
+	#define REG_SP		r15
 #else
 	#error "Unsupported architecture"
 #endif

@@ -1,8 +1,10 @@
 CC       = gcc
 LD       = $(CC)
-CPPFLAGS = -D`uname -m`
+CPPFLAGS = -D$(ARCH)=1
 CFLAGS   = -Wall
 LDFLAGS  =
+
+ARCH     = `uname -m`
 
 OBJECTS = main.o syscall.o
 

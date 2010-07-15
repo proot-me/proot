@@ -20,4 +20,7 @@ enum arg_number {
 extern unsigned long get_syscall_arg(pid_t pid, enum arg_number arg_number);
 extern void set_syscall_arg(pid_t pid, enum arg_number arg_number, unsigned long value);
 
+extern void *alloc_buffer(pid_t pid, size_t size);
+extern void free_buffer(pid_t pid, void *buffer, size_t size);
+
 #endif /* SYSCALL_H */

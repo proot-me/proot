@@ -41,11 +41,13 @@ static void print_usage()
 
 int main(int argc, char *argv[])
 {
-	int entering_syscall = 1;
+	unsigned long syscall = -1;
 	int child_status = 0;
 	long status = 0;
 	int signal = 0;
 	pid_t pid = 0;
+
+	void *buffer;
 
 	if (argc < 2) {
 		print_usage();
@@ -137,17 +139,20 @@ int main(int argc, char *argv[])
 			signal = 0;
 
 			/* Check if we are either entering or exiting a syscall.
-			   Currently it doesn't support multi-process programs,
-			   since that requires one "entering_syscall" per PID. */
-			if (entering_syscall != 0) {
-				printf("proot: syscall(%ld) = ",
-				       get_syscall_arg(pid, ARG_SYSNUM));
-				entering_syscall = 0;
+			   Currently it doesn't support multi-process programs. */
+			if (syscall == -1) {
+				syscall = get_syscall_arg(pid, ARG_SYSNUM);
+
+				buffer = alloc_buffer(pid, 64);
+				printf("proot: %p = alloc(%d, %d)\n", buffer, pid, 64);
 			}
 			else {
-				printf("0x%lx\n",
-				       get_syscall_arg(pid, ARG_RESULT));
-				entering_syscall = 1;
+				printf("proot: syscall(%ld) = 0x%lx\n",
+				       syscall, get_syscall_arg(pid, ARG_RESULT));
+				syscall = -1;
+
+				printf("proot: free(%d, %p, %d)\n", pid, buffer, 64);
+				free_buffer(pid, buffer, 64);
 			}
 		}
 		else {

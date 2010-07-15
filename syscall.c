@@ -30,13 +30,21 @@
 #include <sys/user.h>   /* struct user*, */
 #include <errno.h>      /* errno, */
 #include <stdio.h>      /* perror(3), fprintf(3), */
+#include <limits.h>     /* ULONG_MAX, */
 
 #include "syscall.h" /* enum arg_number, ARG_*, */
 #include "arch.h"    /* REG_ARG_* */
 
-/* Specify the offset in the USER area of each register used for
+/**
+ * Compute the offset of the register @reg_name in the USER area.
+ */
+#define USER_REGS_OFFSET(reg_name)			\
+	(offsetof(struct user, regs)			\
+	 + offsetof(struct user_regs_struct, reg_name))
+
+/**
+ * Specify the offset in the USER area of each register used for
  * syscall argument passing. */
-#define USER_REGS_OFFSET(reg_name) (offsetof(struct user, regs) + offsetof(struct user_regs_struct, reg_name))
 size_t arg_offset[] = {
 	USER_REGS_OFFSET(REG_ARG_SYSNUM),
 	USER_REGS_OFFSET(REG_ARG_1),
@@ -57,7 +65,7 @@ unsigned long get_syscall_arg(pid_t pid, enum arg_number arg_number)
 	unsigned long result;
 
 	if (arg_number < ARG_FIRST || arg_number > ARG_LAST) {
-		fprintf(stderr, "proot -- set_syscall_arg(%d) not supported\n", arg_number);
+		fprintf(stderr, "proot -- %s(%d) not supported\n", __FUNCTION__, arg_number);
 		exit(EXIT_FAILURE);
 	}
 
@@ -76,10 +84,10 @@ unsigned long get_syscall_arg(pid_t pid, enum arg_number arg_number)
  */
 void set_syscall_arg(pid_t pid, enum arg_number arg_number, unsigned long value)
 {
-	unsigned long status = 0;
+	unsigned long status;
 
 	if (arg_number < ARG_FIRST || arg_number > ARG_LAST) {
-		fprintf(stderr, "proot -- set_syscall_arg(%d) not supported\n", arg_number);
+		fprintf(stderr, "proot -- %s(%d) not supported\n", __FUNCTION__, arg_number);
 		exit(EXIT_FAILURE);
 	}
 
@@ -88,6 +96,63 @@ void set_syscall_arg(pid_t pid, enum arg_number arg_number, unsigned long value)
 		perror("proot -- ptrace(POKEUSER)");
 		exit(EXIT_FAILURE);
 	}
+}
+
+/**
+ * This function returns an uninitialized buffer of @size bytes
+ * allocated into the stack of the child @pid.
+ */
+void *alloc_buffer(pid_t pid, size_t size)
+{
+	unsigned long stack_pointer;
+	unsigned long status;
+
+	status = ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
+	if (errno != 0) {
+		perror("proot -- ptrace(PEEKUSER)");
+		exit(EXIT_FAILURE);
+	}
+
+	stack_pointer = status;
+	if (stack_pointer <= size) {
+		fprintf(stderr, "proot -- integer underflow detected in %s", __FUNCTION__);
+		exit(EXIT_FAILURE);
+	}
+
+	stack_pointer -= size;
+
+	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
+	if (status < 0) {
+		perror("proot -- ptrace(POKEUSER)");
+		exit(EXIT_FAILURE);
+	}
+
+	return (void *)stack_pointer;
+}
+
+/**
+ * This function frees the memory allocated by alloc_buffer().
+ */
+void free_buffer(pid_t pid, void *buffer, size_t size)
+{
+	unsigned long stack_pointer;
+	unsigned long status;
+
+	stack_pointer = (unsigned long)buffer;
+	if (stack_pointer >= ULONG_MAX - size) {
+		fprintf(stderr, "proot -- integer overflow detected in %s", __FUNCTION__);
+		exit(EXIT_FAILURE);
+	}
+
+	stack_pointer += size;
+
+	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
+	if (status < 0) {
+		perror("proot -- ptrace(POKEUSER)");
+		exit(EXIT_FAILURE);
+	}
+
+	return;
 }
 
 #if 0
