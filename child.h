@@ -22,7 +22,32 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef CHILD_H
+#define CHILD_H
 
-#endif /* SYSCALL_H */
+enum sysarg {
+	/* Warning: sysarg_offset[] in child.c relies on this ordering. */
+	SYSARG_NUM = 0,
+	SYSARG_1,
+	SYSARG_2,
+	SYSARG_3,
+	SYSARG_4,
+	SYSARG_5,
+	SYSARG_6,
+	SYSARG_RESULT,
+
+	/* Helpers. */
+	SYSARG_FIRST = SYSARG_NUM,
+	SYSARG_LAST  = SYSARG_RESULT
+};
+
+extern unsigned long get_child_sysarg(pid_t pid, enum sysarg sysarg);
+extern void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value);
+
+extern void *alloc_in_child(pid_t pid, size_t size);
+extern void free_in_child(pid_t pid, void *buffer, size_t size);
+
+extern void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb_bytes);
+extern void copy_from_child(pid_t pid, void *to, const void *from_child, unsigned long nb_bytes);
+
+#endif /* CHILD_H */

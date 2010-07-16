@@ -31,7 +31,7 @@
 #include <limits.h>     /* PATH_MAX, */
 #include <string.h>     /* strcmp(3), */
 
-#include "syscall.h"
+#include "child.h"
 
 static void print_usage()
 {
@@ -146,19 +146,19 @@ int main(int argc, char *argv[])
 			if (sysnum == -1) {
 				char path[PATH_MAX + 1];
 
-				sysnum = get_child_sysarg(pid, ARG_SYSNUM);
+				sysnum = get_child_sysarg(pid, SYSARG_NUM);
 				if (sysnum != 2 /* open */)
 					continue;
 
 				copy_from_child(pid, path,
-						(void *)get_child_sysarg(pid, ARG_1),
+						(void *)get_child_sysarg(pid, SYSARG_1),
 						PATH_MAX);
 				path[PATH_MAX] = 0;
 
 				if (strcmp(path, ".") == 0) {
 					child_buffer = alloc_in_child(pid, sizeof("/tmp"));
 					copy_to_child(pid, child_buffer, "/tmp", sizeof("/tmp"));
-					set_child_sysarg(pid, ARG_1, (unsigned long)child_buffer);
+					set_child_sysarg(pid, SYSARG_1, (unsigned long)child_buffer);
 				}
 
 				printf("proot: open(%s)\n", path);

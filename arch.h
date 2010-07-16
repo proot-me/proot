@@ -27,36 +27,36 @@
 
 /* Specify the ABI registers (syscall argument passing, stack pointer). */
 #if defined(x86_64)
-	#define REG_ARG_SYSNUM	orig_rax
-	#define REG_ARG_1	rdi
-	#define REG_ARG_2	rsi
-	#define REG_ARG_3	rdx
-	#define REG_ARG_4	r10
-	#define REG_ARG_5	r9
-	#define REG_ARG_6	r8
-	#define REG_ARG_RESULT	rax
+	#define REG_SYSARG_NUM	orig_rax
+	#define REG_SYSARG_1	rdi
+	#define REG_SYSARG_2	rsi
+	#define REG_SYSARG_3	rdx
+	#define REG_SYSARG_4	r10
+	#define REG_SYSARG_5	r9
+	#define REG_SYSARG_6	r8
+	#define REG_SYSARG_RESULT	rax
 	#define REG_SP		rsp
 #elif defined(i386) || defined(i486) || defined(i586) || defined(i686)
 	#warning "Untested architecture"
-	#define REG_ARG_SYSNUM	orig_eax
-	#define REG_ARG_1	ebx
-	#define REG_ARG_2	ecx
-	#define REG_ARG_3	edx
-	#define REG_ARG_4	esi
-	#define REG_ARG_5	edi
-	#define REG_ARG_6	ebp
-	#define REG_ARG_RESULT	eax
+	#define REG_SYSARG_NUM	orig_eax
+	#define REG_SYSARG_1	ebx
+	#define REG_SYSARG_2	ecx
+	#define REG_SYSARG_3	edx
+	#define REG_SYSARG_4	esi
+	#define REG_SYSARG_5	edi
+	#define REG_SYSARG_6	ebp
+	#define REG_SYSARG_RESULT	eax
 	#define REG_SP		esp
 #elif defined(sh4)
 	#warning "Untested architecture"
-	#define REG_ARG_SYSNUM	r4
-	#define REG_ARG_1	r5
-	#define REG_ARG_2	r6
-	#define REG_ARG_3	r7
-	#define REG_ARG_4	r0
-	#define REG_ARG_5	r1
-	#define REG_ARG_6	r2
-	#define REG_ARG_RESULT	r0
+	#define REG_SYSARG_NUM	r4
+	#define REG_SYSARG_1	r5
+	#define REG_SYSARG_2	r6
+	#define REG_SYSARG_3	r7
+	#define REG_SYSARG_4	r0
+	#define REG_SYSARG_5	r1
+	#define REG_SYSARG_6	r2
+	#define REG_SYSARG_RESULT	r0
 	#define REG_SP		r15
 #else
 	#error "Unsupported architecture"
