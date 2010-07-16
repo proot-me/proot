@@ -158,14 +158,14 @@ int main(int argc, char *argv[])
 #define REDIRECTION "/usr/src/linux/Documentation/CodingStyle"
 
 				if (strcmp(path, "/etc/fstab") == 0) {
-					child_buffer = alloc_child_stack(pid, sizeof(REDIRECTION));
+					child_buffer = resize_child_stack(pid, sizeof(REDIRECTION));
 					copy_to_child(pid, child_buffer, REDIRECTION, sizeof(REDIRECTION));
 					set_child_sysarg(pid, SYSARG_1, (unsigned long)child_buffer);
 				}
 			}
 			else {
 				if (child_buffer != NULL) {
-					free_child_stack(pid, child_buffer, sizeof(REDIRECTION));
+					resize_child_stack(pid, -sizeof(REDIRECTION));
 					child_buffer = NULL;
 				}
 

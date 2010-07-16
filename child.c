@@ -64,11 +64,13 @@ unsigned long get_child_sysarg(pid_t pid, enum sysarg sysarg)
 {
 	unsigned long result;
 
+	/* Sanity check. */
 	if (sysarg < SYSARG_FIRST || sysarg > SYSARG_LAST) {
 		fprintf(stderr, "proot -- %s(%d) not supported\n", __FUNCTION__, sysarg);
 		exit(EXIT_FAILURE);
 	}
 
+	/* Get the argument register from the child's USER area. */
 	result = ptrace(PTRACE_PEEKUSER, pid, arg_offset[sysarg], NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKUSER)");
@@ -86,11 +88,13 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value)
 {
 	unsigned long status;
 
+	/* Sanity check. */
 	if (sysarg < SYSARG_FIRST || sysarg > SYSARG_LAST) {
 		fprintf(stderr, "proot -- %s(%d) not supported\n", __FUNCTION__, sysarg);
 		exit(EXIT_FAILURE);
 	}
 
+	/* Set the argument register in the child's USER area. */
 	status = ptrace(PTRACE_POKEUSER, pid, arg_offset[sysarg], value);
 	if (status < 0) {
 		perror("proot -- ptrace(POKEUSER)");
@@ -99,28 +103,36 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value)
 }
 
 /**
- * This function returns an uninitialized buffer of @size bytes
- * allocated into the stack of the child process @pid.
+ * This function resize by @size bytes the stack of the child @pid,
+ * then it returns the address of the new stack pointer within the
+ * child's memory space.
  */
-void *alloc_child_stack(pid_t pid, size_t size)
+void *resize_child_stack(pid_t pid, ssize_t size)
 {
 	unsigned long stack_pointer;
 	unsigned long status;
 
+	/* Get the current value of the stack pointer
+	 * from the child's USER area. */
 	status = ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKUSER)");
 		exit(EXIT_FAILURE);
 	}
-
 	stack_pointer = status;
-	if (stack_pointer <= size) {
-		fprintf(stderr, "proot -- integer underflow detected in %s", __FUNCTION__);
+
+	/* Sanity check. */
+	if (   (size > 0 && stack_pointer <= size)
+	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
+		fprintf(stderr, "proot -- integer underflow detected in %s\n", __FUNCTION__);
 		exit(EXIT_FAILURE);
 	}
 
+	/* Remember the stack grows downward. */
 	stack_pointer -= size;
 
+	/* Set the new value of the stack pointer
+	 * in the child's USER area. */
 	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
 	if (status < 0) {
 		perror("proot -- ptrace(POKEUSER)");
@@ -128,31 +140,6 @@ void *alloc_child_stack(pid_t pid, size_t size)
 	}
 
 	return (void *)stack_pointer;
-}
-
-/**
- * This function frees the memory allocated by alloc_buffer().
- */
-void free_child_stack(pid_t pid, void *buffer, size_t size)
-{
-	unsigned long stack_pointer;
-	unsigned long status;
-
-	stack_pointer = (unsigned long)buffer;
-	if (stack_pointer >= ULONG_MAX - size) {
-		fprintf(stderr, "proot -- integer overflow detected in %s", __FUNCTION__);
-		exit(EXIT_FAILURE);
-	}
-
-	stack_pointer += size;
-
-	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
-	if (status < 0) {
-		perror("proot -- ptrace(POKEUSER)");
-		exit(EXIT_FAILURE);
-	}
-
-	return;
 }
 
 /**
@@ -208,7 +195,8 @@ void copy_to_child(pid_t pid, void *dest_child, const void *src_parent, unsigned
 /**
  * Copy to @dest_parent at most @max_size bytes from the string
  * pointed to by @src_child within the memory space of the child
- * process @pid.
+ * process @pid. This function returns the size in bytes of the
+ * string, including the end-of-string terminator XXX.
  */
 unsigned long get_child_string(pid_t pid, void *dest_parent, const void *src_child, unsigned long max_size)
 {

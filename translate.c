@@ -271,7 +271,7 @@ static int canonicalize(const char *new_root,
  * is relative to the current working directory. See the documentation
  * of canonicalize() for the meaning of @deref_final.
  */
-int proot(char result[PATH_MAX], const char *new_root, const char *fake_path, int deref_final)
+int translate(char result[PATH_MAX], const char *new_root, const char *fake_path, int deref_final)
 {
 	char real_root[PATH_MAX];
 	char tmp[PATH_MAX];

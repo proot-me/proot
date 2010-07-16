@@ -44,8 +44,7 @@ enum sysarg {
 extern unsigned long get_child_sysarg(pid_t pid, enum sysarg sysarg);
 extern void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value);
 
-extern void *alloc_child_stack(pid_t pid, size_t size);
-extern void free_child_stack(pid_t pid, void *buffer, size_t size);
+extern void *resize_child_stack(pid_t pid, ssize_t size);
 
 extern void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb_bytes);
 extern unsigned long get_child_string(pid_t pid, void *to, const void *from_child, unsigned long nb_bytes);
