@@ -150,22 +150,22 @@ int main(int argc, char *argv[])
 				if (sysnum != 2 /* open */)
 					continue;
 
-				copy_from_child(pid, path,
-						(void *)get_child_sysarg(pid, SYSARG_1),
-						PATH_MAX);
+				get_child_string(pid, path,
+						 (void *)get_child_sysarg(pid, SYSARG_1),
+						 PATH_MAX);
 				path[PATH_MAX] = 0;
 
-				if (strcmp(path, ".") == 0) {
-					child_buffer = alloc_in_child(pid, sizeof("/tmp"));
-					copy_to_child(pid, child_buffer, "/tmp", sizeof("/tmp"));
+#define REDIRECTION "/usr/src/linux/Documentation/CodingStyle"
+
+				if (strcmp(path, "/etc/fstab") == 0) {
+					child_buffer = alloc_child_stack(pid, sizeof(REDIRECTION));
+					copy_to_child(pid, child_buffer, REDIRECTION, sizeof(REDIRECTION));
 					set_child_sysarg(pid, SYSARG_1, (unsigned long)child_buffer);
 				}
-
-				printf("proot: open(%s)\n", path);
 			}
 			else {
 				if (child_buffer != NULL) {
-					free_in_child(pid, child_buffer, sizeof("/tmp"));
+					free_child_stack(pid, child_buffer, sizeof(REDIRECTION));
 					child_buffer = NULL;
 				}
 

@@ -44,10 +44,13 @@ enum sysarg {
 extern unsigned long get_child_sysarg(pid_t pid, enum sysarg sysarg);
 extern void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value);
 
-extern void *alloc_in_child(pid_t pid, size_t size);
-extern void free_in_child(pid_t pid, void *buffer, size_t size);
+extern void *alloc_child_stack(pid_t pid, size_t size);
+extern void free_child_stack(pid_t pid, void *buffer, size_t size);
 
 extern void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb_bytes);
-extern void copy_from_child(pid_t pid, void *to, const void *from_child, unsigned long nb_bytes);
+extern unsigned long get_child_string(pid_t pid, void *to, const void *from_child, unsigned long nb_bytes);
+
+extern void copy_to_child(pid_t pid, void *dest_child, const void *src_parent, unsigned long size);
+extern unsigned long get_child_string(pid_t pid, void *dest_parent, const void *src_child, unsigned long max_size);
 
 #endif /* CHILD_H */

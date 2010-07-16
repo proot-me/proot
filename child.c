@@ -102,7 +102,7 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value)
  * This function returns an uninitialized buffer of @size bytes
  * allocated into the stack of the child process @pid.
  */
-void *alloc_in_child(pid_t pid, size_t size)
+void *alloc_child_stack(pid_t pid, size_t size)
 {
 	unsigned long stack_pointer;
 	unsigned long status;
@@ -133,7 +133,7 @@ void *alloc_in_child(pid_t pid, size_t size)
 /**
  * This function frees the memory allocated by alloc_buffer().
  */
-void free_in_child(pid_t pid, void *buffer, size_t size)
+void free_child_stack(pid_t pid, void *buffer, size_t size)
 {
 	unsigned long stack_pointer;
 	unsigned long status;
@@ -156,36 +156,37 @@ void free_in_child(pid_t pid, void *buffer, size_t size)
 }
 
 /**
- * Copy @nb_bytes bytes from the buffer @from into the memory space of
- * the child process @pid at its address @to_child.
+ * Copy @size bytes from the buffer @src_parent to the address
+ * @dest_child within the memory space of the child process @pid.
  */
-void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb_bytes)
+void copy_to_child(pid_t pid, void *dest_child, const void *src_parent, unsigned long size)
 {
-	unsigned long *src = (unsigned long *)from;
+	unsigned long *src  = (unsigned long *)src_parent;
+	unsigned long *dest = (unsigned long *)dest_child;
 
+	unsigned long status, word, i, j;
 	unsigned long nb_trailing_bytes;
 	unsigned long nb_full_words;
-	unsigned long status, word, i, j;
 
 	unsigned char *last_dest_word;
 	unsigned char *last_src_word;
 
-	nb_trailing_bytes = nb_bytes % sizeof(unsigned long);
-	nb_full_words     = (nb_bytes - nb_trailing_bytes) / sizeof(unsigned long);
+	nb_trailing_bytes = size % sizeof(unsigned long);
+	nb_full_words     = (size - nb_trailing_bytes) / sizeof(unsigned long);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		status = ptrace(PTRACE_POKEDATA, pid, to_child + i, src[i]);
+		status = ptrace(PTRACE_POKEDATA, pid, dest + i, src[i]);
 		if (status < 0) {
 			perror("proot -- ptrace(POKEDATA)");
 			exit(EXIT_FAILURE);
 		}
 	}
 
-	/* Copy the bytes in the last word carefully since I have
+	/* Copy the bytes in the last word carefully since we have
 	 * overwrite only the relevant ones. */
 
-	word = ptrace(PTRACE_PEEKDATA, pid, to_child + i, NULL);
+	word = ptrace(PTRACE_PEEKDATA, pid, dest + i, NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKDATA)");
 		exit(EXIT_FAILURE);
@@ -197,7 +198,7 @@ void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb
 	for (j = 0; j < nb_trailing_bytes; j++)
 		last_dest_word[j] = last_src_word[j];
 
-	status = ptrace(PTRACE_POKEDATA, pid, to_child + i, word);
+	status = ptrace(PTRACE_POKEDATA, pid, dest + i, word);
 	if (status < 0) {
 		perror("proot -- ptrace(POKEDATA)");
 		exit(EXIT_FAILURE);
@@ -205,24 +206,24 @@ void copy_to_child(pid_t pid, void *to_child, const void *from, unsigned long nb
 }
 
 /**
- * Copy @nb_bytes bytes into the buffer @to from the memory space of
- * the child process @pid at its address @from_child.
+ * Copy to @dest_parent at most @max_size bytes from the string
+ * pointed to by @src_child within the memory space of the child
+ * process @pid.
  */
-void copy_from_child(pid_t pid, void *to, const void *from_child, unsigned long nb_bytes)
+unsigned long get_child_string(pid_t pid, void *dest_parent, const void *src_child, unsigned long max_size)
 {
-	unsigned long *src  = (unsigned long *)from_child;
-	unsigned long *dest = (unsigned long *)to;
+	unsigned long *src  = (unsigned long *)src_child;
+	unsigned long *dest = (unsigned long *)dest_parent;
 
 	unsigned long nb_trailing_bytes;
 	unsigned long nb_full_words;
-	unsigned long word;
-	unsigned long i;
+	unsigned long word, i, j;
 
-	unsigned char *last_dest_word;
-	unsigned char *last_src_word;
+	unsigned char *src_word;
+	unsigned char *dest_word;
 
-	nb_trailing_bytes = nb_bytes % sizeof(unsigned long);
-	nb_full_words     = (nb_bytes - nb_trailing_bytes) / sizeof(unsigned long);
+	nb_trailing_bytes = max_size % sizeof(unsigned long);
+	nb_full_words     = (max_size - nb_trailing_bytes) / sizeof(unsigned long);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
@@ -232,10 +233,16 @@ void copy_from_child(pid_t pid, void *to, const void *from_child, unsigned long 
 			exit(EXIT_FAILURE);
 		}
 		dest[i] = word;
+
+		/* Stop once an end-of-string is detected. */
+		src_word = (unsigned char *)&word;
+		for (j = 0; j < sizeof(unsigned long); j++)
+			if (src_word[j] == '\0')
+				return i * sizeof(unsigned long) + j;
 	}
 
-	/* Copy the bytes from the last word carefully since I have to
-	 * not overwrite the bytes lying beyond the @to buffer. */
+	/* Copy the bytes from the last word carefully since we have
+	 * to not overwrite the bytes lying beyond the @to buffer. */
 
 	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
 	if (errno != 0) {
@@ -243,9 +250,14 @@ void copy_from_child(pid_t pid, void *to, const void *from_child, unsigned long 
 		exit(EXIT_FAILURE);
 	}
 
-	last_dest_word = (unsigned char *)&dest[i];
-	last_src_word  = (unsigned char *)&word;
+	dest_word = (unsigned char *)&dest[i];
+	src_word  = (unsigned char *)&word;
 
-	for (i = 0; i < nb_trailing_bytes; i++)
-		last_dest_word[i] = last_src_word[i];
+	for (j = 0; j < nb_trailing_bytes; j++) {
+		dest_word[j] = src_word[j];
+		if (src_word[j] == '\0')
+			break;
+	}
+
+	return i * sizeof(unsigned long) + j;
 }
