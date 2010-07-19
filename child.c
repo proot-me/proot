@@ -107,7 +107,7 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value)
  * then it returns the address of the new stack pointer within the
  * child's memory space.
  */
-void *resize_child_stack(pid_t pid, ssize_t size)
+unsigned long resize_child_stack(pid_t pid, ssize_t size)
 {
 	unsigned long stack_pointer;
 	unsigned long status;
@@ -139,14 +139,14 @@ void *resize_child_stack(pid_t pid, ssize_t size)
 		exit(EXIT_FAILURE);
 	}
 
-	return (void *)stack_pointer;
+	return stack_pointer;
 }
 
 /**
  * Copy @size bytes from the buffer @src_parent to the address
  * @dest_child within the memory space of the child process @pid.
  */
-void copy_to_child(pid_t pid, void *dest_child, const void *src_parent, unsigned long size)
+void copy_to_child(pid_t pid, unsigned long dest_child, const void *src_parent, unsigned long size)
 {
 	unsigned long *src  = (unsigned long *)src_parent;
 	unsigned long *dest = (unsigned long *)dest_child;
@@ -198,7 +198,7 @@ void copy_to_child(pid_t pid, void *dest_child, const void *src_parent, unsigned
  * process @pid. This function returns the size in bytes of the
  * string, including the end-of-string terminator XXX.
  */
-unsigned long get_child_string(pid_t pid, void *dest_parent, const void *src_child, unsigned long max_size)
+unsigned long get_child_string(pid_t pid, void *dest_parent, unsigned long src_child, unsigned long max_size)
 {
 	unsigned long *src  = (unsigned long *)src_child;
 	unsigned long *dest = (unsigned long *)dest_parent;

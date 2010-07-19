@@ -44,12 +44,11 @@ static void print_usage()
 int main(int argc, char *argv[])
 {
 	unsigned long sysnum = -1;
+	unsigned long child_ptr = 0;
 	int child_status = 0;
 	long status = 0;
 	int signal = 0;
 	pid_t pid = 0;
-
-	char *child_buffer = NULL;
 
 	if (argc < 2) {
 		print_usage();
@@ -150,23 +149,21 @@ int main(int argc, char *argv[])
 				if (sysnum != 2 /* open */)
 					continue;
 
-				get_child_string(pid, path,
-						 (void *)get_child_sysarg(pid, SYSARG_1),
-						 PATH_MAX);
-				path[PATH_MAX] = 0;
+				get_child_string(pid, path, get_child_sysarg(pid, SYSARG_1), PATH_MAX);
+				path[PATH_MAX] = '\0';
 
 #define REDIRECTION "/usr/src/linux/Documentation/CodingStyle"
 
 				if (strcmp(path, "/etc/fstab") == 0) {
-					child_buffer = resize_child_stack(pid, sizeof(REDIRECTION));
-					copy_to_child(pid, child_buffer, REDIRECTION, sizeof(REDIRECTION));
-					set_child_sysarg(pid, SYSARG_1, (unsigned long)child_buffer);
+					child_ptr = resize_child_stack(pid, sizeof(REDIRECTION));
+					copy_to_child(pid, child_ptr, REDIRECTION, sizeof(REDIRECTION));
+					set_child_sysarg(pid, SYSARG_1, child_ptr);
 				}
 			}
 			else {
-				if (child_buffer != NULL) {
+				if (child_ptr != 0) {
 					resize_child_stack(pid, -sizeof(REDIRECTION));
-					child_buffer = NULL;
+					child_ptr = 0;
 				}
 
 				sysnum = -1;
