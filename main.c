@@ -43,12 +43,13 @@ static void print_usage()
 
 int main(int argc, char *argv[])
 {
-	unsigned long sysnum = -1;
-	unsigned long child_ptr = 0;
-	int child_status = 0;
-	long status = 0;
-	int signal = 0;
-	pid_t pid = 0;
+	word_t sysnum;
+	word_t child_ptr;
+
+	int child_status;
+	long status;
+	int signal;
+	pid_t pid;
 
 	if (argc < 2) {
 		print_usage();
@@ -101,6 +102,9 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	signal    = 0;
+	sysnum    = -1;
+	child_ptr = 0;
 	while (1) {
 		/* Restart the child and stop it at the next
 		 * entry or exit of a system call. */

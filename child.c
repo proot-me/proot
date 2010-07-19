@@ -33,7 +33,7 @@
 #include <limits.h>     /* ULONG_MAX, */
 
 #include "child.h"
-#include "arch.h"    /* REG_SYSARG_* */
+#include "arch.h"    /* REG_SYSARG_*, word_t */
 
 /**
  * Compute the offset of the register @reg_name in the USER area.
@@ -60,9 +60,9 @@ size_t arg_offset[] = {
  * Return the @sysarg argument of the current syscall in the
  * child process @pid.
  */
-unsigned long get_child_sysarg(pid_t pid, enum sysarg sysarg)
+word_t get_child_sysarg(pid_t pid, enum sysarg sysarg)
 {
-	unsigned long result;
+	word_t result;
 
 	/* Sanity check. */
 	if (sysarg < SYSARG_FIRST || sysarg > SYSARG_LAST) {
@@ -84,9 +84,9 @@ unsigned long get_child_sysarg(pid_t pid, enum sysarg sysarg)
  * Set the @sysarg argument of the current syscall in the child
  * process @pid to @value.
  */
-void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value)
+void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 {
-	unsigned long status;
+	word_t status;
 
 	/* Sanity check. */
 	if (sysarg < SYSARG_FIRST || sysarg > SYSARG_LAST) {
@@ -107,10 +107,10 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, unsigned long value)
  * then it returns the address of the new stack pointer within the
  * child's memory space.
  */
-unsigned long resize_child_stack(pid_t pid, ssize_t size)
+word_t resize_child_stack(pid_t pid, ssize_t size)
 {
-	unsigned long stack_pointer;
-	unsigned long status;
+	word_t stack_pointer;
+	word_t status;
 
 	/* Get the current value of the stack pointer
 	 * from the child's USER area. */
@@ -146,20 +146,20 @@ unsigned long resize_child_stack(pid_t pid, ssize_t size)
  * Copy @size bytes from the buffer @src_parent to the address
  * @dest_child within the memory space of the child process @pid.
  */
-void copy_to_child(pid_t pid, unsigned long dest_child, const void *src_parent, unsigned long size)
+void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size)
 {
-	unsigned long *src  = (unsigned long *)src_parent;
-	unsigned long *dest = (unsigned long *)dest_child;
+	word_t *src  = (word_t *)src_parent;
+	word_t *dest = (word_t *)dest_child;
 
-	unsigned long status, word, i, j;
-	unsigned long nb_trailing_bytes;
-	unsigned long nb_full_words;
+	word_t status, word, i, j;
+	word_t nb_trailing_bytes;
+	word_t nb_full_words;
 
 	unsigned char *last_dest_word;
 	unsigned char *last_src_word;
 
-	nb_trailing_bytes = size % sizeof(unsigned long);
-	nb_full_words     = (size - nb_trailing_bytes) / sizeof(unsigned long);
+	nb_trailing_bytes = size % sizeof(word_t);
+	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
@@ -198,20 +198,20 @@ void copy_to_child(pid_t pid, unsigned long dest_child, const void *src_parent, 
  * process @pid. This function returns the size in bytes of the
  * string, including the end-of-string terminator XXX.
  */
-unsigned long get_child_string(pid_t pid, void *dest_parent, unsigned long src_child, unsigned long max_size)
+word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size)
 {
-	unsigned long *src  = (unsigned long *)src_child;
-	unsigned long *dest = (unsigned long *)dest_parent;
+	word_t *src  = (word_t *)src_child;
+	word_t *dest = (word_t *)dest_parent;
 
-	unsigned long nb_trailing_bytes;
-	unsigned long nb_full_words;
-	unsigned long word, i, j;
+	word_t nb_trailing_bytes;
+	word_t nb_full_words;
+	word_t word, i, j;
 
 	unsigned char *src_word;
 	unsigned char *dest_word;
 
-	nb_trailing_bytes = max_size % sizeof(unsigned long);
-	nb_full_words     = (max_size - nb_trailing_bytes) / sizeof(unsigned long);
+	nb_trailing_bytes = max_size % sizeof(word_t);
+	nb_full_words     = (max_size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
@@ -224,9 +224,9 @@ unsigned long get_child_string(pid_t pid, void *dest_parent, unsigned long src_c
 
 		/* Stop once an end-of-string is detected. */
 		src_word = (unsigned char *)&word;
-		for (j = 0; j < sizeof(unsigned long); j++)
+		for (j = 0; j < sizeof(word_t); j++)
 			if (src_word[j] == '\0')
-				return i * sizeof(unsigned long) + j;
+				return i * sizeof(word_t) + j;
 	}
 
 	/* Copy the bytes from the last word carefully since we have
@@ -247,5 +247,5 @@ unsigned long get_child_string(pid_t pid, void *dest_parent, unsigned long src_c
 			break;
 	}
 
-	return i * sizeof(unsigned long) + j;
+	return i * sizeof(word_t) + j;
 }

@@ -25,6 +25,8 @@
 #ifndef ARCH_H
 #define ARCH_H
 
+typedef unsigned long word_t;
+
 /* Specify the ABI registers (syscall argument passing, stack pointer). */
 #if defined(x86_64)
 	#define REG_SYSARG_NUM	orig_rax
