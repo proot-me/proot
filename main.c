@@ -161,7 +161,17 @@ int main(int argc, char *argv[])
 					status = translate_sysarg(pid, SYSARG_1, 1);
 					if (status < 0)
 						printf("proot: translation failed: %s\n", strerror(-status));
-					child_ptr = 1;
+					break;
+
+				default:
+					break;
+				}
+			}
+			else {
+				switch (sysnum) {
+				case 2: /* open */
+					resize_child_stack(pid, -PATH_MAX);
+					child_ptr = 0;
 					break;
 
 				case 79: /* getcwd */
@@ -173,13 +183,6 @@ int main(int argc, char *argv[])
 				default:
 					break;
 				}
-			}
-			else {
-				if (child_ptr != 0) {
-					resize_child_stack(pid, -PATH_MAX);
-					child_ptr = 0;
-				}
-
 				sysnum = -1;
 			}
 		}
