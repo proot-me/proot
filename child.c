@@ -86,7 +86,7 @@ word_t get_child_sysarg(pid_t pid, enum sysarg sysarg)
  */
 void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 {
-	word_t status;
+	long status;
 
 	/* Sanity check. */
 	if (sysarg < SYSARG_FIRST || sysarg > SYSARG_LAST) {
@@ -110,7 +110,7 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 word_t resize_child_stack(pid_t pid, ssize_t size)
 {
 	word_t stack_pointer;
-	word_t status;
+	long status;
 
 	/* Get the current value of the stack pointer
 	 * from the child's USER area. */
@@ -119,7 +119,7 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 		perror("proot -- ptrace(PEEKUSER)");
 		exit(EXIT_FAILURE);
 	}
-	stack_pointer = status;
+	stack_pointer = (word_t)status;
 
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= size)
@@ -151,7 +151,8 @@ void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t 
 	word_t *src  = (word_t *)src_parent;
 	word_t *dest = (word_t *)dest_child;
 
-	word_t status, word, i, j;
+	long   status;
+	word_t word, i, j;
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
 
