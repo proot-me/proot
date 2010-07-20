@@ -6,12 +6,12 @@ LDFLAGS  =
 
 ARCH     = `uname -m`
 
-OBJECTS = main.o child.o syscall.o translate.o
+OBJECTS = main.o child.o syscall.o translator.o
 
 proot: $(OBJECTS)
 	$(LD) $(LDFLAGS) $(OBJECTS) -o $@
 
-%.o: %.c
+%.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
 
 ######################################################################

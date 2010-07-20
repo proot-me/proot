@@ -23,19 +23,124 @@
  * Inspired by: QEMU user-mode.
  */
 
+#include <fcntl.h>     /* AT_FDCWD, */
+#include <sys/types.h> /* pid_t, */
+#include <limits.h>    /* PATH_MAX, */
+#include <stddef.h>    /* intptr_t, */
+#include <errno.h>     /* errno(3), */
+
+#include "arch.h"      /* word_t, */
+#include "child.h"
+#include "translator.h"
+
+/* Stupid wrapper used as an alias. */
+static inline word_t get_sysarg(pid_t pid, enum sysarg sysarg)
+{
+	return get_child_sysarg(pid, sysarg);
+}
+
+/* Less stupid wrapper, it does type checking. */
+static inline word_t get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
+{
+	return get_child_string(pid, path, get_sysarg(pid, sysarg), PATH_MAX);
+}
+
+enum { REGULAR = 0, SYMLINK = 1};
+
+/**
+ * This function translates the current @sysarg syscall argument of
+ * the child @pid. See the documentation of translate() about the
+ * meaning of @deref_final.
+ */
+/* XXX: static */ int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
+{
+	char new_path[PATH_MAX];
+	char old_path[PATH_MAX];
+	word_t child_ptr;
+	word_t size;
+	int status;
+
+	/* Extract the original path. */
+	size = get_sysarg_path(pid, old_path, sysarg);
+	if (size >= PATH_MAX)
+		return -ENAMETOOLONG;
+	if (size == (word_t)-1)
+		return -EFAULT;
+
+	old_path[size] = '\0';
+
+	/* Translate the original path. */
+	status = translate(new_path, old_path, deref_final);
+	if (status < 0)
+		return status;
+
+	/* Allocate space into the child's stack to host the new path. */
+	child_ptr = resize_child_stack(pid, PATH_MAX);
+
+	/* Copy the new path into the previously allocated space. */
+	copy_to_child(pid, child_ptr, new_path, PATH_MAX);
+
+	/* Make this argument point to the new path. */
+	set_child_sysarg(pid, sysarg, child_ptr);
+
+	return 0;
+}
+
+/**
+ * This function detranslates the current @sysarg syscall argument of
+ * the child @pid. See the documentation of translate() about the
+ * meaning of @deref_final.
+ */
+/* XXX: static */ int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
+{
+	char new_path[PATH_MAX];
+	char old_path[PATH_MAX];
+	word_t child_ptr;
+	word_t size;
+	int status;
+
+	/* Translate the original path. */
+	size = get_sysarg_path(pid, old_path, sysarg);
+	if (size == (word_t)-1)
+		return -EFAULT;
+
+	/* Removes the leading "root" part. */
+	status = detranslate(new_path, old_path);
+	if (status < 0)
+		return status;
+
+	/* Overwrite the path. */
+	child_ptr = get_sysarg(pid, sysarg);
+	copy_to_child(pid, child_ptr, new_path, status);
+
+	return 0;
+}
+
 #if 0
 
+/* XXX */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
 
-void XXX(int syscall_number, ...)
+/* XXX */
+check_path_at()
 {
+
+}
+
+void translate_syscall(pid_t pid, enum { entry, exit } phase)
+{
+	word_t syscall_number;
+
 	int flags    = -1;
 	int dirfd    = -1;
 	int olddirfd = -1;
 	int newdirfd = -1;
+
 	const char *path    = NULL;
 	const char *oldpath = NULL;
 	const char *newpath = NULL;
+	
+	syscall_number = get_sysarg(pid, SYSARG_NUM);
 
 	switch (syscall_number) {
 	case SYS__llseek:
@@ -343,6 +448,7 @@ void XXX(int syscall_number, ...)
 	case SYS_waitpid:
 	case SYS_write:
 	case SYS_writev:
+		/* Nothing to do. */
 		return;
 
 	case SYS_access:
@@ -374,16 +480,17 @@ void XXX(int syscall_number, ...)
 	case SYS_uselib:
 	case SYS_utime:
 	case SYS_utimes:
-		change_args(IN_1_REGULAR);
+		translate_sysarg(SYSARG_1, REGULAR);
 		return;
 
 	case SYS_open:
-		flags = get_arg(2);
+		flags = get_sysarg(pid, SYSARG_2);
+
 		if ((flags & O_NOFOLLOW) != 0
 		    || (flags & O_EXCL) != 0 && (flags & O_CREAT) != 0)
-			change_args(IN_1_SYMLINK);
+			translate_sysarg(SYSARG_1, SYMLINK);
 		else
-			change_args(IN_1_REGULAR);
+			translate_sysarg(SYSARG_1, REGULAR);
 		return;
 
 	case SYS_faccessat:
@@ -392,21 +499,24 @@ void XXX(int syscall_number, ...)
 	case SYS_fstatat64:
 	case SYS_newfstatat:
 	case SYS_utimensat:
-		dirfd = get_arg(1);
-		path  = get_arg(2);
-		flags = (syscall_number == SYS_fchownat) ? get_arg(5) : get_arg(4);
+		dirfd = get_sysarg(pid, SYSARG_1);
+		get_sysarg_path(pid, path, SYSARG_2);
+
+		flags = (syscall_number == SYS_fchownat)
+			? get_sysarg(pid, SYSARG_5)
+			: get_sysarg(pid, SYSARG_4);
 
 		if (!AT_FD(dirfd, path)) {
 			if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
-				change_args(IN_2_SYMLINK);
+				translate_sysarg(SYSARG_2, SYMLINK);
 			else
-				change_args(IN_2_REGULAR);
+				translate_sysarg(SYSARG_2, REGULAR);
 		}
 		else {
 			if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
-				check_at(dirfd, path, SYMLINK);
+				check_path_at(dirfd, path, SYMLINK);
 			else
-				check_at(dirfd, path, REGULAR);
+				check_path_at(dirfd, path, REGULAR);
 		}
 		return;
 
@@ -414,24 +524,26 @@ void XXX(int syscall_number, ...)
 	case SYS_mkdirat:
 	case SYS_mknodat:
 	case SYS_unlinkat:
-		dirfd = get_arg(1);
-		path  = get_arg(2);
+		dirfd = get_sysarg(pid, SYSARG_1);
+		get_sysarg_path(pid, path, SYSARG_2);
+
 		if (!AT_FD(dirfd, path))
-			change_args(IN_2_REGULAR);
+			translate_sysarg(SYSARG_2, REGULAR);
 		else
-			check_at(dirfd, path, REGULAR);
+			check_path_at(dirfd, path, REGULAR);
 		return;
 
 	case SYS_getcwd:
-		change_args(OUT_0_REGULAR);
+		detranslate_sysarg(SYSARG_0, REGULAR);
 		return;
 
 	case SYS_inotify_add_watch:
-		flags = get_arg(3);
+		flags = get_sysarg(pid, SYSARG_3);
+
 		if ((flags & IN_DONT_FOLLOW) != 0)
-			change_args(IN_2_SYMLINK);
+			translate_sysarg(SYSARG_2, SYMLINK);
 		else
-			change_args(IN_2_REGULAR);
+			translate_sysarg(SYSARG_2, REGULAR);
 		return;
 
 	case SYS_lchown:
@@ -443,132 +555,148 @@ void XXX(int syscall_number, ...)
 	case SYS_lstat:
 	case SYS_lstat64:
 	case SYS_oldlstat:
-		change_args(IN_1_SYMLINK);
+		translate_sysarg(SYSARG_1, SYMLINK);
 		return;
 
 	case SYS_link:
 	case SYS_pivot_root:
-		change_args(IN_1_REGULAR | IN_2_REGULAR);
+		translate_sysarg(SYSARG_1, REGULAR);
+		translate_sysarg(SYSARG_2, REGULAR);
 		return;
 
 	case SYS_linkat:
-		olddirfd = get_arg(1);
-		oldpath  = get_arg(2);
-		newdirfd = get_arg(3);
-		newpath  = get_arg(4);
-		flags    = get_arg(5);
+		olddirfd = get_sysarg(pid, SYSARG_1);
+		newdirfd = get_sysarg(pid, SYSARG_3);
+		flags    = get_sysarg(pid, SYSARG_5);
+		get_sysarg_path(pid, oldpath, SYSARG_2);
+		get_sysarg_path(pid, newpath, SYSARG_4);
 
 		if (!AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				change_args(IN_2_REGULAR | IN_4_REGULAR);
-			else
-				change_args(IN_2_SYMLINK | IN_4_REGULAR);
+			if ((flags & AT_SYMLINK_FOLLOW) != 0) {
+				translate_sysarg(SYSARG_2, REGULAR);
+				translate_sysarg(SYSARG_4, REGULAR);
+			} else {
+				translate_sysarg(SYSARG_2, SYMLINK);
+				translate_sysarg(SYSARG_4, REGULAR);
+			}
 		}
 		else if (!AT_FD(olddirfd, oldpath) && AT_FD(newdirfd, newpath)) {
 			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				change_args(IN_2_REGULAR);
+				translate_sysarg(SYSARG_2, REGULAR);
 			else
-				change_args(IN_2_SYMLINK);
-			check_at(newdirfd, newpath, REGULAR);
+				translate_sysarg(SYSARG_2, SYMLINK);
+
+			check_path_at(newdirfd, newpath, REGULAR);
 		}
 		else if (AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
 			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				check_at(olddirfd, oldpath, REGULAR);
+				check_path_at(olddirfd, oldpath, REGULAR);
 			else
-				check_at(olddirfd, oldpath, SYMLINK);
-			change_args(IN_4_REGULAR);
+				check_path_at(olddirfd, oldpath, SYMLINK);
+
+			translate_sysarg(SYSARG_4, REGULAR);
 		}
 		else {
 			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				check_at(olddirfd, oldpath, REGULAR);
+				check_path_at(olddirfd, oldpath, REGULAR);
 			else
-				check_at(olddirfd, oldpath, SYMLINK);
-			check_at(newdirfd, newpath, REGULAR);
+				check_path_at(olddirfd, oldpath, SYMLINK);
+
+			check_path_at(newdirfd, newpath, REGULAR);
 		}
 		return;
 
 	case SYS_mount:
 	case SYS_umount:
 	case SYS_umount2:
-		path = get_arg(1);
+		get_sysarg_path(pid, path, SYSARG_1);
+
 		if (path != NULL && (path[0] == '/' || path[0] == '.'))
-			change_args(IN_2_REGULAR);
+			translate_sysarg(SYSARG_2, REGULAR);
 		return;
 
 	case SYS_openat:
-		dirfd = get_arg(1);
-		path  = get_arg(2);
+		dirfd = get_sysarg(pid, SYSARG_1);
+		get_sysarg_path(pid, path, SYSARG_2);
 
 		if (!AT_FD(dirfd, path)) {
-			flags = get_arg(3);
+			flags = get_sysarg(pid, SYSARG_3);
 
 			if ((flags & O_NOFOLLOW) != 0
 			    || (flags & O_EXCL) != 0 && (flags & O_CREAT) != 0)
-				change_args(IN_2_SYMLINK);
+				translate_sysarg(SYSARG_2, SYMLINK);
 			else
-				change_args(IN_2_REGULAR);
+				translate_sysarg(SYSARG_2, REGULAR);
 		}
 		else
-			check_at(dirfd, path);
+			check_path_at(dirfd, path);
 		return;
 
 	case SYS_readlink:
-		change_args(IN_1_SYMLINK | OUT_2_SYMLINK);
+		translate_sysarg(SYSARG_1, SYMLINK);
+		detranslate_sysarg(SYSARG_2, SYMLINK);
 		return ;
 
 	case SYS_readlinkat:
-		dirfd = get_arg(1);
-		path  = get_arg(2);
-		if (!AT_FD(dirfd, path))
-			change_args(IN_1_SYMLINK | OUT_2_SYMLINK);
-		else
-			check_at(dirfd, path, SYMLINK);
+		dirfd = get_sysarg(pid, SYSARG_1);
+		get_sysarg_path(pid, path, SYSARG_2);
+
+		if (!AT_FD(dirfd, path)) {
+			translate_sysarg(SYSARG_1, SYMLINK);
+			detranslate_sysarg(SYSARG_2, SYMLINK);
+		} else {
+			check_path_at(dirfd, path, SYMLINK);
+			detranslate_sysarg(SYSARG_2, SYMLINK);
+		}
 		return;
 
 	case SYS_rename:
-		change_args(IN_1_SYMLINK | IN_2_SYMLINK);
+		translate_sysarg(SYSARG_1, SYMLINK);
+		translate_sysarg(SYSARG_2, SYMLINK);
 		return;
 
 	case SYS_renameat:
-		olddirfd = get_arg(1);
-		oldpath  = get_arg(2);
-		newdirfd = get_arg(3);
-		newpath  = get_arg(4);
+		olddirfd = get_sysarg(pid, SYSARG_1);
+		newdirfd = get_sysarg(pid, SYSARG_3);
+		get_sysarg_path(pid, oldpath, SYSARG_2);
+		get_sysarg_path(pid, newpath, SYSARG_4);
 
 		if (!AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			change_args(IN_2_SYMLINK | IN_4_SYMLINK);
+			translate_sysarg(SYSARG_2, SYMLINK);
+			translate_sysarg(SYSARG_4, SYMLINK);
 		}
 		else if (!AT_FD(olddirfd, oldpath) && AT_FD(newdirfd, newpath)) {
-			change_args(IN_2_SYMLINK);
-			check_at(newdirfd, newpath, SYMLINK);
+			translate_sysarg(SYSARG_2, SYMLINK);
+			check_path_at(newdirfd, newpath, SYMLINK);
 		}
 		else if (AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			check_at(olddirfd, oldpath, SYMLINK);
-			change_args(IN_4_SYMLINK);
+			check_path_at(olddirfd, oldpath, SYMLINK);
+			translate_sysarg(SYSARG_4, SYMLINK);
 		}
 		else {
-			check_at(olddirfd, oldpath, SYMLINK);
-			check_at(newdirfd, newpath, SYMLINK);
+			check_path_at(olddirfd, oldpath, SYMLINK);
+			check_path_at(newdirfd, newpath, SYMLINK);
 		}
 		return;
 
 	case SYS_symlink:
-		change_args(IN_4_REGULAR);
+		translate_sysarg(SYSARG_4, REGULAR);
 		return;
 
 	case SYS_symlinkat:
-		newdirfd = getarg(2);
-		newpath  = getarg(3);
+		newdirfd = get_sysarg(pid, SYSARG_2);
+		get_sysarg_path(pid, newpath, SYSARG_3);
+
 		if (!AT_FD(newdirfd, newpath))
-			change_args(IN_2_REGULAR);
+			translate_sysarg(SYSARG_2, REGULAR);
 		else
-			check_at(dirfd, path, REGULAR);
+			check_path_at(dirfd, path, REGULAR);
 		return;
 
 	default:
-		fprintf("proot: unknown syscall %d\n", syscall_number);
+		printf("proot: unknown syscall %d\n", syscall_number);
 		return;
 	}
 }
 
-#endif /* 0 */
+#endif

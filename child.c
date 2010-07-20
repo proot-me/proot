@@ -195,8 +195,9 @@ void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t 
 /**
  * Copy to @dest_parent at most @max_size bytes from the string
  * pointed to by @src_child within the memory space of the child
- * process @pid. This function returns the size in bytes of the
- * string, including the end-of-string terminator XXX.
+ * process @pid. This function returns (word_t)-1 on error, otherwise
+ * it returns the number in bytes of the string, including the
+ * end-of-string terminator.
  */
 word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size)
 {
@@ -218,7 +219,7 @@ word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t m
 		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
 		if (errno != 0) {
 			perror("proot -- ptrace(PEEKDATA)");
-			exit(EXIT_FAILURE);
+			return (word_t)-1;
 		}
 		dest[i] = word;
 
@@ -226,7 +227,7 @@ word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t m
 		src_word = (unsigned char *)&word;
 		for (j = 0; j < sizeof(word_t); j++)
 			if (src_word[j] == '\0')
-				return i * sizeof(word_t) + j;
+				return i * sizeof(word_t) + j + 1;
 	}
 
 	/* Copy the bytes from the last word carefully since we have
@@ -247,5 +248,5 @@ word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t m
 			break;
 	}
 
-	return i * sizeof(word_t) + j;
+	return i * sizeof(word_t) + j + 1;
 }

@@ -32,14 +32,19 @@
 #include <string.h>     /* strcmp(3), */
 
 #include "child.h"
+#include "translator.h"
 
 static void print_usage()
 {
 	puts("Usage:\n");
-	puts("\tproot [options] <program> [args]\n");
+	puts("\tproot [options] <new_root> <program> [args]\n");
 	puts("Where options are:\n");
 	puts("\tnot yet supported\n");
 }
+
+/* XXX: test purpose only. */
+extern int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final);
+extern int detranslate_sysarg(pid_t pid, enum sysarg sysarg);
 
 int main(int argc, char *argv[])
 {
@@ -51,10 +56,12 @@ int main(int argc, char *argv[])
 	int signal;
 	pid_t pid;
 
-	if (argc < 2) {
+	if (argc < 3) {
 		print_usage();
 		exit(EXIT_FAILURE);
 	}
+
+	initialize_translator(argv[1]);
 
 	pid = fork();
 	switch(pid) {
@@ -72,7 +79,7 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		status = execvp(argv[1], argv + 1);
+		status = execvp(argv[2], argv + 2);
 		perror("proot -- execvp()");
 		exit(EXIT_FAILURE);
 
@@ -147,26 +154,29 @@ int main(int argc, char *argv[])
 			   Currently it doesn't support multi-process programs.
 			   The following code is only for demonstration/test purpose. */
 			if (sysnum == -1) {
-				char path[PATH_MAX + 1];
-
 				sysnum = get_child_sysarg(pid, SYSARG_NUM);
-				if (sysnum != 2 /* open */)
-					continue;
 
-				get_child_string(pid, path, get_child_sysarg(pid, SYSARG_1), PATH_MAX);
-				path[PATH_MAX] = '\0';
+				switch (sysnum) {
+				case 2: /* open */
+					status = translate_sysarg(pid, SYSARG_1, 1);
+					if (status < 0)
+						printf("proot: translation failed: %s\n", strerror(-status));
+					child_ptr = 1;
+					break;
 
-#define REDIRECTION "/usr/src/linux/Documentation/CodingStyle"
+				case 79: /* getcwd */
+					status = detranslate_sysarg(pid, SYSARG_1);
+					if (status < 0)
+						printf("proot: detranslation failed: %s\n", strerror(-status));
+					break;
 
-				if (strcmp(path, "/etc/fstab") == 0) {
-					child_ptr = resize_child_stack(pid, sizeof(REDIRECTION));
-					copy_to_child(pid, child_ptr, REDIRECTION, sizeof(REDIRECTION));
-					set_child_sysarg(pid, SYSARG_1, child_ptr);
+				default:
+					break;
 				}
 			}
 			else {
 				if (child_ptr != 0) {
-					resize_child_stack(pid, -sizeof(REDIRECTION));
+					resize_child_stack(pid, -PATH_MAX);
 					child_ptr = 0;
 				}
 
