@@ -31,6 +31,7 @@
 #include <errno.h>      /* errno, */
 #include <stdio.h>      /* perror(3), fprintf(3), */
 #include <limits.h>     /* ULONG_MAX, */
+#include <assert.h>     /* assert(3), */
 
 #include "child.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
@@ -64,11 +65,9 @@ word_t get_child_sysarg(pid_t pid, enum sysarg sysarg)
 {
 	word_t result;
 
-	/* Sanity check. */
-	if (sysarg < SYSARG_FIRST || sysarg > SYSARG_LAST) {
-		fprintf(stderr, "proot -- %s(%d) not supported\n", __FUNCTION__, sysarg);
-		exit(EXIT_FAILURE);
-	}
+	/* Sanity checks. */
+	assert(sysarg >= SYSARG_FIRST);
+	assert(sysarg <= SYSARG_LAST);
 
 	/* Get the argument register from the child's USER area. */
 	result = ptrace(PTRACE_PEEKUSER, pid, arg_offset[sysarg], NULL);
@@ -88,11 +87,9 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 {
 	long status;
 
-	/* Sanity check. */
-	if (sysarg < SYSARG_FIRST || sysarg > SYSARG_LAST) {
-		fprintf(stderr, "proot -- %s(%d) not supported\n", __FUNCTION__, sysarg);
-		exit(EXIT_FAILURE);
-	}
+	/* Sanity checks. */
+	assert(sysarg >= SYSARG_FIRST);
+	assert(sysarg <= SYSARG_LAST);
 
 	/* Set the argument register in the child's USER area. */
 	status = ptrace(PTRACE_POKEUSER, pid, arg_offset[sysarg], value);
@@ -103,17 +100,17 @@ void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 }
 
 /**
- * This function resize by @size bytes the stack of the child @pid,
- * then it returns the address of the new stack pointer within the
- * child's memory space.
+ * Resize by @size bytes the stack of the child @pid, then it returns
+ * the address of the new stack pointer within the child's memory
+ * space.
  */
 word_t resize_child_stack(pid_t pid, ssize_t size)
 {
 	word_t stack_pointer;
 	long status;
 
-	/* Get the current value of the stack pointer
-	 * from the child's USER area. */
+	/* Get the current value of the stack pointer from the child's
+	 * USER area. */
 	status = ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKUSER)");
@@ -131,8 +128,8 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 	/* Remember the stack grows downward. */
 	stack_pointer -= size;
 
-	/* Set the new value of the stack pointer
-	 * in the child's USER area. */
+	/* Set the new value of the stack pointer in the child's USER
+	 * area. */
 	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
 	if (status < 0) {
 		perror("proot -- ptrace(POKEUSER)");
@@ -144,9 +141,10 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 
 /**
  * Copy @size bytes from the buffer @src_parent to the address
- * @dest_child within the memory space of the child process @pid.
+ * @dest_child within the memory space of the child process @pid. It
+ * return -1 if an error occured, otherwise 0.
  */
-void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size)
+int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size)
 {
 	word_t *src  = (word_t *)src_parent;
 	word_t *dest = (word_t *)dest_child;
@@ -167,7 +165,7 @@ void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t 
 		status = ptrace(PTRACE_POKEDATA, pid, dest + i, src[i]);
 		if (status < 0) {
 			perror("proot -- ptrace(POKEDATA)");
-			exit(EXIT_FAILURE);
+			return -1;
 		}
 	}
 
@@ -177,7 +175,7 @@ void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t 
 	word = ptrace(PTRACE_PEEKDATA, pid, dest + i, NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKDATA)");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	last_dest_word = (unsigned char *)&word;
@@ -189,8 +187,10 @@ void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t 
 	status = ptrace(PTRACE_POKEDATA, pid, dest + i, word);
 	if (status < 0) {
 		perror("proot -- ptrace(POKEDATA)");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
+
+	return 0;
 }
 
 /**

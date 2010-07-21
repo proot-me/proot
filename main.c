@@ -127,23 +127,23 @@ int main(int argc, char *argv[])
 		}
 
 		if (WIFEXITED(child_status)) {
-			printf("proot: child exited with status %d\n",
+			fprintf(stderr, "proot: child exited with status %d\n",
 			       WEXITSTATUS(child_status));
 			break;
 		}
 		else if (WIFSIGNALED(child_status)) {
-			printf("proot: child terminated by signal %d\n",
+			fprintf(stderr, "proot: child terminated by signal %d\n",
 			       WTERMSIG(child_status));
 			break;
 		}
 		else if (WIFCONTINUED(child_status)) {
-			printf("proot: child continued\n");
+			fprintf(stderr, "proot: child continued\n");
 			signal = SIGCONT;
 		}
 		else if (WIFSTOPPED(child_status)) {
 			signal = WSTOPSIG(child_status);
 			if ((signal & 0x80) == 0) {
-				printf("proot: received a signal\n");
+				fprintf(stderr, "proot: received a signal\n");
 				continue;
 			}
 			signal = 0;
@@ -160,11 +160,10 @@ int main(int argc, char *argv[])
 			}
 		}
 		else {
-			printf("proot: unknown trace event\n");
+			fprintf(stderr, "proot: unknown trace event\n");
 			signal = 0;
 		}
 	}
 
-	puts("proot: finished");
 	exit(EXIT_SUCCESS);
 }

@@ -33,16 +33,16 @@
 #include <limits.h>    /* PATH_MAX, */
 #include <stddef.h>    /* intptr_t, */
 #include <errno.h>     /* errno(3), */
-#include <stdio.h>     /* printf(3), */
+#include <stdio.h>     /* fprintf(3), */
 
 #include "arch.h"      /* word_t, SYSCALL_UNIMPLEMENTED, __NR_*, */
 #include "child.h"
 #include "translator.h"
 
 /**
- * This function copies in @path a pathname, that is, a C string from
- * the @pid child's memory address space pointed to by the @sysarg
- * argument of the current syscall.
+ * Copie in @path a C string (PATH_MAX bytes max.) from the @pid
+ * child's memory address space pointed to by the @sysarg argument of
+ * the current syscall.
  */
 static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 {
@@ -59,8 +59,7 @@ static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sy
 }
 
 /**
- * This function is just a wrapper to honor the naming scheme
- * regarding the function above.
+ * A wrapper to honor the naming scheme regarding the function above.
  */
 static inline word_t get_sysarg_value(pid_t pid, enum sysarg sysarg)
 {
@@ -68,12 +67,11 @@ static inline word_t get_sysarg_value(pid_t pid, enum sysarg sysarg)
 }
 
 /**
- * This function translates @path and puts the result in the @pid
- * child's memory address space pointed to by the @sysarg argument of
- * the current syscall. See the documentation of translate() about the
- * meaning of @deref_final. This function returns -errno if an error
- * occured, otherwise it returns the size in bytes "allocated" into
- * the stack.
+ * Translate @path and puts the result in the @pid child's memory
+ * address space pointed to by the @sysarg argument of the current
+ * syscall. See the documentation of translate() about the meaning of
+ * @deref_final. This function returns -errno if an error occured,
+ * otherwise it returns the size in bytes "allocated" into the stack.
  */
 static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sysarg, int deref_final)
 {
@@ -90,7 +88,11 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 	child_ptr = resize_child_stack(pid, PATH_MAX);
 
 	/* Copy the new path into the previously allocated space. */
-	copy_to_child(pid, child_ptr, new_path, PATH_MAX);
+	status = copy_to_child(pid, child_ptr, new_path, PATH_MAX);
+	if (status < 0) {
+		resize_child_stack(pid, -PATH_MAX);
+		return -EFAULT;
+	}
 
 	/* Make this argument point to the new path. */
 	set_child_sysarg(pid, sysarg, child_ptr);
@@ -99,8 +101,7 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 }
 
 /**
- * This function is just a helper, see the comment of the function
- * above.
+ * A helper, see the comment of the function above.
  */
 static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
 {
@@ -116,9 +117,9 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
 }
 
 /**
- * This function detranslates the current @sysarg syscall argument of
- * the child @pid. See the documentation of translate() about the
- * meaning of @deref_final.
+ * Detranslate the current @sysarg syscall argument of the child
+ * @pid. See the documentation of translate() about the meaning of
+ * @deref_final.
  */
 static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 {
@@ -139,20 +140,22 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 
 	/* Overwrite the path. */
 	child_ptr = get_sysarg_value(pid, sysarg);
-	copy_to_child(pid, child_ptr, new_path, status);
+	status = copy_to_child(pid, child_ptr, new_path, status);
+	if (status < 0)
+		return -EFAULT;
 
 	return 0;
 }
 
-/* Help macros. */
+/* Helper macros. */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
 #define REGULAR 0
 #define SYMLINK 1
 
 /**
- * This function checks if the interpretation of @path relatively to
- * the directory referred to by the file descriptor @dirfd lands
- * within the new "root".
+ * Check if the interpretation of @path relatively to the directory
+ * referred to by the file descriptor @dirfd lands within the new
+ * "root".
  *
  * This function can't be called when AT_FD(@dirfd, @path) is false.
  * 
@@ -162,16 +165,15 @@ static int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_fi
 {
 	assert(AT_FD(dirfd, path));
 
-	printf("proot -- *at() syscalls are not yet implemented\n");
+	fprintf(stderr, "proot -- *at() syscalls are not yet implemented\n");
 	return -ENOSYS;
 }
 
 /**
- * This function translates the input arguments of the syscall @sysnum
- * in the @pid child's process area. It returns -errno if an error
- * occured, otherwise this function returns the amount of bytes
- * "allocated" in the child's stack for storing the newly translated
- * paths.
+ * Translate the input arguments of the syscall @sysnum in the @pid
+ * child's process area. It returns -errno if an error occured,
+ * otherwise this function returns the amount of bytes "allocated" in
+ * the child's stack for storing the newly translated paths.
  *
  * For each of the following cases, I didn't write any comment since
  * the corresponding man-page really is the documentation.
@@ -194,7 +196,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	/* Ensure one is not trying to cheat PRoot by calling an
 	 * unsupported syscall on that architecture. */
 	if ((int)sysnum < 0) {
-		printf("proot: forbidden syscall %lu\n", sysnum);
+		fprintf(stderr, "proot: forbidden syscall %lu\n", sysnum);
 		return -ENOSYS;
 	}
 
@@ -825,7 +827,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	default:
-		printf("proot: unknown syscall %lu\n", sysnum);
+		fprintf(stderr, "proot: unknown syscall %lu\n", sysnum);
 		status = -ENOSYS;
 		break;
 	}
@@ -839,12 +841,12 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 }
 
 /**
- * This function translates the output arguments of the syscall
- * @sysnum in the @pid child's process area. Is also sets the result
- * of this syscall to @status if an error occured previously during
- * the translation, that is, if @status is lesser than 0. Otherwise,
- * @status bytes of the child's stack are "deallocated" to free the
- * space used to store the previously translated paths.
+ * Translate the output arguments of the syscall @sysnum in the @pid
+ * child's process area. Is also sets the result of this syscall to
+ * @status if an error occured previously during the translation, that
+ * is, if @status is lesser than 0. Otherwise, @status bytes of the
+ * child's stack are "deallocated" to free the space used to store the
+ * previously translated paths.
  */
 void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 {

@@ -48,7 +48,7 @@ extern void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
 
 extern word_t resize_child_stack(pid_t pid, ssize_t size);
 
-extern void copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size);
+extern int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size);
 extern word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size);
 
 #endif /* CHILD_H */

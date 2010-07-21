@@ -39,23 +39,24 @@ static int  initialized = 0;
 static char root[PATH_MAX];
 static size_t root_length;
 
-/* This function initializes internal data of the translator. */
+/* Tnitialize internal data of the translator. */
 void initialize_translator(const char *new_root)
 {
 	if (realpath(new_root, root) == NULL) {
 		perror("proot -- realpath()");
 		exit(EXIT_FAILURE);
 	}
+
 	root_length = strlen(root);
 	initialized = 1;
 }
 
 /**
- * This function copies in @component the first path component pointed
- * to by @cursor, this later is updated to point to the next component
- * for a further call. Also, this function set @is_final to true if it
- * is the last component of the path. This function returns -errno if
- * an error occured, otherwise it returns 0.
+ * Copy in @component the first path component pointed to by @cursor,
+ * this later is updated to point to the next component for a further
+ * call. Also, this function set @is_final to true if it is the last
+ * component of the path. This function returns -errno if an error
+ * occured, otherwise it returns 0.
  */
 static inline int next_component(char component[NAME_MAX], const char **cursor, int *is_final)
 {
@@ -93,8 +94,7 @@ static inline int next_component(char component[NAME_MAX], const char **cursor, 
 }
 
 /**
- * This function puts end-of-string ('\0') right before the last
- * component of @path.
+ * Put an end-of-string ('\0') right before the last component of @path.
  */
 static inline void pop_component(char *path)
 {
@@ -118,10 +118,9 @@ static inline void pop_component(char *path)
 }
 
 /**
- * This functions copies in @result the concatenation of several paths
- * (@number_paths) and adds a path separator ('/') in between when
- * needed. This function returns -errno if an error occured, otherwise
- * it returns 0.
+ * Copy in @result the concatenation of several paths (@number_paths)
+ * and adds a path separator ('/') in between when needed. This
+ * function returns -errno if an error occured, otherwise it returns 0.
  */
 static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 {
@@ -168,14 +167,14 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 }
 
 /**
- * This function copies in @result the anonicalization (see `man 3
- * realpath`) of @fake_path regarding to @root. The path to
- * canonicalize could be either absolute or relative to @result. When
- * the last component of @fake_path is a link, it is dereferenced only
- * if @deref_final is true -- it is usefull for syscalls like
- * lstat(2). The parameter @nb_readlink should be set to 0 unless you
- * know what you are doing. This function returns -errno if an error
- * occured, otherwise it returns 0.
+ * Copy in @result the anonicalization (see `man 3 realpath`) of
+ * @fake_path regarding to @root. The path to canonicalize could be
+ * either absolute or relative to @result. When the last component of
+ * @fake_path is a link, it is dereferenced only if @deref_final is
+ * true -- it is usefull for syscalls like lstat(2). The parameter
+ * @nb_readlink should be set to 0 unless you know what you are
+ * doing. This function returns -errno if an error occured, otherwise
+ * it returns 0.
  */
 static int canonicalize(const char *fake_path,
 			int deref_final,
@@ -211,10 +210,6 @@ static int canonicalize(const char *fake_path,
 		struct stat statl;
 		int status;
 
-#ifdef DEBUG
-#include <stdio.h>
-	printf("%s %s %d %s %d\n", root, cursor, deref_final, result, nb_readlink);
-#endif
 		status = next_component(component, &cursor, &is_final);
 		if (status != 0)
 			return status;
@@ -270,10 +265,10 @@ static int canonicalize(const char *fake_path,
 }
 
 /**
- * This function copies in @result the equivalent of "@root /
- * canonicalize(@fake_path))". If @fake_path is not absolute then it
- * is relative to the current working directory. See the documentation
- * of canonicalize() for the meaning of @deref_final.
+ * Copy in @result the equivalent of @root/canonicalize(@fake_path)).
+ * If @fake_path is not absolute then it is relative to the current
+ * working directory. See the documentation of canonicalize() for the
+ * meaning of @deref_final.
  */
 int translate(char result[PATH_MAX], const char *fake_path, int deref_final)
 {
@@ -315,10 +310,9 @@ int translate(char result[PATH_MAX], const char *fake_path, int deref_final)
 }
 
 /**
- * This function basically removes the leading "root" part of a
- * previously translated @path and copies the result in @result. It
- * returns the number in bytes of the string, including the
- * end-of-string terminator.
+ * Removes the leading "root" part of a previously translated @path
+ * and copies the result in @result. It returns the number in bytes of
+ * the string, including the end-of-string terminator.
  */
 int detranslate(char result[PATH_MAX], const char *path)
 {
