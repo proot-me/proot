@@ -63,7 +63,9 @@ static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sy
  */
 static inline word_t get_sysarg_value(pid_t pid, enum sysarg sysarg)
 {
-	return get_child_sysarg(pid, SYSARG_1);
+	word_t value;
+	value = get_child_sysarg(pid, sysarg);
+	return value;
 }
 
 /**
