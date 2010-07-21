@@ -863,7 +863,6 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 		resize_child_stack(pid, -status);
 
 	/* Translate output arguments. */
-	sysnum = get_sysarg_value(pid, SYSARG_NUM);
 	if (sysnum == __NR_getcwd) {
 		status = detranslate_sysarg(pid, SYSARG_1);
 		if (status < 0)
