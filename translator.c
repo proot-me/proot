@@ -332,8 +332,12 @@ int detranslate(char result[PATH_MAX], const char *path)
 		return -ENAMETOOLONG;
 
 	/* Remove the leading part, that is, the "root". */
-        memmove(result, result + root_length, strlen(result));
-        result[new_length] = '\0';
+	if (new_length != 0) {
+		memmove(result, result + root_length, strlen(result));
+		result[new_length] = '\0';
+	}
+	else
+		strcpy(result, "/");
 
 	return new_length + 1;
 }
