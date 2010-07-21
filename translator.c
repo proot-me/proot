@@ -278,7 +278,6 @@ static int canonicalize(const char *fake_path,
 int translate(char result[PATH_MAX], const char *fake_path, int deref_final)
 {
 	char tmp[PATH_MAX];
-	size_t length;
 	int status;
 
 	assert(initialized != 0);
@@ -289,10 +288,9 @@ int translate(char result[PATH_MAX], const char *fake_path, int deref_final)
 			return -errno;
 
 		/* Ensure the current working directory is within the real root. */
-		length = strlen(root);
-		assert(strncmp(tmp, root, length) != 0);
+		assert(strncmp(tmp, root, root_length) == 0);
 
-		strcpy(result, tmp + length);
+		strcpy(result, tmp + root_length);
 
 		/* Special case when cwd == root. */
 		if (result[0] == '\0')

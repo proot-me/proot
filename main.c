@@ -32,7 +32,8 @@
 #include <string.h>     /* strcmp(3), */
 
 #include "child.h"
-#include "translator.h"
+#include "translator.h" /* initialize_translator(), */
+#include "syscall.h"    /* translate_syscall_*(), */
 
 static void print_usage()
 {
@@ -41,10 +42,6 @@ static void print_usage()
 	puts("Where options are:\n");
 	puts("\tnot yet supported\n");
 }
-
-/* XXX: test purpose only. */
-extern int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final);
-extern int detranslate_sysarg(pid_t pid, enum sysarg sysarg);
 
 int main(int argc, char *argv[])
 {
@@ -55,6 +52,7 @@ int main(int argc, char *argv[])
 	long status;
 	int signal;
 	pid_t pid;
+	int pid_errno;
 
 	if (argc < 3) {
 		print_usage();
@@ -151,38 +149,13 @@ int main(int argc, char *argv[])
 			signal = 0;
 
 			/* Check if we are either entering or exiting a syscall.
-			   Currently it doesn't support multi-process programs.
-			   The following code is only for demonstration/test purpose. */
+			   Currently it doesn't support multi-process programs. */
 			if (sysnum == -1) {
 				sysnum = get_child_sysarg(pid, SYSARG_NUM);
-
-				switch (sysnum) {
-				case 2: /* open */
-					status = translate_sysarg(pid, SYSARG_1, 1);
-					if (status < 0)
-						printf("proot: translation failed: %s\n", strerror(-status));
-					break;
-
-				default:
-					break;
-				}
+				pid_errno = translate_syscall_enter(pid, sysnum);
 			}
 			else {
-				switch (sysnum) {
-				case 2: /* open */
-					resize_child_stack(pid, -PATH_MAX);
-					child_ptr = 0;
-					break;
-
-				case 79: /* getcwd */
-					status = detranslate_sysarg(pid, SYSARG_1);
-					if (status < 0)
-						printf("proot: detranslation failed: %s\n", strerror(-status));
-					break;
-
-				default:
-					break;
-				}
+				translate_syscall_exit(pid, sysnum, pid_errno);
 				sysnum = -1;
 			}
 		}

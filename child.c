@@ -237,7 +237,7 @@ word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t m
 	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKDATA)");
-		exit(EXIT_FAILURE);
+		return (word_t)-1;
 	}
 
 	dest_word = (unsigned char *)&dest[i];

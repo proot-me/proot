@@ -26,6 +26,7 @@
 #define ARCH_H
 
 typedef unsigned long word_t;
+#define SYSCALL_AVOIDER __NR_security /* Ironic, isn't it? ;) */
 
 /* Specify the ABI registers (syscall argument passing, stack pointer). */
 #if defined(x86_64)
@@ -38,6 +39,7 @@ typedef unsigned long word_t;
 	#define REG_SYSARG_6	r8
 	#define REG_SYSARG_RESULT	rax
 	#define REG_SP		rsp
+        #include "sysnum-x86_64.h" /* __NR_*, */
 #elif defined(i386) || defined(i486) || defined(i586) || defined(i686)
 	#warning "Untested architecture"
 	#define REG_SYSARG_NUM	orig_eax
@@ -49,6 +51,7 @@ typedef unsigned long word_t;
 	#define REG_SYSARG_6	ebp
 	#define REG_SYSARG_RESULT	eax
 	#define REG_SP		esp
+        #include "sysnum-i386.h" /* __NR_*, */
 #elif defined(sh4)
 	#warning "Untested architecture"
 	#define REG_SYSARG_NUM	r4
@@ -60,6 +63,7 @@ typedef unsigned long word_t;
 	#define REG_SYSARG_6	r2
 	#define REG_SYSARG_RESULT	r0
 	#define REG_SP		r15
+        #include "sysnum-sh4.h" /* __NR_*, */
 #else
 	#error "Unsupported architecture"
 #endif

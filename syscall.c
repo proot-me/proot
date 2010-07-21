@@ -23,54 +23,66 @@
  * Inspired by: QEMU user-mode.
  */
 
-#include <fcntl.h>     /* AT_FDCWD, */
-#include <sys/types.h> /* pid_t, */
+#define _GNU_SOURCE      /* O_NOFOLLOW in fcntl.h, */
+#include <fcntl.h>       /* AT_FDCWD, */
+#include <sys/types.h>   /* pid_t, */
+#include <sys/stat.h>
+#include <sys/inotify.h> /* IN_DONT_FOLLOW, */
+#include <assert.h>      /* assert(3), */
+
 #include <limits.h>    /* PATH_MAX, */
 #include <stddef.h>    /* intptr_t, */
 #include <errno.h>     /* errno(3), */
+#include <stdio.h>     /* printf(3), */
 
-#include "arch.h"      /* word_t, */
+#include "arch.h"      /* word_t, SYSCALL_UNIMPLEMENTED, __NR_*, */
 #include "child.h"
 #include "translator.h"
 
-/* Stupid wrapper used as an alias. */
-static inline word_t get_sysarg(pid_t pid, enum sysarg sysarg)
-{
-	return get_child_sysarg(pid, sysarg);
-}
-
-/* Less stupid wrapper, it does type checking. */
-static inline word_t get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
-{
-	return get_child_string(pid, path, get_sysarg(pid, sysarg), PATH_MAX);
-}
-
-enum { REGULAR = 0, SYMLINK = 1};
-
 /**
- * This function translates the current @sysarg syscall argument of
- * the child @pid. See the documentation of translate() about the
- * meaning of @deref_final.
+ * This function copies in @path a pathname, that is, a C string from
+ * the @pid child's memory address space pointed to by the @sysarg
+ * argument of the current syscall.
  */
-/* XXX: static */ int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
+static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 {
-	char new_path[PATH_MAX];
-	char old_path[PATH_MAX];
-	word_t child_ptr;
 	word_t size;
-	int status;
-
-	/* Extract the original path. */
-	size = get_sysarg_path(pid, old_path, sysarg);
-	if (size >= PATH_MAX)
-		return -ENAMETOOLONG;
+	
+	size = get_child_string(pid, path, get_child_sysarg(pid, sysarg), PATH_MAX);
 	if (size == (word_t)-1)
 		return -EFAULT;
+	if (size >= PATH_MAX)
+		return -ENAMETOOLONG;
 
-	old_path[size] = '\0';
+	path[size] = '\0';
+	return size;
+}
+
+/**
+ * This function is just a wrapper to honor the naming scheme
+ * regarding the function above.
+ */
+static inline word_t get_sysarg_value(pid_t pid, enum sysarg sysarg)
+{
+	return get_child_sysarg(pid, SYSARG_1);
+}
+
+/**
+ * This function translates @path and puts the result in the @pid
+ * child's memory address space pointed to by the @sysarg argument of
+ * the current syscall. See the documentation of translate() about the
+ * meaning of @deref_final. This function returns -errno if an error
+ * occured, otherwise it returns the size in bytes "allocated" into
+ * the stack.
+ */
+static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sysarg, int deref_final)
+{
+	char new_path[PATH_MAX];
+	word_t child_ptr;
+	int status;
 
 	/* Translate the original path. */
-	status = translate(new_path, old_path, deref_final);
+	status = translate(new_path, path, deref_final);
 	if (status < 0)
 		return status;
 
@@ -83,7 +95,24 @@ enum { REGULAR = 0, SYMLINK = 1};
 	/* Make this argument point to the new path. */
 	set_child_sysarg(pid, sysarg, child_ptr);
 
-	return 0;
+	return PATH_MAX;
+}
+
+/**
+ * This function is just a helper, see the comment of the function
+ * above.
+ */
+static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
+{
+	char old_path[PATH_MAX];
+	int status;
+
+	/* Extract the original path. */
+	status = get_sysarg_path(pid, old_path, sysarg);
+	if (status < 0)
+		return status;
+
+	return translate_path2sysarg(pid, old_path, sysarg, deref_final);
 }
 
 /**
@@ -91,18 +120,17 @@ enum { REGULAR = 0, SYMLINK = 1};
  * the child @pid. See the documentation of translate() about the
  * meaning of @deref_final.
  */
-/* XXX: static */ int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
+static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 {
 	char new_path[PATH_MAX];
 	char old_path[PATH_MAX];
 	word_t child_ptr;
-	word_t size;
 	int status;
 
 	/* Translate the original path. */
-	size = get_sysarg_path(pid, old_path, sysarg);
-	if (size == (word_t)-1)
-		return -EFAULT;
+	status = get_sysarg_path(pid, old_path, sysarg);
+	if (status < 0)
+		return status;
 
 	/* Removes the leading "root" part. */
 	status = detranslate(new_path, old_path);
@@ -110,593 +138,732 @@ enum { REGULAR = 0, SYMLINK = 1};
 		return status;
 
 	/* Overwrite the path. */
-	child_ptr = get_sysarg(pid, sysarg);
+	child_ptr = get_sysarg_value(pid, sysarg);
 	copy_to_child(pid, child_ptr, new_path, status);
 
 	return 0;
 }
 
-#if 0
-
-/* XXX */
+/* Help macros. */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
+#define REGULAR 0
+#define SYMLINK 1
 
-/* XXX */
-check_path_at()
+/**
+ * This function checks if the interpretation of @path relatively to
+ * the directory referred to by the file descriptor @dirfd lands
+ * within the new "root".
+ *
+ * This function can't be called when AT_FD(@dirfd, @path) is false.
+ * 
+ * Not yet implemented.
+ */
+static int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 {
+	assert(AT_FD(dirfd, path));
 
+	printf("proot -- *at() syscalls are not yet implemented\n");
+	return -ENOSYS;
 }
 
-void translate_syscall(pid_t pid, enum { entry, exit } phase)
+/**
+ * This function translates the input arguments of the syscall @sysnum
+ * in the @pid child's process area. It returns -errno if an error
+ * occured, otherwise this function returns the amount of bytes
+ * "allocated" in the child's stack for storing the newly translated
+ * paths.
+ *
+ * For each of the following cases, I didn't write any comment since
+ * the corresponding man-page really is the documentation.
+ */
+int translate_syscall_enter(pid_t pid, word_t sysnum)
 {
-	word_t syscall_number;
+	int flags;
+	int dirfd;
+	int olddirfd;
+	int newdirfd;
 
-	int flags    = -1;
-	int dirfd    = -1;
-	int olddirfd = -1;
-	int newdirfd = -1;
+	int status;
+	int status1;
+	int status2;
 
-	const char *path    = NULL;
-	const char *oldpath = NULL;
-	const char *newpath = NULL;
-	
-	syscall_number = get_sysarg(pid, SYSARG_NUM);
+	char path[PATH_MAX];
+	char oldpath[PATH_MAX];
+	char newpath[PATH_MAX];
 
-	switch (syscall_number) {
-	case SYS__llseek:
-	case SYS__newselect:
-	case SYS__sysctl:
-	case SYS_accept:
-	case SYS_accept4:
-	case SYS_add_key:
-	case SYS_adjtimex:
-	case SYS_afs_syscall:
-	case SYS_alarm:
-	case SYS_arch_prctl:
-	case SYS_bdflush:
-	case SYS_bind:
-	case SYS_break:
-	case SYS_brk:
-	case SYS_capget:
-	case SYS_capset:
-	case SYS_clock_getres:
-	case SYS_clock_gettime:
-	case SYS_clock_nanosleep:
-	case SYS_clock_settime:
-	case SYS_clone:
-	case SYS_close:
-	case SYS_connect:
-	case SYS_create_module:
-	case SYS_delete_module:
-	case SYS_dup:
-	case SYS_dup2:
-	case SYS_dup3:
-	case SYS_epoll_create:
-	case SYS_epoll_create1:
-	case SYS_epoll_ctl:
-	case SYS_epoll_ctl_old:
-	case SYS_epoll_pwait:
-	case SYS_epoll_wait:
-	case SYS_epoll_wait_old:
-	case SYS_eventfd:
-	case SYS_eventfd2:
-	case SYS_exit:
-	case SYS_exit_group:
-	case SYS_fadvise64:
-	case SYS_fadvise64_64:
-	case SYS_fallocate:
-	case SYS_fchdir:
-	case SYS_fchmod:
-	case SYS_fchown:
-	case SYS_fchown32:
-	case SYS_fcntl:
-	case SYS_fcntl64:
-	case SYS_fdatasync:
-	case SYS_fgetxattr:
-	case SYS_flistxattr:
-	case SYS_flock:
-	case SYS_fork:
-	case SYS_fremovexattr:
-	case SYS_fsetxattr:
-	case SYS_fstat:
-	case SYS_fstat64:
-	case SYS_fstatfs:
-	case SYS_fstatfs64:
-	case SYS_fsync:
-	case SYS_ftime:
-	case SYS_ftruncate:
-	case SYS_ftruncate64:
-	case SYS_futex:
-	case SYS_get_kernel_syms:
-	case SYS_get_mempolicy:
-	case SYS_get_robust_list:
-	case SYS_get_thread_area:
-	case SYS_getcpu:
-	case SYS_getdents:
-	case SYS_getdents64:
-	case SYS_getegid:
-	case SYS_getegid32:
-	case SYS_geteuid:
-	case SYS_geteuid32:
-	case SYS_getgid:
-	case SYS_getgid32:
-	case SYS_getgroups:
-	case SYS_getgroups32:
-	case SYS_getitimer:
-	case SYS_getpeername:
-	case SYS_getpgid:
-	case SYS_getpgrp:
-	case SYS_getpid:
-	case SYS_getpmsg:
-	case SYS_getppid:
-	case SYS_getpriority:
-	case SYS_getresgid:
-	case SYS_getresgid32:
-	case SYS_getresuid:
-	case SYS_getresuid32:
-	case SYS_getrlimit:
-	case SYS_getrusage:
-	case SYS_getsid:
-	case SYS_getsockname:
-	case SYS_getsockopt:
-	case SYS_gettid:
-	case SYS_gettimeofday:
-	case SYS_getuid:
-	case SYS_getuid32:
-	case SYS_gtty:
-	case SYS_idle:
-	case SYS_init_module:
-	case SYS_inotify_init:
-	case SYS_inotify_init1:
-	case SYS_inotify_rm_watch:
-	case SYS_io_cancel:
-	case SYS_io_destroy:
-	case SYS_io_getevents:
-	case SYS_io_setup:
-	case SYS_io_submit:
-	case SYS_ioctl:
-	case SYS_ioperm:
-	case SYS_iopl:
-	case SYS_ioprio_get:
-	case SYS_ioprio_set:
-	case SYS_ipc:
-	case SYS_kexec_load:
-	case SYS_keyctl:
-	case SYS_kill:
-	case SYS_listen:
-	case SYS_lock:
-	case SYS_lookup_dcookie:
-	case SYS_lseek:
-	case SYS_madvise:
-	case SYS_madvise1:
-	case SYS_mbind:
-	case SYS_migrate_pages:
-	case SYS_mincore:
-	case SYS_mlock:
-	case SYS_mlockall:
-	case SYS_mmap:
-	case SYS_mmap2:
-	case SYS_modify_ldt:
-	case SYS_move_pages:
-	case SYS_mprotect:
-	case SYS_mpx:
-	case SYS_mq_getsetattr:
-	case SYS_mq_notify:
-	case SYS_mq_open:
-	case SYS_mq_timedreceive:
-	case SYS_mq_timedsend:
-	case SYS_mq_unlink:
-	case SYS_mremap:
-	case SYS_msgctl:
-	case SYS_msgget:
-	case SYS_msgrcv:
-	case SYS_msgsnd:
-	case SYS_msync:
-	case SYS_munlock:
-	case SYS_munlockall:
-	case SYS_munmap:
-	case SYS_nanosleep:
-	case SYS_nfsservctl:
-	case SYS_nice:
-	case SYS_oldfstat:
-	case SYS_oldolduname:
-	case SYS_olduname:
-	case SYS_pause:
-	case SYS_perf_event_open:
-	case SYS_personality:
-	case SYS_pipe:
-	case SYS_pipe2:
-	case SYS_poll:
-	case SYS_ppoll:
-	case SYS_prctl:
-	case SYS_pread64:
-	case SYS_preadv:
-	case SYS_prof:
-	case SYS_profil:
-	case SYS_pselect6:
-	case SYS_ptrace: /* Here comes the exit door ;) Do NOT use PRoot for security purpose! */
-	case SYS_putpmsg:
-	case SYS_pwrite64:
-	case SYS_pwritev:
-	case SYS_query_module:
-	case SYS_quotactl:
-	case SYS_read:
-	case SYS_readahead:
-	case SYS_readdir:
-	case SYS_readv:
-	case SYS_reboot:
-	case SYS_recvfrom:
-	case SYS_recvmmsg:
-	case SYS_recvmsg:
-	case SYS_remap_file_pages:
-	case SYS_request_key:
-	case SYS_restart_syscall:
-	case SYS_rt_sigaction:
-	case SYS_rt_sigpending:
-	case SYS_rt_sigprocmask:
-	case SYS_rt_sigqueueinfo:
-	case SYS_rt_sigreturn:
-	case SYS_rt_sigsuspend:
-	case SYS_rt_sigtimedwait:
-	case SYS_rt_tgsigqueueinfo:
-	case SYS_sched_get_priority_max:
-	case SYS_sched_get_priority_min:
-	case SYS_sched_getaffinity:
-	case SYS_sched_getparam:
-	case SYS_sched_getscheduler:
-	case SYS_sched_rr_get_interval:
-	case SYS_sched_setaffinity:
-	case SYS_sched_setparam:
-	case SYS_sched_setscheduler:
-	case SYS_sched_yield:
-	case SYS_security:
-	case SYS_select:
-	case SYS_semctl:
-	case SYS_semget:
-	case SYS_semop:
-	case SYS_semtimedop:
-	case SYS_sendfile:
-	case SYS_sendfile64:
-	case SYS_sendmsg:
-	case SYS_sendto:
-	case SYS_set_mempolicy:
-	case SYS_set_robust_list:
-	case SYS_set_thread_area:
-	case SYS_set_tid_address:
-	case SYS_setdomainname:
-	case SYS_setfsgid:
-	case SYS_setfsgid32:
-	case SYS_setfsuid:
-	case SYS_setfsuid32:
-	case SYS_setgid:
-	case SYS_setgid32:
-	case SYS_setgroups:
-	case SYS_setgroups32:
-	case SYS_sethostname:
-	case SYS_setitimer:
-	case SYS_setpgid:
-	case SYS_setpriority:
-	case SYS_setregid:
-	case SYS_setregid32:
-	case SYS_setresgid:
-	case SYS_setresgid32:
-	case SYS_setresuid:
-	case SYS_setresuid32:
-	case SYS_setreuid:
-	case SYS_setreuid32:
-	case SYS_setrlimit:
-	case SYS_setsid:
-	case SYS_setsockopt:
-	case SYS_settimeofday:
-	case SYS_setuid:
-	case SYS_setuid32:
-	case SYS_sgetmask:
-	case SYS_shmat:
-	case SYS_shmctl:
-	case SYS_shmdt:
-	case SYS_shmget:
-	case SYS_shutdown:
-	case SYS_sigaction:
-	case SYS_sigaltstack:
-	case SYS_signal:
-	case SYS_signalfd:
-	case SYS_signalfd4:
-	case SYS_sigpending:
-	case SYS_sigprocmask:
-	case SYS_sigreturn:
-	case SYS_sigsuspend:
-	case SYS_socket:
-	case SYS_socketcall:
-	case SYS_socketpair:
-	case SYS_splice:
-	case SYS_ssetmask:
-	case SYS_stime:
-	case SYS_stty:
-	case SYS_sync:
-	case SYS_sync_file_range:
-	case SYS_sysfs:
-	case SYS_sysinfo:
-	case SYS_syslog:
-	case SYS_tee:
-	case SYS_tgkill:
-	case SYS_time:
-	case SYS_timer_create:
-	case SYS_timer_delete:
-	case SYS_timer_getoverrun:
-	case SYS_timer_gettime:
-	case SYS_timer_settime:
-	case SYS_timerfd_create:
-	case SYS_timerfd_gettime:
-	case SYS_timerfd_settime:
-	case SYS_times:
-	case SYS_tkill:
-	case SYS_tuxcall:
-	case SYS_ugetrlimit:
-	case SYS_ulimit:
-	case SYS_umask:
-	case SYS_uname:
-	case SYS_unshare:
-	case SYS_ustat:
-	case SYS_vfork:
-	case SYS_vhangup:
-	case SYS_vm86:
-	case SYS_vm86old:
-	case SYS_vmsplice:
-	case SYS_vserver:
-	case SYS_wait4:
-	case SYS_waitid:
-	case SYS_waitpid:
-	case SYS_write:
-	case SYS_writev:
+	/* Ensure one is not trying to cheat PRoot by calling an
+	 * unsupported syscall on that architecture. */
+	if ((int)sysnum < 0) {
+		printf("proot: forbidden syscall %lu\n", sysnum);
+		return -ENOSYS;
+	}
+
+	/* Translate input arguments. */
+	switch (sysnum) {
+	case __NR__llseek:
+	case __NR__newselect:
+	case __NR__sysctl:
+	case __NR_accept:
+	case __NR_accept4:
+	case __NR_add_key:
+	case __NR_adjtimex:
+	case __NR_afs_syscall:
+	case __NR_alarm:
+	case __NR_arch_prctl:
+	case __NR_bdflush:
+	case __NR_bind:
+	case __NR_break:
+	case __NR_brk:
+	case __NR_capget:
+	case __NR_capset:
+	case __NR_clock_getres:
+	case __NR_clock_gettime:
+	case __NR_clock_nanosleep:
+	case __NR_clock_settime:
+	case __NR_clone:
+	case __NR_close:
+	case __NR_connect:
+	case __NR_create_module:
+	case __NR_delete_module:
+	case __NR_dup:
+	case __NR_dup2:
+	case __NR_dup3:
+	case __NR_epoll_create:
+	case __NR_epoll_create1:
+	case __NR_epoll_ctl:
+	case __NR_epoll_ctl_old:
+	case __NR_epoll_pwait:
+	case __NR_epoll_wait:
+	case __NR_epoll_wait_old:
+	case __NR_eventfd:
+	case __NR_eventfd2:
+	case __NR_exit:
+	case __NR_exit_group:
+	case __NR_fadvise64:
+	case __NR_fadvise64_64:
+	case __NR_fallocate:
+	case __NR_fchdir:
+	case __NR_fchmod:
+	case __NR_fchown:
+	case __NR_fchown32:
+	case __NR_fcntl:
+	case __NR_fcntl64:
+	case __NR_fdatasync:
+	case __NR_fgetxattr:
+	case __NR_flistxattr:
+	case __NR_flock:
+	case __NR_fork:
+	case __NR_fremovexattr:
+	case __NR_fsetxattr:
+	case __NR_fstat:
+	case __NR_fstat64:
+	case __NR_fstatfs:
+	case __NR_fstatfs64:
+	case __NR_fsync:
+	case __NR_ftime:
+	case __NR_ftruncate:
+	case __NR_ftruncate64:
+	case __NR_futex:
+	case __NR_get_kernel_syms:
+	case __NR_get_mempolicy:
+	case __NR_get_robust_list:
+	case __NR_get_thread_area:
+	case __NR_getcpu:
+	case __NR_getdents:
+	case __NR_getdents64:
+	case __NR_getegid:
+	case __NR_getegid32:
+	case __NR_geteuid:
+	case __NR_geteuid32:
+	case __NR_getgid:
+	case __NR_getgid32:
+	case __NR_getgroups:
+	case __NR_getgroups32:
+	case __NR_getitimer:
+	case __NR_getpeername:
+	case __NR_getpgid:
+	case __NR_getpgrp:
+	case __NR_getpid:
+	case __NR_getpmsg:
+	case __NR_getppid:
+	case __NR_getpriority:
+	case __NR_getresgid:
+	case __NR_getresgid32:
+	case __NR_getresuid:
+	case __NR_getresuid32:
+	case __NR_getrlimit:
+	case __NR_getrusage:
+	case __NR_getsid:
+	case __NR_getsockname:
+	case __NR_getsockopt:
+	case __NR_gettid:
+	case __NR_gettimeofday:
+	case __NR_getuid:
+	case __NR_getuid32:
+	case __NR_gtty:
+	case __NR_idle:
+	case __NR_init_module:
+	case __NR_inotify_init:
+	case __NR_inotify_init1:
+	case __NR_inotify_rm_watch:
+	case __NR_io_cancel:
+	case __NR_io_destroy:
+	case __NR_io_getevents:
+	case __NR_io_setup:
+	case __NR_io_submit:
+	case __NR_ioctl:
+	case __NR_ioperm:
+	case __NR_iopl:
+	case __NR_ioprio_get:
+	case __NR_ioprio_set:
+	case __NR_ipc:
+	case __NR_kexec_load:
+	case __NR_keyctl:
+	case __NR_kill:
+	case __NR_listen:
+	case __NR_lock:
+	case __NR_lookup_dcookie:
+	case __NR_lseek:
+	case __NR_madvise:
+	case __NR_madvise1:
+	case __NR_mbind:
+	case __NR_migrate_pages:
+	case __NR_mincore:
+	case __NR_mlock:
+	case __NR_mlockall:
+	case __NR_mmap:
+	case __NR_mmap2:
+	case __NR_modify_ldt:
+	case __NR_move_pages:
+	case __NR_mprotect:
+	case __NR_mpx:
+	case __NR_mq_getsetattr:
+	case __NR_mq_notify:
+	case __NR_mq_open:
+	case __NR_mq_timedreceive:
+	case __NR_mq_timedsend:
+	case __NR_mq_unlink:
+	case __NR_mremap:
+	case __NR_msgctl:
+	case __NR_msgget:
+	case __NR_msgrcv:
+	case __NR_msgsnd:
+	case __NR_msync:
+	case __NR_munlock:
+	case __NR_munlockall:
+	case __NR_munmap:
+	case __NR_nanosleep:
+	case __NR_nfsservctl:
+	case __NR_nice:
+	case __NR_oldfstat:
+	case __NR_oldolduname:
+	case __NR_olduname:
+	case __NR_pause:
+	case __NR_perf_event_open:
+	case __NR_personality:
+	case __NR_pipe:
+	case __NR_pipe2:
+	case __NR_poll:
+	case __NR_ppoll:
+	case __NR_prctl:
+	case __NR_pread64:
+	case __NR_preadv:
+	case __NR_prof:
+	case __NR_profil:
+	case __NR_pselect6:
+	case __NR_ptrace: /* Here comes the exit door ;) Do NOT use PRoot for security purpose! */
+	case __NR_putpmsg:
+	case __NR_pwrite64:
+	case __NR_pwritev:
+	case __NR_query_module:
+	case __NR_quotactl:
+	case __NR_read:
+	case __NR_readahead:
+	case __NR_readdir:
+	case __NR_readv:
+	case __NR_reboot:
+	case __NR_recvfrom:
+	case __NR_recvmmsg:
+	case __NR_recvmsg:
+	case __NR_remap_file_pages:
+	case __NR_request_key:
+	case __NR_restart_syscall:
+	case __NR_rt_sigaction:
+	case __NR_rt_sigpending:
+	case __NR_rt_sigprocmask:
+	case __NR_rt_sigqueueinfo:
+	case __NR_rt_sigreturn:
+	case __NR_rt_sigsuspend:
+	case __NR_rt_sigtimedwait:
+	case __NR_rt_tgsigqueueinfo:
+	case __NR_sched_get_priority_max:
+	case __NR_sched_get_priority_min:
+	case __NR_sched_getaffinity:
+	case __NR_sched_getparam:
+	case __NR_sched_getscheduler:
+	case __NR_sched_rr_get_interval:
+	case __NR_sched_setaffinity:
+	case __NR_sched_setparam:
+	case __NR_sched_setscheduler:
+	case __NR_sched_yield:
+	case __NR_security:
+	case __NR_select:
+	case __NR_semctl:
+	case __NR_semget:
+	case __NR_semop:
+	case __NR_semtimedop:
+	case __NR_sendfile:
+	case __NR_sendfile64:
+	case __NR_sendmsg:
+	case __NR_sendto:
+	case __NR_set_mempolicy:
+	case __NR_set_robust_list:
+	case __NR_set_thread_area:
+	case __NR_set_tid_address:
+	case __NR_setdomainname:
+	case __NR_setfsgid:
+	case __NR_setfsgid32:
+	case __NR_setfsuid:
+	case __NR_setfsuid32:
+	case __NR_setgid:
+	case __NR_setgid32:
+	case __NR_setgroups:
+	case __NR_setgroups32:
+	case __NR_sethostname:
+	case __NR_setitimer:
+	case __NR_setpgid:
+	case __NR_setpriority:
+	case __NR_setregid:
+	case __NR_setregid32:
+	case __NR_setresgid:
+	case __NR_setresgid32:
+	case __NR_setresuid:
+	case __NR_setresuid32:
+	case __NR_setreuid:
+	case __NR_setreuid32:
+	case __NR_setrlimit:
+	case __NR_setsid:
+	case __NR_setsockopt:
+	case __NR_settimeofday:
+	case __NR_setuid:
+	case __NR_setuid32:
+	case __NR_sgetmask:
+	case __NR_shmat:
+	case __NR_shmctl:
+	case __NR_shmdt:
+	case __NR_shmget:
+	case __NR_shutdown:
+	case __NR_sigaction:
+	case __NR_sigaltstack:
+	case __NR_signal:
+	case __NR_signalfd:
+	case __NR_signalfd4:
+	case __NR_sigpending:
+	case __NR_sigprocmask:
+	case __NR_sigreturn:
+	case __NR_sigsuspend:
+	case __NR_socket:
+	case __NR_socketcall:
+	case __NR_socketpair:
+	case __NR_splice:
+	case __NR_ssetmask:
+	case __NR_stime:
+	case __NR_stty:
+	case __NR_sync:
+	case __NR_sync_file_range:
+	case __NR_sysfs:
+	case __NR_sysinfo:
+	case __NR_syslog:
+	case __NR_tee:
+	case __NR_tgkill:
+	case __NR_time:
+	case __NR_timer_create:
+	case __NR_timer_delete:
+	case __NR_timer_getoverrun:
+	case __NR_timer_gettime:
+	case __NR_timer_settime:
+	case __NR_timerfd_create:
+	case __NR_timerfd_gettime:
+	case __NR_timerfd_settime:
+	case __NR_times:
+	case __NR_tkill:
+	case __NR_tuxcall:
+	case __NR_ugetrlimit:
+	case __NR_ulimit:
+	case __NR_umask:
+	case __NR_uname:
+	case __NR_unshare:
+	case __NR_ustat:
+	case __NR_vfork:
+	case __NR_vhangup:
+	case __NR_vm86:
+	case __NR_vm86old:
+	case __NR_vmsplice:
+	case __NR_vserver:
+	case __NR_wait4:
+	case __NR_waitid:
+	case __NR_waitpid:
+	case __NR_write:
+	case __NR_writev:
+	case __NR_getcwd:
 		/* Nothing to do. */
-		return;
+		status = 0;
+		break;
 
-	case SYS_access:
-	case SYS_acct:
-	case SYS_chdir:
-	case SYS_chmod:
-	case SYS_chown:
-	case SYS_chown32:
-	case SYS_chroot:
-	case SYS_execve:
-	case SYS_getxattr:
-	case SYS_listxattr:
-	case SYS_mkdir:
-	case SYS_mknod:
-	case SYS_oldstat:
-	case SYS_creat:
-	case SYS_removexattr:
-	case SYS_rmdir:
-	case SYS_setxattr:
-	case SYS_stat:
-	case SYS_stat64:
-	case SYS_statfs:
-	case SYS_statfs64:
-	case SYS_swapoff:
-	case SYS_swapon:
-	case SYS_truncate:
-	case SYS_truncate64:
-	case SYS_unlink:
-	case SYS_uselib:
-	case SYS_utime:
-	case SYS_utimes:
-		translate_sysarg(SYSARG_1, REGULAR);
-		return;
+	case __NR_access:
+	case __NR_acct:
+	case __NR_chdir:
+	case __NR_chmod:
+	case __NR_chown:
+	case __NR_chown32:
+	case __NR_chroot:
+	case __NR_execve:
+	case __NR_getxattr:
+	case __NR_listxattr:
+	case __NR_mkdir:
+	case __NR_mknod:
+	case __NR_oldstat:
+	case __NR_creat:
+	case __NR_removexattr:
+	case __NR_rmdir:
+	case __NR_setxattr:
+	case __NR_stat:
+	case __NR_stat64:
+	case __NR_statfs:
+	case __NR_statfs64:
+	case __NR_swapoff:
+	case __NR_swapon:
+	case __NR_truncate:
+	case __NR_truncate64:
+	case __NR_unlink:
+	case __NR_uselib:
+	case __NR_utime:
+	case __NR_utimes:
+		status = translate_sysarg(pid, SYSARG_1, REGULAR);
+		break;
 
-	case SYS_open:
-		flags = get_sysarg(pid, SYSARG_2);
+	case __NR_open:
+		flags = get_sysarg_value(pid, SYSARG_2);
 
-		if ((flags & O_NOFOLLOW) != 0
-		    || (flags & O_EXCL) != 0 && (flags & O_CREAT) != 0)
-			translate_sysarg(SYSARG_1, SYMLINK);
+		if (   ((flags & O_NOFOLLOW) != 0)
+		    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
+			status = translate_sysarg(pid, SYSARG_1, SYMLINK);
 		else
-			translate_sysarg(SYSARG_1, REGULAR);
-		return;
+			status = translate_sysarg(pid, SYSARG_1, REGULAR);
+		break;
 
-	case SYS_faccessat:
-	case SYS_fchmodat:
-	case SYS_fchownat:
-	case SYS_fstatat64:
-	case SYS_newfstatat:
-	case SYS_utimensat:
-		dirfd = get_sysarg(pid, SYSARG_1);
-		get_sysarg_path(pid, path, SYSARG_2);
+	case __NR_faccessat:
+	case __NR_fchmodat:
+	case __NR_fchownat:
+	case __NR_fstatat64:
+	case __NR_newfstatat:
+	case __NR_utimensat:
+		dirfd = get_sysarg_value(pid, SYSARG_1);
+		status = get_sysarg_path(pid, path, SYSARG_2);
+		if (status < 0)
+			break;
 
-		flags = (syscall_number == SYS_fchownat)
-			? get_sysarg(pid, SYSARG_5)
-			: get_sysarg(pid, SYSARG_4);
+		flags = (sysnum == __NR_fchownat)
+			? get_sysarg_value(pid, SYSARG_5)
+			: get_sysarg_value(pid, SYSARG_4);
 
 		if (!AT_FD(dirfd, path)) {
 			if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
-				translate_sysarg(SYSARG_2, SYMLINK);
+				status = translate_path2sysarg(pid, path, SYSARG_2, SYMLINK);
 			else
-				translate_sysarg(SYSARG_2, REGULAR);
+				status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
 		}
 		else {
 			if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
-				check_path_at(dirfd, path, SYMLINK);
+				status = check_path_at(pid, dirfd, path, SYMLINK);
 			else
-				check_path_at(dirfd, path, REGULAR);
+				status = check_path_at(pid, dirfd, path, REGULAR);
 		}
-		return;
+		break;
 
-	case SYS_futimesat:
-	case SYS_mkdirat:
-	case SYS_mknodat:
-	case SYS_unlinkat:
-		dirfd = get_sysarg(pid, SYSARG_1);
-		get_sysarg_path(pid, path, SYSARG_2);
+	case __NR_futimesat:
+	case __NR_mkdirat:
+	case __NR_mknodat:
+	case __NR_unlinkat:
+		dirfd = get_sysarg_value(pid, SYSARG_1);
+		status = get_sysarg_path(pid, path, SYSARG_2);
+		if (status < 0)
+			break;
 
 		if (!AT_FD(dirfd, path))
-			translate_sysarg(SYSARG_2, REGULAR);
+			status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
 		else
-			check_path_at(dirfd, path, REGULAR);
-		return;
+			status = check_path_at(pid, dirfd, path, REGULAR);
+		break;
 
-	case SYS_getcwd:
-		detranslate_sysarg(SYSARG_0, REGULAR);
-		return;
-
-	case SYS_inotify_add_watch:
-		flags = get_sysarg(pid, SYSARG_3);
+	case __NR_inotify_add_watch:
+		flags = get_sysarg_value(pid, SYSARG_3);
 
 		if ((flags & IN_DONT_FOLLOW) != 0)
-			translate_sysarg(SYSARG_2, SYMLINK);
+			status = translate_sysarg(pid, SYSARG_2, SYMLINK);
 		else
-			translate_sysarg(SYSARG_2, REGULAR);
-		return;
+			status = translate_sysarg(pid, SYSARG_2, REGULAR);
+		break;
 
-	case SYS_lchown:
-	case SYS_lchown32:
-	case SYS_lgetxattr:
-	case SYS_llistxattr:
-	case SYS_lremovexattr:
-	case SYS_lsetxattr:
-	case SYS_lstat:
-	case SYS_lstat64:
-	case SYS_oldlstat:
-		translate_sysarg(SYSARG_1, SYMLINK);
-		return;
+	case __NR_lchown:
+	case __NR_lchown32:
+	case __NR_lgetxattr:
+	case __NR_llistxattr:
+	case __NR_lremovexattr:
+	case __NR_lsetxattr:
+	case __NR_lstat:
+	case __NR_lstat64:
+	case __NR_oldlstat:
+		status = translate_sysarg(pid, SYSARG_1, SYMLINK);
+		break;
 
-	case SYS_link:
-	case SYS_pivot_root:
-		translate_sysarg(SYSARG_1, REGULAR);
-		translate_sysarg(SYSARG_2, REGULAR);
-		return;
+	case __NR_link:
+	case __NR_pivot_root:
+		status1 = translate_sysarg(pid, SYSARG_1, REGULAR);
+		status2 = translate_sysarg(pid, SYSARG_2, REGULAR);
+		if (status1 < 0) {
+			status = status1;
+			break;
+		}
+		if (status2 < 0) {
+			status = status2;
+			break;
+		}
+		status = status1 + status2;
+		break;
 
-	case SYS_linkat:
-		olddirfd = get_sysarg(pid, SYSARG_1);
-		newdirfd = get_sysarg(pid, SYSARG_3);
-		flags    = get_sysarg(pid, SYSARG_5);
-		get_sysarg_path(pid, oldpath, SYSARG_2);
-		get_sysarg_path(pid, newpath, SYSARG_4);
+	case __NR_linkat:
+		olddirfd = get_sysarg_value(pid, SYSARG_1);
+		newdirfd = get_sysarg_value(pid, SYSARG_3);
+		flags    = get_sysarg_value(pid, SYSARG_5);
+
+		status1 = get_sysarg_path(pid, oldpath, SYSARG_2);
+		status2 = get_sysarg_path(pid, newpath, SYSARG_4);
+		if (status1 < 0) {
+			status = status1;
+			break;
+		}
+		if (status2 < 0) {
+			status = status2;
+			break;
+		}
 
 		if (!AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
 			if ((flags & AT_SYMLINK_FOLLOW) != 0) {
-				translate_sysarg(SYSARG_2, REGULAR);
-				translate_sysarg(SYSARG_4, REGULAR);
+				status1 = translate_path2sysarg(pid, oldpath, SYSARG_2, REGULAR);
+				status2 = translate_path2sysarg(pid, newpath, SYSARG_4, REGULAR);
 			} else {
-				translate_sysarg(SYSARG_2, SYMLINK);
-				translate_sysarg(SYSARG_4, REGULAR);
+				status1 = translate_path2sysarg(pid, oldpath, SYSARG_2, SYMLINK);
+				status2 = translate_path2sysarg(pid, newpath, SYSARG_4, REGULAR);
 			}
 		}
 		else if (!AT_FD(olddirfd, oldpath) && AT_FD(newdirfd, newpath)) {
 			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				translate_sysarg(SYSARG_2, REGULAR);
+				status1 = translate_path2sysarg(pid, oldpath, SYSARG_2, REGULAR);
 			else
-				translate_sysarg(SYSARG_2, SYMLINK);
+				status1 = translate_path2sysarg(pid, oldpath, SYSARG_2, SYMLINK);
 
-			check_path_at(newdirfd, newpath, REGULAR);
+			status2 = check_path_at(pid, newdirfd, newpath, REGULAR);
 		}
 		else if (AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
 			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				check_path_at(olddirfd, oldpath, REGULAR);
+				status1 = check_path_at(pid, olddirfd, oldpath, REGULAR);
 			else
-				check_path_at(olddirfd, oldpath, SYMLINK);
+				status1 = check_path_at(pid, olddirfd, oldpath, SYMLINK);
 
-			translate_sysarg(SYSARG_4, REGULAR);
+			status2 = translate_path2sysarg(pid, newpath, SYSARG_4, REGULAR);
 		}
 		else {
 			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				check_path_at(olddirfd, oldpath, REGULAR);
+				status1 = check_path_at(pid, olddirfd, oldpath, REGULAR);
 			else
-				check_path_at(olddirfd, oldpath, SYMLINK);
+				status1 = check_path_at(pid, olddirfd, oldpath, SYMLINK);
 
-			check_path_at(newdirfd, newpath, REGULAR);
+			status2 = check_path_at(pid, newdirfd, newpath, REGULAR);
 		}
-		return;
 
-	case SYS_mount:
-	case SYS_umount:
-	case SYS_umount2:
-		get_sysarg_path(pid, path, SYSARG_1);
+		if (status1 < 0) {
+			status = status1;
+			break;
+		}
+		if (status2 < 0) {
+			status = status2;
+			break;
+		}
+		status = status1 + status2;
+		break;
+
+	case __NR_mount:
+	case __NR_umount:
+	case __NR_umount2:
+		status = get_sysarg_path(pid, path, SYSARG_1);
+		if (status < 0)
+			break;
 
 		if (path != NULL && (path[0] == '/' || path[0] == '.'))
-			translate_sysarg(SYSARG_2, REGULAR);
-		return;
-
-	case SYS_openat:
-		dirfd = get_sysarg(pid, SYSARG_1);
-		get_sysarg_path(pid, path, SYSARG_2);
-
-		if (!AT_FD(dirfd, path)) {
-			flags = get_sysarg(pid, SYSARG_3);
-
-			if ((flags & O_NOFOLLOW) != 0
-			    || (flags & O_EXCL) != 0 && (flags & O_CREAT) != 0)
-				translate_sysarg(SYSARG_2, SYMLINK);
-			else
-				translate_sysarg(SYSARG_2, REGULAR);
-		}
+			status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
 		else
-			check_path_at(dirfd, path);
-		return;
+			status = 0;
+		break;
 
-	case SYS_readlink:
-		translate_sysarg(SYSARG_1, SYMLINK);
-		detranslate_sysarg(SYSARG_2, SYMLINK);
-		return ;
+	case __NR_openat:
+		dirfd = get_sysarg_value(pid, SYSARG_1);
+		flags = get_sysarg_value(pid, SYSARG_3);
 
-	case SYS_readlinkat:
-		dirfd = get_sysarg(pid, SYSARG_1);
-		get_sysarg_path(pid, path, SYSARG_2);
+		status = get_sysarg_path(pid, path, SYSARG_2);
+		if (status < 0)
+			break;
 
 		if (!AT_FD(dirfd, path)) {
-			translate_sysarg(SYSARG_1, SYMLINK);
-			detranslate_sysarg(SYSARG_2, SYMLINK);
-		} else {
-			check_path_at(dirfd, path, SYMLINK);
-			detranslate_sysarg(SYSARG_2, SYMLINK);
-		}
-		return;
-
-	case SYS_rename:
-		translate_sysarg(SYSARG_1, SYMLINK);
-		translate_sysarg(SYSARG_2, SYMLINK);
-		return;
-
-	case SYS_renameat:
-		olddirfd = get_sysarg(pid, SYSARG_1);
-		newdirfd = get_sysarg(pid, SYSARG_3);
-		get_sysarg_path(pid, oldpath, SYSARG_2);
-		get_sysarg_path(pid, newpath, SYSARG_4);
-
-		if (!AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			translate_sysarg(SYSARG_2, SYMLINK);
-			translate_sysarg(SYSARG_4, SYMLINK);
-		}
-		else if (!AT_FD(olddirfd, oldpath) && AT_FD(newdirfd, newpath)) {
-			translate_sysarg(SYSARG_2, SYMLINK);
-			check_path_at(newdirfd, newpath, SYMLINK);
-		}
-		else if (AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			check_path_at(olddirfd, oldpath, SYMLINK);
-			translate_sysarg(SYSARG_4, SYMLINK);
+			if (   ((flags & O_NOFOLLOW) != 0)
+			    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
+				status = translate_path2sysarg(pid, path, SYSARG_2, SYMLINK);
+			else
+				status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
 		}
 		else {
-			check_path_at(olddirfd, oldpath, SYMLINK);
-			check_path_at(newdirfd, newpath, SYMLINK);
+			if (   ((flags & O_NOFOLLOW) != 0)
+			    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
+				status = check_path_at(pid, dirfd, path, SYMLINK);
+			else
+				status = check_path_at(pid, dirfd, path, REGULAR);
 		}
-		return;
+		break;
 
-	case SYS_symlink:
-		translate_sysarg(SYSARG_4, REGULAR);
-		return;
+	case __NR_readlink:
+		status = translate_sysarg(pid, SYSARG_1, SYMLINK);
+		break;
 
-	case SYS_symlinkat:
-		newdirfd = get_sysarg(pid, SYSARG_2);
-		get_sysarg_path(pid, newpath, SYSARG_3);
+	case __NR_readlinkat:
+		dirfd = get_sysarg_value(pid, SYSARG_1);
+
+		status = get_sysarg_path(pid, path, SYSARG_2);
+		if (status < 0)
+			break;
+
+		if (!AT_FD(dirfd, path))
+			status = translate_path2sysarg(pid, path, SYSARG_1, SYMLINK);
+		else
+			status = check_path_at(pid, dirfd, path, SYMLINK);
+		break;
+
+	case __NR_rename:
+		status1 = translate_sysarg(pid, SYSARG_1, SYMLINK);
+		status2 = translate_sysarg(pid, SYSARG_2, SYMLINK);
+
+		if (status1 < 0) {
+			status = status1;
+			break;
+		}
+		if (status2 < 0) {
+			status = status2;
+			break;
+		}
+		status = status1 + status2;
+
+		break;
+
+	case __NR_renameat:
+		olddirfd = get_sysarg_value(pid, SYSARG_1);
+		newdirfd = get_sysarg_value(pid, SYSARG_3);
+
+		status1 = get_sysarg_path(pid, oldpath, SYSARG_2);
+		status2 = get_sysarg_path(pid, newpath, SYSARG_4);
+		if (status1 < 0) {
+			status = status1;
+			break;
+		}
+		if (status2 < 0) {
+			status = status2;
+			break;
+		}
+
+		if (!AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
+			status1 = translate_path2sysarg(pid, oldpath, SYSARG_2, SYMLINK);
+			status2 = translate_path2sysarg(pid, newpath, SYSARG_4, SYMLINK);
+		}
+		else if (!AT_FD(olddirfd, oldpath) && AT_FD(newdirfd, newpath)) {
+			status1 = translate_path2sysarg(pid, oldpath, SYSARG_2, SYMLINK);
+			status2 = check_path_at(pid, newdirfd, newpath, SYMLINK);
+		}
+		else if (AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
+			status1 = check_path_at(pid, olddirfd, oldpath, SYMLINK);
+			status2 = translate_path2sysarg(pid, newpath, SYSARG_4, SYMLINK);
+		}
+		else {
+			status1 = check_path_at(pid, olddirfd, oldpath, SYMLINK);
+			status2 = check_path_at(pid, newdirfd, newpath, SYMLINK);
+		}
+
+		if (status1 < 0) {
+			status = status1;
+			break;
+		}
+		if (status2 < 0) {
+			status = status2;
+			break;
+		}
+		status = status1 + status2;
+
+		break;
+
+	case __NR_symlink:
+		status = translate_sysarg(pid, SYSARG_4, REGULAR);
+		break;
+
+	case __NR_symlinkat:
+		newdirfd = get_sysarg_value(pid, SYSARG_2);
+
+		status = get_sysarg_path(pid, newpath, SYSARG_3);
+		if (status < 0)
+			break;
 
 		if (!AT_FD(newdirfd, newpath))
-			translate_sysarg(SYSARG_2, REGULAR);
+			status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
 		else
-			check_path_at(dirfd, path, REGULAR);
-		return;
+			status = check_path_at(pid, newdirfd, path, REGULAR);
+		break;
 
 	default:
-		printf("proot: unknown syscall %d\n", syscall_number);
-		return;
+		printf("proot: unknown syscall %lu\n", sysnum);
+		status = -ENOSYS;
+		break;
+	}
+
+	/* Avoid the actual syscall if an error occured during the
+	 * translation. */
+	if (status < 0)
+		set_child_sysarg(pid, SYSARG_NUM, SYSCALL_AVOIDER);
+
+	return status;
+}
+
+/**
+ * This function translates the output arguments of the syscall
+ * @sysnum in the @pid child's process area. Is also sets the result
+ * of this syscall to @status if an error occured previously during
+ * the translation, that is, if @status is lesser than 0. Otherwise,
+ * @status bytes of the child's stack are "deallocated" to free the
+ * space used to store the previously translated paths.
+ */
+void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
+{
+	/* Set the child's errno if an error occured previously during
+	 * the translation. */
+	if (status < 0)
+		set_child_sysarg(pid, SYSARG_RESULT, (word_t)status);
+	
+	/* De-allocate the space used to store the previously
+	 * translated paths. */
+	if (status > 0)
+		resize_child_stack(pid, -status);
+
+	/* Translate output arguments. */
+	sysnum = get_sysarg_value(pid, SYSARG_NUM);
+	if (sysnum == __NR_getcwd) {
+		status = detranslate_sysarg(pid, SYSARG_1);
+		if (status < 0)
+			set_child_sysarg(pid, SYSARG_RESULT, (word_t)status);
 	}
 }
 
-#endif
