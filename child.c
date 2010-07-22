@@ -25,7 +25,7 @@
 
 #include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <sys/types.h>  /* pid_t, */
-#include <stdlib.h>     /* NULL, */
+#include <stdlib.h>     /* NULL, exit(3), */
 #include <stddef.h>     /* offsetof(), */
 #include <sys/user.h>   /* struct user*, */
 #include <errno.h>      /* errno, */
@@ -36,69 +36,7 @@
 
 #include "child.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
-
-/**
- * Compute the offset of the register @reg_name in the USER area.
- */
-#define USER_REGS_OFFSET(reg_name)			\
-	(offsetof(struct user, regs)			\
-	 + offsetof(struct user_regs_struct, reg_name))
-
-/**
- * Specify the offset in the child's USER area of each register used
- * for syscall argument passing. */
-size_t arg_offset[] = {
-	USER_REGS_OFFSET(REG_SYSARG_NUM),
-	USER_REGS_OFFSET(REG_SYSARG_1),
-	USER_REGS_OFFSET(REG_SYSARG_2),
-	USER_REGS_OFFSET(REG_SYSARG_3),
-	USER_REGS_OFFSET(REG_SYSARG_4),
-	USER_REGS_OFFSET(REG_SYSARG_5),
-	USER_REGS_OFFSET(REG_SYSARG_6),
-	USER_REGS_OFFSET(REG_SYSARG_RESULT),
-};
-
-/**
- * Return the @sysarg argument of the current syscall in the
- * child process @pid.
- */
-word_t get_child_sysarg(pid_t pid, enum sysarg sysarg)
-{
-	word_t result;
-
-	/* Sanity checks. */
-	assert(sysarg >= SYSARG_FIRST);
-	assert(sysarg <= SYSARG_LAST);
-
-	/* Get the argument register from the child's USER area. */
-	result = ptrace(PTRACE_PEEKUSER, pid, arg_offset[sysarg], NULL);
-	if (errno != 0) {
-		perror("proot -- ptrace(PEEKUSER)");
-		exit(EXIT_FAILURE);
-	}
-
-	return result;
-}
-
-/**
- * Set the @sysarg argument of the current syscall in the child
- * process @pid to @value.
- */
-void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
-{
-	long status;
-
-	/* Sanity checks. */
-	assert(sysarg >= SYSARG_FIRST);
-	assert(sysarg <= SYSARG_LAST);
-
-	/* Set the argument register in the child's USER area. */
-	status = ptrace(PTRACE_POKEUSER, pid, arg_offset[sysarg], value);
-	if (status < 0) {
-		perror("proot -- ptrace(POKEUSER)");
-		exit(EXIT_FAILURE);
-	}
-}
+#include "syscall.h" /* USER_REGS_OFFSET, */
 
 /**
  * Resize by @size bytes the stack of the child @pid, then it returns

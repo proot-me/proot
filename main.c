@@ -31,9 +31,8 @@
 #include <limits.h>     /* PATH_MAX, */
 #include <string.h>     /* strcmp(3), */
 
-#include "child.h"    /* get_child_sysarg(), */
 #include "path.h"     /* init_path_translator(), */
-#include "syscall.h"  /* translate_syscall_*(), */
+#include "syscall.h"  /* get_child_sysarg(), translate_syscall_*(), */
 
 static void print_usage()
 {
@@ -168,7 +167,7 @@ int main(int argc, char *argv[])
 			/* Check if we are either entering or exiting a syscall.
 			   Currently it doesn't support multi-process programs. */
 			if (sysnum == -1) {
-				sysnum = get_child_sysarg(pid, SYSARG_NUM);
+				sysnum = get_sysarg(pid, SYSARG_NUM);
 				pid_errno = translate_syscall_enter(pid, sysnum);
 			}
 			else {

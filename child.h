@@ -27,32 +27,11 @@
 
 #include <limits.h> /* PATH_MAX, */
 
-enum sysarg {
-	/* Warning: sysarg_offset[] in child.c relies on this ordering. */
-	SYSARG_NUM = 0,
-	SYSARG_1,
-	SYSARG_2,
-	SYSARG_3,
-	SYSARG_4,
-	SYSARG_5,
-	SYSARG_6,
-	SYSARG_RESULT,
-
-	/* Helpers. */
-	SYSARG_FIRST = SYSARG_NUM,
-	SYSARG_LAST  = SYSARG_RESULT
-};
-
 #include "arch.h" /* word_t, */
 
-extern word_t get_child_sysarg(pid_t pid, enum sysarg sysarg);
-extern void set_child_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
-
 extern word_t resize_child_stack(pid_t pid, ssize_t size);
-
 extern int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size);
 extern word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size);
-
 extern int get_child_cwd(pid_t pid, char cwd[PATH_MAX]);
 
 #endif /* CHILD_H */

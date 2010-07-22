@@ -26,18 +26,76 @@
 #define _GNU_SOURCE      /* O_NOFOLLOW in fcntl.h, */
 #include <fcntl.h>       /* AT_FDCWD, */
 #include <sys/types.h>   /* pid_t, */
-#include <sys/stat.h>
 #include <sys/inotify.h> /* IN_DONT_FOLLOW, */
 #include <assert.h>      /* assert(3), */
-#include <limits.h>    /* PATH_MAX, */
-#include <stddef.h>    /* intptr_t, */
-#include <errno.h>     /* errno(3), */
-#include <stdio.h>     /* fprintf(3), */
+#include <limits.h>      /* PATH_MAX, */
+#include <stddef.h>      /* intptr_t, */
+#include <errno.h>       /* errno(3), */
+#include <stdio.h>       /* fprintf(3), */
+#include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
+#include <sys/user.h>    /* struct user*, */
+#include <stdlib.h>      /* exit(3), */
 
 #include "syscall.h"
 #include "arch.h"  /* word_t, SYSCALL_AVOIDER, __NR_*, */
-#include "child.h" /* get_child_*(), set_child_sysarg(), copy_to_child(), */
+#include "child.h" /* copy_to_child(), */
 #include "path.h"  /* [de]translate_path(), */
+
+/**
+ * Specify the offset in the child's USER area of each register used
+ * for syscall argument passing. */
+size_t arg_offset[] = {
+	USER_REGS_OFFSET(REG_SYSARG_NUM),
+	USER_REGS_OFFSET(REG_SYSARG_1),
+	USER_REGS_OFFSET(REG_SYSARG_2),
+	USER_REGS_OFFSET(REG_SYSARG_3),
+	USER_REGS_OFFSET(REG_SYSARG_4),
+	USER_REGS_OFFSET(REG_SYSARG_5),
+	USER_REGS_OFFSET(REG_SYSARG_6),
+	USER_REGS_OFFSET(REG_SYSARG_RESULT),
+};
+
+/**
+ * Return the @sysarg argument of the current syscall in the
+ * child process @pid.
+ */
+word_t get_sysarg(pid_t pid, enum sysarg sysarg)
+{
+	word_t result;
+
+	/* Sanity checks. */
+	assert(sysarg >= SYSARG_FIRST);
+	assert(sysarg <= SYSARG_LAST);
+
+	/* Get the argument register from the child's USER area. */
+	result = ptrace(PTRACE_PEEKUSER, pid, arg_offset[sysarg], NULL);
+	if (errno != 0) {
+		perror("proot -- ptrace(PEEKUSER)");
+		exit(EXIT_FAILURE);
+	}
+
+	return result;
+}
+
+/**
+ * Set the @sysarg argument of the current syscall in the child
+ * process @pid to @value.
+ */
+static void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
+{
+	long status;
+
+	/* Sanity checks. */
+	assert(sysarg >= SYSARG_FIRST);
+	assert(sysarg <= SYSARG_LAST);
+
+	/* Set the argument register in the child's USER area. */
+	status = ptrace(PTRACE_POKEUSER, pid, arg_offset[sysarg], value);
+	if (status < 0) {
+		perror("proot -- ptrace(POKEUSER)");
+		exit(EXIT_FAILURE);
+	}
+}
 
 /**
  * Copie in @path a C string (PATH_MAX bytes max.) from the @pid
@@ -48,7 +106,7 @@ static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sy
 {
 	word_t size;
 	
-	size = get_child_string(pid, path, get_child_sysarg(pid, sysarg), PATH_MAX);
+	size = get_child_string(pid, path, get_sysarg(pid, sysarg), PATH_MAX);
 	if (size == (word_t)-1)
 		return -EFAULT;
 	if (size >= PATH_MAX)
@@ -56,16 +114,6 @@ static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sy
 
 	path[size] = '\0';
 	return size;
-}
-
-/**
- * A wrapper to honor the naming scheme regarding the function above.
- */
-static inline word_t get_sysarg_value(pid_t pid, enum sysarg sysarg)
-{
-	word_t value;
-	value = get_child_sysarg(pid, sysarg);
-	return value;
 }
 
 /**
@@ -98,7 +146,7 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 	}
 
 	/* Make this argument point to the new path. */
-	set_child_sysarg(pid, sysarg, child_ptr);
+	set_sysarg(pid, sysarg, child_ptr);
 
 	return PATH_MAX;
 }
@@ -141,7 +189,7 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 		return status;
 
 	/* Overwrite the path. */
-	child_ptr = get_sysarg_value(pid, sysarg);
+	child_ptr = get_sysarg(pid, sysarg);
 	status = copy_to_child(pid, child_ptr, new_path, status);
 	if (status < 0)
 		return -EFAULT;
@@ -547,7 +595,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_open:
-		flags = get_sysarg_value(pid, SYSARG_2);
+		flags = get_sysarg(pid, SYSARG_2);
 
 		if (   ((flags & O_NOFOLLOW) != 0)
 		    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
@@ -562,14 +610,14 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_fstatat64:
 	case __NR_newfstatat:
 	case __NR_utimensat:
-		dirfd = get_sysarg_value(pid, SYSARG_1);
+		dirfd = get_sysarg(pid, SYSARG_1);
 		status = get_sysarg_path(pid, path, SYSARG_2);
 		if (status < 0)
 			break;
 
 		flags = (sysnum == __NR_fchownat)
-			? get_sysarg_value(pid, SYSARG_5)
-			: get_sysarg_value(pid, SYSARG_4);
+			? get_sysarg(pid, SYSARG_5)
+			: get_sysarg(pid, SYSARG_4);
 
 		if (!AT_FD(dirfd, path)) {
 			if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
@@ -589,7 +637,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_mkdirat:
 	case __NR_mknodat:
 	case __NR_unlinkat:
-		dirfd = get_sysarg_value(pid, SYSARG_1);
+		dirfd = get_sysarg(pid, SYSARG_1);
 		status = get_sysarg_path(pid, path, SYSARG_2);
 		if (status < 0)
 			break;
@@ -601,7 +649,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_inotify_add_watch:
-		flags = get_sysarg_value(pid, SYSARG_3);
+		flags = get_sysarg(pid, SYSARG_3);
 
 		if ((flags & IN_DONT_FOLLOW) != 0)
 			status = translate_sysarg(pid, SYSARG_2, SYMLINK);
@@ -637,9 +685,9 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_linkat:
-		olddirfd = get_sysarg_value(pid, SYSARG_1);
-		newdirfd = get_sysarg_value(pid, SYSARG_3);
-		flags    = get_sysarg_value(pid, SYSARG_5);
+		olddirfd = get_sysarg(pid, SYSARG_1);
+		newdirfd = get_sysarg(pid, SYSARG_3);
+		flags    = get_sysarg(pid, SYSARG_5);
 
 		status1 = get_sysarg_path(pid, oldpath, SYSARG_2);
 		status2 = get_sysarg_path(pid, newpath, SYSARG_4);
@@ -711,8 +759,8 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_openat:
-		dirfd = get_sysarg_value(pid, SYSARG_1);
-		flags = get_sysarg_value(pid, SYSARG_3);
+		dirfd = get_sysarg(pid, SYSARG_1);
+		flags = get_sysarg(pid, SYSARG_3);
 
 		status = get_sysarg_path(pid, path, SYSARG_2);
 		if (status < 0)
@@ -739,7 +787,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_readlinkat:
-		dirfd = get_sysarg_value(pid, SYSARG_1);
+		dirfd = get_sysarg(pid, SYSARG_1);
 
 		status = get_sysarg_path(pid, path, SYSARG_2);
 		if (status < 0)
@@ -768,8 +816,8 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_renameat:
-		olddirfd = get_sysarg_value(pid, SYSARG_1);
-		newdirfd = get_sysarg_value(pid, SYSARG_3);
+		olddirfd = get_sysarg(pid, SYSARG_1);
+		newdirfd = get_sysarg(pid, SYSARG_3);
 
 		status1 = get_sysarg_path(pid, oldpath, SYSARG_2);
 		status2 = get_sysarg_path(pid, newpath, SYSARG_4);
@@ -816,7 +864,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_symlinkat:
-		newdirfd = get_sysarg_value(pid, SYSARG_2);
+		newdirfd = get_sysarg(pid, SYSARG_2);
 
 		status = get_sysarg_path(pid, newpath, SYSARG_3);
 		if (status < 0)
@@ -837,7 +885,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	/* Avoid the actual syscall if an error occured during the
 	 * translation. */
 	if (status < 0)
-		set_child_sysarg(pid, SYSARG_NUM, SYSCALL_AVOIDER);
+		set_sysarg(pid, SYSARG_NUM, SYSCALL_AVOIDER);
 
 	return status;
 }
@@ -855,7 +903,7 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 	/* Set the child's errno if an error occured previously during
 	 * the translation. */
 	if (status < 0)
-		set_child_sysarg(pid, SYSARG_RESULT, (word_t)status);
+		set_sysarg(pid, SYSARG_RESULT, (word_t)status);
 	
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
@@ -866,7 +914,7 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 	if (sysnum == __NR_getcwd) {
 		status = detranslate_sysarg(pid, SYSARG_1);
 		if (status < 0)
-			set_child_sysarg(pid, SYSARG_RESULT, (word_t)status);
+			set_sysarg(pid, SYSARG_RESULT, (word_t)status);
 	}
 }
 

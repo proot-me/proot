@@ -27,6 +27,30 @@
 
 #include "arch.h" /* word_t */
 
+enum sysarg {
+	/* Warning: sysarg_offset[] in child.c relies on this ordering. */
+	SYSARG_NUM = 0,
+	SYSARG_1,
+	SYSARG_2,
+	SYSARG_3,
+	SYSARG_4,
+	SYSARG_5,
+	SYSARG_6,
+	SYSARG_RESULT,
+
+	/* Helpers. */
+	SYSARG_FIRST = SYSARG_NUM,
+	SYSARG_LAST  = SYSARG_RESULT
+};
+
+/**
+ * Compute the offset of the register @reg_name in the USER area.
+ */
+#define USER_REGS_OFFSET(reg_name)			\
+	(offsetof(struct user, regs)			\
+	 + offsetof(struct user_regs_struct, reg_name))
+
+extern word_t get_sysarg(pid_t pid, enum sysarg sysarg);
 extern int translate_syscall_enter(pid_t pid, word_t sysnum);
 extern void translate_syscall_exit(pid_t pid, word_t sysnum, int status);
 
