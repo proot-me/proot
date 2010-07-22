@@ -345,8 +345,11 @@ int detranslate_path(char result[PATH_MAX], const char *path)
 		memmove(result, result + root_length, strlen(result));
 		result[new_length] = '\0';
 	}
-	else
+	else {
+		/* Special case when path == root. */
+		new_length = 1;
 		strcpy(result, "/");
+	}
 
 	return new_length + 1;
 }
