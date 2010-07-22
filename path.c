@@ -290,7 +290,7 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 		/* Ensure the current working directory is within the
 		 * new root once the child process did a chdir(2). */
 		if (strncmp(tmp, root, root_length) != 0) {
-			fprintf(stderr, "proot: the child %d is out of my control\n", pid);
+			fprintf(stderr, "proot: the child %d is out of my control (1)\n", pid);
 			return -EPERM;
 		}
 
@@ -318,7 +318,7 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 	/* Add a small sanity check. It doesn't prove PRoot is secure! */
 	if (deref_final != 0 && realpath(result, tmp) != NULL) {
 		if (strncmp(tmp, root, root_length) != 0) {
-			fprintf(stderr, "proot: the child %d is out of my control\n", pid);
+			fprintf(stderr, "proot: the child %d is out of my control (2)\n", pid);
 			return -EPERM;
 		}
 	}

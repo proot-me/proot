@@ -199,8 +199,8 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 
 /* Helper macros. */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
-#define REGULAR 0
-#define SYMLINK 1
+#define REGULAR 1
+#define SYMLINK 0
 
 /**
  * Check if the interpretation of @path relatively to the directory
