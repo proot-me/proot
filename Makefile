@@ -6,7 +6,7 @@ LDFLAGS  =
 
 ARCH     = `uname -m`
 
-OBJECTS = main.o child.o syscall.o translator.o
+OBJECTS = main.o child.o syscall.o path.o
 
 proot: $(OBJECTS)
 	$(LD) $(LDFLAGS) $(OBJECTS) -o $@

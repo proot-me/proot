@@ -23,7 +23,7 @@
  * Inspired by: strace.
  */
 
-#include <unistd.h>     /* fork(2), */
+#include <unistd.h>     /* fork(2), chdir(2), exec*(3), */
 #include <stdlib.h>     /* exit(3), EXIT_*, */
 #include <stdio.h>      /* puts(3), */
 #include <sys/wait.h>   /* wait(2), */
@@ -31,9 +31,9 @@
 #include <limits.h>     /* PATH_MAX, */
 #include <string.h>     /* strcmp(3), */
 
-#include "child.h"
-#include "translator.h" /* initialize_translator(), */
-#include "syscall.h"    /* translate_syscall_*(), */
+#include "child.h"    /* get_child_sysarg(), */
+#include "path.h"     /* init_path_translator(), */
+#include "syscall.h"  /* translate_syscall_*(), */
 
 static void print_usage()
 {
@@ -46,7 +46,6 @@ static void print_usage()
 int main(int argc, char *argv[])
 {
 	word_t sysnum;
-	word_t child_ptr;
 
 	int child_status;
 	long status;
@@ -59,7 +58,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	initialize_translator(argv[1]);
+	init_path_translator(argv[1]);
 
 	pid = fork();
 	switch(pid) {
@@ -77,6 +76,25 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
+		/* Ensure the child starts in a valid cwd within the
+		 * new root. */
+		status = chdir(argv[1]);
+		if (status < 0) {
+			perror("proot -- chdir()");
+			exit(EXIT_FAILURE);
+		}
+		status = setenv("PWD", "/", 1);
+		if (status < 0) {
+			perror("proot -- setenv()");
+			exit(EXIT_FAILURE);
+		}
+		status = setenv("OLDPWD", "/", 1);
+		if (status < 0) {
+			perror("proot -- setenv()");
+			exit(EXIT_FAILURE);
+		}
+
+		/* Here we go! */
 		status = execvp(argv[2], argv + 2);
 		perror("proot -- execvp()");
 		exit(EXIT_FAILURE);
@@ -107,9 +125,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	signal    = 0;
-	sysnum    = -1;
-	child_ptr = 0;
+	signal = 0;
+	sysnum = -1;
 	while (1) {
 		/* Restart the child and stop it at the next
 		 * entry or exit of a system call. */

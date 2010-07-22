@@ -25,6 +25,8 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
 
+#include "arch.h" /* word_t */
+
 extern int translate_syscall_enter(pid_t pid, word_t sysnum);
 extern void translate_syscall_exit(pid_t pid, word_t sysnum, int status);
 

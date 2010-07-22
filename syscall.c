@@ -29,15 +29,15 @@
 #include <sys/stat.h>
 #include <sys/inotify.h> /* IN_DONT_FOLLOW, */
 #include <assert.h>      /* assert(3), */
-
 #include <limits.h>    /* PATH_MAX, */
 #include <stddef.h>    /* intptr_t, */
 #include <errno.h>     /* errno(3), */
 #include <stdio.h>     /* fprintf(3), */
 
-#include "arch.h"      /* word_t, SYSCALL_UNIMPLEMENTED, __NR_*, */
-#include "child.h"
-#include "translator.h"
+#include "syscall.h"
+#include "arch.h"  /* word_t, SYSCALL_AVOIDER, __NR_*, */
+#include "child.h" /* get_child_*(), set_child_sysarg(), copy_to_child(), */
+#include "path.h"  /* [de]translate_path(), */
 
 /**
  * Copie in @path a C string (PATH_MAX bytes max.) from the @pid
@@ -71,9 +71,10 @@ static inline word_t get_sysarg_value(pid_t pid, enum sysarg sysarg)
 /**
  * Translate @path and puts the result in the @pid child's memory
  * address space pointed to by the @sysarg argument of the current
- * syscall. See the documentation of translate() about the meaning of
- * @deref_final. This function returns -errno if an error occured,
- * otherwise it returns the size in bytes "allocated" into the stack.
+ * syscall. See the documentation of translate_path() about the
+ * meaning of @deref_final. This function returns -errno if an error
+ * occured, otherwise it returns the size in bytes "allocated" into
+ * the stack.
  */
 static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sysarg, int deref_final)
 {
@@ -82,7 +83,7 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 	int status;
 
 	/* Translate the original path. */
-	status = translate(new_path, path, deref_final);
+	status = translate_path(pid, new_path, path, deref_final);
 	if (status < 0)
 		return status;
 
@@ -120,8 +121,7 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
 
 /**
  * Detranslate the current @sysarg syscall argument of the child
- * @pid. See the documentation of translate() about the meaning of
- * @deref_final.
+ * @pid.
  */
 static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 {
@@ -136,7 +136,7 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 		return status;
 
 	/* Removes the leading "root" part. */
-	status = detranslate(new_path, old_path);
+	status = detranslate_path(new_path, old_path);
 	if (status < 0)
 		return status;
 
@@ -167,7 +167,7 @@ static int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_fi
 {
 	assert(AT_FD(dirfd, path));
 
-	fprintf(stderr, "proot -- *at() syscalls are not yet implemented\n");
+	fprintf(stderr, "proot: *at() syscalls are not yet implemented\n");
 	return -ENOSYS;
 }
 

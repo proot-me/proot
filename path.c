@@ -23,7 +23,7 @@
  * Inspired by: realpath() from the GNU C Library.
  */
 
-#include <unistd.h>   /* readlink(2), lstat(2), readlink(2), getwd(3), */
+#include <unistd.h>   /* readlink(2), lstat(2), readlink(2) */
 #include <assert.h>   /* assert(3), */
 #include <string.h>   /* strcmp(3), strcpy(3), strncpy(3), memmove(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -34,13 +34,17 @@
 #include <sys/param.h> /* MAXSYMLINKS, */
 #include <stddef.h>   /* ptrdiff_t, */
 #include <stdio.h>    /* perror(3), */
+#include <sys/types.h> /* pid_t, */
+
+#include "path.h"
+#include "child.h" /* get_child_cwd(), */
 
 static int  initialized = 0;
 static char root[PATH_MAX];
 static size_t root_length;
 
-/* Tnitialize internal data of the translator. */
-void initialize_translator(const char *new_root)
+/* Tnitialize internal data of the path translator. */
+void init_path_translator(const char *new_root)
 {
 	if (realpath(new_root, root) == NULL) {
 		perror("proot -- realpath()");
@@ -270,7 +274,7 @@ static int canonicalize(const char *fake_path,
  * working directory. See the documentation of canonicalize() for the
  * meaning of @deref_final.
  */
-int translate(char result[PATH_MAX], const char *fake_path, int deref_final)
+int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final)
 {
 	char tmp[PATH_MAX];
 	int status;
@@ -279,27 +283,32 @@ int translate(char result[PATH_MAX], const char *fake_path, int deref_final)
 
 	/* Check whether it is an sbolute path or not. */
 	if (fake_path[0] != '/') {
-		if (getcwd(tmp, PATH_MAX) == NULL)
-			return -errno;
+		status = get_child_cwd(pid, tmp);
+		if (status < 0)
+			return status;
 
-		/* Ensure the current working directory is within the real root. */
-		assert(strncmp(tmp, root, root_length) == 0);
+		/* Ensure the current working directory is within the
+		 * new root once the child process did a chdir(2). */
+		if (strncmp(tmp, root, root_length) != 0) {
+			fprintf(stderr, "proot: the child %d is out of my control\n", pid);
+			return -EPERM;
+		}
 
 		strcpy(result, tmp + root_length);
 
-		/* Special case when cwd == root. */
+		/* Special case when child's cwd == root. */
 		if (result[0] == '\0')
 			strcpy(result, "/");
 	}
 	else
 		strcpy(result, "/");
 
-	/* Canonicalize regarding the real root. */
+	/* Canonicalize regarding the new root. */
 	status = canonicalize(fake_path, deref_final, result, 0);
 	if (status != 0)
 		return status;
 
-	/* Finally append the real root and the result of the
+	/* Finally append the new root and the result of the
 	 * canonicalization. */
 	strcpy(tmp, result);
 	status = join_paths(2, result, root, tmp);
@@ -314,12 +323,12 @@ int translate(char result[PATH_MAX], const char *fake_path, int deref_final)
  * and copies the result in @result. It returns the number in bytes of
  * the string, including the end-of-string terminator.
  */
-int detranslate(char result[PATH_MAX], const char *path)
+int detranslate_path(char result[PATH_MAX], const char *path)
 {
 	size_t length = 0;
 	size_t new_length = 0;
 
-	/* Ensure the path directory is within the real root. */
+	/* Ensure the path is within the new root. */
 	if (strncmp(path, root, root_length) != 0)
 		return -EPERM;
 

@@ -25,8 +25,8 @@
 #ifndef TRANSLATOR_H
 #define TRANSLATOR_H
 
-extern void initialize_translator(const char *new_root);
-extern int translate(char result[PATH_MAX], const char *fake_path, int deref_final);
-extern int detranslate(char result[PATH_MAX], const char *fake_path);
+extern void init_path_translator(const char *new_root);
+extern int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final);
+extern int detranslate_path(char result[PATH_MAX], const char *fake_path);
 
 #endif /* TRANSLATOR_H */
