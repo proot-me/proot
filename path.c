@@ -180,7 +180,8 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
  * doing. This function returns -errno if an error occured, otherwise
  * it returns 0.
  */
-static int canonicalize(const char *fake_path,
+static int canonicalize(pid_t pid,
+			const char *fake_path,
 			int deref_final,
 			char result[PATH_MAX],
 			unsigned int nb_readlink)
@@ -226,6 +227,17 @@ static int canonicalize(const char *fake_path,
 			continue;
 		}
 
+		/* Very special case: substitute "/proc/self" with "/proc/$pid". */
+		if (   strcmp(component, "self") == 0
+		    && strcmp(result, "/proc")   == 0
+		    && (!is_final || deref_final)) {
+			status = sprintf(component, "%d", pid);
+			if (status < 0)
+				return -EPERM;
+			if (status >= sizeof(component))
+				return -EPERM;
+		}
+
 		status = join_paths(3, real_entry, root, result, component);
 		if (status != 0)
 			return status;
@@ -260,7 +272,7 @@ static int canonicalize(const char *fake_path,
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
 		   absolute link so it is relative to 'result'. */
-		status = canonicalize(tmp, 1, result, ++nb_readlink);
+		status = canonicalize(pid, tmp, 1, result, ++nb_readlink);
 		if (status != 0)
 			return status;
 	}
@@ -304,7 +316,7 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 		strcpy(result, "/");
 
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(fake_path, deref_final, result, 0);
+	status = canonicalize(pid, fake_path, deref_final, result, 0);
 	if (status != 0)
 		return status;
 
