@@ -315,6 +315,14 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 	if (status != 0)
 		return status;
 
+	/* Add a small sanity check. It doesn't prove PRoot is secure! */
+	if (deref_final != 0 && realpath(result, tmp) != NULL) {
+		if (strncmp(tmp, root, root_length) != 0) {
+			fprintf(stderr, "proot: the child %d is out of my control\n", pid);
+			return -EPERM;
+		}
+	}
+
 	return 0;
 }
 
