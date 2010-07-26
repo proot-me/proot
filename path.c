@@ -55,17 +55,29 @@ void init_path_translator(const char *new_root)
 	initialized = 1;
 }
 
+#define FINAL_NORMAL    1
+#define FINAL_FORCE_DIR 2
+
 /**
  * Copy in @component the first path component pointed to by @cursor,
  * this later is updated to point to the next component for a further
- * call. Also, this function set @is_final to true if it is the last
- * component of the path. This function returns -errno if an error
+ * call. Also, this function set @is_final to:
+ *
+ *     - FINAL_FORCE_DIR if it the last component of the path but we
+ *       really expect a directory.
+ *
+ *     - FINAL_NORMAL if it the last component of the path.
+ *
+ *     - 0 otherwise.
+ *
+ * This function returns -errno if an error
  * occured, otherwise it returns 0.
  */
 static inline int next_component(char component[NAME_MAX], const char **cursor, int *is_final)
 {
 	const char *start;
 	ptrdiff_t length;
+	int want_dir;
 
 	/* Sanity checks. */
 	assert(component != NULL);
@@ -89,11 +101,18 @@ static inline int next_component(char component[NAME_MAX], const char **cursor, 
 	strncpy(component, start, length);
 	component[length] = '\0';
 
+	/* Chec if a [link to a] directory is expected. */
+	want_dir = (**cursor == '/');
+
 	/* Skip trailing path separators. */
 	while (**cursor != '\0' && **cursor == '/')
 		(*cursor)++;
 
-	*is_final = (**cursor == '\0');
+	if (**cursor == '\0')
+		*is_final = (want_dir
+			     ? FINAL_FORCE_DIR
+			     : FINAL_NORMAL);
+
 	return 0;
 }
 
@@ -187,7 +206,9 @@ static int canonicalize(pid_t pid,
 			unsigned int nb_readlink)
 {
 	const char *cursor;
+	char tmp[PATH_MAX];
 	int is_final;
+	int status;
 
 	/* Avoid infinite loop on circular links. */
 	if (nb_readlink > MAXSYMLINKS)
@@ -211,9 +232,7 @@ static int canonicalize(pid_t pid,
 	while (!is_final) {
 		char component[NAME_MAX];
 		char real_entry[PATH_MAX];
-		char tmp[PATH_MAX];
 		struct stat statl;
-		int status;
 
 		status = next_component(component, &cursor, &is_final);
 		if (status != 0)
@@ -227,7 +246,8 @@ static int canonicalize(pid_t pid,
 			continue;
 		}
 
-		/* Very special case: substitute "/proc/self" with "/proc/$pid". */
+		/* Very special case: substitute "/proc/self" with "/proc/$pid".
+		   The following check covers onty 99.999% of the cases. */
 		if (   strcmp(component, "self") == 0
 		    && strcmp(result, "/proc")   == 0
 		    && (!is_final || deref_final)) {
@@ -250,7 +270,9 @@ static int canonicalize(pid_t pid,
 		   later condition does not apply to intermediate path
 		   components. Errors are explicitly ignored since
 		   they should be handled by the caller. */
-		if (status < 0 || !S_ISLNK(statl.st_mode) || (is_final && !deref_final)) {
+		if (status < 0
+		    || !S_ISLNK(statl.st_mode)
+		    || (is_final == FINAL_NORMAL && !deref_final)) {
 			strcpy(tmp, result);
 			status = join_paths(2, result, tmp, component);
 			if (status != 0)
@@ -269,10 +291,22 @@ static int canonicalize(pid_t pid,
 		else
 			tmp[status] = '\0';
 
+		/* Remove the leading "root" part if needed, it's
+		 * usefull for "/proc/self/cwd/" for instance. */
+		detranslate_path(real_entry, tmp, 0);
+
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
 		   absolute link so it is relative to 'result'. */
-		status = canonicalize(pid, tmp, 1, result, ++nb_readlink);
+		status = canonicalize(pid, real_entry, 1, result, ++nb_readlink);
+		if (status != 0)
+			return status;
+	}
+
+	/* Ensure we are accessing a directory. */
+	if (is_final == FINAL_FORCE_DIR) {
+		strcpy(tmp, result);
+		status = join_paths(2, result, tmp, ".");
 		if (status != 0)
 			return status;
 	}
@@ -339,11 +373,11 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 }
 
 /**
- * Removes the leading "root" part of a previously translated @path
- * and copies the result in @result. It returns 0 if the leading part
- * was not the "root" (@path is copied as-is into @result), otherwise
- * it returns the size in bytes of @result, including the
- * end-of-string terminator. On error it returns -errno.
+ * Remove the leading "root" part of a previously translated @path and
+ * copies the result in @result. It returns 0 if the leading part was
+ * not the "root" (@path is copied as-is into @result), otherwise it
+ * returns the size in bytes of @result, including the end-of-string
+ * terminator. On error it returns -errno.
  */
 int detranslate_path(char result[PATH_MAX], const char path[PATH_MAX], int sanity_check)
 {
