@@ -774,7 +774,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		if (status < 0)
 			break;
 
-		if (path != NULL && (path[0] == '/' || path[0] == '.'))
+		if (path[0] == '/' || path[0] == '.')
 			status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
 		else
 			status = 0;
