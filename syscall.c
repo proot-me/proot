@@ -35,6 +35,7 @@
 #include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
 #include <sys/user.h>    /* struct user*, */
 #include <stdlib.h>      /* exit(3), */
+#include <string.h>      /* strlen(3), */
 
 #include "syscall.h"
 #include "arch.h"  /* word_t, SYSCALL_AVOIDER, __NR_*, */
@@ -169,7 +170,8 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
 
 /**
  * Detranslate the current @sysarg syscall argument of the child
- * @pid.
+ * @pid. It returns the number of bytes used by the path pointed to by
+ * @sysarg, including the string terminator.
  */
 static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int weak)
 {
@@ -190,7 +192,7 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int weak)
 
 	/* The original path doesn't need detranslation. */
 	if (status == 0)
-		return 0;
+		goto skip_overwrite;
 
 	/* Overwrite the path. */
 	child_ptr = get_sysarg(pid, sysarg);
@@ -198,7 +200,8 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int weak)
 	if (status < 0)
 		return -EFAULT;
 
-	return 0;
+skip_overwrite:
+	return strlen(new_path) + 1;
 }
 
 /* Helper macros. */
@@ -920,14 +923,23 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 	switch (sysnum) {
 	case __NR_getcwd:
 		status = detranslate_sysarg(pid, SYSARG_1, STRONG);
+		if (status < 0)
+			break;
+		set_sysarg(pid, SYSARG_RESULT, (word_t)status);
 		break;
 
 	case __NR_readlink:
 		status = detranslate_sysarg(pid, SYSARG_2, WEAK);
+		if (status < 0)
+			break;
+		set_sysarg(pid, SYSARG_RESULT, (word_t)status - 1);
 		break;
 
 	case __NR_readlinkat:
 		status = detranslate_sysarg(pid, SYSARG_3, WEAK);
+		if (status < 0)
+			break;
+		set_sysarg(pid, SYSARG_RESULT, (word_t)status - 1);
 		break;
 
 	default:
