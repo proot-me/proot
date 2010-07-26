@@ -173,15 +173,26 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
  * @pid. It returns the number of bytes used by the path pointed to by
  * @sysarg, including the string terminator.
  */
-static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int weak)
+static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, word_t size, int weak)
 {
 	char new_path[PATH_MAX];
 	char old_path[PATH_MAX];
 	word_t child_ptr;
 	int status;
 
-	/* Translate the original path. */
-	status = get_sysarg_path(pid, old_path, sysarg);
+	/* Extract the original path, be careful since some syscalls
+	 * readlink*(2) do not put an string terminator. */
+	if (size >= PATH_MAX) {
+		return -ENAMETOOLONG;
+	}
+	else if (size >= 0) {
+		status = copy_from_child(pid, old_path, get_sysarg(pid, sysarg), size);
+		old_path[size] = '\0';
+	}
+	else {
+		status = get_sysarg_path(pid, old_path, sysarg);
+	}
+
 	if (status < 0)
 		return status;
 
@@ -909,6 +920,8 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
  */
 void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 {
+	word_t size;
+
 	/* Set the child's errno if an error occured previously during
 	 * the translation. */
 	if (status < 0)
@@ -922,21 +935,23 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 	/* Translate output arguments. */
 	switch (sysnum) {
 	case __NR_getcwd:
-		status = detranslate_sysarg(pid, SYSARG_1, STRONG);
+		status = detranslate_sysarg(pid, SYSARG_1, -1, STRONG);
 		if (status < 0)
 			break;
 		set_sysarg(pid, SYSARG_RESULT, (word_t)status);
 		break;
 
 	case __NR_readlink:
-		status = detranslate_sysarg(pid, SYSARG_2, WEAK);
+		size = get_sysarg(pid, SYSARG_RESULT);
+		status = detranslate_sysarg(pid, SYSARG_2, size, WEAK);
 		if (status < 0)
 			break;
 		set_sysarg(pid, SYSARG_RESULT, (word_t)status - 1);
 		break;
 
 	case __NR_readlinkat:
-		status = detranslate_sysarg(pid, SYSARG_3, WEAK);
+		size = get_sysarg(pid, SYSARG_RESULT);
+		status = detranslate_sysarg(pid, SYSARG_3, size, WEAK);
 		if (status < 0)
 			break;
 		set_sysarg(pid, SYSARG_RESULT, (word_t)status - 1);

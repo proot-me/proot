@@ -5,7 +5,7 @@ PROOT=../proot
 
 .PHONY: bug*
 
-check: bug-0001 bug-0002 bug-0003
+check: bug-0001 bug-0002 bug-0003 bug-0004
 
 # Detranslate links pointing absolutely within the new root.
 bug-0001:
@@ -18,3 +18,7 @@ bug-0002:
 bug-0003:
 	$(CC) $@.c -o $@
 	$(PROOT) $(NEW_ROOT) $(PWD)/$@
+
+bug-0004:
+	$(CC) $@.c -o $@
+	$(PROOT) $(NEW_ROOT) $(PWD)/$@ | grep -- "^->$(PWD)/$@<-$$"

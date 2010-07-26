@@ -133,6 +133,54 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 }
 
 /**
+ * Copy @size bytes to the buffer @dest_parent from the address
+ * @src_child within the memory space of the child process @pid. It
+ * return -1 if an error occured, otherwise 0.
+ */
+int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
+{
+	word_t *src  = (word_t *)src_child;
+	word_t *dest = (word_t *)dest_parent;
+
+	word_t nb_trailing_bytes;
+	word_t nb_full_words;
+	word_t word, i, j;
+
+	unsigned char *last_src_word;
+	unsigned char *last_dest_word;
+
+	nb_trailing_bytes = size % sizeof(word_t);
+	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
+
+	/* Copy one word by one word, except for the last one. */
+	for (i = 0; i < nb_full_words; i++) {
+		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+		if (errno != 0) {
+			perror("proot -- ptrace(PEEKDATA)");
+			return -1;
+		}
+		dest[i] = word;
+	}
+
+	/* Copy the bytes from the last word carefully since we have
+	 * to not overwrite the bytes lying beyond the @to buffer. */
+
+	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+	if (errno != 0) {
+		perror("proot -- ptrace(PEEKDATA)");
+		return -1;
+	}
+
+	last_dest_word = (unsigned char *)&dest[i];
+	last_src_word  = (unsigned char *)&word;
+
+	for (j = 0; j < nb_trailing_bytes; j++)
+		last_dest_word[j] = last_src_word[j];
+
+	return 0;
+}
+
+/**
  * Copy to @dest_parent at most @max_size bytes from the string
  * pointed to by @src_child within the memory space of the child
  * process @pid. This function returns (word_t)-1 on error, otherwise
