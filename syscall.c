@@ -170,10 +170,12 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
 
 /**
  * Detranslate the current @sysarg syscall argument of the child
- * @pid. It returns the number of bytes used by the path pointed to by
- * @sysarg, including the string terminator.
+ * @pid. If @size if greater or equal to 0, the argument is considered
+ * as a buffer of @size bytes, that is, the C string terminator is
+ * ignored. It returns the number of bytes used by the path pointed to
+ * by @sysarg, including the string terminator.
  */
-static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, word_t size, int weak)
+static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weak)
 {
 	char new_path[PATH_MAX];
 	char old_path[PATH_MAX];
