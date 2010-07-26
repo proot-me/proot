@@ -891,9 +891,9 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 			break;
 
 		if (!AT_FD(newdirfd, newpath))
-			status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
+			status = translate_path2sysarg(pid, newpath, SYSARG_2, REGULAR);
 		else
-			status = check_path_at(pid, newdirfd, path, REGULAR);
+			status = check_path_at(pid, newdirfd, newpath, REGULAR);
 		break;
 
 	default:
