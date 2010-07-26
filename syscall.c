@@ -171,7 +171,7 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
  * Detranslate the current @sysarg syscall argument of the child
  * @pid.
  */
-static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
+static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int weak)
 {
 	char new_path[PATH_MAX];
 	char old_path[PATH_MAX];
@@ -184,9 +184,13 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 		return status;
 
 	/* Removes the leading "root" part. */
-	status = detranslate_path(new_path, old_path);
+	status = detranslate_path(new_path, old_path, weak);
 	if (status < 0)
 		return status;
+
+	/* The original path doesn't need detranslation. */
+	if (status == 0)
+		return 0;
 
 	/* Overwrite the path. */
 	child_ptr = get_sysarg(pid, sysarg);
@@ -201,6 +205,8 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg)
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
 #define REGULAR 1
 #define SYMLINK 0
+#define STRONG  1
+#define WEAK    0
 
 /**
  * Check if the interpretation of @path relatively to the directory
@@ -911,10 +917,23 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 		resize_child_stack(pid, -status);
 
 	/* Translate output arguments. */
-	if (sysnum == __NR_getcwd) {
-		status = detranslate_sysarg(pid, SYSARG_1);
-		if (status < 0)
-			set_sysarg(pid, SYSARG_RESULT, (word_t)status);
-	}
-}
+	switch (sysnum) {
+	case __NR_getcwd:
+		status = detranslate_sysarg(pid, SYSARG_1, STRONG);
+		break;
 
+	case __NR_readlink:
+		status = detranslate_sysarg(pid, SYSARG_2, WEAK);
+		break;
+
+	case __NR_readlinkat:
+		status = detranslate_sysarg(pid, SYSARG_3, WEAK);
+		break;
+
+	default:
+		return;
+	}
+
+	if (status < 0)
+		set_sysarg(pid, SYSARG_RESULT, (word_t)status);
+}

@@ -340,29 +340,32 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 
 /**
  * Removes the leading "root" part of a previously translated @path
- * and copies the result in @result. It returns the number in bytes of
- * the string, including the end-of-string terminator.
+ * and copies the result in @result. It returns 0 if the leading part
+ * was not the "root" (@path is copied as-is into @result), otherwise
+ * it returns the size in bytes of @result, including the
+ * end-of-string terminator. On error it returns -errno.
  */
-int detranslate_path(char result[PATH_MAX], const char *path)
+int detranslate_path(char result[PATH_MAX], const char path[PATH_MAX], int sanity_check)
 {
-	size_t length = 0;
-	size_t new_length = 0;
+	int new_length;
 
 	/* Ensure the path is within the new root. */
-	if (strncmp(path, root, root_length) != 0)
-		return -EPERM;
-
-	strcpy(result, path);
-	length = strlen(result);
-
-	/* Ensure it fits into the result buffer. */
-	new_length = length - root_length;
-	if (new_length >= PATH_MAX)
-		return -ENAMETOOLONG;
+	if (strncmp(path, root, root_length) != 0) {
+		if (sanity_check != 0)
+			return -EPERM;
+		else {
+			/* Copy the path as-is otherwise. */
+			if (strlen(path) >= PATH_MAX)
+				return -ENAMETOOLONG;
+			strncpy(result, path, PATH_MAX);
+			return 0;
+		}
+	}
 
 	/* Remove the leading part, that is, the "root". */
+	new_length = strlen(path) - root_length;
 	if (new_length != 0) {
-		memmove(result, result + root_length, strlen(result));
+		memmove(result, path + root_length, new_length);
 		result[new_length] = '\0';
 	}
 	else {

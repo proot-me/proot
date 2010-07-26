@@ -27,6 +27,6 @@
 
 extern void init_path_translator(const char *new_root);
 extern int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final);
-extern int detranslate_path(char result[PATH_MAX], const char *fake_path);
+extern int detranslate_path(char result[PATH_MAX], const char *fake_path, int sanity_check);
 
 #endif /* TRANSLATOR_H */
