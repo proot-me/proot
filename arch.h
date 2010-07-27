@@ -40,6 +40,20 @@ typedef unsigned long word_t;
 	#define REG_SYSARG_RESULT	rax
 	#define REG_SP		rsp
         #include "sysnum-x86_64.h" /* __NR_*, */
+#elif defined(armv5tel)
+	#warning "Untested architecture"
+	#define arm
+	#define REG_SYSARG_NUM		uregs[7]
+	#define REG_SYSARG_1		uregs[0]
+	#define REG_SYSARG_2		uregs[1]
+	#define REG_SYSARG_3		uregs[2]
+	#define REG_SYSARG_4		uregs[3]
+	#define REG_SYSARG_5		uregs[4]
+	#define REG_SYSARG_6		uregs[5]
+	#define REG_SYSARG_RESULT	uregs[6]
+	#define REG_SP			uregs[13]
+	#include "sysnum-arm.h" /* __NR_*, */
+	#define user_regs_struct        user_regs
 #elif defined(i386) || defined(i486) || defined(i586) || defined(i686)
 	#warning "Untested architecture"
 	#define REG_SYSARG_NUM	orig_eax

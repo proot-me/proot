@@ -584,6 +584,15 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_write:
 	case __NR_writev:
 	case __NR_getcwd:
+
+#ifdef arm
+	case __ARM_NR_breakpoint:
+	case __ARM_NR_cacheflush:
+	case __ARM_NR_set_tls:
+	case __ARM_NR_usr26:
+	case __ARM_NR_usr32:
+#endif /* arm */
+
 		/* Nothing to do. */
 		status = 0;
 		break;

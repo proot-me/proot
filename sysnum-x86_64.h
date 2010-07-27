@@ -1,9 +1,8 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file was generated thansk to the following command:
+ * This file was generated thanks to the following command:
  *
  *     cpp -dM /usr/include/asm/unistd.h | grep '^#define __NR_'
- *
  */
 
 #ifndef SYSNUM_X86_64_H
@@ -312,7 +311,7 @@
 
 /*
  * These following syscalls do not exist on x86_64, this list was
- * generated thansk to:
+ * generated thanks to:
  *
  *    make 2>&1 | grep undeclared | grep __NR_
  */
