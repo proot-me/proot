@@ -28,7 +28,8 @@
 typedef unsigned long word_t;
 #define SYSCALL_AVOIDER __NR_security /* Ironic, isn't it? ;) */
 
-/* Specify the ABI registers (syscall argument passing, stack pointer). */
+/* Specify the ABI registers (syscall argument passing, stack pointer).
+ * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */
 #if defined(x86_64)
 	#define REG_SYSARG_NUM	orig_rax
 	#define REG_SYSARG_1	rdi
@@ -67,17 +68,17 @@ typedef unsigned long word_t;
 	#define REG_SP		esp
         #include "sysnum-i386.h" /* __NR_*, */
 #elif defined(sh4)
-	#warning "Untested architecture"
-	#define REG_SYSARG_NUM	r4
-	#define REG_SYSARG_1	r5
-	#define REG_SYSARG_2	r6
-	#define REG_SYSARG_3	r7
-	#define REG_SYSARG_4	r0
-	#define REG_SYSARG_5	r1
-	#define REG_SYSARG_6	r2
-	#define REG_SYSARG_RESULT	r0
-	#define REG_SP		r15
+	#define REG_SYSARG_NUM		regs[3]
+	#define REG_SYSARG_1		regs[4]
+	#define REG_SYSARG_2		regs[5]
+	#define REG_SYSARG_3		regs[6]
+	#define REG_SYSARG_4		regs[7]
+	#define REG_SYSARG_5		regs[0]
+	#define REG_SYSARG_6		regs[1]
+	#define REG_SYSARG_RESULT	regs[0]
+	#define REG_SP			regs[15]
         #include "sysnum-sh4.h" /* __NR_*, */
+	#define user_regs_struct        pt_regs
 #else
 	#error "Unsupported architecture"
 #endif
