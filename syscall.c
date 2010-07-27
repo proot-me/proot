@@ -954,25 +954,38 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 	/* Translate output arguments. */
 	switch (sysnum) {
 	case __NR_getcwd:
+		size = get_sysarg(pid, SYSARG_RESULT);
+		if ((int)size < 0)
+			return;
+
 		status = detranslate_sysarg(pid, SYSARG_1, -1, STRONG);
 		if (status < 0)
 			break;
+
 		set_sysarg(pid, SYSARG_RESULT, (word_t)status);
 		break;
 
 	case __NR_readlink:
 		size = get_sysarg(pid, SYSARG_RESULT);
+		if ((int)size < 0)
+			return;
+
 		status = detranslate_sysarg(pid, SYSARG_2, size, WEAK);
 		if (status < 0)
 			break;
+
 		set_sysarg(pid, SYSARG_RESULT, (word_t)status - 1);
 		break;
 
 	case __NR_readlinkat:
 		size = get_sysarg(pid, SYSARG_RESULT);
+		if ((int)size < 0)
+			return;
+
 		status = detranslate_sysarg(pid, SYSARG_3, size, WEAK);
 		if (status < 0)
 			break;
+
 		set_sysarg(pid, SYSARG_RESULT, (word_t)status - 1);
 		break;
 
