@@ -21,4 +21,4 @@ bug-0003:
 
 bug-0004:
 	$(CC) $@.c -o $@
-	$(PROOT) $(NEW_ROOT) $(PWD)/$@ | grep -- "^->$(PWD)/$@<-$$"
+	$(PROOT) $(NEW_ROOT) $(PWD)/$@
