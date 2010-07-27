@@ -235,7 +235,7 @@ static int canonicalize(pid_t pid,
 		struct stat statl;
 
 		status = next_component(component, &cursor, &is_final);
-		if (status != 0)
+		if (status < 0)
 			return status;
 
 		if (strcmp(component, ".") == 0)
@@ -259,7 +259,7 @@ static int canonicalize(pid_t pid,
 		}
 
 		status = join_paths(3, real_entry, root, result, component);
-		if (status != 0)
+		if (status < 0)
 			return status;
 
 		status = lstat(real_entry, &statl);
@@ -275,7 +275,7 @@ static int canonicalize(pid_t pid,
 		    || (is_final == FINAL_NORMAL && !deref_final)) {
 			strcpy(tmp, result);
 			status = join_paths(2, result, tmp, component);
-			if (status != 0)
+			if (status < 0)
 				return status;
 			continue;
 		}
@@ -307,7 +307,7 @@ static int canonicalize(pid_t pid,
 	if (is_final == FINAL_FORCE_DIR) {
 		strcpy(tmp, result);
 		status = join_paths(2, result, tmp, ".");
-		if (status != 0)
+		if (status < 0)
 			return status;
 	}
 
@@ -358,7 +358,7 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 	 * canonicalization. */
 	strcpy(tmp, result);
 	status = join_paths(2, result, root, tmp);
-	if (status != 0)
+	if (status < 0)
 		return status;
 
 	/* Add a small sanity check. It doesn't prove PRoot is secure! */
