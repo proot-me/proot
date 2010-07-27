@@ -32,4 +32,5 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 
+	exit(EXIT_SUCCESS);
 }

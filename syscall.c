@@ -186,21 +186,18 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weak)
 	word_t child_ptr;
 	int status;
 
+	assert(size >= 0);
+
 	/* Extract the original path, be careful since some syscalls
 	 * like readlink*(2) do not put a C string terminator. */
-	if (size >= PATH_MAX) {
+	if (size >= PATH_MAX)
 		return -ENAMETOOLONG;
-	}
-	else if (size >= 0) {
-		status = copy_from_child(pid, old_path, get_sysarg(pid, sysarg), size);
-		old_path[size] = '\0';
-	}
-	else {
-		status = get_sysarg_path(pid, old_path, sysarg);
-	}
 
+	status = copy_from_child(pid, old_path, get_sysarg(pid, sysarg), size);
 	if (status < 0)
 		return status;
+
+	old_path[size] = '\0';
 
 	/* Removes the leading "root" part. */
 	status = detranslate_path(new_path, old_path, weak);
@@ -958,7 +955,7 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 		if ((int)size < 0)
 			return;
 
-		status = detranslate_sysarg(pid, SYSARG_1, -1, STRONG);
+		status = detranslate_sysarg(pid, SYSARG_1, size, STRONG);
 		if (status < 0)
 			break;
 
