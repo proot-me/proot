@@ -130,6 +130,7 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 	char new_path[PATH_MAX];
 	word_t child_ptr;
 	int status;
+	int size;
 
 	/* Translate the original path. */
 	status = translate_path(pid, new_path, path, deref_final);
@@ -137,21 +138,22 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 		return status;
 
 	/* Allocate space into the child's stack to host the new path. */
-	child_ptr = resize_child_stack(pid, PATH_MAX);
+	size = strlen(new_path) + 1;
+	child_ptr = resize_child_stack(pid, size);
 	if (child_ptr == 0)
 		return -EFAULT;
 
 	/* Copy the new path into the previously allocated space. */
-	status = copy_to_child(pid, child_ptr, new_path, PATH_MAX);
+	status = copy_to_child(pid, child_ptr, new_path, size);
 	if (status < 0) {
-		(void) resize_child_stack(pid, -PATH_MAX);
+		(void) resize_child_stack(pid, -size);
 		return status;
 	}
 
 	/* Make this argument point to the new path. */
 	set_sysarg(pid, sysarg, child_ptr);
 
-	return PATH_MAX;
+	return size;
 }
 
 /**
