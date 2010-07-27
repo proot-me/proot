@@ -219,28 +219,11 @@ skip_overwrite:
 }
 
 /* Helper macros. */
-#define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
 #define REGULAR 1
 #define SYMLINK 0
+
 #define STRONG  1
 #define WEAK    0
-
-/**
- * Check if the interpretation of @path relatively to the directory
- * referred to by the file descriptor @dirfd lands within the new
- * "root".
- *
- * This function can't be called when AT_FD(@dirfd, @path) is false.
- * 
- * Not yet implemented.
- */
-static int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
-{
-	assert(AT_FD(dirfd, path));
-
-	fprintf(stderr, "proot: *at() syscalls are not yet implemented\n");
-	return -ENOSYS;
-}
 
 /**
  * Translate the input arguments of the syscall @sysnum in the @pid

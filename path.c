@@ -203,7 +203,8 @@ static int canonicalize(pid_t pid,
 			const char *fake_path,
 			int deref_final,
 			char result[PATH_MAX],
-			unsigned int nb_readlink)
+			unsigned int nb_readlink,
+			int check_isolation)
 {
 	const char *cursor;
 	char tmp[PATH_MAX];
@@ -242,12 +243,17 @@ static int canonicalize(pid_t pid,
 			continue;
 
 		if (strcmp(component, "..") == 0) {
+			/* Check we are not popping beyond the new root. */
+			if (check_isolation != 0
+			    && strspn(result, "/") == strlen(result))
+				return -EPERM;
+
 			pop_component(result);
 			continue;
 		}
 
 		/* Very special case: substitute "/proc/self" with "/proc/$pid".
-		   The following check covers onty 99.999% of the cases. */
+		   The following check covers only 99.999% of the cases. */
 		if (   strcmp(component, "self") == 0
 		    && strcmp(result, "/proc")   == 0
 		    && (!is_final || deref_final)) {
@@ -298,7 +304,7 @@ static int canonicalize(pid_t pid,
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
 		   absolute link so it is relative to 'result'. */
-		status = canonicalize(pid, real_entry, 1, result, ++nb_readlink);
+		status = canonicalize(pid, real_entry, 1, result, ++nb_readlink, check_isolation);
 		if (status != 0)
 			return status;
 	}
@@ -350,8 +356,8 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 		strcpy(result, "/");
 
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(pid, fake_path, deref_final, result, 0);
-	if (status != 0)
+	status = canonicalize(pid, fake_path, deref_final, result, 0, 0);
+	if (status < 0)
 		return status;
 
 	/* Finally append the new root and the result of the
@@ -409,4 +415,55 @@ int detranslate_path(char result[PATH_MAX], const char path[PATH_MAX], int sanit
 	}
 
 	return new_length + 1;
+}
+
+
+/**
+ * Check if the interpretation of @path relatively to the directory
+ * referred to by the file descriptor @dirfd of the child process @pid
+ * lands within the new "root". See the documentation of
+ * translate_path() about the meaning of @deref_final. This function
+ * returns -errno if an error occured, otherwise it returns 0.
+ *
+ * This function can't be called when AT_FD(@dirfd, @path) is false.
+ */
+int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
+{
+	char old_base[PATH_MAX];
+	char new_base[PATH_MAX];
+	char fd_link[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
+	int status;
+
+	assert(AT_FD(dirfd, path));
+
+	/* Format the path to the "virtual" link. */
+	status = sprintf(fd_link, "/proc/%d/fd/%d", pid, dirfd);
+	if (status < 0)
+		return -EPERM;
+	if (status >= sizeof(fd_link))
+		return -EPERM;
+
+	/* Read the value of this "virtual" link. */
+	status = readlink(fd_link, old_base, PATH_MAX);
+	if (status < 0)
+		return -EPERM;
+	if (status >= PATH_MAX)
+		return -ENAMETOOLONG;
+	old_base[status] = '\0';
+
+	/* Ensure it points to a path (not a socket or somethink like that). */
+	if (old_base[0] != '/')
+		return -ENOTDIR;
+
+	/* Remove the leading "root" part of the base (required!). */
+	status = detranslate_path(new_base, old_base, 1);
+	if (status < 0)
+		return status;
+
+	/* Check it this path lands outside of the new root. */
+	status = canonicalize(pid, path, deref_final, new_base, 0, 1);
+	if (status < 0)
+		return status;
+
+	return 0;
 }

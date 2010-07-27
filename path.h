@@ -22,11 +22,17 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef TRANSLATOR_H
-#define TRANSLATOR_H
+#ifndef PATH_H
+#define PATH_H
+
+#include <fcntl.h> /* AT_FDCWD, */
 
 extern void init_path_translator(const char *new_root);
 extern int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final);
-extern int detranslate_path(char result[PATH_MAX], const char *fake_path, int sanity_check);
+extern int detranslate_path(char result[PATH_MAX], const char fake_path[PATH_MAX], int sanity_check);
+extern int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final);
 
-#endif /* TRANSLATOR_H */
+/* Check if path interpretable relatively to dirfd, see openat(2) for details. */
+#define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
+
+#endif /* PATH_H */
