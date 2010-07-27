@@ -39,9 +39,9 @@
 #include "syscall.h" /* USER_REGS_OFFSET, */
 
 /**
- * Resize by @size bytes the stack of the child @pid, then it returns
- * the address of the new stack pointer within the child's memory
- * space.
+ * Resize by @size bytes the stack of the child @pid. This function
+ * returns 0 if an error occured, otherwise it returns the address of
+ * the new stack pointer within the child's memory space.
  */
 word_t resize_child_stack(pid_t pid, ssize_t size)
 {
@@ -51,17 +51,16 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 	/* Get the current value of the stack pointer from the child's
 	 * USER area. */
 	status = ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
-	if (errno != 0) {
-		perror("proot -- ptrace(PEEKUSER)");
-		exit(EXIT_FAILURE);
-	}
+	if (errno != 0)
+		return 0;
+
 	stack_pointer = (word_t)status;
 
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= size)
 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-		fprintf(stderr, "proot -- integer underflow detected in %s\n", __FUNCTION__);
-		exit(EXIT_FAILURE);
+		fprintf(stderr, "proot -- integer under/overflow detected in %s\n", __FUNCTION__);
+		return 0;
 	}
 
 	/* Remember the stack grows downward. */
@@ -70,10 +69,8 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 	/* Set the new value of the stack pointer in the child's USER
 	 * area. */
 	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
-	if (status < 0) {
-		perror("proot -- ptrace(POKEUSER)");
-		exit(EXIT_FAILURE);
-	}
+	if (status < 0)
+		return 0;
 
 	return stack_pointer;
 }
@@ -81,7 +78,7 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 /**
  * Copy @size bytes from the buffer @src_parent to the address
  * @dest_child within the memory space of the child process @pid. It
- * return -1 if an error occured, otherwise 0.
+ * return -errno if an error occured, otherwise 0.
  */
 int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size)
 {
@@ -104,7 +101,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 		status = ptrace(PTRACE_POKEDATA, pid, dest + i, src[i]);
 		if (status < 0) {
 			perror("proot -- ptrace(POKEDATA)");
-			return -1;
+			return -EFAULT;
 		}
 	}
 
@@ -114,7 +111,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 	word = ptrace(PTRACE_PEEKDATA, pid, dest + i, NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKDATA)");
-		return -1;
+		return -EFAULT;
 	}
 
 	last_dest_word = (unsigned char *)&word;
@@ -126,7 +123,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 	status = ptrace(PTRACE_POKEDATA, pid, dest + i, word);
 	if (status < 0) {
 		perror("proot -- ptrace(POKEDATA)");
-		return -1;
+		return -EFAULT;
 	}
 
 	return 0;
@@ -135,7 +132,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 /**
  * Copy @size bytes to the buffer @dest_parent from the address
  * @src_child within the memory space of the child process @pid. It
- * return -1 if an error occured, otherwise 0.
+ * return -errno if an error occured, otherwise 0.
  */
 int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 {
@@ -157,7 +154,7 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
 		if (errno != 0) {
 			perror("proot -- ptrace(PEEKDATA)");
-			return -1;
+			return -EFAULT;
 		}
 		dest[i] = word;
 	}
@@ -168,7 +165,7 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
 	if (errno != 0) {
 		perror("proot -- ptrace(PEEKDATA)");
-		return -1;
+		return -EFAULT;
 	}
 
 	last_dest_word = (unsigned char *)&dest[i];
@@ -183,11 +180,11 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 /**
  * Copy to @dest_parent at most @max_size bytes from the string
  * pointed to by @src_child within the memory space of the child
- * process @pid. This function returns (word_t)-1 on error, otherwise
+ * process @pid. This function returns -errno on error, otherwise
  * it returns the number in bytes of the string, including the
  * end-of-string terminator.
  */
-word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size)
+int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size)
 {
 	word_t *src  = (word_t *)src_child;
 	word_t *dest = (word_t *)dest_parent;
@@ -205,10 +202,9 @@ word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t m
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
 		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
-		if (errno != 0) {
-			perror("proot -- ptrace(PEEKDATA)");
-			return (word_t)-1;
-		}
+		if (errno != 0)
+			return -EFAULT;
+
 		dest[i] = word;
 
 		/* Stop once an end-of-string is detected. */
@@ -222,10 +218,8 @@ word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t m
 	 * to not overwrite the bytes lying beyond the @to buffer. */
 
 	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
-	if (errno != 0) {
-		perror("proot -- ptrace(PEEKDATA)");
-		return (word_t)-1;
-	}
+	if (errno != 0)
+		return -EFAULT;
 
 	dest_word = (unsigned char *)&dest[i];
 	src_word  = (unsigned char *)&word;
@@ -239,6 +233,9 @@ word_t get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t m
 	return i * sizeof(word_t) + j + 1;
 }
 
+/**
+ * Copy in @cwd current working directory of the child process @pid.
+ */
 int get_child_cwd(pid_t pid, char cwd[PATH_MAX])
 {
 	ssize_t status;

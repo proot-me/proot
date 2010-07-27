@@ -39,7 +39,7 @@
 
 #include "syscall.h"
 #include "arch.h"  /* word_t, SYSCALL_AVOIDER, __NR_*, */
-#include "child.h" /* copy_to_child(), */
+#include "child.h" /* copy_*_child(), get_child_string(), */
 #include "path.h"  /* [de]translate_path(), */
 
 /**
@@ -105,11 +105,11 @@ static void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
  */
 static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 {
-	word_t size;
+	int size;
 	
 	size = get_child_string(pid, path, get_sysarg(pid, sysarg), PATH_MAX);
-	if (size == (word_t)-1)
-		return -EFAULT;
+	if (size < 0)
+		return size;
 	if (size >= PATH_MAX)
 		return -ENAMETOOLONG;
 
@@ -138,12 +138,14 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 
 	/* Allocate space into the child's stack to host the new path. */
 	child_ptr = resize_child_stack(pid, PATH_MAX);
+	if (child_ptr == 0)
+		return -EFAULT;
 
 	/* Copy the new path into the previously allocated space. */
 	status = copy_to_child(pid, child_ptr, new_path, PATH_MAX);
 	if (status < 0) {
-		resize_child_stack(pid, -PATH_MAX);
-		return -EFAULT;
+		(void) resize_child_stack(pid, -PATH_MAX);
+		return status;
 	}
 
 	/* Make this argument point to the new path. */
@@ -183,7 +185,7 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weak)
 	int status;
 
 	/* Extract the original path, be careful since some syscalls
-	 * readlink*(2) do not put an string terminator. */
+	 * like readlink*(2) do not put a C string terminator. */
 	if (size >= PATH_MAX) {
 		return -ENAMETOOLONG;
 	}
@@ -211,7 +213,7 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weak)
 	child_ptr = get_sysarg(pid, sysarg);
 	status = copy_to_child(pid, child_ptr, new_path, status);
 	if (status < 0)
-		return -EFAULT;
+		return status;
 
 skip_overwrite:
 	return strlen(new_path) + 1;
@@ -931,8 +933,12 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 	
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
-	if (status > 0)
-		resize_child_stack(pid, -status);
+	if (status > 0) {
+		word_t child_ptr;
+		child_ptr = resize_child_stack(pid, -status);
+		if (child_ptr == 0)
+			set_sysarg(pid, SYSARG_RESULT, (word_t)-EFAULT);
+	}
 
 	/* Translate output arguments. */
 	switch (sysnum) {
