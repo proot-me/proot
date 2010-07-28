@@ -29,7 +29,7 @@
 
 extern void init_path_translator(const char *new_root);
 extern int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final);
-extern int detranslate_path(char result[PATH_MAX], const char fake_path[PATH_MAX], int sanity_check);
+extern int detranslate_path(char path[PATH_MAX], int sanity_check);
 extern int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final);
 
 /* Check if path interpretable relatively to dirfd, see openat(2) for details. */

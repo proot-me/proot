@@ -299,12 +299,12 @@ static int canonicalize(pid_t pid,
 
 		/* Remove the leading "root" part if needed, it's
 		 * usefull for "/proc/self/cwd/" for instance. */
-		detranslate_path(real_entry, tmp, 0);
+		detranslate_path(tmp, 0);
 
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
 		   absolute link so it is relative to 'result'. */
-		status = canonicalize(pid, real_entry, 1, result, ++nb_readlink, check_isolation);
+		status = canonicalize(pid, tmp, 1, result, ++nb_readlink, check_isolation);
 		if (status != 0)
 			return status;
 	}
@@ -398,7 +398,7 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
  * returns the size in bytes of @result, including the end-of-string
  * terminator. On error it returns -errno.
  */
-int detranslate_path(char result[PATH_MAX], const char path[PATH_MAX], int sanity_check)
+int detranslate_path(char path[PATH_MAX], int sanity_check)
 {
 	int new_length;
 
@@ -406,25 +406,20 @@ int detranslate_path(char result[PATH_MAX], const char path[PATH_MAX], int sanit
 	if (strncmp(path, root, root_length) != 0) {
 		if (sanity_check != 0)
 			return -EPERM;
-		else {
-			/* Copy the path as-is otherwise. */
-			if (strlen(path) >= PATH_MAX)
-				return -ENAMETOOLONG;
-			strncpy(result, path, PATH_MAX);
+		else
 			return 0;
-		}
 	}
 
 	/* Remove the leading part, that is, the "root". */
 	new_length = strlen(path) - root_length;
 	if (new_length != 0) {
-		memmove(result, path + root_length, new_length);
-		result[new_length] = '\0';
+		memmove(path, path + root_length, new_length);
+		path[new_length] = '\0';
 	}
 	else {
 		/* Special case when path == root. */
 		new_length = 1;
-		strcpy(result, "/");
+		strcpy(path, "/");
 	}
 
 	return new_length + 1;
@@ -442,8 +437,7 @@ int detranslate_path(char result[PATH_MAX], const char path[PATH_MAX], int sanit
  */
 int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 {
-	char old_base[PATH_MAX];
-	char new_base[PATH_MAX];
+	char base[PATH_MAX];
 	char fd_link[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
 	int status;
 
@@ -457,24 +451,24 @@ int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 		return -EPERM;
 
 	/* Read the value of this "virtual" link. */
-	status = readlink(fd_link, old_base, PATH_MAX);
+	status = readlink(fd_link, base, PATH_MAX);
 	if (status < 0)
 		return -EPERM;
 	if (status >= PATH_MAX)
 		return -ENAMETOOLONG;
-	old_base[status] = '\0';
+	base[status] = '\0';
 
 	/* Ensure it points to a path (not a socket or somethink like that). */
-	if (old_base[0] != '/')
+	if (base[0] != '/')
 		return -ENOTDIR;
 
 	/* Remove the leading "root" part of the base (required!). */
-	status = detranslate_path(new_base, old_base, 1);
+	status = detranslate_path(base, 1);
 	if (status < 0)
 		return status;
 
 	/* Check it this path lands outside of the new root. */
-	status = canonicalize(pid, path, deref_final, new_base, 0, 1);
+	status = canonicalize(pid, path, deref_final, base, 0, 1);
 	if (status < 0)
 		return status;
 

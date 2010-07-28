@@ -179,10 +179,9 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
  * ignored. It returns the number of bytes used by the path pointed to
  * by @sysarg, including the string terminator.
  */
-static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weak)
+static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weakness)
 {
-	char new_path[PATH_MAX];
-	char old_path[PATH_MAX];
+	char path[PATH_MAX];
 	word_t child_ptr;
 	int status;
 
@@ -193,14 +192,13 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weak)
 	if (size >= PATH_MAX)
 		return -ENAMETOOLONG;
 
-	status = copy_from_child(pid, old_path, get_sysarg(pid, sysarg), size);
+	status = copy_from_child(pid, path, get_sysarg(pid, sysarg), size);
 	if (status < 0)
 		return status;
-
-	old_path[size] = '\0';
+	path[size] = '\0';
 
 	/* Removes the leading "root" part. */
-	status = detranslate_path(new_path, old_path, weak);
+	status = detranslate_path(path, weakness);
 	if (status < 0)
 		return status;
 
@@ -210,12 +208,12 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weak)
 
 	/* Overwrite the path. */
 	child_ptr = get_sysarg(pid, sysarg);
-	status = copy_to_child(pid, child_ptr, new_path, status);
+	status = copy_to_child(pid, child_ptr, path, status);
 	if (status < 0)
 		return status;
 
 skip_overwrite:
-	return strlen(new_path) + 1;
+	return strlen(path) + 1;
 }
 
 /* Helper macros. */
