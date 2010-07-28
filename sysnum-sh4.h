@@ -388,5 +388,10 @@
 #define __NR_socketpair -39
 #define __NR_socket -40
 #define __NR_tuxcall -41
+#define __NR_pciconfig_iobase -42
+#define __NR_pciconfig_read -43
+#define __NR_pciconfig_write -44
+#define __NR_recv -45
+#define __NR_send -46
 
 #endif /* SYSNUM_SH4_H */

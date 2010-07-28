@@ -405,5 +405,8 @@
 #define __NR_vm86 -55
 #define __NR_vm86old -56
 #define __NR_waitpid -57
+#define __NR_cacheflush -58
+#define __NR_streams1 -59
+#define __NR_streams2 -60
 
 #endif /* SYSNUM_ARM_H */

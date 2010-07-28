@@ -270,6 +270,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_bind:
 	case __NR_break:
 	case __NR_brk:
+	case __NR_cacheflush:
 	case __NR_capget:
 	case __NR_capset:
 	case __NR_clock_getres:
@@ -415,6 +416,9 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_oldolduname:
 	case __NR_olduname:
 	case __NR_pause:
+	case __NR_pciconfig_iobase:
+	case __NR_pciconfig_read:
+	case __NR_pciconfig_write:
 	case __NR_perf_event_open:
 	case __NR_personality:
 	case __NR_pipe:
@@ -438,6 +442,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_readdir:
 	case __NR_readv:
 	case __NR_reboot:
+	case __NR_recv:
 	case __NR_recvfrom:
 	case __NR_recvmmsg:
 	case __NR_recvmsg:
@@ -468,6 +473,7 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_semget:
 	case __NR_semop:
 	case __NR_semtimedop:
+	case __NR_send:
 	case __NR_sendfile:
 	case __NR_sendfile64:
 	case __NR_sendmsg:
@@ -524,9 +530,12 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_splice:
 	case __NR_ssetmask:
 	case __NR_stime:
+	case __NR_streams1:
+	case __NR_streams2:
 	case __NR_stty:
 	case __NR_sync:
 	case __NR_sync_file_range:
+	/* case __NR_sync_file_range2: */
 	case __NR_sysfs:
 	case __NR_sysinfo:
 	case __NR_syslog:
@@ -568,6 +577,8 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __ARM_NR_set_tls:
 	case __ARM_NR_usr26:
 	case __ARM_NR_usr32:
+	case __NR_arm_fadvise64_64:
+	case __NR_arm_sync_file_range:
 #endif /* arm */
 
 		/* Nothing to do. */

@@ -384,5 +384,13 @@
 #define __NR_vm86 -67
 #define __NR_vm86old -68
 #define __NR_waitpid -69
+#define __NR_cacheflush -70
+#define __NR_streams1 -71
+#define __NR_streams2 -72
+#define __NR_pciconfig_iobase -73
+#define __NR_pciconfig_read -74
+#define __NR_pciconfig_write -75
+#define __NR_recv -76
+#define __NR_send -77
 
 #endif /* SYSNUM_X86_64_H */
