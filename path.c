@@ -328,6 +328,7 @@ static int canonicalize(pid_t pid,
  */
 int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final)
 {
+	char cwd_link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	char tmp[PATH_MAX];
 	int status;
 
@@ -335,9 +336,21 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 
 	/* Check whether it is an sbolute path or not. */
 	if (fake_path[0] != '/') {
-		status = get_child_cwd(pid, tmp);
+
+		/* Format the path to the "virtual" link to child's cwd. */
+		status = sprintf(cwd_link, "/proc/%d/cwd", pid);
 		if (status < 0)
-			return status;
+			return -EPERM;
+		if (status >= sizeof(cwd_link))
+			return -EPERM;
+
+		/* Read the value of this "virtual" link. */
+		status = readlink(cwd_link, tmp, PATH_MAX);
+		if (status < 0)
+			return -EPERM;
+		if (status >= PATH_MAX)
+			return -ENAMETOOLONG;
+		tmp[status] = '\0';
 
 		/* Ensure the current working directory is within the
 		 * new root once the child process did a chdir(2). */

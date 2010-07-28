@@ -232,27 +232,3 @@ int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_
 
 	return i * sizeof(word_t) + j + 1;
 }
-
-/**
- * Copy in @cwd current working directory of the child process @pid.
- */
-int get_child_cwd(pid_t pid, char cwd[PATH_MAX])
-{
-	ssize_t status;
-	char cwd_link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
-
-	status = sprintf(cwd_link, "/proc/%d/cwd", pid);
-	if (status < 0)
-		return -EPERM;
-	if (status >= sizeof(cwd_link))
-		return -EPERM;
-
-	status = readlink(cwd_link, cwd, PATH_MAX);
-	if (status < 0)
-		return -EPERM;
-	if (status >= PATH_MAX)
-		return -ENAMETOOLONG;
-
-	cwd[status] = '\0';
-	return 0;
-}
