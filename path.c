@@ -129,14 +129,15 @@ static inline void pop_component(char *path)
 	offset = strlen(path) - 1;
 
 	/* Skip trailing path separators. */
-	while (offset > 0 && path[offset] == '/')
+	while (offset > 1 && path[offset] == '/')
 		offset--;
 
 	/* Search for the previous path separator. */
-	while (offset > 0 && path[offset] != '/')
+	while (offset > 1 && path[offset] != '/')
 		offset--;
 
 	/* Cut the end of the string before the last component. */
+	assert(path[0] == '/');
 	path[offset] = '\0';
 }
 
@@ -294,8 +295,7 @@ static int canonicalize(pid_t pid,
 			return status;
 		else if (status == sizeof(tmp))
 			return -ENAMETOOLONG;
-		else
-			tmp[status] = '\0';
+		tmp[status] = '\0';
 
 		/* Remove the leading "root" part if needed, it's
 		 * usefull for "/proc/self/cwd/" for instance. */
@@ -305,7 +305,7 @@ static int canonicalize(pid_t pid,
 		   is/contains a link, moreover if it is not an
 		   absolute link so it is relative to 'result'. */
 		status = canonicalize(pid, tmp, 1, result, ++nb_readlink, check_isolation);
-		if (status != 0)
+		if (status < 0)
 			return status;
 	}
 
