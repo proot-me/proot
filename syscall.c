@@ -45,7 +45,7 @@
 /**
  * Specify the offset in the child's USER area of each register used
  * for syscall argument passing. */
-size_t arg_offset[] = {
+static size_t arg_offset[] = {
 	USER_REGS_OFFSET(REG_SYSARG_NUM),
 	USER_REGS_OFFSET(REG_SYSARG_1),
 	USER_REGS_OFFSET(REG_SYSARG_2),
