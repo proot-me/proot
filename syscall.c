@@ -774,16 +774,23 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 		break;
 
 	case __NR_mount:
-	case __NR_umount:
-	case __NR_umount2:
 		status = get_sysarg_path(pid, path, SYSARG_1);
 		if (status < 0)
 			break;
 
-		if (path[0] == '/' || path[0] == '.')
-			status = translate_path2sysarg(pid, path, SYSARG_2, REGULAR);
-		else
-			status = 0;
+		/* The following check covers only 90% of the cases. */
+		if (path[0] == '/' || path[0] == '.') {
+			status = translate_path2sysarg(pid, path, SYSARG_1, REGULAR);
+			if (status < 0)
+				break;
+		}
+
+		status = translate_sysarg(pid, SYSARG_2, REGULAR);
+		break;
+
+	case __NR_umount:
+	case __NR_umount2:
+		status = translate_sysarg(pid, SYSARG_1, REGULAR);
 		break;
 
 	case __NR_openat:
