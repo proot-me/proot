@@ -42,6 +42,10 @@
 #include "child.h" /* copy_*_child(), get_child_string(), */
 #include "path.h"  /* [de]translate_path(), */
 
+/* XXX UGLY WORKAROUND: I'm waiting for the per-process structure to
+ * fix this correctly. */
+static word_t output_addr = 0;
+
 /**
  * Specify the offset in the child's USER area of each register used
  * for syscall argument passing. */
@@ -173,16 +177,13 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
 }
 
 /**
- * Detranslate the current @sysarg syscall argument of the child
- * @pid. If @size if greater or equal to 0, the argument is considered
- * as a buffer of @size bytes, that is, the C string terminator is
- * ignored. It returns the number of bytes used by the path pointed to
- * by @sysarg, including the string terminator.
+ * Detranslate the path pointed to by @addr in the @pid child's memory
+ * space (@size bytes max). It returns the number of bytes used by the
+ * new path pointed to by @addr, including the string terminator.
  */
-static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weakness)
+static int detranslate_addr(pid_t pid, word_t addr, int size, int weakness)
 {
 	char path[PATH_MAX];
-	word_t child_ptr;
 	int status;
 
 	assert(size >= 0);
@@ -192,7 +193,7 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weakn
 	if (size >= PATH_MAX)
 		return -ENAMETOOLONG;
 
-	status = copy_from_child(pid, path, get_sysarg(pid, sysarg), size);
+	status = copy_from_child(pid, path, addr, size);
 	if (status < 0)
 		return status;
 	path[size] = '\0';
@@ -207,8 +208,7 @@ static int detranslate_sysarg(pid_t pid, enum sysarg sysarg, int size, int weakn
 		goto skip_overwrite;
 
 	/* Overwrite the path. */
-	child_ptr = get_sysarg(pid, sysarg);
-	status = copy_to_child(pid, child_ptr, path, status);
+	status = copy_to_child(pid, addr, path, status);
 	if (status < 0)
 		return status;
 
@@ -561,7 +561,6 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 	case __NR_waitpid:
 	case __NR_write:
 	case __NR_writev:
-	case __NR_getcwd:
 
 #ifdef arm
 	case __ARM_NR_breakpoint:
@@ -572,6 +571,11 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 #endif /* arm */
 
 		/* Nothing to do. */
+		status = 0;
+		break;
+
+	case __NR_getcwd:
+		output_addr = get_sysarg(pid, SYSARG_1);
 		status = 0;
 		break;
 
@@ -797,10 +801,12 @@ int translate_syscall_enter(pid_t pid, word_t sysnum)
 
 	case __NR_readlink:
 		status = translate_sysarg(pid, SYSARG_1, SYMLINK);
+		output_addr = get_sysarg(pid, SYSARG_2);
 		break;
 
 	case __NR_readlinkat:
 		dirfd = get_sysarg(pid, SYSARG_1);
+		output_addr = get_sysarg(pid, SYSARG_3);
 
 		status = get_sysarg_path(pid, path, SYSARG_2);
 		if (status < 0)
@@ -936,7 +942,7 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 		if ((int)size < 0)
 			return;
 
-		status = detranslate_sysarg(pid, SYSARG_1, size, STRONG);
+		status = detranslate_addr(pid, output_addr, size, STRONG);
 		if (status < 0)
 			break;
 
@@ -948,7 +954,7 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 		if ((int)size < 0)
 			return;
 
-		status = detranslate_sysarg(pid, SYSARG_2, size, WEAK);
+		status = detranslate_addr(pid, output_addr, size, WEAK);
 		if (status < 0)
 			break;
 
@@ -960,7 +966,7 @@ void translate_syscall_exit(pid_t pid, word_t sysnum, int status)
 		if ((int)size < 0)
 			return;
 
-		status = detranslate_sysarg(pid, SYSARG_3, size, WEAK);
+		status = detranslate_addr(pid, output_addr, size, WEAK);
 		if (status < 0)
 			break;
 
