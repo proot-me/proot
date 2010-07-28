@@ -158,10 +158,8 @@ int main(int argc, char *argv[])
 		}
 		else if (WIFSTOPPED(child_status)) {
 			signal = WSTOPSIG(child_status);
-			if ((signal & 0x80) == 0) {
-				fprintf(stderr, "proot: received a signal\n");
+			if ((signal & 0x80) == 0)
 				continue;
-			}
 			signal = 0;
 
 			/* Check if we are either entering or exiting a syscall.
