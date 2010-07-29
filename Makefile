@@ -4,7 +4,7 @@ CPPFLAGS = -D$(ARCH)=1
 CFLAGS   = -Wall -O0 -g
 LDFLAGS  =
 
-ARCH     = `uname -m`
+ARCH     = $(shell uname -m)
 
 OBJECTS = main.o child.o syscall.o path.o
 

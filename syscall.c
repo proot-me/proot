@@ -399,7 +399,9 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_lookup_dcookie:
 	case __NR_lseek:
 	case __NR_madvise:
-	case __NR_madvise1:
+#if (__NR_madvise1 != __NR_madvise)
+	case __NR_madvise1: /* On i386 both values are equal. */
+#endif
 	case __NR_mbind:
 	case __NR_migrate_pages:
 	case __NR_mincore:
