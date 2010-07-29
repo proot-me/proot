@@ -32,12 +32,14 @@
 #include <stdio.h>      /* perror(3), fprintf(3), */
 #include <limits.h>     /* ULONG_MAX, */
 #include <assert.h>     /* assert(3), */
+#include <sys/wait.h>   /* waitpid(2), */
 
 #include "child.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
 #include "syscall.h" /* USER_REGS_OFFSET, */
 
 static struct child_info *children_info;
+static size_t max_children = 0;
 static size_t nb_children = 0;
 
 /**
@@ -63,27 +65,53 @@ void init_children_info(size_t nb_elements)
 		children_info[i].output = 0;
 	}
 
-	nb_children = nb_elements;
+	max_children = nb_elements;
 }
 
 /**
  * Initialize a new entry in the table children_info[] for the child @pid.
  */
-void new_child(pid_t pid)
+static long new_child(pid_t pid)
 {
 	size_t i;
 
+	nb_children++;
+
 	/* Search for a free slot. */
-	for(i = 0; i < nb_children; i++) {
+	for(i = 0; i < max_children; i++) {
 		if (children_info[i].pid == 0) {
 			children_info[i].pid = pid;
-			return;
+			return 0;
 		}
 	}
 
 	/* XXX: TODO */
 	fprintf(stderr, "proot: resizing of the children table not yet suppported.\n");
-	exit(EXIT_FAILURE);
+	return -1;
+}
+
+/**
+ * Reset the entry in children_info[] related to the child @pid.
+ */
+void delete_child(pid_t pid)
+{
+	struct child_info *child;
+
+	nb_children--;
+
+	child = get_child_info(pid);
+	child->pid = 0;
+	child->sysnum = -1;
+	child->status = 0;
+	child->output = 0;
+}
+
+/**
+ * Give the number of child alive at this time.
+ */
+size_t get_nb_children()
+{
+	return nb_children;
 }
 
 /**
@@ -95,12 +123,58 @@ struct child_info *get_child_info(pid_t pid)
 	size_t i;
 
 	/* Search for the entry related to this child process. */
-	for(i = 0; i < nb_children; i++)
+	for(i = 0; i < max_children; i++)
 		if (children_info[i].pid == pid)
 			return &children_info[i];
 
-	fprintf(stderr, "proot: unkown child process.\n");
+	fprintf(stderr, "proot: unkown child process %d.\n", pid);
 	exit(EXIT_FAILURE);
+}
+
+
+/**
+ * Initialize a new entry in children_info[] for the child process
+ * @pid and start tracing it. A process can be attached @on_the_fly.
+ */
+int trace_new_child(pid_t pid, int on_the_fly)
+{
+	int child_status;
+	long status;
+
+	/* Initialize information about this new child process. */
+	status = new_child(pid);
+	if (status < 0)
+		return -EPERM;
+
+	/* Attach it on the fly? */
+	if (on_the_fly != 0) {
+		status = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
+		if (status < 0)
+			return -EPERM;
+	}
+
+	/* Wait for the first child's stop (due to a SIGTRAP). */
+	pid = waitpid(pid, &child_status, 0);
+	if (pid < 0)
+		return -EPERM;
+
+	/* Check if it is actually the signal we waited for. */
+	if (!WIFSTOPPED(child_status)
+	    || (WSTOPSIG(child_status) & SIGTRAP) == 0)
+		return -EPERM;
+
+	/* Set ptracing options. */
+	status = ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACESYSGOOD);
+	if (status < 0)
+		return -EPERM;
+
+	/* Restart the child and stop it at the next entry or exit of
+	 * a system call. */
+	status = ptrace(PTRACE_SYSCALL, pid, NULL, 0);
+	if (status < 0)
+		return -EPERM;
+
+	return 0;
 }
 
 /**

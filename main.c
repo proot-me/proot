@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	}
 
 	init_path_translator(argv[1]);
-	init_children_info(1);
+	init_children_info(64);
 
 	pid = fork();
 	switch(pid) {
@@ -101,73 +101,63 @@ int main(int argc, char *argv[])
 		break;
 	}
 
-	/* Initialize information about this first child process. */
-	new_child(pid);
-
-	/* Wait for the first child's stop (due to a SIGTRAP). */
-	pid = waitpid(pid, &child_status, 0);
-	if (pid < 0) {
-		perror("proot -- wait()");
-		exit(EXIT_FAILURE);
-	}
-
-	/* Set ptracing options. */
-	status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
-			PTRACE_O_TRACESYSGOOD |
-			/* Supported soon:
-			   PTRACE_O_TRACEFORK    |
-			   PTRACE_O_TRACEVFORK   |
-			   PTRACE_O_TRACECLONE   |
-			   PTRACE_O_TRACEEXEC    |
-			*/
-			PTRACE_O_TRACEEXIT);
-	if (status < 0) {
-		perror("proot -- ptrace(SETOPTIONS)");
-		exit(EXIT_FAILURE);
-	}
+	trace_new_child(pid, 0);
 
 	signal = 0;
-	while (1) {
-		/* Restart the child and stop it at the next
-		 * entry or exit of a system call. */
-		status = ptrace(PTRACE_SYSCALL, pid, NULL, signal);
-		if (status < 0) {
-			perror("proot -- ptrace(SYSCALL)");
-			exit(EXIT_FAILURE);
-		}
-
+	while (get_nb_children() > 0) {
 		/* Wait for the next child's stop. */
-		pid = waitpid(pid, &child_status, 0);
+		pid = wait(&child_status);
 		if (pid < 0) {
-			perror("proot -- waitpid()");
+			perror("proot -- wait()");
 			exit(EXIT_FAILURE);
 		}
 
 		if (WIFEXITED(child_status)) {
-			fprintf(stderr, "proot: child exited with status %d\n",
-			       WEXITSTATUS(child_status));
-			break;
+			fprintf(stderr, "proot: child %d exited with status %d\n",
+				pid, WEXITSTATUS(child_status));
+			delete_child(pid);
+			continue; /* Skip the call to ptrace(2). */
 		}
 		else if (WIFSIGNALED(child_status)) {
-			fprintf(stderr, "proot: child terminated by signal %d\n",
-			       WTERMSIG(child_status));
-			break;
+			fprintf(stderr, "proot: child %d terminated by signal %d\n",
+			       pid, WTERMSIG(child_status));
+			delete_child(pid);
+			continue; /* Skip the call to ptrace(2). */
 		}
 		else if (WIFCONTINUED(child_status)) {
-			fprintf(stderr, "proot: child continued\n");
+			fprintf(stderr, "proot: child %d continued\n", pid);
 			signal = SIGCONT;
 		}
 		else if (WIFSTOPPED(child_status)) {
 			signal = WSTOPSIG(child_status);
-			if ((signal & 0x80) == 0)
-				continue;
-			signal = 0;
 
-			translate_syscall(pid);
+			switch (signal) {
+			case SIGTRAP:
+				fprintf(stderr, "proot: execve(2) not yet supported\n");
+				signal = 0;
+				break;
+
+			case SIGTRAP | 0x80:
+				translate_syscall(pid);
+				signal = 0;
+				break;
+
+			default:
+				/* Propagate this signal. */
+				break;
+			}
 		}
 		else {
 			fprintf(stderr, "proot: unknown trace event\n");
 			signal = 0;
+		}
+
+		/* Restart the child and stop it at the next entry or exit of
+		 * a system call. */
+		status = ptrace(PTRACE_SYSCALL, pid, NULL, signal);
+		if (status < 0) {
+			perror("proot -- ptrace(SYSCALL)");
+			exit(EXIT_FAILURE);
 		}
 	}
 

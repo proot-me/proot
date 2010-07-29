@@ -964,7 +964,7 @@ end_translation:
 static void translate_syscall_exit(struct child_info *child)
 {
 	word_t sysnum;
-	word_t size;
+	word_t result;
 	int status;
 
 	/* Set the child's errno if an error occured previously during
@@ -988,11 +988,11 @@ static void translate_syscall_exit(struct child_info *child)
 	/* Translate output arguments. */
 	switch (sysnum) {
 	case __NR_getcwd:
-		size = get_sysarg(child->pid, SYSARG_RESULT);
-		if ((int)size < 0)
+		result = get_sysarg(child->pid, SYSARG_RESULT);
+		if ((int)result < 0)
 			return;
 
-		status = detranslate_addr(child->pid, child->output, size, STRONG);
+		status = detranslate_addr(child->pid, child->output, result, STRONG);
 		if (status < 0)
 			break;
 
@@ -1000,11 +1000,11 @@ static void translate_syscall_exit(struct child_info *child)
 		break;
 
 	case __NR_readlink:
-		size = get_sysarg(child->pid, SYSARG_RESULT);
-		if ((int)size < 0)
+		result = get_sysarg(child->pid, SYSARG_RESULT);
+		if ((int)result < 0)
 			return;
 
-		status = detranslate_addr(child->pid, child->output, size, WEAK);
+		status = detranslate_addr(child->pid, child->output, result, WEAK);
 		if (status < 0)
 			break;
 
@@ -1012,15 +1012,25 @@ static void translate_syscall_exit(struct child_info *child)
 		break;
 
 	case __NR_readlinkat:
-		size = get_sysarg(child->pid, SYSARG_RESULT);
-		if ((int)size < 0)
+		result = get_sysarg(child->pid, SYSARG_RESULT);
+		if ((int)result < 0)
 			return;
 
-		status = detranslate_addr(child->pid, child->output, size, WEAK);
+		status = detranslate_addr(child->pid, child->output, result, WEAK);
 		if (status < 0)
 			break;
 
 		set_sysarg(child->pid, SYSARG_RESULT, (word_t)status - 1);
+		break;
+
+	case __NR_fork:
+	case __NR_vfork:
+	case __NR_clone:
+		result = get_sysarg(child->pid, SYSARG_RESULT);
+		if ((int)result < 0)
+			return;
+
+		status = trace_new_child((pid_t)result, 1);
 		break;
 
 	default:

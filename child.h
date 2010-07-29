@@ -39,7 +39,9 @@ struct child_info {
 };
 
 extern void init_children_info(size_t nb_elements);
-extern void new_child(pid_t pid);
+extern int trace_new_child(pid_t pid, int on_the_fly);
+extern void delete_child(pid_t pid);
+extern size_t get_nb_children();
 extern struct child_info *get_child_info(pid_t pid);
 
 extern word_t resize_child_stack(pid_t pid, ssize_t size);
