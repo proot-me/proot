@@ -55,7 +55,6 @@ typedef unsigned long word_t;
 	#include "sysnum-arm.h" /* __NR_*, */
 	#define user_regs_struct        user_regs
 #elif defined(i386) || defined(i486) || defined(i586) || defined(i686)
-	#warning "Untested architecture"
 	#define REG_SYSARG_NUM	orig_eax
 	#define REG_SYSARG_1	ebx
 	#define REG_SYSARG_2	ecx
