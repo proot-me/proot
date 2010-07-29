@@ -37,13 +37,12 @@
 #include <sys/types.h> /* pid_t, */
 
 #include "path.h"
-#include "child.h" /* get_child_cwd(), */
 
 static int  initialized = 0;
 static char root[PATH_MAX];
 static size_t root_length;
 
-/* Tnitialize internal data of the path translator. */
+/* Initialize internal data of the path translator. */
 void init_path_translator(const char *new_root)
 {
 	if (realpath(new_root, root) == NULL) {
@@ -402,6 +401,8 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 {
 	int new_length;
 
+	assert(initialized != 0);
+
 	/* Ensure the path is within the new root. */
 	if (strncmp(path, root, root_length) != 0) {
 		if (sanity_check != 0)
@@ -442,6 +443,7 @@ int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 	int status;
 
 	assert(AT_FD(dirfd, path));
+	assert(initialized != 0);
 
 	/* Format the path to the "virtual" link. */
 	status = sprintf(fd_link, "/proc/%d/fd/%d", pid, dirfd);

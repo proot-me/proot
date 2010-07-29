@@ -25,14 +25,26 @@
 #ifndef CHILD_H
 #define CHILD_H
 
-#include <limits.h> /* PATH_MAX, */
+#include <limits.h>    /* PATH_MAX, */
+#include <sys/types.h> /* pid_t, size_t, */
 
 #include "arch.h" /* word_t, */
+
+/* Information related to a child process. */
+struct child_info {
+	pid_t  pid;    /* Process identifier. */
+	word_t sysnum; /* Current syscall (-1 if none). */
+	int    status; /* -errno if < 0, otherwise amount of bytes used in the child's stack. */
+	word_t output; /* Address in the child's memory space of the output argument. */
+};
+
+extern void init_children_info(size_t nb_elements);
+extern void new_child(pid_t pid);
+extern struct child_info *get_child_info(pid_t pid);
 
 extern word_t resize_child_stack(pid_t pid, ssize_t size);
 extern int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size);
 extern int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size);
 extern int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size);
-extern int get_child_cwd(pid_t pid, char cwd[PATH_MAX]);
 
 #endif /* CHILD_H */

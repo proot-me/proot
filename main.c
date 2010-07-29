@@ -32,9 +32,10 @@
 #include <string.h>     /* strcmp(3), */
 
 #include "path.h"     /* init_path_translator(), */
-#include "syscall.h"  /* get_child_sysarg(), translate_syscall_*(), */
+#include "child.h"    /* init_children_info(), */
+#include "syscall.h"  /* translate_syscall(), */
 
-static void print_usage()
+static void print_usage(void)
 {
 	puts("Usage:\n");
 	puts("\tproot [options] <new_root> <program> [args]\n");
@@ -44,13 +45,10 @@ static void print_usage()
 
 int main(int argc, char *argv[])
 {
-	word_t sysnum;
-
 	int child_status;
 	long status;
 	int signal;
 	pid_t pid;
-	int pid_errno;
 
 	if (argc < 3) {
 		print_usage();
@@ -58,6 +56,7 @@ int main(int argc, char *argv[])
 	}
 
 	init_path_translator(argv[1]);
+	init_children_info(1);
 
 	pid = fork();
 	switch(pid) {
@@ -102,6 +101,9 @@ int main(int argc, char *argv[])
 		break;
 	}
 
+	/* Initialize information about this first child process. */
+	new_child(pid);
+
 	/* Wait for the first child's stop (due to a SIGTRAP). */
 	pid = waitpid(pid, &child_status, 0);
 	if (pid < 0) {
@@ -125,7 +127,6 @@ int main(int argc, char *argv[])
 	}
 
 	signal = 0;
-	sysnum = -1;
 	while (1) {
 		/* Restart the child and stop it at the next
 		 * entry or exit of a system call. */
@@ -162,16 +163,7 @@ int main(int argc, char *argv[])
 				continue;
 			signal = 0;
 
-			/* Check if we are either entering or exiting a syscall.
-			   Currently it doesn't support multi-process programs. */
-			if (sysnum == -1) {
-				sysnum = get_sysarg(pid, SYSARG_NUM);
-				pid_errno = translate_syscall_enter(pid, sysnum);
-			}
-			else {
-				translate_syscall_exit(pid, sysnum, pid_errno);
-				sysnum = -1;
-			}
+			translate_syscall(pid);
 		}
 		else {
 			fprintf(stderr, "proot: unknown trace event\n");

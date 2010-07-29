@@ -24,7 +24,7 @@
  */
 
 #include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
-#include <sys/types.h>  /* pid_t, */
+#include <sys/types.h>  /* pid_t, size_t, */
 #include <stdlib.h>     /* NULL, exit(3), */
 #include <stddef.h>     /* offsetof(), */
 #include <sys/user.h>   /* struct user*, */
@@ -32,11 +32,76 @@
 #include <stdio.h>      /* perror(3), fprintf(3), */
 #include <limits.h>     /* ULONG_MAX, */
 #include <assert.h>     /* assert(3), */
-#include <unistd.h>     /* readlink(2), */
 
 #include "child.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
 #include "syscall.h" /* USER_REGS_OFFSET, */
+
+static struct child_info *children_info;
+static size_t nb_children = 0;
+
+/**
+ * Allocate @nb_elements empty entries in the table children_info[].
+ */
+void init_children_info(size_t nb_elements)
+{
+	size_t i;
+
+	assert(nb_elements > 0);
+
+	children_info = calloc(nb_elements, sizeof(struct child_info));
+	if (children_info == NULL) {
+		perror("proot -- calloc()");
+		exit(EXIT_FAILURE);
+	}
+
+	/* Set the default values for each entry. */
+	for(i = 0; i < nb_elements; i++) {
+		children_info[i].pid    = 0;
+		children_info[i].sysnum = -1;
+		children_info[i].status = 0;
+		children_info[i].output = 0;
+	}
+
+	nb_children = nb_elements;
+}
+
+/**
+ * Initialize a new entry in the table children_info[] for the child @pid.
+ */
+void new_child(pid_t pid)
+{
+	size_t i;
+
+	/* Search for a free slot. */
+	for(i = 0; i < nb_children; i++) {
+		if (children_info[i].pid == 0) {
+			children_info[i].pid = pid;
+			return;
+		}
+	}
+
+	/* XXX: TODO */
+	fprintf(stderr, "proot: resizing of the children table not yet suppported.\n");
+	exit(EXIT_FAILURE);
+}
+
+/**
+ * Search in the table children_info[] for the entry related to the
+ * child @pid.
+ */
+struct child_info *get_child_info(pid_t pid)
+{
+	size_t i;
+
+	/* Search for the entry related to this child process. */
+	for(i = 0; i < nb_children; i++)
+		if (children_info[i].pid == pid)
+			return &children_info[i];
+
+	fprintf(stderr, "proot: unkown child process.\n");
+	exit(EXIT_FAILURE);
+}
 
 /**
  * Resize by @size bytes the stack of the child @pid. This function
