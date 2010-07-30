@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
 			switch (signal) {
 			case SIGTRAP:
-				fprintf(stderr, "proot: execve(2) not yet supported\n");
+				/* execve(). */
 				signal = 0;
 				break;
 

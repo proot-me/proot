@@ -266,7 +266,7 @@ static void translate_syscall_enter(struct child_info *child)
 	/* Ensure one is not trying to cheat PRoot by calling an
 	 * unsupported syscall on that architecture. */
 	if ((int)child->sysnum < 0) {
-		fprintf(stderr, "proot: forbidden syscall %lu\n", child->sysnum);
+		fprintf(stderr, "proot: forbidden syscall %d\n", (int)child->sysnum);
 		status = -ENOSYS;
 		goto end_translation;
 	}
@@ -609,6 +609,13 @@ static void translate_syscall_enter(struct child_info *child)
 		status = 0;
 		break;
 
+	case __NR_execve:
+		status = translate_sysarg(child->pid, SYSARG_1, REGULAR);
+		/* Don't move the SP at the exit stage. */
+		if (status > 0)
+			status = 0;
+		break;
+
 	case __NR_access:
 	case __NR_acct:
 	case __NR_chdir:
@@ -616,7 +623,6 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_chown:
 	case __NR_chown32:
 	case __NR_chroot:
-	case __NR_execve:
 	case __NR_getxattr:
 	case __NR_listxattr:
 	case __NR_mkdir:
