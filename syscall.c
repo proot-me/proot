@@ -122,8 +122,19 @@ static void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 {
 	int size;
-	
-	size = get_child_string(pid, path, get_sysarg(pid, sysarg), PATH_MAX);
+	word_t src;
+
+	/* Check if the parameter is not NULL. Technically we should
+	 * not return an -EFAULT for this special value since it is
+	 * allowed for some syscall, utimensat(2) for instance. */
+	src = get_sysarg(pid, sysarg);
+	if (src == 0) {
+		path[0] = '\0';
+		return 0;
+	}
+
+	/* Get the path from the child's memory space. */
+	size = get_child_string(pid, path, src, PATH_MAX);
 	if (size < 0)
 		return size;
 	if (size >= PATH_MAX)
@@ -147,6 +158,10 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 	word_t child_ptr;
 	int status;
 	int size;
+
+	/* Special case where the argument was NULL. */
+	if (path[0] == '\0')
+		return 0;
 
 	/* Translate the original path. */
 	status = translate_path(pid, new_path, path, deref_final);
