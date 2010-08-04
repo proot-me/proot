@@ -922,7 +922,7 @@ static void translate_syscall_enter(struct child_info *child)
 		break;
 
 	case __NR_symlink:
-		status = translate_sysarg(child->pid, SYSARG_4, REGULAR);
+		status = translate_sysarg(child->pid, SYSARG_2, REGULAR);
 		break;
 
 	case __NR_symlinkat:
@@ -933,7 +933,7 @@ static void translate_syscall_enter(struct child_info *child)
 			break;
 
 		if (!AT_FD(newdirfd, newpath))
-			status = translate_path2sysarg(child->pid, newpath, SYSARG_2, REGULAR);
+			status = translate_path2sysarg(child->pid, newpath, SYSARG_3, REGULAR);
 		else
 			status = check_path_at(child->pid, newdirfd, newpath, REGULAR);
 		break;
