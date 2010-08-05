@@ -74,19 +74,41 @@ void init_children_info(size_t nb_elements)
 static long new_child(pid_t pid)
 {
 	size_t i;
+	struct child_info *new_children_info;
 
-	nb_children++;
+	assert(nb_children <= max_children);
+
+	/* Check if there is still an empty entry in child_info[]. */
+	if (nb_children == max_children) {
+		new_children_info = realloc(children_info, 2 * max_children * sizeof(struct child_info));
+		if (new_children_info == NULL) {
+			perror("proot -- realloc()");
+			return -1;
+		}
+
+		/* Set the default values for each new entry. */
+		for(i = max_children; i < 2 * max_children; i++) {
+			new_children_info[i].pid    = 0;
+			new_children_info[i].sysnum = -1;
+			new_children_info[i].status = 0;
+			new_children_info[i].output = 0;
+		}
+
+		max_children = 2 * max_children;
+		children_info = new_children_info;
+	}
 
 	/* Search for a free slot. */
 	for(i = 0; i < max_children; i++) {
 		if (children_info[i].pid == 0) {
 			children_info[i].pid = pid;
+			nb_children++;
 			return 0;
 		}
 	}
 
-	/* XXX: TODO */
-	fprintf(stderr, "proot: resizing of the children table not yet suppported.\n");
+	/* Should never happen. */
+	assert(0);
 	return -1;
 }
 
@@ -149,30 +171,38 @@ int trace_new_child(pid_t pid, int on_the_fly)
 	/* Attach it on the fly? */
 	if (on_the_fly != 0) {
 		status = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-		if (status < 0)
+		if (status < 0) {
+			perror("proot -- ptrace(PTRACE_ATTACH)");
 			return -EPERM;
+		}
 	}
 
 	/* Wait for the first child's stop (due to a SIGTRAP). */
 	pid = waitpid(pid, &child_status, 0);
-	if (pid < 0)
+	if (pid < 0) {
+		fprintf(stderr, "proot -- waitpid(2)\n");
 		return -EPERM;
+	}
 
 	/* Check if it is actually the signal we waited for. */
 	if (!WIFSTOPPED(child_status)
 	    || (WSTOPSIG(child_status) & SIGTRAP) == 0)
-		return -EPERM;
+		fprintf(stderr, "proot: unexpected signal from pid %d\n", pid);
 
 	/* Set ptracing options. */
 	status = ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACESYSGOOD);
-	if (status < 0)
+	if (status < 0) {
+		perror("proot -- ptrace(PTRACE_SETOPTIONS)");
 		return -EPERM;
+	}
 
 	/* Restart the child and stop it at the next entry or exit of
 	 * a system call. */
 	status = ptrace(PTRACE_SYSCALL, pid, NULL, 0);
-	if (status < 0)
+	if (status < 0) {
+		perror("proot -- ptrace(PTRACE_SYSCALL)");
 		return -EPERM;
+	}
 
 	return 0;
 }

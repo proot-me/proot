@@ -5,7 +5,7 @@ PROOT=../proot
 
 .PHONY: bug*
 
-check: bug-0001 bug-0002 bug-0003 bug-0004 bug-0005 bug-0006 bug-0007
+check: bug-0001 bug-0002 bug-0003 bug-0004 bug-0005 bug-0006 bug-0007 bug-0008
 
 # Detranslate links pointing absolutely within the new root.
 bug-0001:
@@ -32,6 +32,10 @@ bug-0006:
 	$(PROOT) $(NEW_ROOT) $(PWD)/$@ | egrep "child: / == parent: /"
 
 bug-0007:
+	$(CC) $@.c -o $@
+	$(PROOT) $(NEW_ROOT) $(PWD)/$@
+
+bug-0008:
 	$(CC) $@.c -o $@
 	$(PROOT) $(NEW_ROOT) $(PWD)/$@
 
