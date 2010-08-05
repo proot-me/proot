@@ -78,9 +78,10 @@ void init_children_info(size_t nb_elements)
 /**
  * Initialize a new entry in the table children_info[] for the child @pid.
  */
-static long new_child(pid_t pid)
+struct child_info *new_child(pid_t pid)
 {
 	size_t i;
+	size_t first_slot;
 	struct child_info *new_children_info;
 
 	assert(nb_children <= max_children);
@@ -90,29 +91,31 @@ static long new_child(pid_t pid)
 		new_children_info = realloc(children_info, 2 * max_children * sizeof(struct child_info));
 		if (new_children_info == NULL) {
 			perror("proot -- realloc()");
-			return -1;
+			return NULL;
 		}
 
 		/* Set the default values for each new entry. */
 		for(i = max_children; i < 2 * max_children; i++)
 			reset_child(&new_children_info[i]);
 
+		first_slot = max_children; /* Skip non-empty slot. */
 		max_children = 2 * max_children;
 		children_info = new_children_info;
 	}
+	else
+		first_slot = 0;
 
 	/* Search for a free slot. */
-	for(i = 0; i < max_children; i++) {
+	for(i = first_slot; i < max_children; i++) {
 		if (children_info[i].pid == 0) {
 			children_info[i].pid = pid;
 			nb_children++;
-			return 0;
+			return &children_info[i];
 		}
 	}
 
 	/* Should never happen. */
-	assert(0);
-	return -1;
+	return NULL;
 }
 
 /**
@@ -149,62 +152,8 @@ struct child_info *get_child_info(pid_t pid)
 		if (children_info[i].pid == pid)
 			return &children_info[i];
 
-	fprintf(stderr, "proot: unkown child process %d.\n", pid);
-	exit(EXIT_FAILURE);
-}
-
-
-/**
- * Initialize a new entry in children_info[] for the child process
- * @pid and start tracing it. A process can be attached @on_the_fly.
- */
-int trace_new_child(pid_t pid, int on_the_fly)
-{
-	int child_status;
-	long status;
-
-	/* Initialize information about this new child process. */
-	status = new_child(pid);
-	if (status < 0)
-		return -EPERM;
-
-	/* Attach it on the fly? */
-	if (on_the_fly != 0) {
-		status = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-		if (status < 0) {
-			perror("proot -- ptrace(PTRACE_ATTACH)");
-			return -EPERM;
-		}
-	}
-
-	/* Wait for the first child's stop (due to a SIGTRAP). */
-	pid = waitpid(pid, &child_status, 0);
-	if (pid < 0) {
-		fprintf(stderr, "proot -- waitpid(2)\n");
-		return -EPERM;
-	}
-
-	/* Check if it is actually the signal we waited for. */
-	if (!WIFSTOPPED(child_status)
-	    || (WSTOPSIG(child_status) & SIGTRAP) == 0)
-		fprintf(stderr, "proot: unexpected signal from pid %d\n", pid);
-
-	/* Set ptracing options. */
-	status = ptrace(PTRACE_SETOPTIONS, pid, NULL, PTRACE_O_TRACESYSGOOD);
-	if (status < 0) {
-		perror("proot -- ptrace(PTRACE_SETOPTIONS)");
-		return -EPERM;
-	}
-
-	/* Restart the child and stop it at the next entry or exit of
-	 * a system call. */
-	status = ptrace(PTRACE_SYSCALL, pid, NULL, 0);
-	if (status < 0) {
-		perror("proot -- ptrace(PTRACE_SYSCALL)");
-		return -EPERM;
-	}
-
-	return 0;
+	/* Create the children_info[] entry dynamically. */
+	return new_child(pid);
 }
 
 /**

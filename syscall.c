@@ -1033,16 +1033,6 @@ static void translate_syscall_exit(struct child_info *child)
 		set_sysarg(child->pid, SYSARG_RESULT, (word_t)status - 1);
 		break;
 
-	case __NR_fork:
-	case __NR_vfork:
-	case __NR_clone:
-		result = get_sysarg(child->pid, SYSARG_RESULT);
-		if ((int)result < 0)
-			return;
-
-		status = trace_new_child((pid_t)result, 1);
-		break;
-
 	default:
 		return;
 	}

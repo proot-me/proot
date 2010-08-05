@@ -98,10 +98,10 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 
 	default: /* parent */
+		if (new_child(pid) == NULL)
+			exit(EXIT_FAILURE);
 		break;
 	}
-
-	trace_new_child(pid, 0);
 
 	signal = 0;
 	while (get_nb_children() > 0) {
@@ -113,37 +113,58 @@ int main(int argc, char *argv[])
 		}
 
 		if (WIFEXITED(child_status)) {
-			fprintf(stderr, "proot: child %d exited with status %d\n",
-				pid, WEXITSTATUS(child_status));
 			delete_child(pid);
-			continue; /* Skip the call to ptrace(2). */
+			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(child_status)) {
-			fprintf(stderr, "proot: child %d terminated by signal %d\n",
-			       pid, WTERMSIG(child_status));
 			delete_child(pid);
-			continue; /* Skip the call to ptrace(2). */
+			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFCONTINUED(child_status)) {
 			fprintf(stderr, "proot: child %d continued\n", pid);
 			signal = SIGCONT;
 		}
 		else if (WIFSTOPPED(child_status)) {
-			signal = WSTOPSIG(child_status);
+
+			/* Don't WSTOPSIG() to extract the signal
+			 * since it clears the PTRACE_EVENT_* bits. */
+			signal = (child_status & 0xfff00) >> 8;
 
 			switch (signal) {
-			case SIGTRAP:
-				/* execve(). */
-				signal = 0;
-				break;
-
 			case SIGTRAP | 0x80:
 				translate_syscall(pid);
 				signal = 0;
 				break;
 
+			case SIGTRAP:
+				/* Distinguish some events from others and
+				 * automatically trace each new process with
+				 * the same options.  Note: only the first
+				 * process should come here. */
+				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
+						PTRACE_O_TRACESYSGOOD |
+						PTRACE_O_TRACEFORK    |
+						PTRACE_O_TRACEVFORK   |
+						PTRACE_O_TRACECLONE   |
+						PTRACE_O_TRACEEXEC);
+				if (status < 0) {
+					perror("proot -- ptrace(PTRACE_SETOPTIONS)");
+					exit(EXIT_FAILURE);
+				}
+
+				signal = 0;
+				break;
+
+			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
+			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
+			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
+				/* Ignore these signals. */
+				signal = 0;
+				break;
+
 			default:
-				/* Propagate this signal. */
+				/* Propagate all other signals. */
 				break;
 			}
 		}
@@ -161,5 +182,6 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	fprintf(stderr, "proot: exited.\n");
 	exit(EXIT_SUCCESS);
 }
