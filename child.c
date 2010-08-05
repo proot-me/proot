@@ -43,6 +43,17 @@ static size_t max_children = 0;
 static size_t nb_children = 0;
 
 /**
+ * Reset the default values for the structure @child.
+ */
+static void reset_child(struct child_info *child)
+{
+	child->pid    = 0;
+	child->sysnum = -1;
+	child->status = 0;
+	child->output = 0;
+}
+
+/**
  * Allocate @nb_elements empty entries in the table children_info[].
  */
 void init_children_info(size_t nb_elements)
@@ -58,12 +69,8 @@ void init_children_info(size_t nb_elements)
 	}
 
 	/* Set the default values for each entry. */
-	for(i = 0; i < nb_elements; i++) {
-		children_info[i].pid    = 0;
-		children_info[i].sysnum = -1;
-		children_info[i].status = 0;
-		children_info[i].output = 0;
-	}
+	for(i = 0; i < nb_elements; i++)
+		reset_child(&children_info[i]);
 
 	max_children = nb_elements;
 }
@@ -87,12 +94,8 @@ static long new_child(pid_t pid)
 		}
 
 		/* Set the default values for each new entry. */
-		for(i = max_children; i < 2 * max_children; i++) {
-			new_children_info[i].pid    = 0;
-			new_children_info[i].sysnum = -1;
-			new_children_info[i].status = 0;
-			new_children_info[i].output = 0;
-		}
+		for(i = max_children; i < 2 * max_children; i++)
+			reset_child(&new_children_info[i]);
 
 		max_children = 2 * max_children;
 		children_info = new_children_info;
@@ -122,10 +125,7 @@ void delete_child(pid_t pid)
 	nb_children--;
 
 	child = get_child_info(pid);
-	child->pid = 0;
-	child->sysnum = -1;
-	child->status = 0;
-	child->output = 0;
+	reset_child(child);
 }
 
 /**
