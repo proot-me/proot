@@ -1021,17 +1021,6 @@ static void translate_syscall_exit(struct child_info *child)
 		break;
 
 	case __NR_readlink:
-		result = get_sysarg(child->pid, SYSARG_RESULT);
-		if ((int)result < 0)
-			return;
-
-		status = detranslate_addr(child->pid, child->output, result, WEAK);
-		if (status < 0)
-			break;
-
-		set_sysarg(child->pid, SYSARG_RESULT, (word_t)status - 1);
-		break;
-
 	case __NR_readlinkat:
 		result = get_sysarg(child->pid, SYSARG_RESULT);
 		if ((int)result < 0)
