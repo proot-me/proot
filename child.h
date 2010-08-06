@@ -38,11 +38,14 @@ struct child_info {
 	word_t output; /* Address in the child's memory space of the output argument. */
 };
 
+typedef int (*foreach_child_t)(pid_t pid);
+
 extern void init_children_info(size_t nb_elements);
 extern struct child_info *new_child(pid_t pid);
 extern void delete_child(pid_t pid);
 extern size_t get_nb_children();
 extern struct child_info *get_child_info(pid_t pid);
+extern int foreach_child(foreach_child_t callback);
 
 extern word_t resize_child_stack(pid_t pid, ssize_t size);
 extern int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size);

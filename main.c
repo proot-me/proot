@@ -112,6 +112,9 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
+		/* Check every child file descriptors. */
+		foreach_child(check_fd);
+
 		if (WIFEXITED(child_status)) {
 			fprintf(stderr, "proot: child %d exited with result %d\n",
 				pid, WEXITSTATUS(child_status));

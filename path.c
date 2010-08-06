@@ -35,6 +35,7 @@
 #include <stddef.h>   /* ptrdiff_t, */
 #include <stdio.h>    /* perror(3), */
 #include <sys/types.h> /* pid_t, */
+#include <dirent.h>   /* readdir(3), */
 
 #include "path.h"
 
@@ -487,4 +488,54 @@ int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 	}
 	else
 		return 0;
+}
+
+/**
+ * Check if the file descriptors opened by the process @pid point into
+ * the new root directory; it returns -@pid if it is not the case,
+ * otherwise 0 (or if an ignored error occured).
+ */
+int check_fd(pid_t pid)
+{
+	struct dirent *dirent;
+	char path[PATH_MAX];
+	char proc_fd[32]; /* 32 > sizeof("/proc//fd") + sizeof(#ULONG_MAX) */
+	int status;
+	DIR *dirp;
+
+	/* Format the path to the "virtual" directory. */
+	status = sprintf(proc_fd, "/proc/%d/fd", pid);
+	if (status < 0 || status >= sizeof(proc_fd))
+		return 0;
+
+	/* Open the virtual directory "/proc/$pid/fd". */
+	dirp = opendir(proc_fd);
+	if (dirp == NULL)
+		return 0;
+
+	while ((dirent = readdir(dirp)) != NULL) {
+		/* Read the value of this "virtual" link. */
+		status = readlinkat(dirfd(dirp), dirent->d_name, path, PATH_MAX);
+		if (status < 0 || status >= PATH_MAX)
+			continue;
+		path[status] = '\0';
+
+		/* Ensure it points to a path (not a socket or somethink like that). */
+		if (path[0] != '/')
+			continue;
+
+		/* XXX: TODO FIXME */
+		if (strncmp("/dev/", path, 5) == 0
+		    || strncmp("/proc/", path, 6) == 0)
+			continue;
+
+		/* Here comes the sanity check. */
+		if (strncmp(root, path, root_length) != 0) {
+			fprintf(stderr, "proot: the child %d is out of my control (3)\n", pid);
+			fprintf(stderr, "proot: %s is not inside the new root (%s)\n", path, root);
+			return -pid;
+		}
+	}
+
+	return 0;
 }

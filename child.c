@@ -157,6 +157,29 @@ struct child_info *get_child_info(pid_t pid)
 }
 
 /**
+ * Call @callback on each living child process. It returns the status
+ * of the first failure, that is, if @callback returned seomthing
+ * lesser than 0, otherwise 0.
+ */
+int foreach_child(foreach_child_t callback)
+{
+	int status;
+	int i;
+
+	for(i = 0; i < max_children; i++) {
+		if (children_info[i].pid == 0)
+			continue;
+
+		status = callback(children_info[i].pid);
+		if (status < 0)
+			return status;
+	}
+
+	return 0;
+}
+
+
+/**
  * Resize by @size bytes the stack of the child @pid. This function
  * returns 0 if an error occured, otherwise it returns the address of
  * the new stack pointer within the child's memory space.
