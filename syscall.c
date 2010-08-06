@@ -684,7 +684,6 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_swapon:
 	case __NR_truncate:
 	case __NR_truncate64:
-	case __NR_unlink:
 	case __NR_uselib:
 	case __NR_utime:
 	case __NR_utimes:
@@ -733,7 +732,6 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_futimesat:
 	case __NR_mkdirat:
 	case __NR_mknodat:
-	case __NR_unlinkat:
 		dirfd = get_sysarg(child->pid, SYSARG_1);
 		status = get_sysarg_path(child->pid, path, SYSARG_2);
 		if (status < 0)
@@ -763,7 +761,11 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_lstat:
 	case __NR_lstat64:
 	case __NR_oldlstat:
+	case __NR_unlink:
+	case __NR_readlink:
 		status = translate_sysarg(child->pid, SYSARG_1, SYMLINK);
+		if (child->sysnum == __NR_readlink)
+			child->output = get_sysarg(child->pid, SYSARG_2);
 		break;
 
 	case __NR_link:
@@ -886,23 +888,21 @@ static void translate_syscall_enter(struct child_info *child)
 		}
 		break;
 
-	case __NR_readlink:
-		status = translate_sysarg(child->pid, SYSARG_1, SYMLINK);
-		child->output = get_sysarg(child->pid, SYSARG_2);
-		break;
-
+	case __NR_unlinkat:
 	case __NR_readlinkat:
 		dirfd = get_sysarg(child->pid, SYSARG_1);
-		child->output = get_sysarg(child->pid, SYSARG_3);
+
+		if (child->sysnum == __NR_readlinkat)
+			child->output = get_sysarg(child->pid, SYSARG_3);
 
 		status = get_sysarg_path(child->pid, path, SYSARG_2);
 		if (status < 0)
 			break;
 
 		if (!AT_FD(dirfd, path))
-			status = translate_path2sysarg(child->pid, path, SYSARG_1, SYMLINK);
+			status = translate_path2sysarg(child->pid, path, SYSARG_2, SYMLINK);
 		else
-			status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_1, SYMLINK);
+			status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_2, SYMLINK);
 		break;
 
 	case __NR_rename:
