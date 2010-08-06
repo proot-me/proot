@@ -197,14 +197,15 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
  * true -- it is usefull for syscalls like lstat(2). The parameter
  * @nb_readlink should be set to 0 unless you know what you are
  * doing. This function returns -errno if an error occured, otherwise
- * it returns 0.
+ * it returns 0. The value pointed to by @out is set to 1 if there is
+ * an attempt to escape from the new root.
  */
 static int canonicalize(pid_t pid,
 			const char *fake_path,
 			int deref_final,
 			char result[PATH_MAX],
 			unsigned int nb_readlink,
-			int check_isolation)
+			int *out)
 {
 	const char *cursor;
 	char tmp[PATH_MAX];
@@ -243,12 +244,13 @@ static int canonicalize(pid_t pid,
 			continue;
 
 		if (strcmp(component, "..") == 0) {
-			/* Check we are not popping beyond the new root. */
-			if (check_isolation != 0
-			    && strspn(result, "/") == strlen(result))
-				return -EPERM;
-
-			pop_component(result);
+			/* Check if it is an attempt to escape from the new root. */
+			if (strspn(result, "/") == strlen(result)) {
+				if (out != NULL)
+					*out = 1;
+			}
+			else
+				pop_component(result);
 			continue;
 		}
 
@@ -303,7 +305,7 @@ static int canonicalize(pid_t pid,
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
 		   absolute link so it is relative to 'result'. */
-		status = canonicalize(pid, tmp, 1, result, ++nb_readlink, check_isolation);
+		status = canonicalize(pid, tmp, 1, result, ++nb_readlink, out);
 		if (status < 0)
 			return status;
 	}
@@ -432,7 +434,9 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
  * referred to by the file descriptor @dirfd of the child process @pid
  * lands within the new "root". See the documentation of
  * translate_path() about the meaning of @deref_final. This function
- * returns -errno if an error occured, otherwise it returns 0.
+ * returns -errno if an error occured, otherwise it returns 1 (and
+ * path[] == root[]) or 0 depending if there was an attempt to escape
+ * from the new root.
  *
  * This function can't be called when AT_FD(@dirfd, @path) is false.
  */
@@ -441,6 +445,7 @@ int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 	char base[PATH_MAX];
 	char fd_link[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
 	int status;
+	int out;
 
 	assert(AT_FD(dirfd, path));
 	assert(initialized != 0);
@@ -470,9 +475,16 @@ int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 		return status;
 
 	/* Check it this path lands outside of the new root. */
-	status = canonicalize(pid, path, deref_final, base, 0, 1);
+	out = 0;
+	status = canonicalize(pid, path, deref_final, base, 0, &out);
 	if (status < 0)
 		return status;
 
-	return 0;
+	/* Return if there was an attempt to escape from the new root. */
+	if (out != 0) {
+		strcpy(path, root);
+		return 1;
+	}
+	else
+		return 0;
 }

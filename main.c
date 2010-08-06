@@ -113,10 +113,14 @@ int main(int argc, char *argv[])
 		}
 
 		if (WIFEXITED(child_status)) {
+			fprintf(stderr, "proot: child %d exited with result %d\n",
+				pid, WEXITSTATUS(child_status));
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(child_status)) {
+			fprintf(stderr, "proot: child %d terminated with signal %d\n",
+				pid, WTERMSIG(child_status));
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
