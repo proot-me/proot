@@ -533,9 +533,13 @@ int check_fd(pid_t pid)
 		if (strncmp(root, path, root_length) != 0) {
 			fprintf(stderr, "proot: the child %d is out of my control (3)\n", pid);
 			fprintf(stderr, "proot: %s is not inside the new root (%s)\n", path, root);
-			return -pid;
+			status = -pid;
+			goto end;
 		}
 	}
+	status = 0;
 
-	return 0;
+end:
+	closedir(dirp);
+	return status;
 }
