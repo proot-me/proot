@@ -39,7 +39,8 @@
 
 #include "syscall.h"
 #include "arch.h"
-#include "child.h"
+#include "child_mem.h"
+#include "child_info.h"
 #include "path.h"
 
 enum sysarg {

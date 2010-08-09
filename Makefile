@@ -6,7 +6,7 @@ LDFLAGS  =
 
 ARCH     = $(shell uname -m)
 
-OBJECTS = main.o child.o syscall.o path.o
+OBJECTS = main.o child_info.o child_mem.o syscall.o path.o
 
 proot: $(OBJECTS)
 	$(LD) $(LDFLAGS) $(OBJECTS) -o $@

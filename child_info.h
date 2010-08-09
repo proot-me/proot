@@ -22,10 +22,9 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef CHILD_H
-#define CHILD_H
+#ifndef CHILD_INFO_H
+#define CHILD_INFO_H
 
-#include <limits.h>    /* PATH_MAX, */
 #include <sys/types.h> /* pid_t, size_t, */
 
 #include "arch.h" /* word_t, */
@@ -47,9 +46,4 @@ extern size_t get_nb_children();
 extern struct child_info *get_child_info(pid_t pid);
 extern int foreach_child(foreach_child_t callback);
 
-extern word_t resize_child_stack(pid_t pid, ssize_t size);
-extern int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size);
-extern int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size);
-extern int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size);
-
-#endif /* CHILD_H */
+#endif /* CHILD_INFO_H */

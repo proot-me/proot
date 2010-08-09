@@ -32,7 +32,7 @@
 #include <string.h>     /* strcmp(3), */
 
 #include "path.h"     /* init_path_translator(), */
-#include "child.h"    /* init_children_info(), */
+#include "child_info.h"    /* init_children_info(), */
 #include "syscall.h"  /* translate_syscall(), */
 
 static void print_usage(void)
