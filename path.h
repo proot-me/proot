@@ -28,6 +28,13 @@
 #include <sys/types.h> /* pid_t, */
 #include <fcntl.h> /* AT_FDCWD, */
 
+/* Helper macros. */
+#define REGULAR 1
+#define SYMLINK 0
+
+#define STRONG  1
+#define WEAK    0
+
 extern void init_path_translator(const char *new_root);
 extern int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final);
 extern int detranslate_path(char path[PATH_MAX], int sanity_check);

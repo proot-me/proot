@@ -22,39 +22,11 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef EXECVE_H
+#define EXECVE_H
 
-#include <stddef.h>     /* offsetof(), */
+#include <sys/types.h> /* pid_t, */
 
-#include "arch.h" /* word_t */
+int translate_execve(pid_t pid);
 
-enum sysarg {
-	SYSARG_NUM = 0,
-	SYSARG_1,
-	SYSARG_2,
-	SYSARG_3,
-	SYSARG_4,
-	SYSARG_5,
-	SYSARG_6,
-	SYSARG_RESULT,
-
-	/* Helpers. */
-	SYSARG_FIRST = SYSARG_NUM,
-	SYSARG_LAST  = SYSARG_RESULT
-};
-
-/**
- * Compute the offset of the register @reg_name in the USER area.
- */
-#define USER_REGS_OFFSET(reg_name)			\
-	(offsetof(struct user, regs)			\
-	 + offsetof(struct user_regs_struct, reg_name))
-
-void translate_syscall(pid_t pid);
-word_t get_sysarg(pid_t pid, enum sysarg sysarg);
-void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
-int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
-int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
-
-#endif /* SYSCALL_H */
+#endif /* EXECVE_H */

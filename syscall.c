@@ -42,21 +42,7 @@
 #include "child_mem.h"
 #include "child_info.h"
 #include "path.h"
-
-enum sysarg {
-	SYSARG_NUM = 0,
-	SYSARG_1,
-	SYSARG_2,
-	SYSARG_3,
-	SYSARG_4,
-	SYSARG_5,
-	SYSARG_6,
-	SYSARG_RESULT,
-
-	/* Helpers. */
-	SYSARG_FIRST = SYSARG_NUM,
-	SYSARG_LAST  = SYSARG_RESULT
-};
+#include "execve.h"
 
 /**
  * Specify the offset in the child's USER area of each register used
@@ -99,7 +85,7 @@ word_t get_sysarg(pid_t pid, enum sysarg sysarg)
  * Set the @sysarg argument of the current syscall in the child
  * process @pid to @value.
  */
-static void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
+void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 {
 	long status;
 
@@ -121,7 +107,7 @@ static void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
  * the current syscall.  This function returns -errno if an error
  * occured, otherwise it returns the size in bytes put into the @path.
  */
-static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
+int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 {
 	int size;
 	word_t src;
@@ -152,7 +138,7 @@ static inline int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sy
  * -errno if an error occured, otherwise it returns the size in bytes
  * "allocated" into the stack.
  */
-static int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
+int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 {
 	word_t child_ptr;
 	int status;
@@ -272,13 +258,6 @@ static int detranslate_addr(pid_t pid, word_t addr, int size, int weakness)
 skip_overwrite:
 	return strlen(path) + 1;
 }
-
-/* Helper macros. */
-#define REGULAR 1
-#define SYMLINK 0
-
-#define STRONG  1
-#define WEAK    0
 
 /**
  * Translate the input arguments of the syscall @child->sysnum in the
@@ -655,10 +634,7 @@ static void translate_syscall_enter(struct child_info *child)
 		break;
 
 	case __NR_execve:
-		status = translate_sysarg(child->pid, SYSARG_1, REGULAR);
-		/* Don't move the SP at the exit stage. */
-		if (status > 0)
-			status = 0;
+		status = translate_execve(child->pid);
 		break;
 
 	case __NR_access:
