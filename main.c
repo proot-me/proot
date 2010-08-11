@@ -72,12 +72,8 @@ static void exit_usage(void)
 	exit(EXIT_FAILURE);
 }
 
-int main(int argc, char *argv[])
+static void parse_options(int argc, char *argv[])
 {
-	int child_status;
-	long status;
-	int signal;
-	pid_t pid;
 	int i;
 
 	/* Stupid command-line parser. */
@@ -141,6 +137,12 @@ int main(int argc, char *argv[])
 	init_module_child_info();
 	init_module_syscall(opt_check_syscall);
 	init_module_execve(opt_runner);
+}
+
+static void start_process()
+{
+	long status;
+	pid_t pid;
 
 	pid = fork();
 	switch(pid) {
@@ -186,6 +188,14 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		break;
 	}
+}
+
+static void translation_loop()
+{
+	int child_status;
+	long status;
+	int signal;
+	pid_t pid;
 
 	signal = 0;
 	while (get_nb_children() > 0) {
@@ -273,6 +283,13 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+}
+
+int main(int argc, char *argv[])
+{
+	parse_options(argc, argv);
+	start_process();
+	translation_loop();
 
 	fprintf(stderr, "proot: exited.\n");
 	exit(EXIT_SUCCESS);
