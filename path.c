@@ -43,8 +43,10 @@ static int  initialized = 0;
 static char root[PATH_MAX];
 static size_t root_length;
 
-/* Initialize internal data of the path translator. */
-void init_path_translator(const char *new_root)
+/**
+ * Initialize internal data of the path translator.
+ */
+void init_module_path(const char *new_root, const char *excluded_paths)
 {
 	if (realpath(new_root, root) == NULL) {
 		perror("proot -- realpath()");
@@ -53,6 +55,9 @@ void init_path_translator(const char *new_root)
 
 	root_length = strlen(root);
 	initialized = 1;
+
+	if (excluded_paths != NULL)
+		fprintf(stderr, "proot: option -x not yet supported.\n");
 }
 
 #define FINAL_NORMAL    1

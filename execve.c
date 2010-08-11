@@ -35,6 +35,7 @@
 #include <stdarg.h>       /* va_*(3), */
 #include <string.h>       /* strlen(3), */
 #include <alloca.h>       /* alloc(3), */
+#include <stdio.h>        /* fprintf(3), */
 
 #include "execve.h"
 #include "arch.h"
@@ -45,6 +46,15 @@
 #ifndef ARG_MAX
 #define ARG_MAX 131072
 #endif
+
+/**
+ * XXX: TODO
+ */
+void init_module_execve(const char *runner)
+{
+	if (runner != NULL)
+		fprintf(stderr, "proot: option -r not yet supported.\n");
+}
 
 /**
  * Extract from the file @exec_file the script @interpreter and its

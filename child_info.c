@@ -56,11 +56,10 @@ static void reset_child(struct child_info *child)
 /**
  * Allocate @nb_elements empty entries in the table children_info[].
  */
-void init_children_info(size_t nb_elements)
+void init_module_child_info()
 {
 	size_t i;
-
-	assert(nb_elements > 0);
+	const int nb_elements = 64;
 
 	children_info = calloc(nb_elements, sizeof(struct child_info));
 	if (children_info == NULL) {

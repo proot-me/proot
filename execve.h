@@ -27,6 +27,7 @@
 
 #include <sys/types.h> /* pid_t, */
 
-int translate_execve(pid_t pid);
+extern void init_module_execve(const char *runner);
+extern int translate_execve(pid_t pid);
 
 #endif /* EXECVE_H */

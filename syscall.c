@@ -45,6 +45,15 @@
 #include "execve.h"
 
 /**
+ * XXX: TODO
+ */
+void init_module_syscall(int sanity_check)
+{
+	if (sanity_check != 0)
+		fprintf(stderr, "proot: option -s not yet supported.\n");
+}
+
+/**
  * Specify the offset in the child's USER area of each register used
  * for syscall argument passing.
  */

@@ -31,16 +31,45 @@
 #include <limits.h>     /* PATH_MAX, */
 #include <string.h>     /* strcmp(3), */
 
-#include "path.h"     /* init_path_translator(), */
-#include "child_info.h"    /* init_children_info(), */
-#include "syscall.h"  /* translate_syscall(), */
+#include "path.h"
+#include "child_info.h"
+#include "syscall.h" /* translate_syscall(), */
+#include "execve.h"
 
-static void print_usage(void)
+static const char *opt_new_root = NULL;
+static const char *opt_program = NULL;
+static char *const *opt_args = { NULL };
+
+static const char *opt_excluded_paths = NULL;
+static const char *opt_runner = NULL;
+
+static int opt_check_fd = 0;
+static int opt_check_syscall = 0;
+
+static void exit_usage(void)
 {
-	puts("Usage:\n");
-	puts("\tproot [options] <new_root> <program> [args]\n");
-	puts("Where options are:\n");
-	puts("\tnot yet supported\n");
+	puts("");
+	puts("Usages:");
+	puts("  proot [options] <fake_root>");
+	puts("  proot [options] <fake_root> <program> [args]");
+/*	puts("  proot [options] <fake_root> <pid>"); */
+	puts("");
+	puts("Arguments:");
+	puts("  <fake_root>   is the path to the fake root file system");
+	puts("  <program>     is the path of the program to launch, default is $SHELL");
+	puts("  [args]        are the options passed to <program>");
+/*	puts("  <pid>         is the identifier of the process to attach on-the-fly"); */
+	puts("");
+	puts("Options:");
+	puts("  -x <path>     don't translate access to <path>, can be a coma-separated list");
+	puts("  -r <program>  use <program> to run each process");
+	puts("");
+	puts("Debug options:");
+	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)");
+	puts("  -s            check /proc/$pid/syscall agrees with the internal state");
+	puts("");
+
+	exit(EXIT_FAILURE);
 }
 
 int main(int argc, char *argv[])
@@ -49,14 +78,69 @@ int main(int argc, char *argv[])
 	long status;
 	int signal;
 	pid_t pid;
+	int i;
 
-	if (argc < 3) {
-		print_usage();
-		exit(EXIT_FAILURE);
+	/* Stupid command-line parser. */
+	for (i = 1; i < argc; i++) {
+		if (argv[i][0] != '-')
+			break; /* End of PRoot options. */
+
+		if (argv[i][2] != '\0') {
+			exit_usage();
+			exit(EXIT_FAILURE);			
+		}
+
+		switch (argv[i][1]) {
+		case 'x':
+			i++;
+			if (i >= argc) {
+				fprintf(stderr, "proot: missing value for the option -x\n");
+				exit_usage();
+			}
+			opt_excluded_paths = argv[i];
+			break;
+
+		case 'r':
+			i++;
+			if (i >= argc) {
+				fprintf(stderr, "proot: missing value for the option -t\n");
+				exit_usage();
+			}
+			opt_runner = argv[i];
+			break;
+
+		case 'd':
+			opt_check_fd = 1;
+			break;
+
+		case 's':
+			opt_check_syscall = 1;
+			break;
+
+		default:
+			exit_usage();
+		}
 	}
 
-	init_path_translator(argv[1]);
-	init_children_info(64);
+	if (argc == i)
+		exit_usage();
+
+	opt_new_root = argv[i];
+
+	if (argc - i == 1) {
+		opt_program = getenv("SHELL");
+		if (opt_program == NULL)
+			opt_program = "/bin/sh";
+	}
+	else  {
+		opt_program = argv[i + 1];
+		opt_args    = &argv[i + 1];
+	}
+
+	init_module_path(opt_new_root, opt_excluded_paths);
+	init_module_child_info();
+	init_module_syscall(opt_check_syscall);
+	init_module_execve(opt_runner);
 
 	pid = fork();
 	switch(pid) {
@@ -76,7 +160,7 @@ int main(int argc, char *argv[])
 
 		/* Ensure the child starts in a valid cwd within the
 		 * new root. */
-		status = chdir(argv[1]);
+		status = chdir(opt_new_root);
 		if (status < 0) {
 			perror("proot -- chdir()");
 			exit(EXIT_FAILURE);
@@ -93,7 +177,7 @@ int main(int argc, char *argv[])
 		}
 
 		/* Here we go! */
-		status = execvp(argv[2], argv + 2);
+		status = execvp(opt_program, opt_args);
 		perror("proot -- execvp()");
 		exit(EXIT_FAILURE);
 
@@ -113,7 +197,8 @@ int main(int argc, char *argv[])
 		}
 
 		/* Check every child file descriptors. */
-		foreach_child(check_fd);
+		if (opt_check_fd != 0)
+			foreach_child(check_fd);
 
 		if (WIFEXITED(child_status)) {
 			fprintf(stderr, "proot: child %d exited with result %d\n",

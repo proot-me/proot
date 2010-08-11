@@ -51,10 +51,11 @@ enum sysarg {
 	(offsetof(struct user, regs)			\
 	 + offsetof(struct user_regs_struct, reg_name))
 
-void translate_syscall(pid_t pid);
-word_t get_sysarg(pid_t pid, enum sysarg sysarg);
-void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
-int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
-int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
+extern void init_module_syscall(int sanity_check);
+extern void translate_syscall(pid_t pid);
+extern word_t get_sysarg(pid_t pid, enum sysarg sysarg);
+extern void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
+extern int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
+extern int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
 
 #endif /* SYSCALL_H */

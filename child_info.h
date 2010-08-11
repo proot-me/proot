@@ -39,7 +39,7 @@ struct child_info {
 
 typedef int (*foreach_child_t)(pid_t pid);
 
-extern void init_children_info(size_t nb_elements);
+extern void init_module_child_info();
 extern struct child_info *new_child(pid_t pid);
 extern void delete_child(pid_t pid);
 extern size_t get_nb_children();
