@@ -47,12 +47,14 @@
 #define ARG_MAX 131072
 #endif
 
+static const char *runner = NULL;
+
 /**
  * XXX: TODO
  */
-void init_module_execve(const char *runner)
+void init_module_execve(const char *runner_)
 {
-	if (runner != NULL)
+	if (runner_ != NULL)
 		fprintf(stderr, "proot: option -r not yet supported.\n");
 }
 
@@ -224,6 +226,10 @@ static int prepend_args(pid_t pid, int number_args, ...)
 	va_start(args, number_args);
 	for (i = 0; i < number_args; i++) {
 		const char *arg = va_arg(args, const char *);
+		if (arg == NULL) {
+			new_args[i] = 0;
+			continue;
+		}
 
 		size = strlen(arg) + 1;
 		argp -= size;
@@ -267,6 +273,8 @@ static int prepend_args(pid_t pid, int number_args, ...)
 
 	/* Copy the pointers to the new arguments backward in the stack. */
 	for (i = number_args - 1; i >= 0; i--) {
+		if (new_args[i] == 0)
+			continue;
 
 		new_child_argv -= sizeof(word_t);
 
@@ -330,6 +338,7 @@ int translate_execve(pid_t pid)
 
 	char interpreter[PATH_MAX];
 	char argument[ARG_MAX];
+	char *optional_arg;
 
 	status = get_sysarg_path(pid, old_path, SYSARG_1);
 	if (status < 0)
@@ -340,27 +349,16 @@ int translate_execve(pid_t pid)
 		return status;
 
 	status = get_interpreter(new_path, interpreter, argument);
+	optional_arg = argument;
+
 	switch (status) {
 	/* Not a script. */
 	case 0:
 		break;
 
-	/* Require an interpreter. */
+	/* Require an interpreter without argument. */
 	case 1:
-		/* Pass to the interpreter the "fake" path to the script. */
-		detranslate_path(new_path, 1);
-		if (status < 0)
-			return status;
-
-		/* argv[] = { &interpreter, &script, &old_argv[1], &old_argv[2], ... } */
-		status = prepend_args(pid, 2, interpreter, new_path);
-		if (status < 0)
-			return status;
-
-		status = translate_path(pid, new_path, interpreter, REGULAR);
-		if (status < 0)
-			return status;
-		break;
+		optional_arg = NULL;
 
 	/* Require an interpreter with an argument. */
 	case 2:
@@ -369,8 +367,8 @@ int translate_execve(pid_t pid)
 		if (status < 0)
 			return status;
 
-		/* argv[] = { &interpreter, &argument, &script, &old_argv[1], &old_argv[2], ... } */
-		status = prepend_args(pid, 3, interpreter, argument, new_path);
+		/* argv[] = { &interpreter, &arg (optional), &script, &old_argv[1], &old_argv[2], ... } */
+		status = prepend_args(pid, 4, runner, interpreter, optional_arg, new_path);
 		if (status < 0)
 			return status;
 
