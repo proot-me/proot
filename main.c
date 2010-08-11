@@ -190,8 +190,9 @@ static void start_process()
 	}
 }
 
-static void translation_loop()
+static int translation_loop()
 {
+	int last_exit_status;
 	int child_status;
 	long status;
 	int signal;
@@ -211,8 +212,7 @@ static void translation_loop()
 			foreach_child(check_fd);
 
 		if (WIFEXITED(child_status)) {
-			fprintf(stderr, "proot: child %d exited with result %d\n",
-				pid, WEXITSTATUS(child_status));
+			last_exit_status = WEXITSTATUS(child_status);
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
@@ -283,14 +283,13 @@ static void translation_loop()
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	return last_exit_status;
 }
 
 int main(int argc, char *argv[])
 {
 	parse_options(argc, argv);
 	start_process();
-	translation_loop();
-
-	fprintf(stderr, "proot: exited.\n");
-	exit(EXIT_SUCCESS);
+	return translation_loop();
 }
