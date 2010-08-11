@@ -314,7 +314,7 @@ static int canonicalize(pid_t pid,
 	/* Ensure we are accessing a directory. */
 	if (is_final == FINAL_FORCE_DIR) {
 		strcpy(tmp, result);
-		status = join_paths(2, result, tmp, ".");
+		status = join_paths(2, result, tmp, "");
 		if (status < 0)
 			return status;
 	}
