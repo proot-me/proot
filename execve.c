@@ -36,6 +36,7 @@
 #include <string.h>       /* strlen(3), */
 #include <alloca.h>       /* alloc(3), */
 #include <stdio.h>        /* fprintf(3), */
+#include <stdlib.h>       /* realpath(3), exit(3), EXIT_*, */
 
 #include "execve.h"
 #include "arch.h"
@@ -47,15 +48,23 @@
 #define ARG_MAX 131072
 #endif
 
-static const char *runner = NULL;
+static char runner[PATH_MAX];
+static int has_runner = 0;
 
 /**
- * XXX: TODO
+ * Initialize internal data of the execve module.
  */
-void init_module_execve(const char *runner_)
+void init_module_execve(const char *opt_runner)
 {
-	if (runner_ != NULL)
-		fprintf(stderr, "proot: option -r not yet supported.\n");
+	if (opt_runner == NULL)
+		return;
+
+	if (realpath(opt_runner, runner) == NULL) {
+		perror("proot -- realpath()");
+		exit(EXIT_FAILURE);
+	}
+
+	has_runner = 1;
 }
 
 /**
@@ -354,6 +363,19 @@ int translate_execve(pid_t pid)
 	switch (status) {
 	/* Not a script. */
 	case 0:
+		if (has_runner) {
+			/* Pass to the runner the "fake" path to the program. */
+			detranslate_path(new_path, 1);
+			if (status < 0)
+				return status;
+
+			status = prepend_args(pid, 2, runner, new_path);
+			if (status < 0)
+				return status;
+
+			/* Specifies to actually execute the runner. */
+			strcpy(new_path, runner);
+		}
 		break;
 
 	/* Require an interpreter without argument. */
@@ -368,13 +390,18 @@ int translate_execve(pid_t pid)
 			return status;
 
 		/* argv[] = { &interpreter, &arg (optional), &script, &old_argv[1], &old_argv[2], ... } */
-		status = prepend_args(pid, 4, runner, interpreter, optional_arg, new_path);
+		status = prepend_args(pid, 4, has_runner ? runner : NULL, interpreter, optional_arg, new_path);
 		if (status < 0)
 			return status;
 
-		status = translate_path(pid, new_path, interpreter, REGULAR);
-		if (status < 0)
-			return status;
+		/* Specify which program should be actually executed (runner or interpreter). */
+		if (has_runner)
+			strcpy(new_path, runner);
+		else {
+			status = translate_path(pid, new_path, interpreter, REGULAR);
+			if (status < 0)
+				return status;
+		}
 		break;
 
 	default:
