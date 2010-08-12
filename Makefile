@@ -8,8 +8,13 @@ ARCH     = $(shell uname -m)
 
 OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o
 
+all: proot proot-exec
+
 proot: $(OBJECTS)
 	$(LD) $(LDFLAGS) $(OBJECTS) -o $@
+
+proot-exec: proot-exec.o
+	$(LD) $(LDFLAGS) $? -static -o $@
 
 %.o: %.c *.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
@@ -20,4 +25,4 @@ proot: $(OBJECTS)
 .PHONY: clean
 
 clean:
-	rm -f $(OBJECTS) proot *.gcno *.gcda *.info
+	rm -f $(OBJECTS) proot-exec.o proot-exec proot *.gcno *.gcda *.info

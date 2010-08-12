@@ -373,7 +373,7 @@ int translate_execve(pid_t pid)
 			if (status < 0)
 				return status;
 
-			/* Specifies to actually execute the runner. */
+			/* Specify to actually execute the runner. */
 			strcpy(new_path, runner);
 		}
 		break;

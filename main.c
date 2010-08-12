@@ -37,8 +37,8 @@
 #include "execve.h"
 
 static const char *opt_new_root = NULL;
-static const char *opt_program = NULL;
-static char *const *opt_args = { NULL };
+static char *opt_args_default[] = { "/bin/sh", NULL };
+static char **opt_args = &opt_args_default[0];
 
 static const char *opt_excluded_paths = NULL;
 static const char *opt_runner = NULL;
@@ -124,13 +124,12 @@ static void parse_options(int argc, char *argv[])
 	opt_new_root = argv[i];
 
 	if (argc - i == 1) {
-		opt_program = getenv("SHELL");
-		if (opt_program == NULL)
-			opt_program = "/bin/sh";
+		char *shell = getenv("SHELL");
+		if (shell != NULL)
+			opt_args_default[0] = shell;
 	}
 	else  {
-		opt_program = argv[i + 1];
-		opt_args    = &argv[i + 1];
+		opt_args = &argv[i + 1];
 	}
 
 	init_module_path(opt_new_root, opt_excluded_paths);
@@ -178,8 +177,7 @@ static void start_process()
 			exit(EXIT_FAILURE);
 		}
 
-		/* Here we go! */
-		status = execvp(opt_program, opt_args);
+		status = execvp("proot-exec", opt_args);
 		perror("proot -- execvp()");
 		exit(EXIT_FAILURE);
 
@@ -242,7 +240,8 @@ static int translation_loop()
 				/* Distinguish some events from others and
 				 * automatically trace each new process with
 				 * the same options.  Note: only the first
-				 * process should come here. */
+				 * process should come here (because of
+				 * TRACEEXEC). */
 				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
 						PTRACE_O_TRACESYSGOOD |
 						PTRACE_O_TRACEFORK    |
