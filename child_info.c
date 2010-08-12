@@ -28,8 +28,6 @@
 #include <stdlib.h>     /* NULL, exit(3), */
 #include <stddef.h>     /* offsetof(), */
 #include <sys/user.h>   /* struct user*, */
-#include <errno.h>      /* errno, */
-#include <stdio.h>      /* perror(3), fprintf(3), */
 #include <limits.h>     /* ULONG_MAX, */
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
@@ -37,6 +35,7 @@
 #include "child_info.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
 #include "syscall.h" /* USER_REGS_OFFSET, */
+#include "notice.h"
 
 static struct child_info *children_info;
 static size_t max_children = 0;
@@ -62,10 +61,8 @@ void init_module_child_info()
 	const int nb_elements = 64;
 
 	children_info = calloc(nb_elements, sizeof(struct child_info));
-	if (children_info == NULL) {
-		perror("proot -- calloc()");
-		exit(EXIT_FAILURE);
-	}
+	if (children_info == NULL)
+		notice(ERROR, SYSTEM, "calloc()");
 
 	/* Set the default values for each entry. */
 	for(i = 0; i < nb_elements; i++)
@@ -89,7 +86,7 @@ struct child_info *new_child(pid_t pid)
 	if (nb_children == max_children) {
 		new_children_info = realloc(children_info, 2 * max_children * sizeof(struct child_info));
 		if (new_children_info == NULL) {
-			perror("proot -- realloc()");
+			notice(WARNING, SYSTEM, "realloc()");
 			return NULL;
 		}
 

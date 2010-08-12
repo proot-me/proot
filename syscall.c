@@ -31,7 +31,6 @@
 #include <limits.h>      /* PATH_MAX, */
 #include <stddef.h>      /* intptr_t, */
 #include <errno.h>       /* errno(3), */
-#include <stdio.h>       /* fprintf(3), */
 #include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
 #include <sys/user.h>    /* struct user*, */
 #include <stdlib.h>      /* exit(3), */
@@ -43,6 +42,7 @@
 #include "child_info.h"
 #include "path.h"
 #include "execve.h"
+#include "notice.h"
 
 /**
  * XXX: TODO
@@ -50,7 +50,7 @@
 void init_module_syscall(int sanity_check)
 {
 	if (sanity_check != 0)
-		fprintf(stderr, "proot: option -s not yet supported.\n");
+		notice(WARNING, USER, "option -s not yet supported");
 }
 
 /**
@@ -82,10 +82,8 @@ word_t get_sysarg(pid_t pid, enum sysarg sysarg)
 
 	/* Get the argument register from the child's USER area. */
 	result = ptrace(PTRACE_PEEKUSER, pid, arg_offset[sysarg], NULL);
-	if (errno != 0) {
-		perror("proot -- ptrace(PEEKUSER)");
-		exit(EXIT_FAILURE);
-	}
+	if (errno != 0)
+		notice(ERROR, SYSTEM, "ptrace(PEEKUSER)");
 
 	return result;
 }
@@ -104,10 +102,8 @@ void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 
 	/* Set the argument register in the child's USER area. */
 	status = ptrace(PTRACE_POKEUSER, pid, arg_offset[sysarg], value);
-	if (status < 0) {
-		perror("proot -- ptrace(POKEUSER)");
-		exit(EXIT_FAILURE);
-	}
+	if (status < 0)
+		notice(ERROR, SYSTEM, "ptrace(POKEUSER)");
 }
 
 /**
@@ -299,7 +295,7 @@ static void translate_syscall_enter(struct child_info *child)
 	/* Ensure one is not trying to cheat PRoot by calling an
 	 * unsupported syscall on that architecture. */
 	if ((int)child->sysnum < 0) {
-		fprintf(stderr, "proot: forbidden syscall %d\n", (int)child->sysnum);
+		notice(WARNING, INTERNAL, "forbidden syscall %d", (int)child->sysnum);
 		status = -ENOSYS;
 		goto end_translation;
 	}
@@ -969,7 +965,7 @@ static void translate_syscall_enter(struct child_info *child)
 		break;
 
 	default:
-		fprintf(stderr, "proot: unknown syscall %lu\n", child->sysnum);
+		notice(WARNING, INTERNAL, "unknown syscall %lu", child->sysnum);
 		status = -ENOSYS;
 		break;
 	}

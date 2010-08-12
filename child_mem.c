@@ -29,7 +29,6 @@
 #include <stddef.h>     /* offsetof(), */
 #include <sys/user.h>   /* struct user*, */
 #include <errno.h>      /* errno, */
-#include <stdio.h>      /* perror(3), fprintf(3), */
 #include <limits.h>     /* ULONG_MAX, */
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
@@ -37,6 +36,7 @@
 #include "child_mem.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
 #include "syscall.h" /* USER_REGS_OFFSET, */
+#include "notice.h"
 
 /**
  * Resize by @size bytes the stack of the child @pid. This function
@@ -59,7 +59,7 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= size)
 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-		fprintf(stderr, "proot -- integer under/overflow detected in %s\n", __FUNCTION__);
+		notice(WARNING, INTERNAL, "integer under/overflow detected in %s", __FUNCTION__);
 		return 0;
 	}
 
@@ -100,7 +100,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 	for (i = 0; i < nb_full_words; i++) {
 		status = ptrace(PTRACE_POKEDATA, pid, dest + i, src[i]);
 		if (status < 0) {
-			perror("proot -- ptrace(POKEDATA)");
+			notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 			return -EFAULT;
 		}
 	}
@@ -110,7 +110,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 
 	word = ptrace(PTRACE_PEEKDATA, pid, dest + i, NULL);
 	if (errno != 0) {
-		perror("proot -- ptrace(PEEKDATA)");
+		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 
@@ -122,7 +122,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 
 	status = ptrace(PTRACE_POKEDATA, pid, dest + i, word);
 	if (status < 0) {
-		perror("proot -- ptrace(POKEDATA)");
+		notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 		return -EFAULT;
 	}
 
@@ -153,7 +153,7 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 	for (i = 0; i < nb_full_words; i++) {
 		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
 		if (errno != 0) {
-			perror("proot -- ptrace(PEEKDATA)");
+			notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 			return -EFAULT;
 		}
 		dest[i] = word;
@@ -164,7 +164,7 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 
 	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
 	if (errno != 0) {
-		perror("proot -- ptrace(PEEKDATA)");
+		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 

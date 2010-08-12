@@ -33,11 +33,12 @@
 #include <stdarg.h>   /* va_*(3), */
 #include <sys/param.h> /* MAXSYMLINKS, */
 #include <stddef.h>   /* ptrdiff_t, */
-#include <stdio.h>    /* perror(3), */
+#include <stdio.h>    /* sprintf(3), */
 #include <sys/types.h> /* pid_t, */
 #include <dirent.h>   /* readdir(3), */
 
 #include "path.h"
+#include "notice.h"
 
 static int  initialized = 0;
 static char root[PATH_MAX];
@@ -48,16 +49,14 @@ static size_t root_length;
  */
 void init_module_path(const char *new_root, const char *excluded_paths)
 {
-	if (realpath(new_root, root) == NULL) {
-		perror("proot -- realpath()");
-		exit(EXIT_FAILURE);
-	}
+	if (realpath(new_root, root) == NULL)
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
 
 	root_length = strlen(root);
 	initialized = 1;
 
 	if (excluded_paths != NULL)
-		fprintf(stderr, "proot: option -x not yet supported.\n");
+		notice(WARNING, USER, "option -x not yet supported");
 }
 
 #define FINAL_NORMAL    1
@@ -362,7 +361,7 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 		/* Ensure the current working directory is within the
 		 * new root once the child process did a chdir(2). */
 		if (strncmp(tmp, root, root_length) != 0) {
-			fprintf(stderr, "proot: the child %d is out of my control (1)\n", pid);
+			notice(WARNING, INTERNAL, "child %d is out of my control (1)", pid);
 			return -EPERM;
 		}
 
@@ -390,7 +389,7 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 	/* Add a small sanity check. It doesn't prove PRoot is secure! */
 	if (deref_final != 0 && realpath(result, tmp) != NULL) {
 		if (strncmp(tmp, root, root_length) != 0) {
-			fprintf(stderr, "proot: the child %d is out of my control (2)\n", pid);
+			notice(WARNING, INTERNAL, "child %d is out of my control (2)", pid);
 			return -EPERM;
 		}
 	}
@@ -536,8 +535,8 @@ int check_fd(pid_t pid)
 
 		/* Here comes the sanity check. */
 		if (strncmp(root, path, root_length) != 0) {
-			fprintf(stderr, "proot: the child %d is out of my control (3)\n", pid);
-			fprintf(stderr, "proot: %s is not inside the new root (%s)\n", path, root);
+			notice(WARNING, INTERNAL, "child %d is out of my control (3)", pid);
+			notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, root);
 			status = -pid;
 			goto end;
 		}

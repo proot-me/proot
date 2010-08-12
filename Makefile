@@ -6,7 +6,7 @@ LDFLAGS  =
 
 ARCH     = $(shell uname -m)
 
-OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o
+OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o
 
 all: proot proot-exec
 

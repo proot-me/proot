@@ -35,6 +35,7 @@
 #include "child_info.h"
 #include "syscall.h" /* translate_syscall(), */
 #include "execve.h"
+#include "notice.h"
 
 static const char *opt_new_root = NULL;
 static char *opt_args_default[] = { "/bin/sh", NULL };
@@ -89,19 +90,15 @@ static void parse_options(int argc, char *argv[])
 		switch (argv[i][1]) {
 		case 'x':
 			i++;
-			if (i >= argc) {
-				fprintf(stderr, "proot: missing value for the option -x\n");
-				exit_usage();
-			}
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -x");
 			opt_excluded_paths = argv[i];
 			break;
 
 		case 'r':
 			i++;
-			if (i >= argc) {
-				fprintf(stderr, "proot: missing value for the option -t\n");
-				exit_usage();
-			}
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -t");
 			opt_runner = argv[i];
 			break;
 
@@ -146,40 +143,32 @@ static void start_process()
 	pid = fork();
 	switch(pid) {
 	case -1:
-		perror("proot -- fork()");
-		exit(EXIT_FAILURE);
+		notice(ERROR, SYSTEM, "fork()");
 
 	case 0: /* child */
 
 		/* Declare myself as ptraceable before executing the
 		 * requested program. */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-		if (status < 0) {
-			perror("proot -- ptrace(TRACEME)");
-			exit(EXIT_FAILURE);
-		}
+		if (status < 0)
+			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
 
 		/* Ensure the child starts in a valid cwd within the
 		 * new root. */
 		status = chdir(opt_new_root);
-		if (status < 0) {
-			perror("proot -- chdir()");
-			exit(EXIT_FAILURE);
-		}
+		if (status < 0)
+			notice(ERROR, SYSTEM, "chdir(\"%s\")", opt_new_root);
+
 		status = setenv("PWD", "/", 1);
-		if (status < 0) {
-			perror("proot -- setenv()");
-			exit(EXIT_FAILURE);
-		}
+		if (status < 0)
+			notice(ERROR, SYSTEM, "setenv(\"PWD\")");
+
 		status = setenv("OLDPWD", "/", 1);
-		if (status < 0) {
-			perror("proot -- setenv()");
-			exit(EXIT_FAILURE);
-		}
+		if (status < 0)
+			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\")");
 
 		status = execvp("proot-exec", opt_args);
-		perror("proot -- execvp()");
-		exit(EXIT_FAILURE);
+		notice(ERROR, SYSTEM, "execvp(\"proot-exec\")");
 
 	default: /* parent */
 		if (new_child(pid) == NULL)
@@ -200,10 +189,8 @@ static int translation_loop()
 	while (get_nb_children() > 0) {
 		/* Wait for the next child's stop. */
 		pid = wait(&child_status);
-		if (pid < 0) {
-			perror("proot -- wait()");
-			exit(EXIT_FAILURE);
-		}
+		if (pid < 0)
+			notice(ERROR, SYSTEM, "wait()");
 
 		/* Check every child file descriptors. */
 		if (opt_check_fd != 0)
@@ -215,13 +202,13 @@ static int translation_loop()
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(child_status)) {
-			fprintf(stderr, "proot: child %d terminated with signal %d\n",
+			notice(NOTICE, INTERNAL, "child %d terminated with signal %d",
 				pid, WTERMSIG(child_status));
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFCONTINUED(child_status)) {
-			fprintf(stderr, "proot: child %d continued\n", pid);
+			notice(NOTICE, INTERNAL, "child %d continued", pid);
 			signal = SIGCONT;
 		}
 		else if (WIFSTOPPED(child_status)) {
@@ -248,10 +235,8 @@ static int translation_loop()
 						PTRACE_O_TRACEVFORK   |
 						PTRACE_O_TRACECLONE   |
 						PTRACE_O_TRACEEXEC);
-				if (status < 0) {
-					perror("proot -- ptrace(PTRACE_SETOPTIONS)");
-					exit(EXIT_FAILURE);
-				}
+				if (status < 0)
+					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 
 				signal = 0;
 				break;
@@ -270,17 +255,15 @@ static int translation_loop()
 			}
 		}
 		else {
-			fprintf(stderr, "proot: unknown trace event\n");
+			notice(WARNING, INTERNAL, "unknown trace event");
 			signal = 0;
 		}
 
 		/* Restart the child and stop it at the next entry or exit of
 		 * a system call. */
 		status = ptrace(PTRACE_SYSCALL, pid, NULL, signal);
-		if (status < 0) {
-			perror("proot -- ptrace(SYSCALL)");
-			exit(EXIT_FAILURE);
-		}
+		if (status < 0)
+			notice(ERROR, SYSTEM, "ptrace(SYSCALL)");
 	}
 
 	return last_exit_status;

@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 
 	execv(argv[0], argv);
 
-	fprintf(stderr, "proot-exec error: execv(%s):", argv[0]);
+	fprintf(stderr, "proot-exec: execv(\"%s\"): ", argv[0]);
 	perror(NULL);
 	return 1;
 }
