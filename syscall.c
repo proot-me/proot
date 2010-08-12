@@ -229,7 +229,9 @@ static int sanitize_at2sysarg(pid_t pid, int dirfd, char path[PATH_MAX], enum sy
  * space (@size bytes max). It returns the number of bytes used by the
  * new path pointed to by @addr, including the string terminator.
  */
-static int detranslate_addr(pid_t pid, word_t addr, int size, int weakness)
+#define GETCWD   1
+#define READLINK 2
+static int detranslate_addr(pid_t pid, word_t addr, int size, int mode)
 {
 	char path[PATH_MAX];
 	int status;
@@ -247,21 +249,27 @@ static int detranslate_addr(pid_t pid, word_t addr, int size, int weakness)
 	path[size] = '\0';
 
 	/* Removes the leading "root" part. */
-	status = detranslate_path(path, weakness);
+	status = detranslate_path(path, mode == GETCWD);
 	if (status < 0)
 		return status;
 
+	size = strlen(path);
+
+	/* Only getcwd(2) puts the terminating \0. */
+	if (mode == GETCWD)
+		size++;
+
 	/* The original path doesn't need detranslation. */
-	if (status == 0)
+	if (size == 0)
 		goto skip_overwrite;
 
 	/* Overwrite the path. */
-	status = copy_to_child(pid, addr, path, status);
+	status = copy_to_child(pid, addr, path, size);
 	if (status < 0)
 		return status;
 
 skip_overwrite:
-	return strlen(path) + 1;
+	return size;
 }
 
 /**
@@ -1024,7 +1032,7 @@ static void translate_syscall_exit(struct child_info *child)
 		if ((int)result < 0)
 			return;
 
-		status = detranslate_addr(child->pid, child->output, result, STRONG);
+		status = detranslate_addr(child->pid, child->output, result, GETCWD);
 		if (status < 0)
 			break;
 
@@ -1037,11 +1045,18 @@ static void translate_syscall_exit(struct child_info *child)
 		if ((int)result < 0)
 			return;
 
-		status = detranslate_addr(child->pid, child->output, result, WEAK);
+		/* Avoid the detranslation of partial result. */
+		status = (int)get_sysarg(child->pid, SYSARG_3);
+		if ((int)result == status)
+			return;
+
+		assert((int)result <= status);
+
+		status = detranslate_addr(child->pid, child->output, result, READLINK);
 		if (status < 0)
 			break;
 
-		set_sysarg(child->pid, SYSARG_RESULT, (word_t)status - 1);
+		set_sysarg(child->pid, SYSARG_RESULT, (word_t)status);
 		break;
 
 	default:
