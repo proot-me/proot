@@ -26,7 +26,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>        /* open(2), */
-#include <unistd.h>       /* read(2), */
+#include <unistd.h>       /* read(2), access(2), */
 #include <sys/param.h>    /* ARG_MAX, */
 #include <limits.h>       /* PATH_MAX, ARG_MAX, */
 #include <errno.h>        /* ENAMETOOLONG, */
@@ -359,16 +359,28 @@ int translate_execve(pid_t pid)
 	/* Not a script. */
 	case 0:
 		if (runner[0] != '\0') {
+			/* Don't launch the runner if the program
+			 * doesn't exist or isn't readable. */
+			status = access(new_path, F_OK);
+			if (status < 0)
+				return -ENOENT;
+
+			status = access(new_path, R_OK);
+			if (status < 0)
+				return -EACCES;
+
 			/* Pass to the runner the "fake" path to the program. */
 			detranslate_path(new_path, 1);
 			if (status < 0)
 				return status;
 
+
+			/* argv[] = { &runner, &program, &old_argv[1], &old_argv[2], ... } */
 			status = prepend_args(pid, 2, runner, new_path);
 			if (status < 0)
 				return status;
 
-			/* Specify to actually execute the runner. */
+			/* Launch the runner, actually. */
 			strcpy(new_path, runner);
 		}
 		break;
@@ -384,15 +396,34 @@ int translate_execve(pid_t pid)
 		if (status < 0)
 			return status;
 
-		/* argv[] = { &interpreter, &arg (optional), &script, &old_argv[1], &old_argv[2], ... } */
-		status = prepend_args(pid, 4, runner[0] != '\0' ? runner : NULL, interpreter, optional_arg, new_path);
-		if (status < 0)
-			return status;
+		if (runner[0] != '\0') {
+			/* Don't launch the runner if the interpreter
+			 * doesn't exist or isn't readable. */
+			status = access(interpreter, F_OK);
+			if (status < 0)
+				return -ENOENT;
 
-		/* Specify which program should be actually executed (runner or interpreter). */
-		if (runner[0] != '\0')
+			status = access(interpreter, R_OK);
+			if (status < 0)
+				return -EACCES;
+
+			/* argv[] = { &runner, &interpreter, &arg (optional),
+			 *            &script, &old_argv[1], &old_argv[2], ... } */
+			status = prepend_args(pid, 4, runner, interpreter, optional_arg, new_path);
+			if (status < 0)
+				return status;
+
+			/* Launch the runner, actually. */
 			strcpy(new_path, runner);
+		}
 		else {
+			/* argv[] = { &interpreter, &arg (optional), &script,
+			 *            &old_argv[1], &old_argv[2], ... } */
+			status = prepend_args(pid, 3, interpreter, optional_arg, new_path);
+			if (status < 0)
+				return status;
+
+			/* Launch the interpreter, actually. */
 			status = translate_path(pid, new_path, interpreter, REGULAR);
 			if (status < 0)
 				return status;
