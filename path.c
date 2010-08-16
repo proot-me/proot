@@ -374,6 +374,8 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 	else
 		strcpy(result, "/");
 
+	VERBOSE(4, "pid %d: translate(\"%s\")", pid, fake_path);
+
 	/* Canonicalize regarding the new root. */
 	status = canonicalize(pid, fake_path, deref_final, result, 0, 0);
 	if (status < 0)
@@ -385,6 +387,8 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 	status = join_paths(2, result, root, tmp);
 	if (status < 0)
 		return status;
+
+	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
 
 	/* Add a small sanity check. It doesn't prove PRoot is secure! */
 	if (deref_final != 0 && realpath(result, tmp) != NULL) {

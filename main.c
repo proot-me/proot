@@ -43,7 +43,6 @@ static char **opt_args = &opt_args_default[0];
 
 static const char *opt_excluded_paths = NULL;
 static const char *opt_runner = NULL;
-static int opt_verbose = 0;
 
 static int opt_many_jobs = 0;
 static int opt_allow_unknown = 0;
@@ -114,8 +113,7 @@ static void parse_options(int argc, char *argv[])
 			break;
 
 		case 'v':
-			notice(WARNING, USER, "option -v not yet supported");
-			opt_verbose++;
+			verbose_level++;
 			break;
 
 		case 'j':
@@ -234,18 +232,20 @@ static int translation_loop()
 			foreach_child(check_fd);
 
 		if (WIFEXITED(child_status)) {
+			VERBOSE(1, "pid %d: exited with status %d",
+			           pid, WEXITSTATUS(child_status));
 			last_exit_status = WEXITSTATUS(child_status);
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(child_status)) {
-			notice(NOTICE, INTERNAL, "child %d terminated with signal %d",
-				pid, WTERMSIG(child_status));
+			VERBOSE(1, "pid %d: terminated with signal %d",
+			           pid, WTERMSIG(child_status));
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFCONTINUED(child_status)) {
-			notice(NOTICE, INTERNAL, "child %d continued", pid);
+			VERBOSE(1, "pid %d: continued", pid);
 			signal = SIGCONT;
 		}
 		else if (WIFSTOPPED(child_status)) {

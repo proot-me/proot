@@ -41,6 +41,9 @@ enum notice_severity
 	NOTICE,
 };
 
+extern int verbose_level;
+#define VERBOSE(level, message, args...) do { if (verbose_level >= (level)) notice(NOTICE, INTERNAL, (message), ## args); } while (0)
+
 extern void notice(enum notice_severity severity, enum notice_origin origin, const char *message, ...);
 
 #endif /* NOTICE_H */

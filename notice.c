@@ -30,6 +30,8 @@
 
 #include "notice.h"
 
+int verbose_level = 0;
+
 /**
  * XXX
  */

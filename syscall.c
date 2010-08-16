@@ -306,6 +306,16 @@ static void translate_syscall_enter(struct child_info *child)
 
 	child->sysnum = get_sysarg(child->pid, SYSARG_NUM);
 
+	if (verbose_level >= 3)
+		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
+			child->pid, child->sysnum,
+			get_sysarg(child->pid, SYSARG_1), get_sysarg(child->pid, SYSARG_2),
+			get_sysarg(child->pid, SYSARG_3), get_sysarg(child->pid, SYSARG_4),
+			get_sysarg(child->pid, SYSARG_5), get_sysarg(child->pid, SYSARG_6),
+			ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
+	else
+		VERBOSE(2, "pid %d: syscall(%d)", (int)child->sysnum);
+
 	/* Ensure one is not trying to cheat PRoot by calling an
 	 * unsupported syscall on that architecture. */
 	if ((int)child->sysnum < 0) {
@@ -1019,6 +1029,9 @@ static void translate_syscall_exit(struct child_info *child)
 	word_t sysnum;
 	word_t result;
 	int status;
+
+	VERBOSE(3, "pid %d:        -> %ld", child->pid, child->sysnum,
+		get_sysarg(child->pid, SYSARG_RESULT));
 
 	/* Set the child's errno if an error occured previously during
 	 * the translation. */
