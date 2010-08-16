@@ -44,13 +44,19 @@
 #include "execve.h"
 #include "notice.h"
 
+static int allow_unknown = 0;
+static int allow_ptrace = 0;
+
 /**
- * XXX: TODO
+ * Initialize internal data of the syscall module.
  */
-void init_module_syscall(int sanity_check)
+void init_module_syscall(int sanity_check, int opt_allow_unknown, int opt_allow_ptrace)
 {
 	if (sanity_check != 0)
 		notice(WARNING, USER, "option -s not yet supported");
+
+	allow_unknown = opt_allow_unknown;
+	allow_ptrace = opt_allow_ptrace;
 }
 
 /**
@@ -487,7 +493,6 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_prof:
 	case __NR_profil:
 	case __NR_pselect6:
-	case __NR_ptrace: /* Here comes the exit door ;) Do NOT use PRoot for security purpose! */
 	case __NR_putpmsg:
 	case __NR_pwrite64:
 	case __NR_pwritev:
@@ -639,6 +644,13 @@ static void translate_syscall_enter(struct child_info *child)
 
 		/* Nothing to do. */
 		status = 0;
+		break;
+
+	case __NR_ptrace:
+		if (!allow_ptrace)
+			status = -EPERM;
+		else
+			status = 0;
 		break;
 
 	case __NR_getcwd:
@@ -974,7 +986,8 @@ static void translate_syscall_enter(struct child_info *child)
 
 	default:
 		notice(WARNING, INTERNAL, "unknown syscall %lu", child->sysnum);
-		status = -ENOSYS;
+		if (!allow_unknown)
+			status = -ENOSYS;
 		break;
 	}
 

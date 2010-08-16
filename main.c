@@ -43,6 +43,11 @@ static char **opt_args = &opt_args_default[0];
 
 static const char *opt_excluded_paths = NULL;
 static const char *opt_runner = NULL;
+static int opt_verbose = 0;
+
+static int opt_many_jobs = 0;
+static int opt_allow_unknown = 0;
+static int opt_allow_ptrace = 0;
 
 static int opt_check_fd = 0;
 static int opt_check_syscall = 0;
@@ -53,17 +58,23 @@ static void exit_usage(void)
 	puts("Usages:");
 	puts("  proot [options] <fake_root>");
 	puts("  proot [options] <fake_root> <program> [args]");
-/*	puts("  proot [options] <fake_root> <pid>"); */
+	puts("  proot [options] <fake_root> <pid>");
 	puts("");
 	puts("Arguments:");
 	puts("  <fake_root>   is the path to the fake root file system");
 	puts("  <program>     is the path of the program to launch, default is $SHELL");
 	puts("  [args]        are the options passed to <program>");
-/*	puts("  <pid>         is the identifier of the process to attach on-the-fly"); */
+	puts("  <pid>         is the identifier of the process to attach on-the-fly");
 	puts("");
-	puts("Options:");
+	puts("Common options:");
 	puts("  -x <path>     don't translate access to <path>, can be a coma-separated list");
 	puts("  -r <program>  use <program> to run each process");
+	puts("  -v            increase the verbose level");
+	puts("");
+	puts("Insecure options:");
+	puts("  -j <integer>  use <integer> jobs (faster! but prone to race conditions)");
+	puts("  -u            don't block unknown syscalls");
+	puts("  -p            don't block ptrace(2)");
 	puts("");
 	puts("Debug options:");
 	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)");
@@ -102,6 +113,29 @@ static void parse_options(int argc, char *argv[])
 			opt_runner = argv[i];
 			break;
 
+		case 'v':
+			notice(WARNING, USER, "option -v not yet supported");
+			opt_verbose++;
+			break;
+
+		case 'j':
+			notice(WARNING, USER, "option -j not yet supported");
+			i++;
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -j");
+			opt_many_jobs = atoi(argv[i]);
+			if (opt_many_jobs == 0)
+				notice(ERROR, USER, "-j \"%s\" is not valid", argv[i]);
+			break;
+
+		case 'u':
+			opt_allow_unknown = 1;
+			break;
+
+		case 'p':
+			opt_allow_ptrace = 1;
+			break;
+
 		case 'd':
 			opt_check_fd = 1;
 			break;
@@ -127,11 +161,14 @@ static void parse_options(int argc, char *argv[])
 	}
 	else  {
 		opt_args = &argv[i + 1];
+
+		if (atoi(opt_args[0]) != 0 && opt_args[1] == NULL)
+			notice(ERROR, USER, "attaching a process on-the-fly not yet supported");
 	}
 
 	init_module_path(opt_new_root, opt_excluded_paths);
 	init_module_child_info();
-	init_module_syscall(opt_check_syscall);
+	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
 	init_module_execve(opt_runner);
 }
 
