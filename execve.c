@@ -36,6 +36,7 @@
 #include <string.h>       /* strlen(3), */
 #include <alloca.h>       /* alloc(3), */
 #include <stdlib.h>       /* realpath(3), exit(3), EXIT_*, */
+#include <assert.h>       /* assert(3), */
 
 #include "execve.h"
 #include "arch.h"
@@ -214,6 +215,7 @@ static int prepend_args(pid_t pid, int number_args, ...)
 
 	word_t old_child_argv;
 	word_t new_child_argv;
+	word_t previous_sp;
 	word_t argp;
 
 	va_list args;
@@ -223,10 +225,11 @@ static int prepend_args(pid_t pid, int number_args, ...)
 	int i;
 
 	/* Copy the new arguments in the child's stack. */
-	argp = (word_t) ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
+	previous_sp = (word_t) ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
 	if (errno != 0)
 		return -EFAULT;
 
+	argp = previous_sp;
 	va_start(args, number_args);
 	for (i = 0; i < number_args; i++) {
 		const char *arg = va_arg(args, const char *);
@@ -296,7 +299,7 @@ static int prepend_args(pid_t pid, int number_args, ...)
 	if (status < 0)
 		return -EFAULT;
 
-	return 0;
+	return previous_sp - new_child_argv;
 }
 
 /**
@@ -336,6 +339,7 @@ static int prepend_args(pid_t pid, int number_args, ...)
 int translate_execve(pid_t pid)
 {
 	int status;
+	int size = 0;
 
 	char old_path[PATH_MAX];
 	char new_path[PATH_MAX];
@@ -379,6 +383,7 @@ int translate_execve(pid_t pid)
 			status = prepend_args(pid, 2, runner, new_path);
 			if (status < 0)
 				return status;
+			size = status;
 
 			/* Launch the runner, actually. */
 			strcpy(new_path, runner);
@@ -412,6 +417,7 @@ int translate_execve(pid_t pid)
 			status = prepend_args(pid, 4, runner, interpreter, optional_arg, new_path);
 			if (status < 0)
 				return status;
+			size = status;
 
 			/* Launch the runner, actually. */
 			strcpy(new_path, runner);
@@ -422,6 +428,7 @@ int translate_execve(pid_t pid)
 			status = prepend_args(pid, 3, interpreter, optional_arg, new_path);
 			if (status < 0)
 				return status;
+			size = status;
 
 			/* Launch the interpreter, actually. */
 			status = translate_path(pid, new_path, AT_FDCWD, interpreter, REGULAR);
@@ -431,6 +438,7 @@ int translate_execve(pid_t pid)
 		break;
 
 	default:
+		assert(status < 0);
 		return status;
 	}
 
@@ -439,7 +447,7 @@ int translate_execve(pid_t pid)
 	if (status < 0)
 		return status;
 
-	set_sysarg_path(pid, new_path, SYSARG_1);
+	size += set_sysarg_path(pid, new_path, SYSARG_1);
 
-	return 0;
+	return size;
 }

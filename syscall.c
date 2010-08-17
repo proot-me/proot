@@ -946,9 +946,6 @@ static void translate_syscall_exit(struct child_info *child)
 	word_t result;
 	int status;
 
-	VERBOSE(3, "pid %d:        -> %ld", child->pid, child->sysnum,
-		get_sysarg(child->pid, SYSARG_RESULT));
-
 	/* Set the child's errno if an error occured previously during
 	 * the translation. */
 	if (child->status < 0)
@@ -956,12 +953,21 @@ static void translate_syscall_exit(struct child_info *child)
 	
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
-	if (child->status > 0) {
+	result = get_sysarg(child->pid, SYSARG_RESULT);
+	if (child->status > 0
+	    && (child->sysnum != __NR_execve
+#if !defined (x86_64) /* This architecture is magic! */
+		|| (int)result < 0
+#endif
+	    )) {
 		word_t child_ptr;
 		child_ptr = resize_child_stack(child->pid, -child->status);
 		if (child_ptr == 0)
 			set_sysarg(child->pid, SYSARG_RESULT, (word_t)-EFAULT);
 	}
+
+	VERBOSE(3, "pid %d:        -> %ld [0x%lx]", child->pid, result,
+		ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
 
 	/* Reset the current syscall number. */
 	sysnum = child->sysnum;
