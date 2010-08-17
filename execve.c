@@ -348,7 +348,7 @@ int translate_execve(pid_t pid)
 	if (status < 0)
 		return status;
 
-	status = translate_path(pid, new_path, old_path, REGULAR);
+	status = translate_path(pid, new_path, AT_FDCWD, old_path, REGULAR);
 	if (status < 0)
 		return status;
 
@@ -424,7 +424,7 @@ int translate_execve(pid_t pid)
 				return status;
 
 			/* Launch the interpreter, actually. */
-			status = translate_path(pid, new_path, interpreter, REGULAR);
+			status = translate_path(pid, new_path, AT_FDCWD, interpreter, REGULAR);
 			if (status < 0)
 				return status;
 		}

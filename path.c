@@ -251,15 +251,13 @@ static int is_excluded(const char *path)
  * true -- it is usefull for syscalls like lstat(2). The parameter
  * @nb_readlink should be set to 0 unless you know what you are
  * doing. This function returns -errno if an error occured, otherwise
- * it returns 0. The value pointed to by @out is set to 1 if there is
- * an attempt to escape from the new root.
+ * it returns 0.
  */
 static int canonicalize(pid_t pid,
 			const char *fake_path,
 			int deref_final,
 			char result[PATH_MAX],
-			unsigned int nb_readlink,
-			int *out)
+			unsigned int nb_readlink)
 {
 	const char *cursor;
 	char tmp[PATH_MAX];
@@ -298,13 +296,7 @@ static int canonicalize(pid_t pid,
 			continue;
 
 		if (strcmp(component, "..") == 0) {
-			/* Check if it is an attempt to escape from the new root. */
-			if (strspn(result, "/") == strlen(result)) {
-				if (out != NULL)
-					*out = 1;
-			}
-			else
-				pop_component(result);
+			pop_component(result);
 			continue;
 		}
 
@@ -371,7 +363,7 @@ static int canonicalize(pid_t pid,
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an
 		   absolute link so it is relative to 'result'. */
-		status = canonicalize(pid, tmp, 1, result, ++nb_readlink, out);
+		status = canonicalize(pid, tmp, 1, result, ++nb_readlink);
 		if (status < 0)
 			return status;
 	}
@@ -388,31 +380,35 @@ static int canonicalize(pid_t pid,
 }
 
 /**
- * Copy in @result the equivalent of @root/canonicalize(@fake_path)).
- * If @fake_path is not absolute then it is relative to the current
- * working directory. See the documentation of canonicalize() for the
- * meaning of @deref_final.
+ * Copy in @result the equivalent of @root + canonicalize(@dir_fd +
+ * @fake_path).  If @fake_path is not absolute then it is relative to
+ * the directory referred by the descriptor @dir_fd (AT_FDCWD is for
+ * the current working directory).  See the documentation of
+ * canonicalize() for the meaning of @deref_final.
  */
-int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final)
+int translate_path(pid_t pid, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final)
 {
-	char cwd_link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
+	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	char tmp[PATH_MAX];
 	int status;
 
 	assert(initialized != 0);
 
-	/* Check whether it is an sbolute path or not. */
-	if (fake_path[0] != '/') {
-
+	/* Use "/" as the base if it is an absolute [fake] path. */
+	if (fake_path[0] == '/') {
+		strcpy(result, "/");
+	}
+	/* Is it relative to the current working directory? */
+	else if (dir_fd == AT_FDCWD) {
 		/* Format the path to the "virtual" link to child's cwd. */
-		status = sprintf(cwd_link, "/proc/%d/cwd", pid);
+		status = sprintf(link, "/proc/%d/cwd", pid);
 		if (status < 0)
 			return -EPERM;
-		if (status >= sizeof(cwd_link))
+		if (status >= sizeof(link))
 			return -EPERM;
 
 		/* Read the value of this "virtual" link. */
-		status = readlink(cwd_link, tmp, PATH_MAX);
+		status = readlink(link, tmp, PATH_MAX);
 		if (status < 0)
 			return -EPERM;
 		if (status >= PATH_MAX)
@@ -438,16 +434,45 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 		if (result[0] == '\0')
 			strcpy(result, "/");
 	}
-	else
-		strcpy(result, "/");
+	/* It's relative to a directory referred by a descriptors, see
+	 * openat(2) for details. */
+	else {
+		/* Format the path to the "virtual" link. */
+		status = sprintf(link, "/proc/%d/fd/%d", pid, dir_fd);
+		if (status < 0)
+			return -EPERM;
+		if (status >= sizeof(link))
+			return -EPERM;
 
-	VERBOSE(4, "pid %d: translate(\"%s\")", pid, fake_path);
+		/* Read the value of this "virtual" link. */
+		status = readlink(link, result, PATH_MAX);
+		if (status < 0)
+			return -EPERM;
+		if (status >= PATH_MAX)
+			return -ENAMETOOLONG;
+		result[status] = '\0';
+
+		/* Ensure it points to a path (not a socket or
+		 * somethink like that). */
+		if (result[0] != '/')
+			return -ENOTDIR;
+
+		/* XXX: TODO: test if result is a dir. */
+
+		/* Remove the leading "root" part of the base
+		 * (required!). */
+		status = detranslate_path(result, 1);
+		if (status < 0)
+			return status;
+	}
+
+	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", pid, result, fake_path);
 
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(pid, fake_path, deref_final, result, 0, 0);
+	status = canonicalize(pid, fake_path, deref_final, result, 0);
 	if (status < 0)
 		return status;
-
+	
 	/* Append the new root and the result of the canonicalization
 	 * only if it is not an excluded path. */
 	if (is_excluded(result))
@@ -509,69 +534,6 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 	}
 
 	return new_length + 1;
-}
-
-
-/**
- * Check if the interpretation of @path relatively to the directory
- * referred to by the file descriptor @dirfd of the child process @pid
- * lands within the new "root". See the documentation of
- * translate_path() about the meaning of @deref_final. This function
- * returns -errno if an error occured, otherwise it returns 1 (and
- * path[] == root[]) or 0 depending if there was an attempt to escape
- * from the new root.
- *
- * This function can't be called when AT_FD(@dirfd, @path) is false.
- */
-int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
-{
-	char base[PATH_MAX];
-	char fd_link[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
-	int status;
-	int out;
-
-	assert(AT_FD(dirfd, path));
-	assert(initialized != 0);
-
-	/* Format the path to the "virtual" link. */
-	status = sprintf(fd_link, "/proc/%d/fd/%d", pid, dirfd);
-	if (status < 0)
-		return -EPERM;
-	if (status >= sizeof(fd_link))
-		return -EPERM;
-
-	/* Read the value of this "virtual" link. */
-	status = readlink(fd_link, base, PATH_MAX);
-	if (status < 0)
-		return -EPERM;
-	if (status >= PATH_MAX)
-		return -ENAMETOOLONG;
-	base[status] = '\0';
-
-	/* Ensure it points to a path (not a socket or somethink like that). */
-	if (base[0] != '/')
-		return -ENOTDIR;
-
-	/* Remove the leading "root" part of the base (required!). */
-	status = detranslate_path(base, 1);
-	if (status < 0)
-		return status;
-
-	/* Check it this path lands outside of the new root. */
-	out = 0;
-	status = canonicalize(pid, path, deref_final, base, 0, &out);
-	if (status < 0)
-		return status;
-
-	/* TODO: add support for excluded paths. */
-
-	/* Return if there was an attempt to escape from the new root. */
-	if (out != 0) {
-		strcpy(path, root);
-		return 1;
-	}
-	else
-		return 0;
 }
 
 /**

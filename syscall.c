@@ -182,7 +182,7 @@ int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
  * occured, otherwise it returns the size in bytes "allocated" into
  * the stack.
  */
-static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sysarg, int deref_final)
+static int translate_path2(pid_t pid, int dir_fd, char path[PATH_MAX], enum sysarg sysarg, int deref_final)
 {
 	char new_path[PATH_MAX];
 	int status;
@@ -192,7 +192,7 @@ static int translate_path2sysarg(pid_t pid, char path[PATH_MAX], enum sysarg sys
 		return 0;
 
 	/* Translate the original path. */
-	status = translate_path(pid, new_path, path, deref_final);
+	status = translate_path(pid, new_path, dir_fd, path, deref_final);
 	if (status < 0)
 		return status;
 
@@ -212,22 +212,7 @@ static int translate_sysarg(pid_t pid, enum sysarg sysarg, int deref_final)
 	if (status < 0)
 		return status;
 
-	return translate_path2sysarg(pid, old_path, sysarg, deref_final);
-}
-
-/**
- * Change the @sysarg so that it point to the fake "/" if dirfd + path
- * lands outside of the new root.
- */
-static int sanitize_at2sysarg(pid_t pid, int dirfd, char path[PATH_MAX], enum sysarg sysarg, int deref_final)
-{
-	int status;
-
-	status = check_path_at(pid, dirfd, path, deref_final);
-	if (status <= 0)
-		return status;
-
-	return set_sysarg_path(pid, path, sysarg);
+	return translate_path2(pid, AT_FDCWD, old_path, sysarg, deref_final);
 }
 
 /**
@@ -727,18 +712,10 @@ static void translate_syscall_enter(struct child_info *child)
 			? get_sysarg(child->pid, SYSARG_5)
 			: get_sysarg(child->pid, SYSARG_4);
 
-		if (!AT_FD(dirfd, path)) {
-			if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
-				status = translate_path2sysarg(child->pid, path, SYSARG_2, SYMLINK);
-			else
-				status = translate_path2sysarg(child->pid, path, SYSARG_2, REGULAR);
-		}
-		else {
-			if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
-				status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_2, SYMLINK);
-			else
-				status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_2, REGULAR);
-		}
+		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+			status = translate_path2(child->pid, dirfd, path, SYSARG_2, SYMLINK);
+		else
+			status = translate_path2(child->pid, dirfd, path, SYSARG_2, REGULAR);
 		break;
 
 	case __NR_futimesat:
@@ -749,10 +726,7 @@ static void translate_syscall_enter(struct child_info *child)
 		if (status < 0)
 			break;
 
-		if (!AT_FD(dirfd, path))
-			status = translate_path2sysarg(child->pid, path, SYSARG_2, REGULAR);
-		else
-			status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_2, REGULAR);
+		status = translate_path2(child->pid, dirfd, path, SYSARG_2, REGULAR);
 		break;
 
 	case __NR_inotify_add_watch:
@@ -811,39 +785,11 @@ static void translate_syscall_enter(struct child_info *child)
 			break;
 		}
 
-		if (!AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			if ((flags & AT_SYMLINK_FOLLOW) != 0) {
-				status1 = translate_path2sysarg(child->pid, oldpath, SYSARG_2, REGULAR);
-				status2 = translate_path2sysarg(child->pid, newpath, SYSARG_4, REGULAR);
-			} else {
-				status1 = translate_path2sysarg(child->pid, oldpath, SYSARG_2, SYMLINK);
-				status2 = translate_path2sysarg(child->pid, newpath, SYSARG_4, REGULAR);
-			}
-		}
-		else if (!AT_FD(olddirfd, oldpath) && AT_FD(newdirfd, newpath)) {
-			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				status1 = translate_path2sysarg(child->pid, oldpath, SYSARG_2, REGULAR);
-			else
-				status1 = translate_path2sysarg(child->pid, oldpath, SYSARG_2, SYMLINK);
-
-			status2 = sanitize_at2sysarg(child->pid, newdirfd, newpath, SYSARG_4, REGULAR);
-		}
-		else if (AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				status1 = sanitize_at2sysarg(child->pid, olddirfd, oldpath, SYSARG_2, REGULAR);
-			else
-				status1 = sanitize_at2sysarg(child->pid, olddirfd, oldpath, SYSARG_2, SYMLINK);
-
-			status2 = translate_path2sysarg(child->pid, newpath, SYSARG_4, REGULAR);
-		}
-		else {
-			if ((flags & AT_SYMLINK_FOLLOW) != 0)
-				status1 = sanitize_at2sysarg(child->pid, olddirfd, oldpath, SYSARG_2, REGULAR);
-			else
-				status1 = sanitize_at2sysarg(child->pid, olddirfd, oldpath, SYSARG_2, SYMLINK);
-
-			status2 = sanitize_at2sysarg(child->pid, newdirfd, newpath, SYSARG_4, REGULAR);
-		}
+		if ((flags & AT_SYMLINK_FOLLOW) != 0)
+			status1 = translate_path2(child->pid, olddirfd, oldpath, SYSARG_2, REGULAR);
+		else
+			status1 = translate_path2(child->pid, olddirfd, oldpath, SYSARG_2, SYMLINK);
+		status2 = translate_path2(child->pid, newdirfd, newpath, SYSARG_4, REGULAR);
 
 		if (status1 < 0) {
 			status = status1;
@@ -863,7 +809,7 @@ static void translate_syscall_enter(struct child_info *child)
 
 		/* The following check covers only 90% of the cases. */
 		if (path[0] == '/' || path[0] == '.') {
-			status = translate_path2sysarg(child->pid, path, SYSARG_1, REGULAR);
+			status = translate_path2(child->pid, AT_FDCWD, path, SYSARG_1, REGULAR);
 			if (status < 0)
 				break;
 		}
@@ -884,20 +830,11 @@ static void translate_syscall_enter(struct child_info *child)
 		if (status < 0)
 			break;
 
-		if (!AT_FD(dirfd, path)) {
-			if (   ((flags & O_NOFOLLOW) != 0)
-			    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
-				status = translate_path2sysarg(child->pid, path, SYSARG_2, SYMLINK);
-			else
-				status = translate_path2sysarg(child->pid, path, SYSARG_2, REGULAR);
-		}
-		else {
-			if (   ((flags & O_NOFOLLOW) != 0)
-			    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
-				status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_2, SYMLINK);
-			else
-				status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_2, REGULAR);
-		}
+		if (   ((flags & O_NOFOLLOW) != 0)
+		       || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
+			status = translate_path2(child->pid, dirfd, path, SYSARG_2, SYMLINK);
+		else
+			status = translate_path2(child->pid, dirfd, path, SYSARG_2, REGULAR);
 		break;
 
 	case __NR_unlinkat:
@@ -911,10 +848,7 @@ static void translate_syscall_enter(struct child_info *child)
 		if (status < 0)
 			break;
 
-		if (!AT_FD(dirfd, path))
-			status = translate_path2sysarg(child->pid, path, SYSARG_2, SYMLINK);
-		else
-			status = sanitize_at2sysarg(child->pid, dirfd, path, SYSARG_2, SYMLINK);
+		status = translate_path2(child->pid, dirfd, path, SYSARG_2, SYMLINK);
 		break;
 
 	case __NR_rename:
@@ -948,23 +882,8 @@ static void translate_syscall_enter(struct child_info *child)
 			break;
 		}
 
-		if (!AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			status1 = translate_path2sysarg(child->pid, oldpath, SYSARG_2, SYMLINK);
-			status2 = translate_path2sysarg(child->pid, newpath, SYSARG_4, SYMLINK);
-		}
-		else if (!AT_FD(olddirfd, oldpath) && AT_FD(newdirfd, newpath)) {
-			status1 = translate_path2sysarg(child->pid, oldpath, SYSARG_2, SYMLINK);
-			status2 = sanitize_at2sysarg(child->pid, newdirfd, newpath, SYSARG_4, SYMLINK);
-		}
-		else if (AT_FD(olddirfd, oldpath) && !AT_FD(newdirfd, newpath)) {
-			status1 = sanitize_at2sysarg(child->pid, olddirfd, oldpath, SYSARG_2, SYMLINK);
-			status2 = translate_path2sysarg(child->pid, newpath, SYSARG_4, SYMLINK);
-		}
-		else {
-			status1 = sanitize_at2sysarg(child->pid, olddirfd, oldpath, SYSARG_2, SYMLINK);
-			status2 = sanitize_at2sysarg(child->pid, newdirfd, newpath, SYSARG_4, SYMLINK);
-		}
-
+		status1 = translate_path2(child->pid, olddirfd, oldpath, SYSARG_2, SYMLINK);
+		status2 = translate_path2(child->pid, newdirfd, newpath, SYSARG_4, SYMLINK);
 		if (status1 < 0) {
 			status = status1;
 			break;
@@ -973,8 +892,8 @@ static void translate_syscall_enter(struct child_info *child)
 			status = status2;
 			break;
 		}
-		status = status1 + status2;
 
+		status = status1 + status2;
 		break;
 
 	case __NR_symlink:
@@ -988,10 +907,7 @@ static void translate_syscall_enter(struct child_info *child)
 		if (status < 0)
 			break;
 
-		if (!AT_FD(newdirfd, newpath))
-			status = translate_path2sysarg(child->pid, newpath, SYSARG_3, REGULAR);
-		else
-			status = sanitize_at2sysarg(child->pid, newdirfd, newpath, SYSARG_3, REGULAR);
+		status = translate_path2(child->pid, newdirfd, newpath, SYSARG_3, REGULAR);
 		break;
 
 	default:

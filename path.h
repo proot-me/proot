@@ -37,9 +37,8 @@
 
 extern void init_module_path(const char *new_root);
 extern void exclude_path(const char *path);
-extern int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final);
+extern int translate_path(pid_t pid, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
 extern int detranslate_path(char path[PATH_MAX], int sanity_check);
-extern int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final);
 extern int check_fd(pid_t pid);
 
 /* Check if path interpretable relatively to dirfd, see openat(2) for details. */
