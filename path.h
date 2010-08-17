@@ -35,7 +35,8 @@
 #define STRONG  1
 #define WEAK    0
 
-extern void init_module_path(const char *new_root, const char *excluded_paths);
+extern void init_module_path(const char *new_root);
+extern void exclude_path(const char *path);
 extern int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int deref_final);
 extern int detranslate_path(char path[PATH_MAX], int sanity_check);
 extern int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final);

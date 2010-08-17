@@ -40,23 +40,47 @@
 #include "path.h"
 #include "notice.h"
 
-static int  initialized = 0;
+static int initialized = 0;
 static char root[PATH_MAX];
 static size_t root_length;
+
+static int nb_excluded = 0;
+static char **excluded = NULL;
 
 /**
  * Initialize internal data of the path translator.
  */
-void init_module_path(const char *new_root, const char *excluded_paths)
+void init_module_path(const char *new_root)
 {
 	if (realpath(new_root, root) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
 
 	root_length = strlen(root);
 	initialized = 1;
+}
 
-	if (excluded_paths != NULL)
-		notice(WARNING, USER, "option -x not yet supported");
+/**
+ * Save @path in the list of paths that are "excluded" for the
+ * translation meachnism.
+ */
+void exclude_path(const char *path)
+{
+	char *real_path;
+	char **tmp;
+
+	real_path = realpath(path, NULL);
+	if (real_path == NULL)
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", path);
+
+	tmp = realloc(excluded, (nb_excluded + 1) * sizeof(char *));
+	if (tmp == NULL) {
+		notice(WARNING, SYSTEM, "realloc()");
+		return;
+	}
+
+	excluded = tmp;
+	excluded[nb_excluded] = real_path;
+	nb_excluded++;
 }
 
 #define FINAL_NORMAL    1
@@ -154,7 +178,7 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 {
 	va_list paths;
 	size_t length;
-	int i = 0;
+	int i;
 
 	result[0] = '\0';
 
@@ -190,6 +214,31 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 		strcat(result + old_length, path);
 	}
 	va_end(paths);
+
+	return 0;
+}
+
+/**
+ * Check if @path is [hosted by] an excluded paths.
+ */
+static int is_excluded(const char *path)
+{
+	int i;
+
+	for (i = 0; i < nb_excluded; i++) {
+		size_t length_path = strlen(path);
+		size_t length_excluded = strlen(excluded[i]);
+
+		if (length_excluded > length_path)
+			continue;
+
+		if (   path[length_excluded] != '/'
+		    && path[length_excluded] != '\0')
+			continue;
+
+		if (strncmp(excluded[i], path, length_excluded) == 0)
+			return 1;
+	}
 
 	return 0;
 }
@@ -271,9 +320,21 @@ static int canonicalize(pid_t pid,
 				return -EPERM;
 		}
 
-		status = join_paths(3, real_entry, root, result, component);
+		/* Check which kind of directory we have to
+		   canonicalize; either an excluded path or a
+		   translatable one. */
+		status = join_paths(2, tmp, result, component);
 		if (status < 0)
 			return status;
+
+		if (is_excluded(tmp)) {
+			strcpy(real_entry, tmp);
+		}
+		else {
+			status = join_paths(2, real_entry, root, tmp);
+			if (status < 0)
+				return status;
+		}
 
 		status = lstat(real_entry, &statl);
 
@@ -358,14 +419,20 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 			return -ENAMETOOLONG;
 		tmp[status] = '\0';
 
-		/* Ensure the current working directory is within the
-		 * new root once the child process did a chdir(2). */
-		if (strncmp(tmp, root, root_length) != 0) {
-			notice(WARNING, INTERNAL, "child %d is out of my control (1)", pid);
-			return -EPERM;
+		if (is_excluded(tmp)) {
+			strcpy(result, tmp);
 		}
+		else {
+			/* Ensure the current working directory is
+			   within the new root once the child process
+			   did a chdir(2). */
+			if (strncmp(tmp, root, root_length) != 0) {
+				notice(WARNING, INTERNAL, "child %d is out of my control (1)", pid);
+				return -EPERM;
+			}
 
-		strcpy(result, tmp + root_length);
+			strcpy(result, tmp + root_length);
+		}
 
 		/* Special case when child's cwd == root. */
 		if (result[0] == '\0')
@@ -381,16 +448,17 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 	if (status < 0)
 		return status;
 
-	/* Finally append the new root and the result of the
-	 * canonicalization. */
+	/* Append the new root and the result of the canonicalization
+	 * only if it is not an excluded path. */
+	if (is_excluded(result))
+		goto end;
+
 	strcpy(tmp, result);
 	status = join_paths(2, result, root, tmp);
 	if (status < 0)
 		return status;
 
-	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
-
-	/* Add a small sanity check. It doesn't prove PRoot is secure! */
+	/* Small sanity check. */
 	if (deref_final != 0 && realpath(result, tmp) != NULL) {
 		if (strncmp(tmp, root, root_length) != 0) {
 			notice(WARNING, INTERNAL, "child %d is out of my control (2)", pid);
@@ -398,6 +466,8 @@ int translate_path(pid_t pid, char result[PATH_MAX], const char *fake_path, int 
 		}
 	}
 
+end:
+	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
 	return 0;
 }
 
@@ -413,6 +483,10 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 	int new_length;
 
 	assert(initialized != 0);
+
+	/* Check if it is a translatable path. */
+	if (is_excluded(path))
+		return 0;
 
 	/* Ensure the path is within the new root. */
 	if (strncmp(path, root, root_length) != 0) {
@@ -489,6 +563,8 @@ int check_path_at(pid_t pid, int dirfd, char path[PATH_MAX], int deref_final)
 	if (status < 0)
 		return status;
 
+	/* TODO: add support for excluded paths. */
+
 	/* Return if there was an attempt to escape from the new root. */
 	if (out != 0) {
 		strcpy(path, root);
@@ -532,9 +608,8 @@ int check_fd(pid_t pid)
 		if (path[0] != '/')
 			continue;
 
-		/* XXX: TODO FIXME */
-		if (strncmp("/dev/", path, 5) == 0
-		    || strncmp("/proc/", path, 6) == 0)
+		/* Check if it is a translatable path. */
+		if (is_excluded(path))
 			continue;
 
 		/* Here comes the sanity check. */

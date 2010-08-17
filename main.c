@@ -41,7 +41,6 @@ static const char *opt_new_root = NULL;
 static char *opt_args_default[] = { "/bin/sh", NULL };
 static char **opt_args = &opt_args_default[0];
 
-static const char *opt_excluded_paths = NULL;
 static const char *opt_runner = NULL;
 
 static int opt_many_jobs = 0;
@@ -66,12 +65,12 @@ static void exit_usage(void)
 	puts("  <pid>         is the identifier of the process to attach on-the-fly");
 	puts("");
 	puts("Common options:");
-	puts("  -x <path>     don't translate access to <path>, can be a coma-separated list");
+	puts("  -x <path>     don't translate access to <path> (can be repeated)");
 	puts("  -r <program>  use <program> to run each process");
 	puts("  -v            increase the verbose level");
 	puts("");
 	puts("Insecure options:");
-	puts("  -j <integer>  use <integer> jobs (faster! but prone to race conditions)");
+	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)");
 	puts("  -u            don't block unknown syscalls");
 	puts("  -p            don't block ptrace(2)");
 	puts("");
@@ -102,7 +101,7 @@ static void parse_options(int argc, char *argv[])
 			i++;
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -x");
-			opt_excluded_paths = argv[i];
+			exclude_path(argv[i]);
 			break;
 
 		case 'r':
@@ -164,7 +163,7 @@ static void parse_options(int argc, char *argv[])
 			notice(ERROR, USER, "attaching a process on-the-fly not yet supported");
 	}
 
-	init_module_path(opt_new_root, opt_excluded_paths);
+	init_module_path(opt_new_root);
 	init_module_child_info();
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
 	init_module_execve(opt_runner);
