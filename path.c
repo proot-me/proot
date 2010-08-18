@@ -155,6 +155,13 @@ static inline void pop_component(char *path)
 	assert(path != NULL);
 
 	offset = strlen(path) - 1;
+	assert(offset >= 0);
+
+	/* Don't pop over "/", it doesn't mean anything. */
+	if (offset == 0) {
+		assert(path[0] == '/' && path[1] == '\0');
+		return;
+	}
 
 	/* Skip trailing path separators. */
 	while (offset > 1 && path[offset] == '/')
@@ -165,8 +172,8 @@ static inline void pop_component(char *path)
 		offset--;
 
 	/* Cut the end of the string before the last component. */
-	assert(path[0] == '/');
 	path[offset] = '\0';
+	assert(path[0] == '/');
 }
 
 /**
