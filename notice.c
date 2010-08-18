@@ -48,7 +48,7 @@ void notice(enum notice_severity severity, enum notice_origin origin, const char
 		fprintf(stderr, "proot error: ");
 		break;
 
-	case NOTICE:
+	case INFO:
 	default:
 		fprintf(stderr, "proot: ");
 		break;
