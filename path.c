@@ -444,6 +444,8 @@ int translate_path(pid_t pid, char result[PATH_MAX], int dir_fd, const char *fak
 	/* It's relative to a directory referred by a descriptors, see
 	 * openat(2) for details. */
 	else {
+		struct stat statl;
+
 		/* Format the path to the "virtual" link. */
 		status = sprintf(link, "/proc/%d/fd/%d", pid, dir_fd);
 		if (status < 0)
@@ -464,7 +466,10 @@ int translate_path(pid_t pid, char result[PATH_MAX], int dir_fd, const char *fak
 		if (result[0] != '/')
 			return -ENOTDIR;
 
-		/* XXX: TODO: test if result is a dir. */
+		/* Ensure it points to a directory. */
+		status = stat(result, &statl);
+		if (!S_ISDIR(statl.st_mode))
+			return -ENOTDIR;
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
