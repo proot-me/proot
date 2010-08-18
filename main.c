@@ -61,7 +61,7 @@ static void exit_usage(void)
 	puts("Arguments:");
 	puts("  <fake_root>   is the path to the fake root file system");
 	puts("  <program>     is the path of the program to launch, default is $SHELL");
-	puts("  [args]        are the options passed to <program>");
+	puts("  [args]        are the optional arguments passed to <program>");
 	puts("  <pid>         is the identifier of the process to attach on-the-fly");
 	puts("");
 	puts("Common options:");
@@ -169,8 +169,9 @@ static void parse_options(int argc, char *argv[])
 	init_module_execve(opt_runner);
 }
 
-static void start_process()
+static void launch_process(const char *argv0)
 {
+	char launcher[PATH_MAX];
 	long status;
 	pid_t pid;
 
@@ -180,6 +181,9 @@ static void start_process()
 		notice(ERROR, SYSTEM, "fork()");
 
 	case 0: /* child */
+
+		if (realpath(argv0, launcher) == NULL)
+			notice(ERROR, SYSTEM, "realpath(\"%s\")", argv0);
 
 		/* Declare myself as ptraceable before executing the
 		 * requested program. */
@@ -201,8 +205,8 @@ static void start_process()
 		if (status < 0)
 			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\")");
 
-		status = execvp("proot-exec", opt_args);
-		notice(ERROR, SYSTEM, "execvp(\"proot-exec\")");
+		status = execvp(launcher, opt_args);
+		notice(ERROR, SYSTEM, "execvp(\"%s\")", launcher);
 
 	default: /* parent */
 		if (new_child(pid) == NULL)
@@ -211,7 +215,7 @@ static void start_process()
 	}
 }
 
-static int translation_loop()
+static int main_loop()
 {
 	int last_exit_status;
 	int child_status;
@@ -307,7 +311,26 @@ static int translation_loop()
 
 int main(int argc, char *argv[])
 {
+	size_t length_argv0 = strlen(argv[0]);
+	size_t length_proot = strlen("proot");
+
+	/* Use myself as a launcher. We need a launcher to
+	 * ensure the first execve(2) is catched by PRoot. */
+	if (length_argv0 < length_proot
+	    || strcmp(argv[0] + length_argv0 - length_proot, "proot") != 0) {
+		int i;
+
+		fprintf(stderr, "proot:");
+		for (i = 0; i < argc; i++)
+			fprintf(stderr, " %s", argv[i]);
+		fprintf(stderr, "\n");
+
+		execv(argv[0], argv);
+
+		notice(ERROR, SYSTEM, "execv(\"%s\"): ", argv[0]);
+	}
+
 	parse_options(argc, argv);
-	start_process();
-	return translation_loop();
+	launch_process(argv[0]);
+	return main_loop();
 }
