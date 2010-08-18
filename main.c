@@ -41,6 +41,7 @@ static const char *opt_new_root = NULL;
 static char *opt_args_default[] = { "/bin/sh", NULL };
 static char **opt_args = &opt_args_default[0];
 
+static const char *opt_pwd = NULL;
 static const char *opt_runner = NULL;
 
 static int opt_many_jobs = 0;
@@ -65,6 +66,7 @@ static void exit_usage(void)
 	puts("  <pid>         is the identifier of the process to attach on-the-fly");
 	puts("");
 	puts("Common options:");
+	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("  -x <path>     don't translate access to <path> (can be repeated)");
 	puts("  -r <program>  use <program> to run each process");
 	puts("  -v            increase the verbose level");
@@ -97,6 +99,13 @@ static void parse_options(int argc, char *argv[])
 		}
 
 		switch (argv[i][1]) {
+		case 'w':
+			i++;
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -w");
+			opt_pwd = argv[i];
+			break;
+
 		case 'x':
 			i++;
 			if (i >= argc)
@@ -172,6 +181,7 @@ static void parse_options(int argc, char *argv[])
 static void launch_process(const char *argv0)
 {
 	char launcher[PATH_MAX];
+	char pwd[PATH_MAX];
 	long status;
 	pid_t pid;
 
@@ -197,13 +207,25 @@ static void launch_process(const char *argv0)
 		if (status < 0)
 			notice(ERROR, SYSTEM, "chdir(\"%s\")", opt_new_root);
 
-		status = setenv("PWD", "/", 1);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"PWD\")");
+		if (opt_pwd != NULL
+		    && strlen(opt_new_root) + strlen(opt_pwd) + 1 < PATH_MAX) {
+			strcpy(pwd, opt_new_root);
+			strcat(pwd, opt_pwd);
 
-		status = setenv("OLDPWD", "/", 1);
+			status = chdir(pwd);
+			if (status < 0)
+				notice(WARNING, SYSTEM, "chdir(\"%s\")", pwd);
+		}
+		else
+			opt_pwd = "/";
+
+		status = setenv("PWD", opt_pwd, 1);
 		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\")");
+			notice(ERROR, SYSTEM, "setenv(\"PWD\", \"%s\")", opt_pwd);
+
+		status = setenv("OLDPWD", opt_pwd, 1);
+		if (status < 0)
+			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\"), \"%s\"", opt_pwd);
 
 		status = execvp(launcher, opt_args);
 		notice(ERROR, SYSTEM, "execvp(\"%s\")", launcher);
