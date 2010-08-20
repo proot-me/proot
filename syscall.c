@@ -655,6 +655,14 @@ static void translate_syscall_enter(struct child_info *child)
 
 	case __NR_execve:
 		status = translate_execve(child->pid);
+
+		/* The stack is already saved/restored before/after an
+		 * execve() for this architecture, look at this code:
+		 * linux/arch/x86/kernel/entry_64.S:stub_execve */
+#if defined (x86_64)
+		if (status > 0)
+			status = 0;
+#endif
 		break;
 
 	case __NR_access:
@@ -950,16 +958,14 @@ static void translate_syscall_exit(struct child_info *child)
 	 * the translation. */
 	if (child->status < 0)
 		set_sysarg(child->pid, SYSARG_RESULT, (word_t)child->status);
-	
+
+	result = get_sysarg(child->pid, SYSARG_RESULT);
+
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
-	result = get_sysarg(child->pid, SYSARG_RESULT);
 	if (child->status > 0
-	    && (child->sysnum != __NR_execve
-#if !defined (x86_64) /* This architecture is magic! */
-		|| (int)result < 0
-#endif
-	    )) {
+	    /* Restore the stack for execve() only if an error occured. */
+	    && (child->sysnum != __NR_execve || (int)result < 0)) {
 		word_t child_ptr;
 		child_ptr = resize_child_stack(child->pid, -child->status);
 		if (child_ptr == 0)
