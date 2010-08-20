@@ -548,12 +548,14 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 	return new_length + 1;
 }
 
+typedef int (*foreach_fd_t)(pid_t pid, int fd, char path[PATH_MAX]);
+
 /**
- * Check if the file descriptors opened by the process @pid point into
- * the new root directory; it returns -@pid if it is not the case,
- * otherwise 0 (or if an ignored error occured).
+ * Call @callback on each open file descriptors of @pid. It returns
+ * the status of the first failure, that is, if @callback returned
+ * seomthing lesser than 0, otherwise 0.
  */
-int check_fd(pid_t pid)
+static int foreach_fd(pid_t pid, foreach_fd_t callback)
 {
 	struct dirent *dirent;
 	char path[PATH_MAX];
@@ -586,17 +588,55 @@ int check_fd(pid_t pid)
 		if (is_excluded(path))
 			continue;
 
-		/* Here comes the sanity check. */
-		if (strncmp(root, path, root_length) != 0) {
-			notice(WARNING, INTERNAL, "child %d is out of my control (3)", pid);
-			notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, root);
-			status = -pid;
+		status = callback(pid, atoi(dirent->d_name), path);
+		if (status < 0)
 			goto end;
-		}
 	}
 	status = 0;
 
 end:
 	closedir(dirp);
 	return status;
+}
+
+/**
+ * Helper for check_fd().
+ */
+static int check_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
+{
+	/* XXX TODO: don't warn for files that were open before the attach. */
+	if (strncmp(root, path, root_length) != 0) {
+		notice(WARNING, INTERNAL, "child %d is out of my control (3)", pid);
+		notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, root);
+		return -pid;
+	}
+	return 0;
+}
+
+/**
+ * Check if the file descriptors open by the process @pid point into
+ * the new root directory; it returns -@pid if it is not the case,
+ * otherwise 0 (or if an ignored error occured).
+ */
+int check_fd(pid_t pid)
+{
+	return foreach_fd(pid, check_fd_callback);
+}
+
+/**
+ * Helper for list_open_fd().
+ */
+static int list_open_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
+{
+	VERBOSE(1, "pid %d: access to \"%s\" (fd %d) won't be translated until closed", pid, path, fd);
+	return 0;
+}
+
+/**
+ * Warn for files that are open. It is usefull right after PRoot has
+ * attached a process.
+ */
+int list_open_fd(pid_t pid)
+{
+	return foreach_fd(pid, list_open_fd_callback);
 }

@@ -504,7 +504,6 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_recvmsg:
 	case __NR_remap_file_pages:
 	case __NR_request_key:
-	case __NR_restart_syscall:
 	case __NR_rt_sigaction:
 	case __NR_rt_sigpending:
 	case __NR_rt_sigprocmask:
@@ -638,6 +637,13 @@ static void translate_syscall_enter(struct child_info *child)
 #endif /* arm */
 
 		/* Nothing to do. */
+		status = 0;
+		break;
+
+	case __NR_restart_syscall:
+		/* I'm not able to know if I catched this syscall at the
+		 * entry or the exit stage, and actually we just don't care™. */
+		child->sysnum = (word_t)-1;
 		status = 0;
 		break;
 

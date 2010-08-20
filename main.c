@@ -84,8 +84,9 @@ static void exit_usage(void)
 	exit(EXIT_FAILURE);
 }
 
-static void parse_options(int argc, char *argv[])
+static pid_t parse_options(int argc, char *argv[])
 {
+	pid_t pid;
 	int i;
 
 	/* Stupid command-line parser. */
@@ -167,15 +168,18 @@ static void parse_options(int argc, char *argv[])
 	}
 	else  {
 		opt_args = &argv[i + 1];
-
-		if (atoi(opt_args[0]) != 0 && opt_args[1] == NULL)
-			notice(ERROR, USER, "attaching a process on-the-fly not yet supported");
 	}
 
 	init_module_path(opt_new_root);
 	init_module_child_info();
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
 	init_module_execve(opt_runner);
+
+	pid = atoi(opt_args[0]);
+	if (pid != 0 && opt_args[1] == NULL)
+		return pid;
+	else
+		return 0;
 }
 
 static void launch_process(const char *argv0)
@@ -227,6 +231,10 @@ static void launch_process(const char *argv0)
 		if (status < 0)
 			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\"), \"%s\"", opt_pwd);
 
+		/* Warn about open file descriptors. They won't be
+		 * translated until they are closed. */
+		list_open_fd(getpid());
+
 		status = execvp(launcher, opt_args);
 		notice(ERROR, SYSTEM, "execvp(\"%s\")", launcher);
 
@@ -235,6 +243,30 @@ static void launch_process(const char *argv0)
 			exit(EXIT_FAILURE);
 		break;
 	}
+}
+
+static void attach_process(pid_t pid)
+{
+	long status;
+	struct child_info *child;
+
+	notice(WARNING, USER, "attaching a process on-the-fly is still experimental");
+
+	status = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
+	if (status < 0)
+		notice(ERROR, SYSTEM, "ptrace(ATTACH, %d)", pid);
+
+	/* Warn about open file descriptors. They won't be translated
+	 * until they are closed. */
+	list_open_fd(pid);
+
+	child = new_child(pid);
+	if (child == NULL)
+		exit(EXIT_FAILURE);
+
+	/* This litlle trick prevent the de-translation of an
+	 * "interrupted" syscall. */
+	child->sysnum = __NR_restart_syscall;
 }
 
 static int main_loop()
@@ -335,6 +367,7 @@ int main(int argc, char *argv[])
 {
 	size_t length_argv0 = strlen(argv[0]);
 	size_t length_proot = strlen("proot");
+	pid_t pid;
 
 	/* Use myself as a launcher. We need a launcher to
 	 * ensure the first execve(2) is catched by PRoot. */
@@ -352,7 +385,12 @@ int main(int argc, char *argv[])
 		notice(ERROR, SYSTEM, "execv(\"%s\"): ", argv[0]);
 	}
 
-	parse_options(argc, argv);
-	launch_process(argv[0]);
+	pid = parse_options(argc, argv);
+
+	if (pid != 0)
+		attach_process(pid);
+	else
+		launch_process(argv[0]);
+
 	return main_loop();
 }
