@@ -70,6 +70,9 @@ static void exit_usage(void)
 	puts("  -x <path>     don't translate access to <path> (can be repeated)");
 	puts("  -r <path>     use the program pointed to by <path> to run each process");
 	puts("  -v            increase the verbose level");
+	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
+	puts("  -U <X>        deletes the variable <X> from the environment");
+/*	puts("  -b <file>     read the config' for \"binfmt_misc\" support from <file>"); */
 	puts("");
 	puts("Insecure options:");
 	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)");
@@ -90,6 +93,8 @@ static void exit_usage(void)
 
 static pid_t parse_options(int argc, char *argv[])
 {
+	int status;
+	char *ptr;
 	pid_t pid;
 	int i;
 
@@ -127,6 +132,32 @@ static pid_t parse_options(int argc, char *argv[])
 
 		case 'v':
 			verbose_level++;
+			break;
+
+		case 'D':
+			i++;
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -D");
+			ptr = strchr(argv[i], '=');
+			if (ptr != NULL) {
+				*ptr = '\0';
+				ptr++;
+			}
+			else
+				ptr = argv[i] + strlen(argv[i]);
+
+			status = setenv(argv[i], ptr, 1);
+			if (status < 0)
+				notice(WARNING, SYSTEM, "setenv(\"%s\", \"%s\")", argv[i], ptr);
+			break;
+
+		case 'U':
+			i++;
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -U");
+			status = unsetenv(argv[i]);
+			if (status < 0)
+				notice(WARNING, SYSTEM, "unsetenv(\"%s\")", argv[i]);
 			break;
 
 		case 'j':
