@@ -78,7 +78,7 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 /**
  * Copy @size bytes from the buffer @src_parent to the address
  * @dest_child within the memory space of the child process @pid. It
- * return -errno if an error occured, otherwise 0.
+ * returns -errno if an error occured, otherwise 0.
  */
 int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size)
 {
@@ -132,7 +132,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 /**
  * Copy @size bytes to the buffer @dest_parent from the address
  * @src_child within the memory space of the child process @pid. It
- * return -errno if an error occured, otherwise 0.
+ * returns -errno if an error occured, otherwise 0.
  */
 int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 {

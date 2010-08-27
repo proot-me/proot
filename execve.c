@@ -27,14 +27,12 @@
 #include <sys/stat.h>
 #include <fcntl.h>        /* open(2), */
 #include <unistd.h>       /* read(2), access(2), */
-#include <sys/param.h>    /* ARG_MAX, */
 #include <limits.h>       /* PATH_MAX, ARG_MAX, */
 #include <errno.h>        /* ENAMETOOLONG, */
 #include <sys/ptrace.h>   /* ptrace(2), */
 #include <sys/user.h>     /* struct user*, */
 #include <stdarg.h>       /* va_*(3), */
 #include <string.h>       /* strlen(3), */
-#include <alloca.h>       /* alloc(3), */
 #include <stdlib.h>       /* realpath(3), exit(3), EXIT_*, */
 #include <assert.h>       /* assert(3), */
 
@@ -45,29 +43,87 @@
 #include "child_mem.h"
 #include "notice.h"
 
+static char runner[PATH_MAX] = { '\0', };
+
 #ifndef ARG_MAX
 #define ARG_MAX 131072
 #endif
-
-static char runner[PATH_MAX] = { '\0', };
 
 /**
  * Initialize internal data of the execve module.
  */
 void init_module_execve(const char *opt_runner)
 {
+	int status;
+
 	if (opt_runner == NULL)
 		return;
 
-	if (realpath(opt_runner, runner) == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", opt_runner);
+	/* Ensure the runner is inside the new root. */
+	status = translate_path(getpid(), runner, AT_FDCWD, opt_runner, 1);
+	if (status < 0)
+		notice(ERROR, USER, "translate_path(\"%s\"): %s", opt_runner, strerror(-status));
+
+	/* Ensure the runner is executable. */
+	status = access(runner, X_OK);
+	if (status < 0)
+		notice(ERROR, SYSTEM, "access(\"%s\", X)", runner);
 }
 
 /**
- * Extract from the file @exec_file the script @interpreter and its
- * @argument if any. This function returns -errno on errno, 0 if
- * @exec_file is not a valid script, 1 if @interpreter is filled and 2
- * if both @interpreter and @argument are filled.
+ * Substitute (and free) the first entry of *@argv with the C strings
+ * specified in the variable parameter lists (@nb_new_args elements).
+ * This function returns -errno if an error occured, otherwise 0.
+ *
+ *  Technically:
+ *
+ *    | argv[0] | argv[1] | ... | argv[n] |
+ *
+ *  becomes:
+ *
+ *    | new_argv[0] | ... | new_argv[nb - 1] | argv[1] | ... | argv[n] |
+ */
+static int substitute_argv0(char **argv[], int nb_new_args, ...)
+{
+	va_list args;
+	void *tmp;
+	int i;
+
+	for (i = 0; (*argv)[i] != NULL; i++)
+		;
+
+	/* Don't kill *argv if the reallocation failed, all entries
+	 * will be freed in translate_execve(). */
+	tmp = realloc(*argv, (nb_new_args + i) * sizeof(char *));
+	if (tmp == NULL)
+		return -ENOMEM;
+	*argv = tmp;
+
+	free(*argv[0]);
+	*argv[0] = NULL;
+
+	/* Move the old entries to let space at the beginning for the
+	 * new ones. */
+	memmove(*argv + nb_new_args, *argv + 1, i * sizeof (char *));
+
+	/* Each new entries will be allocated into the heap since we
+	 * don't rely on the liveness of the parameters. */
+	va_start(args, nb_new_args);
+	for (i = 0; i < nb_new_args; i++) {
+		char *new_arg = va_arg(args, char *);
+		(*argv)[i] = calloc(strlen(new_arg) + 1, sizeof(char));
+		if ((*argv)[i] == NULL)
+			return -ENOMEM;
+		strcpy((*argv)[i], new_arg);
+	}
+	va_end(args);
+
+	return 0;
+}
+
+/**
+ * Expand the shebang of @filename in *@argv[]. This function returns
+ * -errno if an error occured, otherwise 0.
  *
  * Extract from "man 2 execve":
  *
@@ -75,23 +131,32 @@ void init_module_execve(const char *opt_runner)
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-static int get_interpreter(const char *exec_file, char interpreter[PATH_MAX], char argument[ARG_MAX])
+static int expand_shebang(pid_t pid, char *filename, char **argv[])
 {
+	char interpreter[PATH_MAX];
+	char argument[ARG_MAX];
+	char path[PATH_MAX];
 	char tmp;
+
 	int status;
 	int fd;
 	int i;
 
-	interpreter[0] = '\0';
-	argument[0] = '\0';
+	status = translate_path(pid, path, AT_FDCWD, filename, REGULAR);
+	if (status < 0)
+		return status;
 
 	/* Inspect the executable.  */
-	fd = open(exec_file, O_RDONLY);
+	fd = open(path, O_RDONLY);
 	if (fd < 0)
-		return 0;
+		return -errno;
 
 	status = read(fd, interpreter, 2 * sizeof(char));
-	if (status != 2 * sizeof(char)) {
+	if (status < 0) {
+		status = -errno;
+		goto end;
+	}
+	if (status < 2 * sizeof(char)) {
 		status = 0;
 		goto end;
 	}
@@ -105,7 +170,11 @@ static int get_interpreter(const char *exec_file, char interpreter[PATH_MAX], ch
 	/* Skip leading spaces. */
 	do {
 		status = read(fd, &tmp, sizeof(char));
-		if (status != sizeof(char)) {
+		if (status < 0) {
+			status = -errno;
+			goto end;
+		}
+		if (status < sizeof(char)) {
 			status = 0;
 			goto end;
 		}
@@ -123,14 +192,14 @@ static int get_interpreter(const char *exec_file, char interpreter[PATH_MAX], ch
 
 		case '\n':
 		case '\r':
-			/* There is no argument nor trailing whitespaces. */
+			/* There is no argument. */
 			interpreter[i] = '\0';
 			status = 1;
 			goto end;
 
 		default:
 			/* There is an argument if the previous
-			 * character was '\0'. */
+			 * character in interpreter[] is '\0'. */
 			if (i > 1 && interpreter[i - 1] == '\0')
 				goto argument;
 			else
@@ -139,7 +208,11 @@ static int get_interpreter(const char *exec_file, char interpreter[PATH_MAX], ch
 		}
 
 		status = read(fd, &tmp, sizeof(char));
-		if (status != sizeof(char)) {
+		if (status < 0) {
+			status = -errno;
+			goto end;
+		}
+		if (status < sizeof(char)) {
 			status = 0;
 			goto end;
 		}
@@ -182,124 +255,190 @@ argument:
 
 end:
 	close(fd);
-	return status;
+
+	if (status <= 0)
+		return status;
+
+	VERBOSE(3, "expand shebang: %s -> %s %s %s",
+		(*argv)[0], interpreter, argument, filename);
+
+	switch (status) {
+	case 1:
+		status = substitute_argv0(argv, 2, interpreter, filename);
+		break;
+
+	case 2:
+		status = substitute_argv0(argv, 3, interpreter, argument, filename);
+		break;
+
+	default:
+		assert(0);
+		break;
+	}
+	if (status < 0)
+		return status;
+
+	/* Inform the caller about the program to execute. */
+	strcpy(filename, interpreter);
+
+	return 1;
+}
+
+/**
+ * Copy the *@argv[] of the current execve(2) from the memory space of
+ * the child process @pid.  This function returns -errno if an error
+ * occured, otherwise 0.
+ */
+static int get_argv(pid_t pid, char **argv[])
+{
+	word_t child_argv;
+	word_t argp;
+	int nb_argv;
+	int status;
+	int i;
+
+	child_argv = get_sysarg(pid, SYSARG_2);
+
+	/* Compute the number of entries in argv[]. */
+	for (i = 0; ; i++) {
+		argp = (word_t) ptrace(PTRACE_PEEKDATA, pid,
+				       child_argv + i * sizeof(word_t), NULL);
+		if (errno != 0)
+			return -EFAULT;
+
+		/* End of argv[]. */
+		if (argp == 0)
+			break;
+	}
+	nb_argv = i;
+
+	*argv = calloc(nb_argv + 1, sizeof(char *));
+	if (*argv == NULL)
+		return -ENOMEM;
+
+	(*argv)[nb_argv] = NULL;
+	
+	/* Slurp arguments until the end of argv[]. */
+	for (i = 0; i < nb_argv; i++) {
+		char arg[ARG_MAX];
+
+		argp = (word_t) ptrace(PTRACE_PEEKDATA, pid,
+				       child_argv + i * sizeof(word_t), NULL);
+		if (errno != 0)
+			return -EFAULT;
+
+		assert(argp != 0);
+
+		status = get_child_string(pid, arg, argp, ARG_MAX);
+		if (status < 0)
+			return status;
+		if (status >= ARG_MAX)
+			return -ENAMETOOLONG;
+
+		(*argv)[i] = calloc(status, sizeof(char));
+		if ((*argv)[i] == NULL)
+			return -ENOMEM;
+
+		strcpy((*argv)[i], arg);
+	}
+
+	return 0;
+}
+
+/**
+ * Copy the @argv[] to the memory space of the child process @pid.
+ * This function returns -errno if an error occured, otherwise 0.
+ *
+ * Technically, we use the memory below the stack pointer to store the
+ * new arguments and the new array of pointers to these arguments:
+ *
+ *                                          <- stack pointer
+ *                                                          \
+ *       argv[]           argv1              argv0           \
+ *     /                       \                  \           \
+ *    | argv[0] | argv[1] | ... | "/bin/script.sh" | "/bin/sh" |
+ */
+static int set_argv(pid_t pid, char *argv[])
+{
+	word_t *child_args;
+
+	word_t previous_sp;
+	word_t child_argv;
+	word_t argp;
+
+	int nb_argv;
+	size_t size;
+	long status;
+	int i;
+
+	/* Compute the number of entries. */
+	for (i = 0; argv[i] != NULL; i++)
+		VERBOSE(4, "set argv[%d] = %s", i, argv[i]);
+
+	nb_argv = i + 1;
+	child_args = calloc(nb_argv, sizeof(word_t));
+	if (child_args == NULL)
+		return -ENOMEM;
+
+	/* Copy the new arguments in the child's stack. */
+	previous_sp = (word_t) ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
+	if (errno != 0) {
+		status = -EFAULT;
+		goto end;
+	}
+
+	argp = previous_sp;
+	for (i = 0; argv[i] != NULL; i++) {
+		size = strlen(argv[i]) + 1;
+		argp -= size;
+
+		status = copy_to_child(pid, argp, argv[i], size);
+		if (status < 0)
+			goto end;
+
+		child_args[i] = argp;
+	}
+
+	child_args[i] = 0;
+	child_argv = argp;
+
+	/* Copy the pointers to the new arguments backward in the stack. */
+	for (i = nb_argv - 1; i >= 0; i--) {
+		child_argv -= sizeof(word_t);
+
+		status = ptrace(PTRACE_POKEDATA, pid, child_argv, child_args[i]);
+		if (status <0) {
+			status = -EFAULT;
+			goto end;
+		}
+	}
+
+	/* Update the pointer to the new argv[]. */
+	set_sysarg(pid, SYSARG_2, child_argv);
+
+	/* Update the stack pointer to ensure [internal] coherency. It prevents
+	 * memory corruption if functions like set_sysarg_path() are called later. */
+	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), child_argv);
+	if (status < 0) {
+		status = -EFAULT;
+		goto end;
+	}
+
+end:
+	free(child_args);
+
+	if (status < 0)
+		return status;
+
+	return previous_sp - child_argv;
 }
 
 /**
  * XXX: TODO
  */
-static int check_elf_interpreter(const char *exec_file)
+static int check_elf_interpreter(const char *file)
 {
 	return 0;
-}
-
-/**
- * Replace the argv[0] of an execve() syscall made by the child
- * process @pid with the C strings specified in the variable parameter
- * lists (@number_args elements).
- *
- *    new_argv[] = { &new_argv0, ..., &new_argvN, &old_argv[1], ... }
- *
- * Technically, we use the memory below the stack pointer to store the
- * new arguments and the new array of pointers to these arguments:
- *
- *      new_argv[]                            new_argv1         new_argv0
- *     /                                             \                  \
- *    | &new_argv0 | &new_argv1 | &old_argv[1] | ... | "/bin/script.sh" | "/bin/sh" |
- *                                                                                  /
- *                                                                     stack pointer
- */
-static int prepend_args(pid_t pid, int number_args, ...)
-{
-	word_t *new_args = alloca(number_args * sizeof(word_t));
-
-	word_t old_child_argv;
-	word_t new_child_argv;
-	word_t previous_sp;
-	word_t argp;
-
-	va_list args;
-
-	size_t size;
-	long status;
-	int i;
-
-	/* Copy the new arguments in the child's stack. */
-	previous_sp = (word_t) ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
-	if (errno != 0)
-		return -EFAULT;
-
-	argp = previous_sp;
-	va_start(args, number_args);
-	for (i = 0; i < number_args; i++) {
-		const char *arg = va_arg(args, const char *);
-		if (arg == NULL) {
-			new_args[i] = 0;
-			continue;
-		}
-
-		size = strlen(arg) + 1;
-		argp -= size;
-
-		status = copy_to_child(pid, argp, arg, size);
-		if (status < 0) {
-			va_end(args);
-			return status;
-		}
-
-		new_args[i] = argp;
-	}
-	va_end(args);
-
-	new_child_argv = argp;
-
-	/* Search for the end of argv[], that is, the terminating NULL pointer. */
-	old_child_argv = get_sysarg(pid, SYSARG_2);
-
-	for (i = 0; ; i++) {
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, pid, old_child_argv + i * sizeof(word_t), NULL);
-		if (errno != 0)
-			return -EFAULT;
-
-		if (argp == 0)
-			break;
-	}
-
-	/* Copy the pointers to the old arguments backward in the stack, except the first one. */
-	for (; i > 0; i--) {
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, pid, old_child_argv + i * sizeof(word_t), NULL);
-		if (errno != 0)
-			return -EFAULT;
-
-		new_child_argv -= sizeof(word_t);
-
-		status = ptrace(PTRACE_POKEDATA, pid, new_child_argv, argp);
-		if (status <0)
-			return -EFAULT;
-	}
-
-	/* Copy the pointers to the new arguments backward in the stack. */
-	for (i = number_args - 1; i >= 0; i--) {
-		if (new_args[i] == 0)
-			continue;
-
-		new_child_argv -= sizeof(word_t);
-
-		status = ptrace(PTRACE_POKEDATA, pid, new_child_argv, new_args[i]);
-		if (status <0)
-			return -EFAULT;
-	}
-
-	/* Update the pointer to the new argv[]. */
-	set_sysarg(pid, SYSARG_2, new_child_argv);
-
-	/* Update the stack pointer to ensure [internal] coherency. It prevents
-	 * memory corruption if functions like set_sysarg_path() are called later. */
-	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), new_child_argv);
-	if (status < 0)
-		return -EFAULT;
-
-	return previous_sp - new_child_argv;
 }
 
 /**
@@ -326,128 +465,105 @@ static int prepend_args(pid_t pid, int number_args, ...)
  *
  *     execve("/bin/script.sh", argv = [ "script.sh", "arg1", arg2", ... ], envp);
  *
- * We can not just translate the first parameter because the kernel
+ * We can't just translate the first parameter because the kernel
  * will actually run the interpreter "/bin/sh" with the translated
  * path to the script file "/tmp/new_root/bin/script.sh" as its first
  * argument. Technically, we want the opposite behaviour, that is, we
  * want to run the translated path to the interpreter
- * "/tmp/new_root/bin/sh" with the non translated path to the script
+ * "/tmp/new_root/bin/sh" with the de-translated path to the script
  * "/bin/script.sh" as its first parameter (will be translated later):
  *
  *     execve("/tmp/new_root/bin/sh", argv = [ "/bin/sh", "/bin/script.sh", "arg1", arg2", ... ], envp);
  */
 int translate_execve(pid_t pid)
 {
-	int status;
+	char path[PATH_MAX];
+	char path2[PATH_MAX];
+	char **argv;
+
+	int nb_shebang = -1;
 	int size = 0;
+	int status;
+	int i;
 
-	char old_path[PATH_MAX];
-	char new_path[PATH_MAX];
-
-	char interpreter[PATH_MAX];
-	char argument[ARG_MAX];
-	char *optional_arg;
-
-	status = get_sysarg_path(pid, old_path, SYSARG_1);
+	status = get_sysarg_path(pid, path, SYSARG_1);
 	if (status < 0)
 		return status;
 
-	status = translate_path(pid, new_path, AT_FDCWD, old_path, REGULAR);
+	status = get_argv(pid, &argv);
 	if (status < 0)
 		return status;
 
-	status = get_interpreter(new_path, interpreter, argument);
-	optional_arg = argument;
+	/* Expand the shebang iteratively. */
+	do {
+		nb_shebang++;
+		status = expand_shebang(pid, path, &argv);
+	} while(status > 0);
+	if (status < 0)
+		goto end;
 
-	switch (status) {
-	/* Not a script. */
-	case 0:
-		if (runner[0] != '\0') {
-			/* Don't launch the runner if the program
-			 * doesn't exist or isn't readable. */
-			status = access(new_path, F_OK);
-			if (status < 0)
-				return -ENOENT;
-
-			status = access(new_path, R_OK);
-			if (status < 0)
-				return -EACCES;
-
-			/* Pass to the runner the "fake" path to the program. */
-			detranslate_path(new_path, 1);
-			if (status < 0)
-				return status;
-
-
-			/* argv[] = { &runner, &program, &old_argv[1], &old_argv[2], ... } */
-			status = prepend_args(pid, 2, runner, new_path);
-			if (status < 0)
-				return status;
-			size = status;
-
-			/* Launch the runner, actually. */
-			strcpy(new_path, runner);
+	status = translate_path(pid, path2, AT_FDCWD, path, REGULAR);
+	if (status < 0)
+		goto end;
+		
+	/* I prefer the binfmt_misc approach instead of invoking
+	 * the runner unconditionally. */
+	if (runner[0] != '\0') {
+		/* Don't launch the runner if the program
+		 * doesn't exist or isn't readable/executable. */
+		status = access(path2, F_OK);
+		if (status < 0) {
+			status = -ENOENT;
+			goto end;
 		}
-		break;
 
-	/* Require an interpreter without argument. */
-	case 1:
-		optional_arg = NULL;
+		status = access(path2, R_OK);
+		if (status < 0) {
+			status = -EACCES;
+			goto end;
+		}
 
-	/* Require an interpreter with an argument. */
-	case 2:
-		/* Pass to the interpreter the "fake" path to the script. */
-		detranslate_path(new_path, 1);
+		status = access(path2, X_OK);
+		if (status < 0) {
+			status = -EACCES;
+			goto end;
+		}
+
+		substitute_argv0(&argv, 2, runner, path);
 		if (status < 0)
-			return status;
+			goto end;
 
-		if (runner[0] != '\0') {
-			/* Don't launch the runner if the interpreter
-			 * doesn't exist or isn't readable. */
-			status = access(interpreter, F_OK);
-			if (status < 0)
-				return -ENOENT;
+		/* Launch the runner actually. */
+		strcpy(path2, runner);
+	}
 
-			status = access(interpreter, R_OK);
-			if (status < 0)
-				return -EACCES;
-
-			/* argv[] = { &runner, &interpreter, &arg (optional),
-			 *            &script, &old_argv[1], &old_argv[2], ... } */
-			status = prepend_args(pid, 4, runner, interpreter, optional_arg, new_path);
-			if (status < 0)
-				return status;
-			size = status;
-
-			/* Launch the runner, actually. */
-			strcpy(new_path, runner);
+	/* Rebuild argv[] only if something has changed. */
+	if (nb_shebang != 0 || runner[0] != '\0') {
+		size = set_argv(pid, argv);
+		if (size < 0) {
+			status = size;
+			goto end;
 		}
-		else {
-			/* argv[] = { &interpreter, &arg (optional), &script,
-			 *            &old_argv[1], &old_argv[2], ... } */
-			status = prepend_args(pid, 3, interpreter, optional_arg, new_path);
-			if (status < 0)
-				return status;
-			size = status;
-
-			/* Launch the interpreter, actually. */
-			status = translate_path(pid, new_path, AT_FDCWD, interpreter, REGULAR);
-			if (status < 0)
-				return status;
-		}
-		break;
-
-	default:
-		assert(status < 0);
-		return status;
 	}
 
 	/* Ensure someone is not using a nasty ELF interpreter. */
-	status = check_elf_interpreter(new_path);
+	status = check_elf_interpreter(path2);
+	if (status < 0)
+		goto end;
+
+	status = set_sysarg_path(pid, path2, SYSARG_1);
+	if (status < 0)
+		goto end;
+
+end:
+	assert(argv != NULL);
+
+	for (i = 0; argv[i] != NULL; i++)
+		free(argv[i]);
+	free(argv);
+
 	if (status < 0)
 		return status;
 
-	size += set_sysarg_path(pid, new_path, SYSARG_1);
-
-	return size;
+	return size + status;
 }

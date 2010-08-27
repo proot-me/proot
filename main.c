@@ -56,19 +56,19 @@ static void exit_usage(void)
 	puts("");
 	puts("Usages:");
 	puts("  proot [options] <fake_root>");
-	puts("  proot [options] <fake_root> <program> [args]");
+	puts("  proot [options] <fake_root> <path> [args]");
 	puts("  proot [options] <fake_root> <pid>");
 	puts("");
 	puts("Arguments:");
 	puts("  <fake_root>   is the path to the fake root file system");
-	puts("  <program>     is the path of the program to launch, default is $SHELL");
+	puts("  <path>        is the path of the program to launch, default is $SHELL");
 	puts("  [args]        are the optional arguments passed to <program>");
 	puts("  <pid>         is the identifier of the process to attach on-the-fly");
 	puts("");
 	puts("Common options:");
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("  -x <path>     don't translate access to <path> (can be repeated)");
-	puts("  -r <program>  use <program> to run each process");
+	puts("  -r <path>     use the program pointed to by <path> to run each process");
 	puts("  -v            increase the verbose level");
 	puts("");
 	puts("Insecure options:");
@@ -79,6 +79,10 @@ static void exit_usage(void)
 	puts("Debug options:");
 	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)");
 	puts("  -s            check /proc/$pid/syscall agrees with the internal state");
+	puts("");
+	puts("Be careful when specifying a <path> since it will be accessed regarding");
+	puts("the fake root, for instance:  \"proot -r /bin/runner /tmp/fake_root\"");
+	puts("means the path to the runner actually is \"/tmp/fake_root/bin/runner\".");
 	puts("");
 
 	exit(EXIT_FAILURE);
@@ -381,8 +385,7 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "\n");
 
 		execv(argv[0], argv);
-
-		notice(ERROR, SYSTEM, "execv(\"%s\"): ", argv[0]);
+		notice(ERROR, SYSTEM, "execv(\"%s\") [bad interpreter/runner ?]", argv[0]);
 	}
 
 	pid = parse_options(argc, argv);
