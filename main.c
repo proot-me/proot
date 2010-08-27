@@ -348,7 +348,12 @@ static int main_loop()
 
 			switch (signal) {
 			case SIGTRAP | 0x80:
-				translate_syscall(pid);
+				status = translate_syscall(pid);
+				if (status < 0) {
+					/* The process died in a syscall. */
+					delete_child(pid);
+					continue; /* Skip the call to ptrace(SYSCALL). */
+				}
 				signal = 0;
 				break;
 

@@ -954,18 +954,29 @@ end_translation:
  * the child's stack are "deallocated" to free the space used to store
  * the previously translated paths.
  */
-static void translate_syscall_exit(struct child_info *child)
+static int translate_syscall_exit(struct child_info *child)
 {
 	word_t sysnum;
 	word_t result;
 	int status;
 
+	/* Reset the current syscall number. */
+	sysnum = child->sysnum;
+	child->sysnum = -1;
+
+	/* Check if the process is still alive. */
+	(void) ptrace(PTRACE_PEEKUSER, child->pid, 0, NULL);
+	if (errno != 0)
+		return -1; /* The struct child_info will be freed in main_loop().*/
+
 	/* Set the child's errno if an error occured previously during
 	 * the translation. */
-	if (child->status < 0)
+	if (child->status < 0) {
 		set_sysarg(child->pid, SYSARG_RESULT, (word_t)child->status);
-
-	result = get_sysarg(child->pid, SYSARG_RESULT);
+		result = (word_t)child->status;
+	}
+	else
+		result = get_sysarg(child->pid, SYSARG_RESULT);
 
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
@@ -981,16 +992,12 @@ static void translate_syscall_exit(struct child_info *child)
 	VERBOSE(3, "pid %d:        -> %ld [0x%lx]", child->pid, result,
 		ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
 
-	/* Reset the current syscall number. */
-	sysnum = child->sysnum;
-	child->sysnum = -1;
-
 	/* Translate output arguments. */
 	switch (sysnum) {
 	case __NR_getcwd:
 		result = get_sysarg(child->pid, SYSARG_RESULT);
 		if ((int)result < 0)
-			return;
+			return 0;
 
 		status = detranslate_addr(child->pid, child->output, result, GETCWD);
 		if (status < 0)
@@ -1003,12 +1010,12 @@ static void translate_syscall_exit(struct child_info *child)
 	case __NR_readlinkat:
 		result = get_sysarg(child->pid, SYSARG_RESULT);
 		if ((int)result < 0)
-			return;
+			return 0;
 
 		/* Avoid the detranslation of partial result. */
 		status = (int)get_sysarg(child->pid, SYSARG_3);
 		if ((int)result == status)
-			return;
+			return 0;
 
 		assert((int)result <= status);
 
@@ -1020,14 +1027,16 @@ static void translate_syscall_exit(struct child_info *child)
 		break;
 
 	default:
-		return;
+		return 0;
 	}
 
 	if (status < 0)
 		set_sysarg(child->pid, SYSARG_RESULT, (word_t)status);
+
+	return 0;
 }
 
-void translate_syscall(pid_t pid)
+int translate_syscall(pid_t pid)
 {
 	struct child_info *child;
 
@@ -1035,8 +1044,10 @@ void translate_syscall(pid_t pid)
 	child = get_child_info(pid);
 
 	/* Check if we are either entering or exiting a syscall. */
-	if (child->sysnum == (word_t)-1)
+	if (child->sysnum == (word_t)-1) {
 		translate_syscall_enter(child);
+		return 0;
+	}
 	else
-		translate_syscall_exit(child);
+		return translate_syscall_exit(child);
 }
