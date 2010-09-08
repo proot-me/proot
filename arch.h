@@ -28,9 +28,23 @@
 typedef unsigned long word_t;
 #define SYSCALL_AVOIDER __NR_security /* Ironic, isn't it? ;) */
 
+#if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
+#    if defined(__x86_64__)
+#        define ARCH_X86_64 1
+#    elif defined(__ARM_EABI__)
+#        define ARCH_ARM_EABI 1
+#    elif defined(__arm__)
+#        error "Only EABI is currently supported for ARM"
+#    elif defined(__i386__)
+#        define ARCH_X86 1
+#    elif defined(__SH4__)
+#        define ARCH_SH4 1
+#    endif
+#endif
+
 /* Specify the ABI registers (syscall argument passing, stack pointer).
  * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */
-#if defined(x86_64)
+#if defined(ARCH_X86_64)
 	#define REG_SYSARG_NUM	orig_rax
 	#define REG_SYSARG_1	rdi
 	#define REG_SYSARG_2	rsi
@@ -41,7 +55,7 @@ typedef unsigned long word_t;
 	#define REG_SYSARG_RESULT	rax
 	#define REG_SP		rsp
         #include "sysnum-x86_64.h" /* __NR_*, */
-#elif defined(armv5tel)
+#elif defined(ARCH_ARM_EABI)
 	#define arm
 	#define REG_SYSARG_NUM		uregs[7]
 	#define REG_SYSARG_1		uregs[0]
@@ -54,7 +68,7 @@ typedef unsigned long word_t;
 	#define REG_SP			uregs[13]
 	#include "sysnum-arm.h" /* __NR_*, */
 	#define user_regs_struct        user_regs
-#elif defined(i386) || defined(i486) || defined(i586) || defined(i686)
+#elif defined(ARCH_X86)
 	#define REG_SYSARG_NUM	orig_eax
 	#define REG_SYSARG_1	ebx
 	#define REG_SYSARG_2	ecx
@@ -65,7 +79,7 @@ typedef unsigned long word_t;
 	#define REG_SYSARG_RESULT	eax
 	#define REG_SP		esp
         #include "sysnum-i386.h" /* __NR_*, */
-#elif defined(sh4)
+#elif defined(ARCH_SH4)
 	#define REG_SYSARG_NUM		regs[3]
 	#define REG_SYSARG_1		regs[4]
 	#define REG_SYSARG_2		regs[5]

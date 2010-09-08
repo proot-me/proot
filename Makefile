@@ -1,10 +1,8 @@
 CC       = gcc
 LD       = $(CC)
-CPPFLAGS = -D$(ARCH)=1
+CPPFLAGS = 
 CFLAGS   = -Wall -O0 -g
 LDFLAGS  = -static
-
-ARCH     = $(shell uname -m)
 
 OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o
 
@@ -13,7 +11,7 @@ all: proot
 proot: $(OBJECTS)
 	$(LD) $(LDFLAGS) $(OBJECTS) -o $@
 
-%.o: %.c *.h
+%.o: %.c *.h Makefile
 	$(CC) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
 
 ######################################################################

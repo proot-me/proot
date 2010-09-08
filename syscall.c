@@ -626,7 +626,7 @@ static void translate_syscall_enter(struct child_info *child)
 	case __NR_write:
 	case __NR_writev:
 
-#ifdef arm
+#if defined(ARCH_ARM_EABI)
 	case __ARM_NR_breakpoint:
 	case __ARM_NR_cacheflush:
 	case __ARM_NR_set_tls:
@@ -634,7 +634,7 @@ static void translate_syscall_enter(struct child_info *child)
 	case __ARM_NR_usr32:
 	case __NR_arm_fadvise64_64:
 	case __NR_arm_sync_file_range:
-#endif /* arm */
+#endif /*  */
 
 		/* Nothing to do. */
 		status = 0;
@@ -665,7 +665,7 @@ static void translate_syscall_enter(struct child_info *child)
 		/* The stack is already saved/restored before/after an
 		 * execve() for this architecture, look at this code:
 		 * linux/arch/x86/kernel/entry_64.S:stub_execve */
-#if defined (x86_64)
+#if defined(ARCH_X86_64)
 		if (status > 0)
 			status = 0;
 #endif
