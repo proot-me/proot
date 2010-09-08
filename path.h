@@ -28,6 +28,8 @@
 #include <sys/types.h> /* pid_t, */
 #include <fcntl.h> /* AT_FDCWD, */
 
+#include "child_info.h"
+
 /* Helper macros. */
 #define REGULAR 1
 #define SYMLINK 0
@@ -37,7 +39,7 @@
 
 extern void init_module_path(const char *new_root);
 extern void exclude_path(const char *path);
-extern int translate_path(pid_t pid, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
+extern int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
 extern int detranslate_path(char path[PATH_MAX], int sanity_check);
 
 extern int check_fd(pid_t pid);

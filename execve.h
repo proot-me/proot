@@ -25,9 +25,9 @@
 #ifndef EXECVE_H
 #define EXECVE_H
 
-#include <sys/types.h> /* pid_t, */
+#include "child_info.h"
 
 extern void init_module_execve(const char *runner);
-extern int translate_execve(pid_t pid);
+extern int translate_execve(struct child_info *child);
 
 #endif /* EXECVE_H */

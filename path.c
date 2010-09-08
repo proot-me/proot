@@ -393,13 +393,22 @@ static int canonicalize(pid_t pid,
  * the current working directory).  See the documentation of
  * canonicalize() for the meaning of @deref_final.
  */
-int translate_path(pid_t pid, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final)
+int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final)
 {
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	char tmp[PATH_MAX];
 	int status;
+	pid_t pid;
 
 	assert(initialized != 0);
+
+	/* Use my own PID if no child is specified. */
+	if (child == NULL) {
+		pid = getpid();
+	}
+	else { 
+		pid = child->pid;
+	}
 
 	/* Use "/" as the base if it is an absolute [fake] path. */
 	if (fake_path[0] == '/') {

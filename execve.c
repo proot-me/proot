@@ -60,7 +60,7 @@ void init_module_execve(const char *opt_runner)
 		return;
 
 	/* Ensure the runner is inside the new root. */
-	status = translate_path(getpid(), runner, AT_FDCWD, opt_runner, 1);
+	status = translate_path(NULL, runner, AT_FDCWD, opt_runner, 1);
 	if (status < 0)
 		notice(ERROR, USER, "translate_path(\"%s\"): %s", opt_runner, strerror(-status));
 
@@ -131,7 +131,7 @@ static int substitute_argv0(char **argv[], int nb_new_args, ...)
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-static int expand_shebang(pid_t pid, char *filename, char **argv[])
+static int expand_shebang(struct child_info *child, char *filename, char **argv[])
 {
 	char interpreter[PATH_MAX];
 	char argument[ARG_MAX];
@@ -142,7 +142,7 @@ static int expand_shebang(pid_t pid, char *filename, char **argv[])
 	int fd;
 	int i;
 
-	status = translate_path(pid, path, AT_FDCWD, filename, REGULAR);
+	status = translate_path(child, path, AT_FDCWD, filename, REGULAR);
 	if (status < 0)
 		return status;
 
@@ -442,9 +442,9 @@ static int check_elf_interpreter(const char *file)
 }
 
 /**
- * Translate the arguments of the execve() syscall made by the child
- * process @pid. This syscall needs a very special treatment for
- * script files because according to "man 2 execve":
+ * Translate the arguments of the execve() syscall made by the @child
+ * process. This syscall needs a very special treatment for script
+ * files because according to "man 2 execve":
  *
  *     An interpreter script is a text file [...] whose first line is
  *     of the form:
@@ -475,7 +475,7 @@ static int check_elf_interpreter(const char *file)
  *
  *     execve("/tmp/new_root/bin/sh", argv = [ "/bin/sh", "/bin/script.sh", "arg1", arg2", ... ], envp);
  */
-int translate_execve(pid_t pid)
+int translate_execve(struct child_info *child)
 {
 	char path[PATH_MAX];
 	char path2[PATH_MAX];
@@ -486,23 +486,23 @@ int translate_execve(pid_t pid)
 	int status;
 	int i;
 
-	status = get_sysarg_path(pid, path, SYSARG_1);
+	status = get_sysarg_path(child->pid, path, SYSARG_1);
 	if (status < 0)
 		return status;
 
-	status = get_argv(pid, &argv);
+	status = get_argv(child->pid, &argv);
 	if (status < 0)
 		return status;
 
 	/* Expand the shebang iteratively. */
 	do {
 		nb_shebang++;
-		status = expand_shebang(pid, path, &argv);
+		status = expand_shebang(child, path, &argv);
 	} while(status > 0);
 	if (status < 0)
 		goto end;
 
-	status = translate_path(pid, path2, AT_FDCWD, path, REGULAR);
+	status = translate_path(child, path2, AT_FDCWD, path, REGULAR);
 	if (status < 0)
 		goto end;
 		
@@ -539,7 +539,7 @@ int translate_execve(pid_t pid)
 
 	/* Rebuild argv[] only if something has changed. */
 	if (nb_shebang != 0 || runner[0] != '\0') {
-		size = set_argv(pid, argv);
+		size = set_argv(child->pid, argv);
 		if (size < 0) {
 			status = size;
 			goto end;
@@ -551,7 +551,7 @@ int translate_execve(pid_t pid)
 	if (status < 0)
 		goto end;
 
-	status = set_sysarg_path(pid, path2, SYSARG_1);
+	status = set_sysarg_path(child->pid, path2, SYSARG_1);
 	if (status < 0)
 		goto end;
 
