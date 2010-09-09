@@ -43,6 +43,7 @@
 static int initialized = 0;
 static char root[PATH_MAX];
 static size_t root_length;
+static int use_runner = 0;
 
 static int nb_excluded = 0;
 static char **excluded = NULL;
@@ -50,12 +51,13 @@ static char **excluded = NULL;
 /**
  * Initialize internal data of the path translator.
  */
-void init_module_path(const char *new_root)
+void init_module_path(const char *new_root, int opt_runner)
 {
 	if (realpath(new_root, root) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
 
 	root_length = strlen(root);
+	use_runner = opt_runner;
 	initialized = 1;
 }
 
@@ -387,6 +389,38 @@ static int canonicalize(pid_t pid,
 }
 
 /**
+ * Check if the translation should be delayed.
+ *
+ * It is useful when using a runner that needs shared libraries or
+ * reads some configuration files, for instance.
+ */
+static int is_delayed(struct child_info *child, char path[PATH_MAX])
+{
+	if (child->sysnum == __NR_execve) {
+		if (strlen(path) >= PATH_MAX)
+			return -ENAMETOOLONG;
+
+		child->trigger = strdup(path);
+		if (child->trigger == NULL)
+			return -ENOMEM;
+
+		return 0;
+	}
+	else {
+		if (child->trigger == NULL)
+			return 0;
+
+		if (strcmp(child->trigger, path) != 0)
+			return 1;
+
+		free(child->trigger);
+		child->trigger = NULL;
+
+		return 0;
+	}
+}
+
+/**
  * Copy in @result the equivalent of @root + canonicalize(@dir_fd +
  * @fake_path).  If @fake_path is not absolute then it is relative to
  * the directory referred by the descriptor @dir_fd (AT_FDCWD is for
@@ -398,17 +432,8 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	char tmp[PATH_MAX];
 	int status;
-	pid_t pid;
 
 	assert(initialized != 0);
-
-	/* Use my own PID if no child is specified. */
-	if (child == NULL) {
-		pid = getpid();
-	}
-	else { 
-		pid = child->pid;
-	}
 
 	/* Use "/" as the base if it is an absolute [fake] path. */
 	if (fake_path[0] == '/') {
@@ -417,7 +442,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	/* Is it relative to the current working directory? */
 	else if (dir_fd == AT_FDCWD) {
 		/* Format the path to the "virtual" link to child's cwd. */
-		status = sprintf(link, "/proc/%d/cwd", pid);
+		status = sprintf(link, "/proc/%d/cwd", child->pid);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
@@ -439,7 +464,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 			   within the new root once the child process
 			   did a chdir(2). */
 			if (strncmp(tmp, root, root_length) != 0) {
-				notice(WARNING, INTERNAL, "child %d is out of my control (1)", pid);
+				notice(WARNING, INTERNAL, "child %d is out of my control (1)", child->pid);
 				return -EPERM;
 			}
 
@@ -456,7 +481,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 		struct stat statl;
 
 		/* Format the path to the "virtual" link. */
-		status = sprintf(link, "/proc/%d/fd/%d", pid, dir_fd);
+		status = sprintf(link, "/proc/%d/fd/%d", child->pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
@@ -487,16 +512,24 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 			return status;
 	}
 
-	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", pid, result, fake_path);
+	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", child->pid, result, fake_path);
 
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(pid, fake_path, deref_final, result, 0);
+	status = canonicalize(child->pid, fake_path, deref_final, result, 0);
 	if (status < 0)
 		return status;
-	
-	/* Append the new root and the result of the canonicalization
-	 * only if it is not an excluded path. */
+
+	/* Don't append the new root to the result of the
+	 * canonicalization if it's not an excluded path. */
 	if (is_excluded(result))
+		goto end;
+
+	/* Don't append the new root to the result of the
+	 * canonicalization if the translation is delayed. */
+	status = use_runner ? is_delayed(child, result) : 0;
+	if (status < 0)
+		return status;
+	if (status != 0)
 		goto end;
 
 	strcpy(tmp, result);
@@ -507,13 +540,13 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	/* Small sanity check. */
 	if (deref_final != 0 && realpath(result, tmp) != NULL) {
 		if (strncmp(tmp, root, root_length) != 0) {
-			notice(WARNING, INTERNAL, "child %d is out of my control (2)", pid);
+			notice(WARNING, INTERNAL, "child %d is out of my control (2)", child->pid);
 			return -EPERM;
 		}
 	}
 
 end:
-	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
+	VERBOSE(4, "pid %d:          -> \"%s\"", child->pid, result);
 	return 0;
 }
 

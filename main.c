@@ -68,11 +68,12 @@ static void exit_usage(void)
 	puts("Common options:");
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("  -x <path>     don't translate access to <path> (can be repeated)");
-	puts("  -r <path>     use the program pointed to by <path> to run each process");
 	puts("  -v            increase the verbose level");
 	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
 	puts("  -U <X>        deletes the variable <X> from the environment");
 /*	puts("  -b <file>     read the config' for \"binfmt_misc\" support from <file>"); */
+	puts("  -q <runner>   use <runner> to handle each process. Note it won't be");
+	puts("                translated until it accesses the program to execute");
 	puts("");
 	puts("Insecure options:");
 	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)");
@@ -83,16 +84,13 @@ static void exit_usage(void)
 	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)");
 	puts("  -s            check /proc/$pid/syscall agrees with the internal state");
 	puts("");
-	puts("Be careful when specifying a <path> since it will be accessed regarding");
-	puts("the fake root, for instance:  \"proot -r /bin/runner /tmp/fake_root\"");
-	puts("means the path to the runner actually is \"/tmp/fake_root/bin/runner\".");
-	puts("");
 
 	exit(EXIT_FAILURE);
 }
 
 static pid_t parse_options(int argc, char *argv[])
 {
+	char *trigger;
 	int status;
 	char *ptr;
 	pid_t pid;
@@ -123,7 +121,7 @@ static pid_t parse_options(int argc, char *argv[])
 			exclude_path(argv[i]);
 			break;
 
-		case 'r':
+		case 'q':
 			i++;
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -t");
@@ -205,16 +203,21 @@ static pid_t parse_options(int argc, char *argv[])
 		opt_args = &argv[i + 1];
 	}
 
-	init_module_path(opt_new_root);
+	pid = atoi(opt_args[0]);
+	if (opt_args[1] != NULL)
+		pid = 0;
+
+	if (opt_runner != NULL && pid == 0)
+		trigger = opt_args[0];
+	else
+		trigger = NULL;
+
+	init_module_path(opt_new_root, opt_runner != NULL);
 	init_module_child_info();
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
 	init_module_execve(opt_runner);
 
-	pid = atoi(opt_args[0]);
-	if (pid != 0 && opt_args[1] == NULL)
-		return pid;
-	else
-		return 0;
+	return pid;
 }
 
 static void launch_process(const char *argv0)

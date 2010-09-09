@@ -37,7 +37,7 @@
 #define STRONG  1
 #define WEAK    0
 
-extern void init_module_path(const char *new_root);
+extern void init_module_path(const char *new_root, int use_runner);
 extern void exclude_path(const char *path);
 extern int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
 extern int detranslate_path(char path[PATH_MAX], int sanity_check);

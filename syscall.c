@@ -989,7 +989,7 @@ static int translate_syscall_exit(struct child_info *child)
 			set_sysarg(child->pid, SYSARG_RESULT, (word_t)-EFAULT);
 	}
 
-	VERBOSE(3, "pid %d:        -> %ld [0x%lx]", child->pid, result,
+	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", child->pid, result,
 		ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
 
 	/* Translate output arguments. */

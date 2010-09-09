@@ -50,6 +50,7 @@ static void reset_child(struct child_info *child)
 	child->sysnum = -1;
 	child->status = 0;
 	child->output = 0;
+	child->trigger = NULL;
 }
 
 /**

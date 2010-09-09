@@ -35,14 +35,15 @@ struct child_info {
 	word_t sysnum; /* Current syscall (-1 if none). */
 	int    status; /* -errno if < 0, otherwise amount of bytes used in the child's stack. */
 	word_t output; /* Address in the child's memory space of the output argument. */
+	char *trigger; /* Name of the file/directory used to start the path translation. */
 };
 
 typedef int (*foreach_child_t)(pid_t pid);
 
-extern void init_module_child_info();
+extern void init_module_child_info(void);
 extern struct child_info *new_child(pid_t pid);
 extern void delete_child(pid_t pid);
-extern size_t get_nb_children();
+extern size_t get_nb_children(void);
 extern struct child_info *get_child_info(pid_t pid);
 extern int foreach_child(foreach_child_t callback);
 

@@ -59,15 +59,14 @@ void init_module_execve(const char *opt_runner)
 	if (opt_runner == NULL)
 		return;
 
-	/* Ensure the runner is inside the new root. */
-	status = translate_path(NULL, runner, AT_FDCWD, opt_runner, 1);
-	if (status < 0)
-		notice(ERROR, USER, "translate_path(\"%s\"): %s", opt_runner, strerror(-status));
+	/* Canonicalize the runner. */
+	if (realpath(opt_runner, runner) == NULL)
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", opt_runner);
 
 	/* Ensure the runner is executable. */
 	status = access(runner, X_OK);
 	if (status < 0)
-		notice(ERROR, SYSTEM, "access(\"%s\", X)", runner);
+		notice(ERROR, SYSTEM, "access(\"%s\", X_OK)", runner);
 }
 
 /**
