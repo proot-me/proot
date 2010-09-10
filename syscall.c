@@ -299,7 +299,7 @@ static void translate_syscall_enter(struct child_info *child)
 			get_sysarg(child->pid, SYSARG_5), get_sysarg(child->pid, SYSARG_6),
 			ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
 	else
-		VERBOSE(2, "pid %d: syscall(%d)", (int)child->sysnum);
+		VERBOSE(2, "pid %d: syscall(%d)", child->pid, (int)child->sysnum);
 
 	/* Ensure one is not trying to cheat PRoot by calling an
 	 * unsupported syscall on that architecture. */

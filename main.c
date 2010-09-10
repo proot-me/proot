@@ -318,9 +318,9 @@ static int main_loop()
 	signal = 0;
 	while (get_nb_children() > 0) {
 		/* Wait for the next child's stop. */
-		pid = wait(&child_status);
+		pid = waitpid(-1, &child_status, __WALL);
 		if (pid < 0)
-			notice(ERROR, SYSTEM, "wait()");
+			notice(ERROR, SYSTEM, "waitpid()");
 
 		/* Check every child file descriptors. */
 		if (opt_check_fd != 0)
