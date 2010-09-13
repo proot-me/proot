@@ -226,6 +226,7 @@ static void launch_process(const char *argv0)
 	char pwd[PATH_MAX];
 	long status;
 	pid_t pid;
+	int i;
 
 	pid = fork();
 	switch(pid) {
@@ -273,6 +274,13 @@ static void launch_process(const char *argv0)
 		 * translated until they are closed. */
 		list_open_fd(getpid());
 
+		if (verbose_level >= 1) {
+			fprintf(stderr, "proot:");
+			for (i = 0; opt_args[i] != NULL; i++)
+				fprintf(stderr, " %s", opt_args[i]);
+			fprintf(stderr, "\n");
+		}
+
 		status = execvp(launcher, opt_args);
 		notice(ERROR, SYSTEM, "execvp(\"%s\")", launcher);
 
@@ -307,7 +315,7 @@ static void attach_process(pid_t pid)
 	child->sysnum = __NR_restart_syscall;
 }
 
-static int main_loop()
+static int event_loop()
 {
 	int last_exit_status;
 	int child_status;
@@ -416,13 +424,6 @@ int main(int argc, char *argv[])
 	 * ensure the first execve(2) is catched by PRoot. */
 	if (length_argv0 < length_proot
 	    || strcmp(argv[0] + length_argv0 - length_proot, "proot") != 0) {
-		int i;
-
-		fprintf(stderr, "proot:");
-		for (i = 0; i < argc; i++)
-			fprintf(stderr, " %s", argv[i]);
-		fprintf(stderr, "\n");
-
 		execv(argv[0], argv);
 		notice(ERROR, SYSTEM, "execv(\"%s\") [bad interpreter/runner ?]", argv[0]);
 	}
@@ -434,5 +435,5 @@ int main(int argc, char *argv[])
 	else
 		launch_process(argv[0]);
 
-	return main_loop();
+	return event_loop();
 }

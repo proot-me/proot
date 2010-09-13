@@ -26,7 +26,7 @@
 #define ARCH_H
 
 typedef unsigned long word_t;
-#define SYSCALL_AVOIDER __NR_security /* Ironic, isn't it? ;) */
+#define SYSCALL_AVOIDER __NR_security /* Weird, isn't it? ;) */
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
