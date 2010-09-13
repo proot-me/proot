@@ -72,8 +72,8 @@ static void exit_usage(void)
 	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
 	puts("  -U <X>        deletes the variable <X> from the environment");
 /*	puts("  -b <file>     read the config' for \"binfmt_misc\" support from <file>"); */
-	puts("  -q <runner>   use <runner> to handle each process. Note it won't be");
-	puts("                translated until it accesses the program to execute");
+	puts("  -q <runner>   use <runner> to handle each process; you can pass options by");
+	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
 	puts("");
 	puts("Insecure options:");
 	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)");
@@ -121,13 +121,6 @@ static pid_t parse_options(int argc, char *argv[])
 			exclude_path(argv[i]);
 			break;
 
-		case 'q':
-			i++;
-			if (i >= argc)
-				notice(ERROR, USER, "missing value for the option -t");
-			opt_runner = argv[i];
-			break;
-
 		case 'v':
 			verbose_level++;
 			break;
@@ -156,6 +149,13 @@ static pid_t parse_options(int argc, char *argv[])
 			status = unsetenv(argv[i]);
 			if (status < 0)
 				notice(WARNING, SYSTEM, "unsetenv(\"%s\")", argv[i]);
+			break;
+
+		case 'q':
+			i++;
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -q");
+			opt_runner = argv[i];
 			break;
 
 		case 'j':

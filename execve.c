@@ -43,11 +43,13 @@
 #include "child_mem.h"
 #include "notice.h"
 
-static char runner[PATH_MAX] = { '\0', };
-
 #ifndef ARG_MAX
 #define ARG_MAX 131072
 #endif
+
+static char runner[PATH_MAX] = { '\0', };
+static char runner_args[ARG_MAX] = { '\0', };
+static int nb_runner_args;
 
 /**
  * Initialize internal data of the execve module.
@@ -55,9 +57,24 @@ static char runner[PATH_MAX] = { '\0', };
 void init_module_execve(const char *opt_runner)
 {
 	int status;
+	char *tmp;
 
 	if (opt_runner == NULL)
 		return;
+
+	/* Split apart the name of the runner and its options, if any. */
+	tmp = index(opt_runner, ',');
+	if (tmp != NULL) {
+		*tmp = '\0';
+		tmp++;
+
+		if (strlen(tmp) >= ARG_MAX)
+			notice(ERROR, USER, "the option \"-q %s\" is too long", opt_runner);
+
+		strcpy(runner_args, tmp);
+		for (nb_runner_args = 1; (tmp = index(tmp, ',')) != NULL; nb_runner_args++)
+			tmp++;
+	}
 
 	/* Canonicalize the runner. */
 	if (realpath(opt_runner, runner) == NULL)
@@ -90,6 +107,7 @@ static int substitute_argv0(char **argv[], int nb_new_args, ...)
 
 	for (i = 0; (*argv)[i] != NULL; i++)
 		;
+	assert(i > 0);
 
 	/* Don't kill *argv if the reallocation failed, all entries
 	 * will be freed in translate_execve(). */
@@ -106,16 +124,79 @@ static int substitute_argv0(char **argv[], int nb_new_args, ...)
 	memmove(*argv + nb_new_args, *argv + 1, i * sizeof (char *));
 
 	/* Each new entries will be allocated into the heap since we
-	 * don't rely on the liveness of the parameters. */
+	 * don't rely on the liveness of the input parameters. */
 	va_start(args, nb_new_args);
 	for (i = 0; i < nb_new_args; i++) {
 		char *new_arg = va_arg(args, char *);
 		(*argv)[i] = calloc(strlen(new_arg) + 1, sizeof(char));
 		if ((*argv)[i] == NULL)
-			return -ENOMEM;
+			return -ENOMEM; /* XXX: *argv is inconsistent! */
 		strcpy((*argv)[i], new_arg);
 	}
 	va_end(args);
+
+	return 0;
+}
+
+/**
+ * Insert each entry of runner_args[] in between the first entry of
+ * *@argv and its sucessor.  This function returns -errno if an error
+ * occured, otherwise 0.
+ *
+ *  Technically:
+ *
+ *    | argv[0] | argv[1] | ... | argv[n] |
+ *
+ *  becomes:
+ *
+ *    | argv[0] | runner_args[0] | ... | runner_args[n] | argv[m] |
+ */
+static int insert_runner_args(char **argv[])
+{
+	char *previous_tmp;
+	char *tmp;
+	int i;
+
+	for (i = 0; (*argv)[i] != NULL; i++)
+		;
+	i++; /* Don't miss the trailing NULL terminator. */
+
+	/* Don't kill *argv if the reallocation failed, all entries
+	 * will be freed in translate_execve(). */
+	tmp = realloc(*argv, (nb_runner_args + i) * sizeof(char *));
+	if (tmp == NULL)
+		return -ENOMEM;
+	*argv = (void *)tmp;
+
+	/* Move the old entries to let space at the beginning for the
+	 * new ones. */
+	memmove(*argv + 1 + nb_runner_args, *argv + 1, (i - 1) * sizeof (char *));
+
+	/* Each new entries will be allocated into the heap since we
+	 * don't rely on the liveness of the input parameters. */
+	tmp = runner_args;
+	previous_tmp = runner_args;
+	for (i = 1; i <= nb_runner_args; i++) {
+		ptrdiff_t size;
+
+		tmp = index(tmp, ',');
+		if (tmp == NULL)
+			size = strlen(previous_tmp) + 1;
+		else {
+			tmp++;
+			size = tmp - previous_tmp;
+		}
+
+		(*argv)[i] = calloc(size, size * sizeof(char));
+		if ((*argv)[i] == NULL)
+			return -ENOMEM; /* XXX: *argv is inconsistent! */
+
+		strncpy((*argv)[i], previous_tmp, size - 1);
+		(*argv)[i][size] = '\0';
+
+		previous_tmp = tmp;
+	}
+	assert(tmp == NULL);
 
 	return 0;
 }
@@ -528,9 +609,15 @@ int translate_execve(struct child_info *child)
 			goto end;
 		}
 
-		substitute_argv0(&argv, 2, runner, path);
+		status = substitute_argv0(&argv, 2, runner, path);
 		if (status < 0)
 			goto end;
+
+		if (runner_args[0] != '\0') {
+			status = insert_runner_args(&argv);
+			if (status < 0)
+				goto end;
+		}
 
 		/* Launch the runner actually. */
 		strcpy(path2, runner);
