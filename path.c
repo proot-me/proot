@@ -56,7 +56,10 @@ void init_module_path(const char *new_root, int opt_runner)
 	if (realpath(new_root, root) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
 
-	root_length = strlen(root);
+	if (strcmp(root, "/") == 0)
+		root_length = 0;
+	else
+		root_length = strlen(root);
 	use_runner = opt_runner;
 	initialized = 1;
 }
