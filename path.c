@@ -367,7 +367,9 @@ static int canonicalize(pid_t pid,
 
 		/* Remove the leading "root" part if needed, it's
 		 * usefull for "/proc/self/cwd/" for instance. */
-		detranslate_path(tmp, 0);
+		status = detranslate_path(tmp, 0);
+		if (status < 0)
+			return status;
 
 		/* Canonicalize recursively the referee in case it
 		   is/contains a link, moreover if it is not an

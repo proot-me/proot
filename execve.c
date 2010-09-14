@@ -184,8 +184,10 @@ static int substitute_argv0(char **argv[], int nb_new_args, ...)
 	for (i = 0; i < nb_new_args; i++) {
 		char *new_arg = va_arg(args, char *);
 		(*argv)[i] = calloc(strlen(new_arg) + 1, sizeof(char));
-		if ((*argv)[i] == NULL)
+		if ((*argv)[i] == NULL) {
+			va_end(args);
 			return -ENOMEM; /* XXX: *argv is inconsistent! */
+		}
 		strcpy((*argv)[i], new_arg);
 	}
 	va_end(args);
@@ -232,6 +234,7 @@ static int insert_runner_args(char **argv[])
 	tmp = runner_args;
 	tmp2 = runner_args;
 	for (i = 1; i <= nb_runner_args; i++) {
+		assert(tmp != NULL);
 		ptrdiff_t size;
 
 		tmp = index(tmp, ',');
@@ -614,7 +617,7 @@ int translate_execve(struct child_info *child)
 {
 	char path[PATH_MAX];
 	char path2[PATH_MAX];
-	char **argv;
+	char **argv = NULL;
 
 	int nb_shebang = -1;
 	int size = 0;
@@ -627,7 +630,7 @@ int translate_execve(struct child_info *child)
 
 	status = get_argv(child->pid, &argv);
 	if (status < 0)
-		return status;
+		goto end;
 
 	/* Expand the shebang iteratively. */
 	do {
@@ -679,7 +682,7 @@ int translate_execve(struct child_info *child)
 	}
 
 	/* Rebuild argv[] only if something has changed. */
-	if (nb_shebang != 0 || runner[0] != '\0') {
+	if (argv != NULL && (nb_shebang != 0 || runner[0] != '\0')) {
 		size = set_argv(child->pid, argv);
 		if (size < 0) {
 			status = size;
@@ -697,11 +700,11 @@ int translate_execve(struct child_info *child)
 		goto end;
 
 end:
-	assert(argv != NULL);
-
-	for (i = 0; argv[i] != NULL; i++)
-		free(argv[i]);
-	free(argv);
+	if (argv != NULL) {
+		for (i = 0; argv[i] != NULL; i++)
+			free(argv[i]);
+		free(argv);
+	}
 
 	if (status < 0)
 		return status;

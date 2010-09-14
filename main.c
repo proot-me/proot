@@ -91,7 +91,6 @@ static void exit_usage(void)
 
 static pid_t parse_options(int argc, char *argv[])
 {
-	char *trigger;
 	int status;
 	char *ptr;
 	pid_t pid;
@@ -208,11 +207,6 @@ static pid_t parse_options(int argc, char *argv[])
 	if (opt_args[1] != NULL)
 		pid = 0;
 
-	if (opt_runner != NULL && pid == 0)
-		trigger = opt_args[0];
-	else
-		trigger = NULL;
-
 	init_module_path(opt_new_root, opt_runner != NULL);
 	init_module_child_info();
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
@@ -318,7 +312,7 @@ static void attach_process(pid_t pid)
 
 static int event_loop()
 {
-	int last_exit_status;
+	int last_exit_status = -1;
 	int child_status;
 	long status;
 	int signal;

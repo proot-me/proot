@@ -112,6 +112,7 @@ struct child_info *new_child(pid_t pid)
 	}
 
 	/* Should never happen. */
+	assert(0);
 	return NULL;
 }
 
@@ -125,6 +126,8 @@ void delete_child(pid_t pid)
 	nb_children--;
 
 	child = get_child_info(pid);
+	assert(child != NULL);
+
 	reset_child(child);
 }
 

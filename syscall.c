@@ -928,6 +928,8 @@ static void translate_syscall_enter(struct child_info *child)
 		notice(WARNING, INTERNAL, "unknown syscall %lu", child->sysnum);
 		if (!allow_unknown)
 			status = -ENOSYS;
+		else
+			status = 0;
 		break;
 	}
 
@@ -1042,6 +1044,7 @@ int translate_syscall(pid_t pid)
 
 	/* Get the information about this child. */
 	child = get_child_info(pid);
+	assert(child != NULL);
 
 	/* Check if we are either entering or exiting a syscall. */
 	if (child->sysnum == (word_t)-1) {
