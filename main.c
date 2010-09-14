@@ -368,13 +368,12 @@ static int event_loop()
 				 * automatically trace each new process with
 				 * the same options.  Note: only the first
 				 * process should come here (because of
-				 * TRACEEXEC). */
+				 * TRACE*FORK/CLONE). */
 				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
 						PTRACE_O_TRACESYSGOOD |
 						PTRACE_O_TRACEFORK    |
 						PTRACE_O_TRACEVFORK   |
-						PTRACE_O_TRACECLONE   |
-						PTRACE_O_TRACEEXEC);
+						PTRACE_O_TRACECLONE);
 				if (status < 0)
 					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 
@@ -384,7 +383,6 @@ static int event_loop()
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
-			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
 				/* Ignore these signals. */
 				signal = 0;
 				break;
