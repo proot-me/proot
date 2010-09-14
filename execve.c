@@ -284,6 +284,12 @@ static int expand_shebang(struct child_info *child, char *filename, char **argv[
 	if (status < 0)
 		return status;
 
+	/* Don't try to execute scripts (and programs) that don't have
+	 * the "executable" bit. */
+	status = access(path, X_OK);
+	if (status < 0)
+		return -EACCES;
+
 	/* Inspect the executable.  */
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
