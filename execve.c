@@ -57,7 +57,7 @@ static int nb_runner_args;
 void init_module_execve(const char *opt_runner)
 {
 	int status;
-	char *tmp;
+	char *tmp, *tmp2, *tmp3;
 
 	if (opt_runner == NULL)
 		return;
@@ -76,7 +76,62 @@ void init_module_execve(const char *opt_runner)
 			tmp++;
 	}
 
-	/* Canonicalize the runner. */
+	/* Search for the runner in $PATH only if it is not a relative
+	 * not an absolute path. */
+	tmp = getenv("PATH");
+	tmp2 = tmp;
+	if (tmp != NULL
+	    && strncmp(opt_runner, "/", 1)   != 0
+	    && strncmp(opt_runner, "./", 2)  != 0
+	    && strncmp(opt_runner, "../", 3) != 0) {
+
+		/* Iterate over each entry of $PATH. */
+		do {
+			ptrdiff_t length;
+
+			tmp = index(tmp, ':');
+			if (tmp == NULL)
+				length = strlen(tmp2);
+			else {
+				length = tmp - tmp2;
+				tmp++;
+			}
+
+			/* Ensure there is enough room in runner[]. */
+			if (length + strlen(opt_runner) + 2 >= PATH_MAX) {
+				notice(WARNING, USER, "component \"%s\" from $PATH is too long", tmp2);
+				goto next;
+			}
+			strncpy(runner, tmp2, length);
+			runner[length] = '\0';
+			strcat(runner, "/");
+			strcat(runner, opt_runner);
+
+			/* Canonicalize the path to runner. */
+			tmp3 = realpath(runner, NULL);
+			if (tmp3 == NULL)
+				goto next;
+
+			/* Check if the runner is executable. */
+			status = access(tmp3, X_OK);
+			if (status >= 0) {
+				/* length(tmp3) < PATH_MAX according to realpath(3) */
+				strcpy(runner, tmp3);
+				VERBOSE(1, "runner is %s", runner);
+
+				free(tmp3);
+				return;
+			}
+			free(tmp3);
+
+		next:
+			tmp2 = tmp;
+		} while (tmp != NULL);
+
+		/* Otherwise check in the current directory. */
+	}
+
+	/* Canonicalize the path to the runner. */
 	if (realpath(opt_runner, runner) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", opt_runner);
 
@@ -153,7 +208,7 @@ static int substitute_argv0(char **argv[], int nb_new_args, ...)
  */
 static int insert_runner_args(char **argv[])
 {
-	char *previous_tmp;
+	char *tmp2;
 	char *tmp;
 	int i;
 
@@ -175,26 +230,26 @@ static int insert_runner_args(char **argv[])
 	/* Each new entries will be allocated into the heap since we
 	 * don't rely on the liveness of the input parameters. */
 	tmp = runner_args;
-	previous_tmp = runner_args;
+	tmp2 = runner_args;
 	for (i = 1; i <= nb_runner_args; i++) {
 		ptrdiff_t size;
 
 		tmp = index(tmp, ',');
 		if (tmp == NULL)
-			size = strlen(previous_tmp) + 1;
+			size = strlen(tmp2) + 1;
 		else {
 			tmp++;
-			size = tmp - previous_tmp;
+			size = tmp - tmp2;
 		}
 
 		(*argv)[i] = calloc(size, size * sizeof(char));
 		if ((*argv)[i] == NULL)
 			return -ENOMEM; /* XXX: *argv is inconsistent! */
 
-		strncpy((*argv)[i], previous_tmp, size - 1);
+		strncpy((*argv)[i], tmp2, size - 1);
 		(*argv)[i][size] = '\0';
 
-		previous_tmp = tmp;
+		tmp2 = tmp;
 	}
 	assert(tmp == NULL);
 

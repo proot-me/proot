@@ -71,9 +71,10 @@ static void exit_usage(void)
 	puts("  -v            increase the verbose level");
 	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
 	puts("  -U <X>        deletes the variable <X> from the environment");
-/*	puts("  -b <file>     read the config' for \"binfmt_misc\" support from <file>"); */
+/*	puts("  -b <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
 	puts("  -q <runner>   use <runner> to handle each process; you can pass options by");
 	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
+	puts("                Note the runner will be translated once it accessed the program");
 	puts("");
 	puts("Insecure options:");
 	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)");
