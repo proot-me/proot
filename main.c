@@ -51,9 +51,13 @@ static int opt_allow_ptrace = 0;
 static int opt_check_fd = 0;
 static int opt_check_syscall = 0;
 
+#define xstr(s) str(s)
+#define str(s) #s
+
 static void exit_usage(void)
 {
 	puts("");
+	puts("PRoot-" xstr(VERSION) ": an user-mode alternative to chroot(1), based on ptrace(2).\n");
 	puts("Usages:");
 	puts("  proot [options] <fake_root>");
 	puts("  proot [options] <fake_root> <path> [args]");
@@ -77,7 +81,7 @@ static void exit_usage(void)
 	puts("                Note the runner will be translated once it accessed the program");
 	puts("");
 	puts("Insecure options:");
-	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)");
+/*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
 	puts("  -u            don't block unknown syscalls");
 	puts("  -p            don't block ptrace(2)");
 	puts("");
