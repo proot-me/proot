@@ -284,16 +284,19 @@ static int expand_shebang(struct child_info *child, char *filename, char **argv[
 	if (status < 0)
 		return status;
 
-	/* Don't try to execute scripts (and programs) that don't have
-	 * the "executable" bit. */
-	status = access(path, X_OK);
-	if (status < 0)
-		return -EACCES;
-
 	/* Inspect the executable.  */
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return -errno;
+
+	/* Don't try to execute scripts that don't have the
+	 * "executable" bit. Do this after open(2) to avoid
+	 * "permission denied" instead of "no such file". */
+	status = access(path, X_OK);
+	if (status < 0) {
+		status = -errno;
+		goto end;
+	}
 
 	status = read(fd, interpreter, 2 * sizeof(char));
 	if (status < 0) {
