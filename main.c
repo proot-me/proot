@@ -215,7 +215,7 @@ static pid_t parse_options(int argc, char *argv[])
 	return pid;
 }
 
-static void launch_process(const char *argv0)
+static void launch_process()
 {
 	char launcher[PATH_MAX];
 	char pwd[PATH_MAX];
@@ -230,8 +230,8 @@ static void launch_process(const char *argv0)
 
 	case 0: /* child */
 
-		if (realpath(argv0, launcher) == NULL)
-			notice(ERROR, SYSTEM, "realpath(\"%s\")", argv0);
+		if (realpath("/proc/self/exe", launcher) == NULL)
+			notice(ERROR, SYSTEM, "realpath(\"/proc/self/exe\")");
 
 		/* Declare myself as ptraceable before executing the
 		 * requested program. */
@@ -428,7 +428,7 @@ int main(int argc, char *argv[])
 	if (pid != 0)
 		attach_process(pid);
 	else
-		launch_process(argv[0]);
+		launch_process();
 
 	return event_loop();
 }
