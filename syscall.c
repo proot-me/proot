@@ -984,7 +984,7 @@ static int translate_syscall_exit(struct child_info *child)
 	 * translated paths. */
 	if (child->status > 0
 	    /* Restore the stack for execve() only if an error occured. */
-	    && (child->sysnum != __NR_execve || (int)result < 0)) {
+	    && (sysnum != __NR_execve || (int)result < 0)) {
 		word_t child_ptr;
 		child_ptr = resize_child_stack(child->pid, -child->status);
 		if (child_ptr == 0)
