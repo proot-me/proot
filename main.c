@@ -90,6 +90,14 @@ static void exit_usage(void)
 	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)");
 	puts("  -s            check /proc/$pid/syscall agrees with the internal state");
 	puts("");
+	puts("Examples:");
+	puts("  proot -X /usr/local/slackware64-13.1/");
+	puts("  proot -x /dev -x /proc /usr/local/slackware64-13.1/ /usr/bin/elinks");
+	puts("  proot -X -q qemu-sh4 /usr/local/stlinux-sh4-2.3");
+	puts("  proot -q qemu-sh4,-g,1234 -x /proc /usr/local/stlinux-sh4-2.3 /usr/bin/avmshell");
+	puts("");
+	puts("Contact cedric.vincent@gmail.com for bug reports and suggestions.");
+	puts("");
 
 	exit(EXIT_FAILURE);
 }
