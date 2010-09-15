@@ -72,6 +72,7 @@ static void exit_usage(void)
 	puts("Common options:");
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("  -x <path>     don't translate access to <path> (can be repeated)");
+	puts("  -X            alias for: -x /dev -x /etc -x /proc");
 	puts("  -v            increase the verbose level");
 	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
 	puts("  -U <X>        deletes the variable <X> from the environment");
@@ -123,6 +124,12 @@ static pid_t parse_options(int argc, char *argv[])
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -x");
 			exclude_path(argv[i]);
+			break;
+
+		case 'X':
+			exclude_path("/dev");
+			exclude_path("/etc");
+			exclude_path("/proc");
 			break;
 
 		case 'v':
