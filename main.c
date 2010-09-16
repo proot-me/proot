@@ -30,6 +30,7 @@
 #include <sys/ptrace.h> /* ptrace(2), */
 #include <limits.h>     /* PATH_MAX, */
 #include <string.h>     /* strcmp(3), */
+#include <errno.h>      /* errno(3), */
 
 #include "path.h"
 #include "child_info.h"
@@ -237,6 +238,7 @@ static pid_t parse_options(int argc, char *argv[])
 static void launch_process()
 {
 	char launcher[PATH_MAX];
+	char new_root[PATH_MAX];
 	char pwd[PATH_MAX];
 	long status;
 	pid_t pid;
@@ -258,31 +260,38 @@ static void launch_process()
 		if (status < 0)
 			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
 
+		if (realpath(opt_new_root, new_root) == NULL)
+			notice(ERROR, SYSTEM, "realpath(\"%s\")", opt_new_root);
+
 		/* Ensure the child starts in a valid cwd within the
 		 * new root. */
-		status = chdir(opt_new_root);
+		status = chdir(new_root);
 		if (status < 0)
-			notice(ERROR, SYSTEM, "chdir(\"%s\")", opt_new_root);
+			notice(ERROR, SYSTEM, "chdir(\"%s\")", new_root);
 
-		if (opt_pwd != NULL
-		    && strlen(opt_new_root) + strlen(opt_pwd) + 1 < PATH_MAX) {
-			strcpy(pwd, opt_new_root);
-			strcat(pwd, opt_pwd);
+		if (opt_pwd != NULL) {
+			status = translate_path(NULL, pwd, AT_FDCWD, opt_pwd, 1);
+			if (status < 0) {
+				if (errno == 0)
+					errno = -status;
+				notice(WARNING, SYSTEM, "translate_path(\"%s\")", opt_pwd);
+			}
 
 			status = chdir(pwd);
 			if (status < 0)
 				notice(WARNING, SYSTEM, "chdir(\"%s\")", pwd);
 		}
 		else
-			opt_pwd = "/";
+			strcpy(pwd, "/");
+		detranslate_path(pwd, 1);
 
-		status = setenv("PWD", opt_pwd, 1);
+		status = setenv("PWD", pwd, 1);
 		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"PWD\", \"%s\")", opt_pwd);
+			notice(ERROR, SYSTEM, "setenv(\"PWD\", \"%s\")", pwd);
 
-		status = setenv("OLDPWD", opt_pwd, 1);
+		status = setenv("OLDPWD", pwd, 1);
 		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\"), \"%s\"", opt_pwd);
+			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\"), \"%s\"", pwd);
 
 		/* Warn about open file descriptors. They won't be
 		 * translated until they are closed. */

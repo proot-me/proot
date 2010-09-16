@@ -437,8 +437,11 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	char tmp[PATH_MAX];
 	int status;
+	pid_t pid;
 
 	assert(initialized != 0);
+
+	pid = (child != NULL ? child->pid : getpid());
 
 	/* Use "/" as the base if it is an absolute [fake] path. */
 	if (fake_path[0] == '/') {
@@ -447,7 +450,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	/* Is it relative to the current working directory? */
 	else if (dir_fd == AT_FDCWD) {
 		/* Format the path to the "virtual" link to child's cwd. */
-		status = sprintf(link, "/proc/%d/cwd", child->pid);
+		status = sprintf(link, "/proc/%d/cwd", pid);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
@@ -469,7 +472,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 			   within the new root once the child process
 			   did a chdir(2). */
 			if (strncmp(tmp, root, root_length) != 0) {
-				notice(WARNING, INTERNAL, "child %d is out of my control (1)", child->pid);
+				notice(WARNING, INTERNAL, "child %d is out of my control (1)", pid);
 				return -EPERM;
 			}
 
@@ -486,7 +489,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 		struct stat statl;
 
 		/* Format the path to the "virtual" link. */
-		status = sprintf(link, "/proc/%d/fd/%d", child->pid, dir_fd);
+		status = sprintf(link, "/proc/%d/fd/%d", pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
@@ -517,10 +520,10 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 			return status;
 	}
 
-	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", child->pid, result, fake_path);
+	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", pid, result, fake_path);
 
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(child->pid, fake_path, deref_final, result, 0);
+	status = canonicalize(pid, fake_path, deref_final, result, 0);
 	if (status < 0)
 		return status;
 
@@ -531,7 +534,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 
 	/* Don't append the new root to the result of the
 	 * canonicalization if the translation is delayed. */
-	status = use_runner ? is_delayed(child, result) : 0;
+	status = use_runner != 0 && child != NULL ? is_delayed(child, result) : 0;
 	if (status < 0)
 		return status;
 	if (status != 0)
@@ -545,13 +548,13 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	/* Small sanity check. */
 	if (deref_final != 0 && realpath(result, tmp) != NULL) {
 		if (strncmp(tmp, root, root_length) != 0) {
-			notice(WARNING, INTERNAL, "child %d is out of my control (2)", child->pid);
+			notice(WARNING, INTERNAL, "child %d is out of my control (2)", pid);
 			return -EPERM;
 		}
 	}
 
 end:
-	VERBOSE(4, "pid %d:          -> \"%s\"", child->pid, result);
+	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
 	return 0;
 }
 
