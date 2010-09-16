@@ -356,8 +356,9 @@ static int event_loop()
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(child_status)) {
-			VERBOSE(0, "pid %d: terminated with signal %d",
-			           pid, WTERMSIG(child_status));
+			VERBOSE(get_nb_children() != 1,
+				"pid %d: terminated with signal %d",
+				pid, WTERMSIG(child_status));
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
