@@ -58,7 +58,7 @@ static int opt_check_syscall = 0;
 static void exit_usage(void)
 {
 	puts("");
-	puts("PRoot-" xstr(VERSION) ": an user-mode alternative to chroot(1), based on ptrace(2).\n");
+	puts("PRoot-" xstr(VERSION) ": user-mode alternative to chroot(1) based on ptrace(2)\n");
 	puts("Usages:");
 	puts("  proot [options] <fake_root>");
 	puts("  proot [options] <fake_root> <path> [args]");
@@ -97,7 +97,8 @@ static void exit_usage(void)
 	puts("  proot -X -q qemu-sh4 /usr/local/stlinux-sh4-2.3");
 	puts("  proot -q qemu-sh4,-g,1234 -x /proc /usr/local/stlinux-sh4-2.3 /usr/bin/avmshell");
 	puts("");
-	puts("Contact cedric.vincent@gmail.com for bug reports and suggestions.");
+	puts("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...");
+	puts("Copyright (C) 2010 STMicroelectronics, licensed under GPL v2 or later");
 	puts("");
 
 	exit(EXIT_FAILURE);
