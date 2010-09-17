@@ -40,6 +40,8 @@
 #include "path.h"
 #include "notice.h"
 
+#include "compat.h"
+
 static int initialized = 0;
 static char root[PATH_MAX];
 static size_t root_length;
@@ -613,6 +615,10 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 	int status;
 	DIR *dirp;
 
+#ifndef readlinkat
+	char tmp[PATH_MAX];
+#endif
+
 	/* Format the path to the "virtual" directory. */
 	status = sprintf(proc_fd, "/proc/%d/fd", pid);
 	if (status < 0 || status >= sizeof(proc_fd))
@@ -625,7 +631,16 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 
 	while ((dirent = readdir(dirp)) != NULL) {
 		/* Read the value of this "virtual" link. */
+#ifdef readlinkat
 		status = readlinkat(dirfd(dirp), dirent->d_name, path, PATH_MAX);
+#else
+		if (strlen(proc_fd) + strlen(dirent->d_name) + 1 >= PATH_MAX)
+			continue;
+		strcpy(tmp, proc_fd);
+		strcat(tmp, "/");
+		strcat(tmp, dirent->d_name);
+		status = readlink(tmp, path, PATH_MAX);
+#endif
 		if (status < 0 || status >= PATH_MAX)
 			continue;
 		path[status] = '\0';

@@ -38,6 +38,8 @@
 #include "execve.h"
 #include "notice.h"
 
+#include "compat.h"
+
 static const char *opt_new_root = NULL;
 static char *opt_args_default[] = { "/bin/sh", NULL };
 static char **opt_args = &opt_args_default[0];

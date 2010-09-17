@@ -44,6 +44,8 @@
 #include "execve.h"
 #include "notice.h"
 
+#include "compat.h"
+
 static int allow_unknown = 0;
 static int allow_ptrace = 0;
 

@@ -43,6 +43,8 @@
 #include "child_mem.h"
 #include "notice.h"
 
+#include "compat.h"
+
 #ifndef ARG_MAX
 #define ARG_MAX 131072
 #endif
