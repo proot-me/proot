@@ -291,6 +291,16 @@ static void translate_syscall_enter(struct child_info *child)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
+#ifdef ARCH_X86_64
+	status = ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(cs), NULL);
+	if (status == 0x23) {
+		/* 32 bits ABI */
+		notice(WARNING, USER, "32-bit binaries not yet supported by PRoot/x64");
+		status = -1;
+		goto end_translation;
+	}
+#endif /* ARCH_X86_64 */
+
 	child->sysnum = get_sysarg(child->pid, SYSARG_NUM);
 
 	if (verbose_level >= 3)
