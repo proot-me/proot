@@ -5,8 +5,7 @@
  *     cpp -dM /usr/include/asm/unistd.h | grep '^#define __NR_'
  */
 
-#ifndef SYSNUM_ARM_H
-#define SYSNUM_ARM_H
+#include "sysnum-undefined.h"
 
 #define __NR__llseek 140
 #define __NR__newselect 142
@@ -408,5 +407,3 @@
 #define __NR_cacheflush -58
 #define __NR_streams1 -59
 #define __NR_streams2 -60
-
-#endif /* SYSNUM_ARM_H */

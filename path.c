@@ -39,6 +39,7 @@
 
 #include "path.h"
 #include "notice.h"
+#include "syscall.h"
 
 #include "compat.h"
 
@@ -403,7 +404,7 @@ static int canonicalize(pid_t pid,
  */
 static int is_delayed(struct child_info *child, char path[PATH_MAX])
 {
-	if (child->sysnum == __NR_execve) {
+	if (is_execve(child)) {
 		if (strlen(path) >= PATH_MAX)
 			return -ENAMETOOLONG;
 

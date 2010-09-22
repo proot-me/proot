@@ -335,10 +335,6 @@ static void attach_process(pid_t pid)
 	child = new_child(pid);
 	if (child == NULL)
 		exit(EXIT_FAILURE);
-
-	/* This litlle trick prevent the de-translation of an
-	 * "interrupted" syscall. */
-	child->sysnum = __NR_restart_syscall;
 }
 
 static int event_loop()

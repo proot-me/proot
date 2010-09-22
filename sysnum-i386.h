@@ -6,8 +6,7 @@
  *
  */
 
-#ifndef SYSNUM_I386_H
-#define SYSNUM_I386_H
+#include "sysnum-undefined.h"
 
 #define __NR_waitid 284
 #define __NR_fdatasync 148
@@ -393,5 +392,3 @@
 #define __NR_send -54
 #define __NR_streams1 -55
 #define __NR_streams2 -56
-
-#endif /* SYSNUM_I386_H */

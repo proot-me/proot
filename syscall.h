@@ -28,6 +28,7 @@
 #include <stddef.h>     /* offsetof(), */
 
 #include "arch.h" /* word_t */
+#include "child_info.h"
 
 enum sysarg {
 	SYSARG_NUM = 0,
@@ -57,5 +58,6 @@ extern word_t get_sysarg(pid_t pid, enum sysarg sysarg);
 extern void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
 extern int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
 extern int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
+extern int is_execve(struct child_info *child);
 
 #endif /* SYSCALL_H */

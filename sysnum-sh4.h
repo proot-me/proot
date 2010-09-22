@@ -5,8 +5,7 @@
  *     cpp -dM /usr/include/asm/unistd.h | grep '^#define __NR_'
  */
 
-#ifndef SYSNUM_SH4_H
-#define SYSNUM_SH4_H
+#include "sysnum-undefined.h"
 
 #define __NR__llseek 140
 #define __NR__newselect 142
@@ -393,5 +392,3 @@
 #define __NR_pciconfig_write -44
 #define __NR_recv -45
 #define __NR_send -46
-
-#endif /* SYSNUM_SH4_H */
