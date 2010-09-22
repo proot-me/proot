@@ -44,12 +44,15 @@ static size_t nb_children = 0;
 /**
  * Reset the default values for the structure @child.
  */
-static void reset_child(struct child_info *child)
+static void reset_child(struct child_info *child, int free_trigger)
 {
 	child->pid    = 0;
 	child->sysnum = -1;
 	child->status = 0;
 	child->output = 0;
+
+	if (free_trigger != 0 && child->trigger != NULL)
+		free(child->trigger);
 	child->trigger = NULL;
 }
 
@@ -67,7 +70,7 @@ void init_module_child_info()
 
 	/* Set the default values for each entry. */
 	for(i = 0; i < nb_elements; i++)
-		reset_child(&children_info[i]);
+		reset_child(&children_info[i], 0);
 
 	max_children = nb_elements;
 }
@@ -93,7 +96,7 @@ struct child_info *new_child(pid_t pid)
 
 		/* Set the default values for each new entry. */
 		for(i = max_children; i < 2 * max_children; i++)
-			reset_child(&new_children_info[i]);
+			reset_child(&new_children_info[i], 0);
 
 		first_slot = max_children; /* Skip non-empty slot. */
 		max_children = 2 * max_children;
@@ -128,7 +131,7 @@ void delete_child(pid_t pid)
 	child = get_child_info(pid);
 	assert(child != NULL);
 
-	reset_child(child);
+	reset_child(child, 1);
 }
 
 /**
