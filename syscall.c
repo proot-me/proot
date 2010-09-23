@@ -26,7 +26,6 @@
 #define _GNU_SOURCE      /* O_NOFOLLOW in fcntl.h, */
 #include <fcntl.h>       /* AT_FDCWD, */
 #include <sys/types.h>   /* pid_t, */
-#include <sys/inotify.h> /* IN_DONT_FOLLOW, */
 #include <assert.h>      /* assert(3), */
 #include <limits.h>      /* PATH_MAX, */
 #include <stddef.h>      /* intptr_t, */
@@ -35,6 +34,9 @@
 #include <sys/user.h>    /* struct user*, */
 #include <stdlib.h>      /* exit(3), */
 #include <string.h>      /* strlen(3), */
+#ifndef OLD_BROKEN_DISTRO
+#include <sys/inotify.h> /* IN_DONT_FOLLOW, */
+#endif
 
 #include "syscall.h"
 #include "arch.h"
