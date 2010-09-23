@@ -529,11 +529,6 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	if (status < 0)
 		return status;
 
-	/* Don't append the new root to the result of the
-	 * canonicalization if it's not an excluded path. */
-	if (is_excluded(result))
-		goto end;
-
 	/* Don't use the result of the canonicalization if the
 	 * translation is delayed, use the origin input path instead. */
 	status = use_runner != 0 && child != NULL ? is_delayed(child, result) : 0;
@@ -545,6 +540,11 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 		strcpy(result, fake_path);
 		goto end;
 	}
+
+	/* Don't append the new root to the result of the
+	 * canonicalization if it's not an excluded path. */
+	if (is_excluded(result))
+		goto end;
 
 	strcpy(tmp, result);
 	status = join_paths(2, result, root, tmp);
