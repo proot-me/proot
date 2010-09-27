@@ -75,15 +75,18 @@ static void exit_usage(void)
 	puts("Common options:");
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("  -x <path>     don't translate access to <path> (can be repeated)");
-	puts("  -X            alias for: -x /dev -x /etc -x /proc");
 	puts("  -v            increase the verbose level");
 	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
 	puts("  -U <X>        deletes the variable <X> from the environment");
 /*	puts("  -b <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
-	puts("  -r <runner>   use <runner> to handle each process; you can pass options by");
+	puts("  -q <runner>   use <runner> to handle each process; you can pass options by");
 	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
 	puts("                Note the runner will be translated once it accessed the program");
-	puts("  -q <runner>   alias for: -q <runner> -x /dev -x /proc");
+	puts("");
+	puts("Alias options:");
+	puts("  -W            alias for: -w $PWD -x $PWD");
+	puts("  -X            alias for: -x /dev -x /etc -x /proc");
+	puts("  -Q <runner>   alias for: -q <runner> -x /dev -x /proc");
 	puts("");
 	puts("Insecure options:");
 /*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
@@ -97,8 +100,8 @@ static void exit_usage(void)
 	puts("Examples:");
 	puts("  proot -X /usr/local/slackware64-13.1/");
 	puts("  proot -x /dev -x /proc /usr/local/slackware64-13.1/ /usr/bin/elinks");
-	puts("  proot -X -q qemu-sh4 /usr/local/stlinux-sh4-2.3");
-	puts("  proot -q qemu-sh4,-g,1234 -x /proc /usr/local/stlinux-sh4-2.3 /usr/bin/avmshell");
+	puts("  proot -Q qemu-sh4 -W /usr/local/stlinux-sh4-2.3 ./minigzip");
+	puts("  proot -q qemu-sh4,-g,1234 /usr/local/stlinux-sh4-2.3 /usr/bin/avmshell");
 	puts("");
 	puts("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...");
 	puts("Copyright (C) 2010 STMicroelectronics, licensed under GPL v2 or later");
@@ -139,12 +142,6 @@ static pid_t parse_options(int argc, char *argv[])
 			exclude_path(argv[i]);
 			break;
 
-		case 'X':
-			exclude_path("/dev");
-			exclude_path("/etc");
-			exclude_path("/proc");
-			break;
-
 		case 'v':
 			verbose_level++;
 			break;
@@ -175,17 +172,31 @@ static pid_t parse_options(int argc, char *argv[])
 				notice(WARNING, SYSTEM, "unsetenv(\"%s\")", argv[i]);
 			break;
 
-		case 'r':
-			i++;
-			if (i >= argc)
-				notice(ERROR, USER, "missing value for the option -r");
-			opt_runner = argv[i];
-			break;
-
 		case 'q':
 			i++;
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -q");
+			opt_runner = argv[i];
+			break;
+
+		case 'W':
+			opt_pwd = getenv("PWD");
+			if (opt_pwd == NULL)
+				notice(WARNING, SYSTEM, "getenv(\"PWD\")");
+			else
+				exclude_path(opt_pwd);
+			break;
+
+		case 'X':
+			exclude_path("/dev");
+			exclude_path("/etc");
+			exclude_path("/proc");
+			break;
+
+		case 'Q':
+			i++;
+			if (i >= argc)
+				notice(ERROR, USER, "missing value for the option -Q");
 			opt_runner = argv[i];
 			exclude_path("/dev");
 			exclude_path("/proc");
