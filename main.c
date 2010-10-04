@@ -85,8 +85,8 @@ static void exit_usage(void)
 	puts("");
 	puts("Alias options:");
 	puts("  -W            alias for: -w $PWD -x $PWD");
-	puts("  -X            alias for: -x /dev -x /etc -x /proc");
-	puts("  -Q <runner>   alias for: -q <runner> -x /dev -x /proc");
+	puts("  -X            alias for: -x /dev -x /etc -x /proc -x /sys");
+	puts("  -Q <runner>   alias for: -q <runner> -x /dev -x /proc -x /sys");
 	puts("");
 	puts("Insecure options:");
 /*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
@@ -191,6 +191,7 @@ static pid_t parse_options(int argc, char *argv[])
 			exclude_path("/dev");
 			exclude_path("/etc");
 			exclude_path("/proc");
+			exclude_path("/sys");
 			break;
 
 		case 'Q':
@@ -200,6 +201,7 @@ static pid_t parse_options(int argc, char *argv[])
 			opt_runner = argv[i];
 			exclude_path("/dev");
 			exclude_path("/proc");
+			exclude_path("/sys");
 			break;
 
 		case 'j':
