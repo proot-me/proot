@@ -78,9 +78,9 @@ static size_t arg_offset[] = {
 
 /**
  * Return the @sysarg argument of the current syscall in the
- * child process @pid.
+ * @child process.
  */
-word_t get_sysarg(pid_t pid, enum sysarg sysarg)
+word_t get_sysarg(struct child_info *child, enum sysarg sysarg)
 {
 	word_t result;
 
@@ -89,7 +89,7 @@ word_t get_sysarg(pid_t pid, enum sysarg sysarg)
 	assert(sysarg <= SYSARG_LAST);
 
 	/* Get the argument register from the child's USER area. */
-	result = ptrace(PTRACE_PEEKUSER, pid, arg_offset[sysarg], NULL);
+	result = ptrace(PTRACE_PEEKUSER, child->pid, arg_offset[sysarg], NULL);
 	if (errno != 0)
 		notice(ERROR, SYSTEM, "ptrace(PEEKUSER)");
 
@@ -97,10 +97,10 @@ word_t get_sysarg(pid_t pid, enum sysarg sysarg)
 }
 
 /**
- * Set the @sysarg argument of the current syscall in the child
- * process @pid to @value.
+ * Set the @sysarg argument of the current syscall in the @child
+ * process to @value.
  */
-void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
+void set_sysarg(struct child_info *child, enum sysarg sysarg, word_t value)
 {
 	long status;
 
@@ -109,18 +109,18 @@ void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value)
 	assert(sysarg <= SYSARG_LAST);
 
 	/* Set the argument register in the child's USER area. */
-	status = ptrace(PTRACE_POKEUSER, pid, arg_offset[sysarg], value);
+	status = ptrace(PTRACE_POKEUSER, child->pid, arg_offset[sysarg], value);
 	if (status < 0)
 		notice(ERROR, SYSTEM, "ptrace(POKEUSER)");
 }
 
 /**
- * Copy in @path a C string (PATH_MAX bytes max.) from the @pid
- * child's memory address space pointed to by the @sysarg argument of
- * the current syscall.  This function returns -errno if an error
- * occured, otherwise it returns the size in bytes put into the @path.
+ * Copy in @path a C string (PATH_MAX bytes max.) from the @child's
+ * memory address space pointed to by the @sysarg argument of the
+ * current syscall.  This function returns -errno if an error occured,
+ * otherwise it returns the size in bytes put into the @path.
  */
-int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
+int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg)
 {
 	int size;
 	word_t src;
@@ -128,14 +128,14 @@ int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 	/* Check if the parameter is not NULL. Technically we should
 	 * not return an -EFAULT for this special value since it is
 	 * allowed for some syscall, utimensat(2) for instance. */
-	src = get_sysarg(pid, sysarg);
+	src = get_sysarg(child, sysarg);
 	if (src == 0) {
 		path[0] = '\0';
 		return 0;
 	}
 
 	/* Get the path from the child's memory space. */
-	size = get_child_string(pid, path, src, PATH_MAX);
+	size = get_child_string(child, path, src, PATH_MAX);
 	if (size < 0)
 		return size;
 	if (size >= PATH_MAX)
@@ -146,12 +146,12 @@ int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 }
 
 /**
- * Copy @path in the @pid child's memory address space pointed to by
+ * Copy @path in the @child's memory address space pointed to by
  * the @sysarg argument of the current syscall.  This function returns
  * -errno if an error occured, otherwise it returns the size in bytes
  * "allocated" into the stack.
  */
-int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
+int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg)
 {
 	word_t child_ptr;
 	int status;
@@ -159,19 +159,19 @@ int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg)
 
 	/* Allocate space into the child's stack to host the new path. */
 	size = strlen(path) + 1;
-	child_ptr = resize_child_stack(pid, size);
+	child_ptr = resize_child_stack(child, size);
 	if (child_ptr == 0)
 		return -EFAULT;
 
 	/* Copy the new path into the previously allocated space. */
-	status = copy_to_child(pid, child_ptr, path, size);
+	status = copy_to_child(child, child_ptr, path, size);
 	if (status < 0) {
-		(void) resize_child_stack(pid, -size);
+		(void) resize_child_stack(child, -size);
 		return status;
 	}
 
 	/* Make this argument point to the new path. */
-	set_sysarg(pid, sysarg, child_ptr);
+	set_sysarg(child, sysarg, child_ptr);
 
 	return size;
 }
@@ -198,7 +198,7 @@ static int translate_path2(struct child_info *child, int dir_fd, char path[PATH_
 	if (status < 0)
 		return status;
 
-	return set_sysarg_path(child->pid, new_path, sysarg);
+	return set_sysarg_path(child, new_path, sysarg);
 }
 
 /**
@@ -210,7 +210,7 @@ static int translate_sysarg(struct child_info *child, enum sysarg sysarg, int de
 	int status;
 
 	/* Extract the original path. */
-	status = get_sysarg_path(child->pid, old_path, sysarg);
+	status = get_sysarg_path(child, old_path, sysarg);
 	if (status < 0)
 		return status;
 
@@ -218,13 +218,13 @@ static int translate_sysarg(struct child_info *child, enum sysarg sysarg, int de
 }
 
 /**
- * Detranslate the path pointed to by @addr in the @pid child's memory
+ * Detranslate the path pointed to by @addr in the @child's memory
  * space (@size bytes max). It returns the number of bytes used by the
  * new path pointed to by @addr, including the string terminator.
  */
 #define GETCWD   1
 #define READLINK 2
-static int detranslate_addr(pid_t pid, word_t addr, int size, int mode)
+static int detranslate_addr(struct child_info *child, word_t addr, int size, int mode)
 {
 	char path[PATH_MAX];
 	int status;
@@ -236,7 +236,7 @@ static int detranslate_addr(pid_t pid, word_t addr, int size, int mode)
 	if (size >= PATH_MAX)
 		return -ENAMETOOLONG;
 
-	status = copy_from_child(pid, path, addr, size);
+	status = copy_from_child(child, path, addr, size);
 	if (status < 0)
 		return status;
 	path[size] = '\0';
@@ -257,7 +257,7 @@ static int detranslate_addr(pid_t pid, word_t addr, int size, int mode)
 		goto skip_overwrite;
 
 	/* Overwrite the path. */
-	status = copy_to_child(pid, addr, path, size);
+	status = copy_to_child(child, addr, path, size);
 	if (status < 0)
 		return status;
 
@@ -303,14 +303,14 @@ static void translate_syscall_enter(struct child_info *child)
 	}
 #endif /* ARCH_X86_64 */
 
-	child->sysnum = get_sysarg(child->pid, SYSARG_NUM);
+	child->sysnum = get_sysarg(child, SYSARG_NUM);
 
 	if (verbose_level >= 3)
 		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
 			child->pid, child->sysnum,
-			get_sysarg(child->pid, SYSARG_1), get_sysarg(child->pid, SYSARG_2),
-			get_sysarg(child->pid, SYSARG_3), get_sysarg(child->pid, SYSARG_4),
-			get_sysarg(child->pid, SYSARG_5), get_sysarg(child->pid, SYSARG_6),
+			get_sysarg(child, SYSARG_1), get_sysarg(child, SYSARG_2),
+			get_sysarg(child, SYSARG_3), get_sysarg(child, SYSARG_4),
+			get_sysarg(child, SYSARG_5), get_sysarg(child, SYSARG_6),
 			ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
 	else
 		VERBOSE(2, "pid %d: syscall(%d)", child->pid, (int)child->sysnum);
@@ -348,7 +348,7 @@ end_translation:
 	/* Avoid the actual syscall if an error occured during the
 	 * translation. */
 	if (status < 0) {
-		set_sysarg(child->pid, SYSARG_NUM, SYSCALL_AVOIDER);
+		set_sysarg(child, SYSARG_NUM, SYSCALL_AVOIDER);
 		child->sysnum = SYSCALL_AVOIDER;
 	}
 
@@ -382,11 +382,11 @@ static int translate_syscall_exit(struct child_info *child)
 	/* Set the child's errno if an error occured previously during
 	 * the translation. */
 	if (child->status < 0) {
-		set_sysarg(child->pid, SYSARG_RESULT, (word_t)child->status);
+		set_sysarg(child, SYSARG_RESULT, (word_t)child->status);
 		result = (word_t)child->status;
 	}
 	else
-		result = get_sysarg(child->pid, SYSARG_RESULT);
+		result = get_sysarg(child, SYSARG_RESULT);
 
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
@@ -394,9 +394,9 @@ static int translate_syscall_exit(struct child_info *child)
 	    /* Restore the stack for execve() only if an error occured. */
 	    && (!is_execve(child) || (int) result < 0)) {
 		word_t child_ptr;
-		child_ptr = resize_child_stack(child->pid, -child->status);
+		child_ptr = resize_child_stack(child, -child->status);
 		if (child_ptr == 0)
-			set_sysarg(child->pid, SYSARG_RESULT, (word_t)-EFAULT);
+			set_sysarg(child, SYSARG_RESULT, (word_t)-EFAULT);
 	}
 
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", child->pid, result,
@@ -423,7 +423,7 @@ static int translate_syscall_exit(struct child_info *child)
 	}
 
 	if (status < 0)
-		set_sysarg(child->pid, SYSARG_RESULT, (word_t)status);
+		set_sysarg(child, SYSARG_RESULT, (word_t)status);
 
 end:
 	if (status > 0)

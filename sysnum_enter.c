@@ -343,7 +343,7 @@ case __NR_ptrace:
 	break;
 
 case __NR_getcwd:
-	child->output = get_sysarg(child->pid, SYSARG_1);
+	child->output = get_sysarg(child, SYSARG_1);
 	status = 0;
 	break;
 
@@ -392,7 +392,7 @@ case __NR_utimes:
 	break;
 
 case __NR_open:
-	flags = get_sysarg(child->pid, SYSARG_2);
+	flags = get_sysarg(child, SYSARG_2);
 
 	if (   ((flags & O_NOFOLLOW) != 0)
 	       || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
@@ -407,14 +407,14 @@ case __NR_fchownat:
 case __NR_fstatat64:
 case __NR_newfstatat:
 case __NR_utimensat:
-	dirfd = get_sysarg(child->pid, SYSARG_1);
-	status = get_sysarg_path(child->pid, path, SYSARG_2);
+	dirfd = get_sysarg(child, SYSARG_1);
+	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
 		break;
 
 	flags = (child->sysnum == __NR_fchownat)
-		? get_sysarg(child->pid, SYSARG_5)
-		: get_sysarg(child->pid, SYSARG_4);
+		? get_sysarg(child, SYSARG_5)
+		: get_sysarg(child, SYSARG_4);
 
 	if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
 		status = translate_path2(child, dirfd, path, SYSARG_2, SYMLINK);
@@ -425,8 +425,8 @@ case __NR_utimensat:
 case __NR_futimesat:
 case __NR_mkdirat:
 case __NR_mknodat:
-	dirfd = get_sysarg(child->pid, SYSARG_1);
-	status = get_sysarg_path(child->pid, path, SYSARG_2);
+	dirfd = get_sysarg(child, SYSARG_1);
+	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
 		break;
 
@@ -434,7 +434,7 @@ case __NR_mknodat:
 	break;
 
 case __NR_inotify_add_watch:
-	flags = get_sysarg(child->pid, SYSARG_3);
+	flags = get_sysarg(child, SYSARG_3);
 
 	if ((flags & IN_DONT_FOLLOW) != 0)
 		status = translate_sysarg(child, SYSARG_2, SYMLINK);
@@ -455,7 +455,7 @@ case __NR_unlink:
 case __NR_readlink:
 	status = translate_sysarg(child, SYSARG_1, SYMLINK);
 	if (child->sysnum == __NR_readlink)
-		child->output = get_sysarg(child->pid, SYSARG_2);
+		child->output = get_sysarg(child, SYSARG_2);
 	break;
 
 case __NR_link:
@@ -474,12 +474,12 @@ case __NR_pivot_root:
 	break;
 
 case __NR_linkat:
-	olddirfd = get_sysarg(child->pid, SYSARG_1);
-	newdirfd = get_sysarg(child->pid, SYSARG_3);
-	flags    = get_sysarg(child->pid, SYSARG_5);
+	olddirfd = get_sysarg(child, SYSARG_1);
+	newdirfd = get_sysarg(child, SYSARG_3);
+	flags    = get_sysarg(child, SYSARG_5);
 
-	status1 = get_sysarg_path(child->pid, oldpath, SYSARG_2);
-	status2 = get_sysarg_path(child->pid, newpath, SYSARG_4);
+	status1 = get_sysarg_path(child, oldpath, SYSARG_2);
+	status2 = get_sysarg_path(child, newpath, SYSARG_4);
 	if (status1 < 0) {
 		status = status1;
 		break;
@@ -507,7 +507,7 @@ case __NR_linkat:
 	break;
 
 case __NR_mount:
-	status = get_sysarg_path(child->pid, path, SYSARG_1);
+	status = get_sysarg_path(child, path, SYSARG_1);
 	if (status < 0)
 		break;
 
@@ -522,10 +522,10 @@ case __NR_mount:
 	break;
 
 case __NR_openat:
-	dirfd = get_sysarg(child->pid, SYSARG_1);
-	flags = get_sysarg(child->pid, SYSARG_3);
+	dirfd = get_sysarg(child, SYSARG_1);
+	flags = get_sysarg(child, SYSARG_3);
 
-	status = get_sysarg_path(child->pid, path, SYSARG_2);
+	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
 		break;
 
@@ -538,12 +538,12 @@ case __NR_openat:
 
 case __NR_unlinkat:
 case __NR_readlinkat:
-	dirfd = get_sysarg(child->pid, SYSARG_1);
+	dirfd = get_sysarg(child, SYSARG_1);
 
 	if (child->sysnum == __NR_readlinkat)
-		child->output = get_sysarg(child->pid, SYSARG_3);
+		child->output = get_sysarg(child, SYSARG_3);
 
-	status = get_sysarg_path(child->pid, path, SYSARG_2);
+	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
 		break;
 
@@ -567,11 +567,11 @@ case __NR_rename:
 	break;
 
 case __NR_renameat:
-	olddirfd = get_sysarg(child->pid, SYSARG_1);
-	newdirfd = get_sysarg(child->pid, SYSARG_3);
+	olddirfd = get_sysarg(child, SYSARG_1);
+	newdirfd = get_sysarg(child, SYSARG_3);
 
-	status1 = get_sysarg_path(child->pid, oldpath, SYSARG_2);
-	status2 = get_sysarg_path(child->pid, newpath, SYSARG_4);
+	status1 = get_sysarg_path(child, oldpath, SYSARG_2);
+	status2 = get_sysarg_path(child, newpath, SYSARG_4);
 	if (status1 < 0) {
 		status = status1;
 		break;
@@ -600,9 +600,9 @@ case __NR_symlink:
 	break;
 
 case __NR_symlinkat:
-	newdirfd = get_sysarg(child->pid, SYSARG_2);
+	newdirfd = get_sysarg(child, SYSARG_2);
 
-	status = get_sysarg_path(child->pid, newpath, SYSARG_3);
+	status = get_sysarg_path(child, newpath, SYSARG_3);
 	if (status < 0)
 		break;
 

@@ -29,10 +29,11 @@
 #include <sys/types.h> /* pid_t, size_t, */
 
 #include "arch.h" /* word_t, */
+#include "child_info.h"
 
-extern word_t resize_child_stack(pid_t pid, ssize_t size);
-extern int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size);
-extern int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size);
-extern int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size);
+extern word_t resize_child_stack(struct child_info *child, ssize_t size);
+extern int copy_to_child(struct child_info *child, word_t dest_child, const void *src_parent, word_t size);
+extern int copy_from_child(struct child_info *child, void *dest_parent, word_t src_child, word_t size);
+extern int get_child_string(struct child_info *child, void *dest_parent, word_t src_child, word_t max_size);
 
 #endif /* CHILD_H */

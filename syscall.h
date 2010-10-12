@@ -54,10 +54,10 @@ enum sysarg {
 
 extern void init_module_syscall(int sanity_check, int allow_unknown, int allow_ptrace);
 extern int translate_syscall(pid_t pid);
-extern word_t get_sysarg(pid_t pid, enum sysarg sysarg);
-extern void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
-extern int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
-extern int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
+extern word_t get_sysarg(struct child_info *child, enum sysarg sysarg);
+extern void set_sysarg(struct child_info *child, enum sysarg sysarg, word_t value);
+extern int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
+extern int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
 extern int is_execve(struct child_info *child);
 
 #endif /* SYSCALL_H */
