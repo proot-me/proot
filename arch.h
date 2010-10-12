@@ -25,6 +25,8 @@
 #ifndef ARCH_H
 #define ARCH_H
 
+#include <sys/types.h> /* off_t */
+
 typedef unsigned long word_t;
 #define SYSCALL_AVOIDER __NR_security /* Weird, isn't it? ;) */
 
@@ -39,61 +41,39 @@ typedef unsigned long word_t;
 #        define ARCH_X86 1
 #    elif defined(__SH4__)
 #        define ARCH_SH4 1
+#    else
+#        error "Unsupported architecture"
 #    endif
 #endif
 
-/* Specify the ABI registers (syscall argument passing, stack pointer).
- * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */
+#define UREGS_LENGTH 9
+extern off_t uregs[UREGS_LENGTH];
+
+/* Architecture specific definitions. */
 #if defined(ARCH_X86_64)
-	#define REG_SYSARG_NUM	orig_rax
-	#define REG_SYSARG_1	rdi
-	#define REG_SYSARG_2	rsi
-	#define REG_SYSARG_3	rdx
-	#define REG_SYSARG_4	r10
-	#define REG_SYSARG_5	r9
-	#define REG_SYSARG_6	r8
-	#define REG_SYSARG_RESULT	rax
-	#define REG_SP		rsp
+
+    extern off_t uregs2[UREGS_LENGTH];
     #define SYSNUM_HEADER  "sysnum-x86_64.h"
     #define SYSNUM_HEADER2 "sysnum-i386.h"
+
 #elif defined(ARCH_ARM_EABI)
-	#define arm
-	#define REG_SYSARG_NUM		uregs[7]
-	#define REG_SYSARG_1		uregs[0]
-	#define REG_SYSARG_2		uregs[1]
-	#define REG_SYSARG_3		uregs[2]
-	#define REG_SYSARG_4		uregs[3]
-	#define REG_SYSARG_5		uregs[4]
-	#define REG_SYSARG_6		uregs[5]
-	#define REG_SYSARG_RESULT	uregs[0]
-	#define REG_SP			uregs[13]
-	#define user_regs_struct        user_regs
+
+    #define user_regs_struct user_regs
     #define SYSNUM_HEADER "sysnum-arm.h"
+
 #elif defined(ARCH_X86)
-	#define REG_SYSARG_NUM	orig_eax
-	#define REG_SYSARG_1	ebx
-	#define REG_SYSARG_2	ecx
-	#define REG_SYSARG_3	edx
-	#define REG_SYSARG_4	esi
-	#define REG_SYSARG_5	edi
-	#define REG_SYSARG_6	ebp
-	#define REG_SYSARG_RESULT	eax
-	#define REG_SP		esp
+
     #define SYSNUM_HEADER "sysnum-i386.h"
+
 #elif defined(ARCH_SH4)
-	#define REG_SYSARG_NUM		regs[3]
-	#define REG_SYSARG_1		regs[4]
-	#define REG_SYSARG_2		regs[5]
-	#define REG_SYSARG_3		regs[6]
-	#define REG_SYSARG_4		regs[7]
-	#define REG_SYSARG_5		regs[0]
-	#define REG_SYSARG_6		regs[1]
-	#define REG_SYSARG_RESULT	regs[0]
-	#define REG_SP			regs[15]
-	#define user_regs_struct        pt_regs
+
+    #define user_regs_struct pt_regs
     #define SYSNUM_HEADER "sysnum-sh4.h"
+
 #else
-	#error "Unsupported architecture"
+
+    #error "Unsupported architecture"
+
 #endif
 
 #endif /* ARCH_H */

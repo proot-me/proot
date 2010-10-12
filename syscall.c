@@ -20,7 +20,6 @@
  * 02110-1301 USA.
  *
  * Author: Cedric VINCENT (cedric.vincent@st.com)
- * Inspired by: QEMU user-mode.
  */
 
 #define _GNU_SOURCE      /* O_NOFOLLOW in fcntl.h, */
@@ -62,21 +61,6 @@ void init_module_syscall(int sanity_check, int opt_allow_unknown, int opt_allow_
 }
 
 /**
- * Specify the offset in the child's USER area of each register used
- * for syscall argument passing.
- */
-static size_t arg_offset[] = {
-	USER_REGS_OFFSET(REG_SYSARG_NUM),
-	USER_REGS_OFFSET(REG_SYSARG_1),
-	USER_REGS_OFFSET(REG_SYSARG_2),
-	USER_REGS_OFFSET(REG_SYSARG_3),
-	USER_REGS_OFFSET(REG_SYSARG_4),
-	USER_REGS_OFFSET(REG_SYSARG_5),
-	USER_REGS_OFFSET(REG_SYSARG_6),
-	USER_REGS_OFFSET(REG_SYSARG_RESULT),
-};
-
-/**
  * Return the @sysarg argument of the current syscall in the
  * @child process.
  */
@@ -89,7 +73,7 @@ word_t get_sysarg(struct child_info *child, enum sysarg sysarg)
 	assert(sysarg <= SYSARG_LAST);
 
 	/* Get the argument register from the child's USER area. */
-	result = ptrace(PTRACE_PEEKUSER, child->pid, arg_offset[sysarg], NULL);
+	result = ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[sysarg], NULL);
 	if (errno != 0)
 		notice(ERROR, SYSTEM, "ptrace(PEEKUSER)");
 
@@ -109,7 +93,7 @@ void set_sysarg(struct child_info *child, enum sysarg sysarg, word_t value)
 	assert(sysarg <= SYSARG_LAST);
 
 	/* Set the argument register in the child's USER area. */
-	status = ptrace(PTRACE_POKEUSER, child->pid, arg_offset[sysarg], value);
+	status = ptrace(PTRACE_POKEUSER, child->pid, child->uregs[sysarg], value);
 	if (status < 0)
 		notice(ERROR, SYSTEM, "ptrace(POKEUSER)");
 }
@@ -291,18 +275,6 @@ static void translate_syscall_enter(struct child_info *child)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
-	int personality = 0;
-
-#ifdef ARCH_X86_64
-	status = ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(cs), NULL);
-	if (status == 0x23) {
-		/* 32 bits ABI */
-		notice(WARNING, USER, "32-bit binaries not yet supported by PRoot/x64");
-		status = -1;
-		goto end_translation;
-	}
-#endif /* ARCH_X86_64 */
-
 	child->sysnum = get_sysarg(child, SYSARG_NUM);
 
 	if (verbose_level >= 3)
@@ -311,7 +283,7 @@ static void translate_syscall_enter(struct child_info *child)
 			get_sysarg(child, SYSARG_1), get_sysarg(child, SYSARG_2),
 			get_sysarg(child, SYSARG_3), get_sysarg(child, SYSARG_4),
 			get_sysarg(child, SYSARG_5), get_sysarg(child, SYSARG_6),
-			ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
+			ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[STACK_POINTER], NULL));
 	else
 		VERBOSE(2, "pid %d: syscall(%d)", child->pid, (int)child->sysnum);
 
@@ -324,23 +296,19 @@ static void translate_syscall_enter(struct child_info *child)
 	}
 
 	/* Translate input arguments. */
-	switch (personality) {
-	case 0:
+	if (child->uregs == uregs) {
 		#include SYSNUM_HEADER
 		#include "sysnum_enter.c"
-		break;
-
+	}
 #ifdef SYSNUM_HEADER2
-	case 1:
+	else if (child->uregs == uregs2) {
 		#include SYSNUM_HEADER2
 		#include "sysnum_enter.c"
-		break;
+	}
 #endif
-
-	default:
-		notice(WARNING, INTERNAL, "unknown personality %d", personality);
+	else {
+		notice(WARNING, INTERNAL, "unknown ABI (%p)", child->uregs);
 		status = -ENOSYS;
-		break;
 	}
 
 end_translation:
@@ -370,7 +338,6 @@ static int translate_syscall_exit(struct child_info *child)
 {
 	word_t result;
 	int status;
-	int personality = 0;
 
 	/* Check if the process is still alive. */
 	(void) ptrace(PTRACE_PEEKUSER, child->pid, 0, NULL);
@@ -400,26 +367,22 @@ static int translate_syscall_exit(struct child_info *child)
 	}
 
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", child->pid, result,
-		ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL));
+		ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[STACK_POINTER], NULL));
 
 	/* Translate output arguments. */
-	switch (personality) {
-	case 0:
+	if (child->uregs == uregs) {
 		#include SYSNUM_HEADER
 		#include "sysnum_exit.c"
-		break;
-
+	}
 #ifdef SYSNUM_HEADER2
-	case 1:
+	else if (child->uregs == uregs2) {
 		#include SYSNUM_HEADER2
 		#include "sysnum_exit.c"
-		break;
+	}
 #endif
-
-	default:
-		notice(WARNING, INTERNAL, "unknown personality %d", personality);
+	else {
+		notice(WARNING, INTERNAL, "unknown ABI (%p)", child->uregs);
 		status = -ENOSYS;
-		break;
 	}
 
 	if (status < 0)
@@ -440,10 +403,29 @@ end:
 int translate_syscall(pid_t pid)
 {
 	struct child_info *child;
+	int status __attribute__ ((unused));
 
 	/* Get the information about this child. */
 	child = get_child_info(pid);
 	assert(child != NULL);
+
+#ifdef ARCH_X86_64
+	/* Check the current ABI. */
+	status = ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(cs), NULL);
+	if (status < 0)
+		return status;
+	if (status == 0x23)
+		child->uregs = uregs2;
+	else
+		child->uregs = uregs;
+
+	if (child->uregs != uregs) {
+		notice(WARNING, USER, "32-bit binaries not yet supported by PRoot/x64");
+		return -ENOSYS;
+	}
+#else
+	child->uregs = uregs;
+#endif /* ARCH_X86_64 */
 
 	/* Check if we are either entering or exiting a syscall. */
 	if (child->sysnum == (word_t)-1) {
@@ -456,25 +438,22 @@ int translate_syscall(pid_t pid)
 
 /**
  * Check if the current syscall of @child actually is execve(2)
- * regarding the current personality.
+ * regarding the current ABI.
  */
 int is_execve(struct child_info *child)
 {
-	int personality = 0;
-
-	switch (personality) {
-	case 0:
+	if (child->uregs == uregs) {
 		#include SYSNUM_HEADER
 		return child->sysnum == __NR_execve;
-
+	}
 #ifdef SYSNUM_HEADER2
-	case 1:
+	else if (child->uregs == uregs2) {
 		#include SYSNUM_HEADER2
 		return child->sysnum == __NR_execve;
+	}
 #endif
-
-	default:
-		notice(WARNING, INTERNAL, "unknown personality %d", personality);
+	else {
+		notice(WARNING, INTERNAL, "unknown ABI (%p)", child->uregs);
 		return 0;
 	}
 }

@@ -50,7 +50,7 @@ word_t resize_child_stack(struct child_info *child, ssize_t size)
 
 	/* Get the current value of the stack pointer from the child's
 	 * USER area. */
-	status = ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL);
+	status = ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[STACK_POINTER], NULL);
 	if (errno != 0)
 		return 0;
 
@@ -68,7 +68,7 @@ word_t resize_child_stack(struct child_info *child, ssize_t size)
 
 	/* Set the new value of the stack pointer in the child's USER
 	 * area. */
-	status = ptrace(PTRACE_POKEUSER, child->pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
+	status = ptrace(PTRACE_POKEUSER, child->pid, child->uregs[STACK_POINTER], stack_pointer);
 	if (status < 0)
 		return 0;
 

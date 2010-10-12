@@ -26,6 +26,7 @@
 #define SYSCALL_H
 
 #include <stddef.h>     /* offsetof(), */
+#include <limits.h>     /* PATH_MAX, */
 
 #include "arch.h" /* word_t */
 #include "child_info.h"
@@ -44,6 +45,8 @@ enum sysarg {
 	SYSARG_FIRST = SYSARG_NUM,
 	SYSARG_LAST  = SYSARG_RESULT
 };
+
+#define STACK_POINTER (SYSARG_LAST + 1)
 
 /**
  * Compute the offset of the register @reg_name in the USER area.

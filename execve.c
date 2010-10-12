@@ -530,7 +530,7 @@ static int set_argv(struct child_info *child, char *argv[])
 		return -ENOMEM;
 
 	/* Copy the new arguments in the child's stack. */
-	previous_sp = (word_t) ptrace(PTRACE_PEEKUSER, child->pid, USER_REGS_OFFSET(REG_SP), NULL);
+	previous_sp = (word_t) ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[STACK_POINTER], NULL);
 	if (errno != 0) {
 		status = -EFAULT;
 		goto end;
@@ -567,7 +567,7 @@ static int set_argv(struct child_info *child, char *argv[])
 
 	/* Update the stack pointer to ensure [internal] coherency. It prevents
 	 * memory corruption if functions like set_sysarg_path() are called later. */
-	status = ptrace(PTRACE_POKEUSER, child->pid, USER_REGS_OFFSET(REG_SP), child_argv);
+	status = ptrace(PTRACE_POKEUSER, child->pid, child->uregs[STACK_POINTER], child_argv);
 	if (status < 0) {
 		status = -EFAULT;
 		goto end;
