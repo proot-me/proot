@@ -42,6 +42,7 @@
 #include "path.h"
 #include "execve.h"
 #include "notice.h"
+#include "ureg.h"
 
 #include "compat.h"
 
@@ -61,44 +62,6 @@ void init_module_syscall(int sanity_check, int opt_allow_unknown, int opt_allow_
 }
 
 /**
- * Return the @sysarg argument of the current syscall in the
- * @child process.
- */
-word_t get_sysarg(struct child_info *child, enum sysarg sysarg)
-{
-	word_t result;
-
-	/* Sanity checks. */
-	assert(sysarg >= SYSARG_FIRST);
-	assert(sysarg <= SYSARG_LAST);
-
-	/* Get the argument register from the child's USER area. */
-	result = ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[sysarg], NULL);
-	if (errno != 0)
-		notice(ERROR, SYSTEM, "ptrace(PEEKUSER)");
-
-	return result;
-}
-
-/**
- * Set the @sysarg argument of the current syscall in the @child
- * process to @value.
- */
-void set_sysarg(struct child_info *child, enum sysarg sysarg, word_t value)
-{
-	long status;
-
-	/* Sanity checks. */
-	assert(sysarg >= SYSARG_FIRST);
-	assert(sysarg <= SYSARG_LAST);
-
-	/* Set the argument register in the child's USER area. */
-	status = ptrace(PTRACE_POKEUSER, child->pid, child->uregs[sysarg], value);
-	if (status < 0)
-		notice(ERROR, SYSTEM, "ptrace(POKEUSER)");
-}
-
-/**
  * Copy in @path a C string (PATH_MAX bytes max.) from the @child's
  * memory address space pointed to by the @sysarg argument of the
  * current syscall.  This function returns -errno if an error occured,
@@ -109,10 +72,13 @@ int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg s
 	int size;
 	word_t src;
 
+	src = peek_ureg(child, sysarg);
+	if (errno != 0)
+		return -errno;
+
 	/* Check if the parameter is not NULL. Technically we should
 	 * not return an -EFAULT for this special value since it is
 	 * allowed for some syscall, utimensat(2) for instance. */
-	src = get_sysarg(child, sysarg);
 	if (src == 0) {
 		path[0] = '\0';
 		return 0;
@@ -155,7 +121,11 @@ int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg s
 	}
 
 	/* Make this argument point to the new path. */
-	set_sysarg(child, sysarg, child_ptr);
+	status = poke_ureg(child, sysarg, child_ptr);
+	if (status < 0) {
+		(void) resize_child_stack(child, -size);
+		return status;
+	}
 
 	return size;
 }
@@ -254,13 +224,12 @@ skip_overwrite:
  * @child->pid process area. This function optionnaly sets
  * @child->output to the address of the output argument in the child's
  * memory space, it also sets @child->status to -errno if an error
- * occured, otherwise to the amount of bytes "allocated" in the
- * child's stack for storing the newly translated paths.
- *
- * For each of the following cases, I didn't write any comment since
- * the corresponding man-page really is the documentation.
+ * occured from the child's perspective (EFAULT for instance),
+ * otherwise to the amount of bytes "allocated" in the child's stack
+ * for storing the newly translated paths. This function returns
+ * -errno if an error occured from PRoot's perspective, otherwise 0.
  */
-static void translate_syscall_enter(struct child_info *child)
+static int translate_syscall_enter(struct child_info *child)
 {
 	int flags;
 	int dirfd;
@@ -275,15 +244,19 @@ static void translate_syscall_enter(struct child_info *child)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
-	child->sysnum = get_sysarg(child, SYSARG_NUM);
+	child->sysnum = peek_ureg(child, SYSARG_NUM);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
 
 	if (verbose_level >= 3)
 		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
 			child->pid, child->sysnum,
-			get_sysarg(child, SYSARG_1), get_sysarg(child, SYSARG_2),
-			get_sysarg(child, SYSARG_3), get_sysarg(child, SYSARG_4),
-			get_sysarg(child, SYSARG_5), get_sysarg(child, SYSARG_6),
-			ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[STACK_POINTER], NULL));
+			peek_ureg(child, SYSARG_1), peek_ureg(child, SYSARG_2),
+			peek_ureg(child, SYSARG_3), peek_ureg(child, SYSARG_4),
+			peek_ureg(child, SYSARG_5), peek_ureg(child, SYSARG_6),
+			peek_ureg(child, STACK_POINTER));
 	else
 		VERBOSE(2, "pid %d: syscall(%d)", child->pid, (int)child->sysnum);
 
@@ -292,7 +265,7 @@ static void translate_syscall_enter(struct child_info *child)
 	if ((int)child->sysnum < 0) {
 		notice(WARNING, INTERNAL, "forbidden syscall %d", (int)child->sysnum);
 		status = -ENOSYS;
-		goto end_translation;
+		goto end;
 	}
 
 	/* Translate input arguments. */
@@ -311,17 +284,22 @@ static void translate_syscall_enter(struct child_info *child)
 		status = -ENOSYS;
 	}
 
-end_translation:
+end:
+
+	/* Remember the child status for the "exit" stage. */
+	child->status = status;
 
 	/* Avoid the actual syscall if an error occured during the
 	 * translation. */
 	if (status < 0) {
-		set_sysarg(child, SYSARG_NUM, SYSCALL_AVOIDER);
+		status = poke_ureg(child, SYSARG_NUM, SYSCALL_AVOIDER);
+		if (status < 0)
+			return status;
+
 		child->sysnum = SYSCALL_AVOIDER;
 	}
 
-	/* Remember the child status for the "exit" stage. */
-	child->status = status;
+	return 0;
 }
 
 /**
@@ -340,7 +318,7 @@ static int translate_syscall_exit(struct child_info *child)
 	int status;
 
 	/* Check if the process is still alive. */
-	(void) ptrace(PTRACE_PEEKUSER, child->pid, 0, NULL);
+	(void) peek_ureg(child, STACK_POINTER);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
@@ -349,11 +327,19 @@ static int translate_syscall_exit(struct child_info *child)
 	/* Set the child's errno if an error occured previously during
 	 * the translation. */
 	if (child->status < 0) {
-		set_sysarg(child, SYSARG_RESULT, (word_t)child->status);
-		result = (word_t)child->status;
+		status = poke_ureg(child, SYSARG_RESULT, (word_t) child->status);
+		if (status < 0)
+			goto end;
+
+		result = (word_t) child->status;
 	}
-	else
-		result = get_sysarg(child, SYSARG_RESULT);
+	else {
+		result = peek_ureg(child, SYSARG_RESULT);
+		if (errno != 0) {
+			status = -errno;
+			goto end;
+		}
+	}
 
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
@@ -362,12 +348,15 @@ static int translate_syscall_exit(struct child_info *child)
 	    && (!is_execve(child) || (int) result < 0)) {
 		word_t child_ptr;
 		child_ptr = resize_child_stack(child, -child->status);
-		if (child_ptr == 0)
-			set_sysarg(child, SYSARG_RESULT, (word_t)-EFAULT);
+		if (child_ptr == 0) {
+			status = poke_ureg(child, SYSARG_RESULT, (word_t) -EFAULT);
+			if (status < 0)
+				goto end;
+		}
 	}
 
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", child->pid, result,
-		ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[STACK_POINTER], NULL));
+		peek_ureg(child, STACK_POINTER));
 
 	/* Translate output arguments. */
 	if (child->uregs == uregs) {
@@ -385,8 +374,11 @@ static int translate_syscall_exit(struct child_info *child)
 		status = -ENOSYS;
 	}
 
-	if (status < 0)
-		set_sysarg(child, SYSARG_RESULT, (word_t)status);
+	if (status < 0) {
+		status = poke_ureg(child, SYSARG_RESULT, (word_t) status);
+		if (status < 0)
+			goto end;
+	}
 
 end:
 	if (status > 0)
@@ -428,10 +420,8 @@ int translate_syscall(pid_t pid)
 #endif /* ARCH_X86_64 */
 
 	/* Check if we are either entering or exiting a syscall. */
-	if (child->sysnum == (word_t)-1) {
-		translate_syscall_enter(child);
-		return 0;
-	}
+	if (child->sysnum == (word_t) -1)
+		return translate_syscall_enter(child);
 	else
 		return translate_syscall_exit(child);
 }

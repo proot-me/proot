@@ -25,8 +25,6 @@
 #ifndef ARCH_H
 #define ARCH_H
 
-#include <sys/types.h> /* off_t */
-
 typedef unsigned long word_t;
 #define SYSCALL_AVOIDER __NR_security /* Weird, isn't it? ;) */
 
@@ -46,13 +44,9 @@ typedef unsigned long word_t;
 #    endif
 #endif
 
-#define UREGS_LENGTH 9
-extern off_t uregs[UREGS_LENGTH];
-
 /* Architecture specific definitions. */
 #if defined(ARCH_X86_64)
 
-    extern off_t uregs2[UREGS_LENGTH];
     #define SYSNUM_HEADER  "sysnum-x86_64.h"
     #define SYSNUM_HEADER2 "sysnum-i386.h"
 

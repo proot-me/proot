@@ -42,6 +42,7 @@
 #include "path.h"
 #include "child_mem.h"
 #include "notice.h"
+#include "ureg.h"
 
 #include "compat.h"
 
@@ -446,7 +447,9 @@ static int get_argv(struct child_info *child, char **argv[])
 	int status;
 	int i;
 
-	child_argv = get_sysarg(child, SYSARG_2);
+	child_argv = peek_ureg(child, SYSARG_2);
+	if (errno != 0)
+		return -errno;
 
 	/* Compute the number of entries in argv[]. */
 	for (i = 0; ; i++) {
@@ -530,9 +533,9 @@ static int set_argv(struct child_info *child, char *argv[])
 		return -ENOMEM;
 
 	/* Copy the new arguments in the child's stack. */
-	previous_sp = (word_t) ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[STACK_POINTER], NULL);
+	previous_sp = peek_ureg(child, STACK_POINTER);
 	if (errno != 0) {
-		status = -EFAULT;
+		status = -errno;
 		goto end;
 	}
 
@@ -563,15 +566,15 @@ static int set_argv(struct child_info *child, char *argv[])
 	}
 
 	/* Update the pointer to the new argv[]. */
-	set_sysarg(child, SYSARG_2, child_argv);
+	status = poke_ureg(child, SYSARG_2, child_argv);
+	if (status < 0)
+		goto end;
 
 	/* Update the stack pointer to ensure [internal] coherency. It prevents
 	 * memory corruption if functions like set_sysarg_path() are called later. */
-	status = ptrace(PTRACE_POKEUSER, child->pid, child->uregs[STACK_POINTER], child_argv);
-	if (status < 0) {
-		status = -EFAULT;
+	status = poke_ureg(child, STACK_POINTER, child_argv);
+	if (status < 0)
 		goto end;
-	}
 
 end:
 	free(child_args);

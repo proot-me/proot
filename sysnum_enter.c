@@ -368,7 +368,12 @@ case __NR_ptrace:
 	break;
 
 case __NR_getcwd:
-	child->output = get_sysarg(child, SYSARG_1);
+	child->output = peek_ureg(child, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
 	status = 0;
 	break;
 
@@ -417,7 +422,11 @@ case __NR_utimes:
 	break;
 
 case __NR_open:
-	flags = get_sysarg(child, SYSARG_2);
+	flags = peek_ureg(child, SYSARG_2);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
 	if (   ((flags & O_NOFOLLOW) != 0)
 	       || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
@@ -432,14 +441,23 @@ case __NR_fchownat:
 case __NR_fstatat64:
 case __NR_newfstatat:
 case __NR_utimensat:
-	dirfd = get_sysarg(child, SYSARG_1);
+	dirfd = peek_ureg(child, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
 	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
 		break;
 
 	flags = (child->sysnum == __NR_fchownat)
-		? get_sysarg(child, SYSARG_5)
-		: get_sysarg(child, SYSARG_4);
+		? peek_ureg(child, SYSARG_5)
+		: peek_ureg(child, SYSARG_4);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
 	if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
 		status = translate_path2(child, dirfd, path, SYSARG_2, SYMLINK);
@@ -450,7 +468,12 @@ case __NR_utimensat:
 case __NR_futimesat:
 case __NR_mkdirat:
 case __NR_mknodat:
-	dirfd = get_sysarg(child, SYSARG_1);
+	dirfd = peek_ureg(child, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
 	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
 		break;
@@ -459,7 +482,11 @@ case __NR_mknodat:
 	break;
 
 case __NR_inotify_add_watch:
-	flags = get_sysarg(child, SYSARG_3);
+	flags = peek_ureg(child, SYSARG_3);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
 	if ((flags & IN_DONT_FOLLOW) != 0)
 		status = translate_sysarg(child, SYSARG_2, SYMLINK);
@@ -479,8 +506,13 @@ case __NR_oldlstat:
 case __NR_unlink:
 case __NR_readlink:
 	status = translate_sysarg(child, SYSARG_1, SYMLINK);
-	if (child->sysnum == __NR_readlink)
-		child->output = get_sysarg(child, SYSARG_2);
+	if (child->sysnum == __NR_readlink) {
+		child->output = peek_ureg(child, SYSARG_2);
+		if (errno != 0) {
+			status = -errno;
+			break;
+		}
+	}
 	break;
 
 case __NR_link:
@@ -499,9 +531,23 @@ case __NR_pivot_root:
 	break;
 
 case __NR_linkat:
-	olddirfd = get_sysarg(child, SYSARG_1);
-	newdirfd = get_sysarg(child, SYSARG_3);
-	flags    = get_sysarg(child, SYSARG_5);
+	olddirfd = peek_ureg(child, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
+	newdirfd = peek_ureg(child, SYSARG_3);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
+	flags    = peek_ureg(child, SYSARG_5);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
 	status1 = get_sysarg_path(child, oldpath, SYSARG_2);
 	status2 = get_sysarg_path(child, newpath, SYSARG_4);
@@ -547,8 +593,17 @@ case __NR_mount:
 	break;
 
 case __NR_openat:
-	dirfd = get_sysarg(child, SYSARG_1);
-	flags = get_sysarg(child, SYSARG_3);
+	dirfd = peek_ureg(child, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
+	flags = peek_ureg(child, SYSARG_3);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
 	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
@@ -563,10 +618,19 @@ case __NR_openat:
 
 case __NR_unlinkat:
 case __NR_readlinkat:
-	dirfd = get_sysarg(child, SYSARG_1);
+	dirfd = peek_ureg(child, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
-	if (child->sysnum == __NR_readlinkat)
-		child->output = get_sysarg(child, SYSARG_3);
+	if (child->sysnum == __NR_readlinkat) {
+		child->output = peek_ureg(child, SYSARG_3);
+		if (errno != 0) {
+			status = -errno;
+			break;
+		}
+	}
 
 	status = get_sysarg_path(child, path, SYSARG_2);
 	if (status < 0)
@@ -592,8 +656,17 @@ case __NR_rename:
 	break;
 
 case __NR_renameat:
-	olddirfd = get_sysarg(child, SYSARG_1);
-	newdirfd = get_sysarg(child, SYSARG_3);
+	olddirfd = peek_ureg(child, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
+	newdirfd = peek_ureg(child, SYSARG_3);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
 	status1 = get_sysarg_path(child, oldpath, SYSARG_2);
 	status2 = get_sysarg_path(child, newpath, SYSARG_4);
@@ -625,7 +698,11 @@ case __NR_symlink:
 	break;
 
 case __NR_symlinkat:
-	newdirfd = get_sysarg(child, SYSARG_2);
+	newdirfd = peek_ureg(child, SYSARG_2);
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
 
 	status = get_sysarg_path(child, newpath, SYSARG_3);
 	if (status < 0)

@@ -22,11 +22,15 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#include <sys/types.h> /* off_t */
-#include <sys/user.h>  /* struct user*, */
+#include <sys/types.h>  /* off_t */
+#include <sys/user.h>   /* struct user*, */
+#include <sys/ptrace.h> /* ptrace(2), PTRACE*, */
+#include <assert.h>     /* assert(3), */
+#include <errno.h>      /* errno(3), */
 
+#include "ureg.h"
+#include "notice.h"  /* notice(), */
 #include "syscall.h" /* enum sysarg, STACK_POINTER, */
-#include "arch.h"
 
 /* Specify the ABI registers (syscall argument passing, stack pointer).
  * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */
@@ -103,3 +107,57 @@
     #error "Unsupported architecture"
 
 #endif
+
+/**
+ * Return the value of the @child's register @index (regarding
+ * uregs[]). This function sets the special global variable errno if
+ * an error occured.
+ */
+word_t peek_ureg(struct child_info *child, int index)
+{
+	word_t result;
+
+	/* Sanity checks. */
+	assert(index >= SYSARG_NUM);
+	assert(index <= STACK_POINTER);
+
+	/* Get the argument register from the child's USER area. */
+	result = ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[index], NULL);
+
+#ifdef ARCH_X86_64
+	/* Use only the 32 least significant bits (LSB) when running
+	 * 32-bit processes on x86_64. */
+	if (child->uregs == uregs2)
+		result &= 0xFFFFFFFF;
+#endif
+
+	return result;
+}
+
+/**
+ * Set the @child's register @index (regarding uregs[]) to @value.
+ * This function returns -errno if an error occured.
+ */
+int poke_ureg(struct child_info *child, int index, word_t value)
+{
+	  long status;
+
+	  /* Sanity checks. */
+	  assert(index >= SYSARG_NUM);
+	  assert(index <= STACK_POINTER);
+
+#ifdef ARCH_X86_64
+	/* Check we are using only the 32 LSB when running 32-bit
+	 * processes on x86_64. */
+	if (child->uregs == uregs2
+	    && (value >> 32) != 0)
+		notice(WARNING, INTERNAL, "value too large for a 32-bit register");
+#endif
+
+	  /* Set the argument register in the child's USER area. */
+	  status = ptrace(PTRACE_POKEUSER, child->pid, child->uregs[index], value);
+	  if (status < 0)
+		  return -errno;
+
+	  return 0;
+}

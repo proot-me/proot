@@ -22,43 +22,21 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef UREG_H
+#define UREG_H
 
-#include <stddef.h>     /* offsetof(), */
-#include <limits.h>     /* PATH_MAX, */
+#include <sys/types.h> /* off_t */
 
-#include "arch.h" /* word_t */
 #include "child_info.h"
 
-enum sysarg {
-	SYSARG_NUM = 0,
-	SYSARG_1,
-	SYSARG_2,
-	SYSARG_3,
-	SYSARG_4,
-	SYSARG_5,
-	SYSARG_6,
-	SYSARG_RESULT,
+#define UREGS_LENGTH 9
+extern off_t uregs[UREGS_LENGTH];
 
-	/* Helpers. */
-	SYSARG_FIRST = SYSARG_NUM,
-	SYSARG_LAST  = SYSARG_RESULT
-};
+#if defined(ARCH_X86_64)
+extern off_t uregs2[UREGS_LENGTH];
+#endif
 
-#define STACK_POINTER (SYSARG_LAST + 1)
+extern word_t peek_ureg(struct child_info *child, int index);
+extern int poke_ureg(struct child_info *child, int index, word_t value);
 
-/**
- * Compute the offset of the register @reg_name in the USER area.
- */
-#define USER_REGS_OFFSET(reg_name)			\
-	(offsetof(struct user, regs)			\
-	 + offsetof(struct user_regs_struct, reg_name))
-
-extern void init_module_syscall(int sanity_check, int allow_unknown, int allow_ptrace);
-extern int translate_syscall(pid_t pid);
-extern int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
-extern int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
-extern int is_execve(struct child_info *child);
-
-#endif /* SYSCALL_H */
+#endif /* UREG_H */

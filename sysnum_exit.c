@@ -24,7 +24,11 @@
 
 switch (child->sysnum) {
 case __NR_getcwd:
-	result = get_sysarg(child, SYSARG_RESULT);
+	result = peek_ureg(child, SYSARG_RESULT);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
 	if ((int) result < 0) {
 		status = 0;
 		goto end;
@@ -34,19 +38,30 @@ case __NR_getcwd:
 	if (status < 0)
 		break;
 
-	set_sysarg(child, SYSARG_RESULT, (word_t)status);
+	status = poke_ureg(child, SYSARG_RESULT, (word_t) status);
+	if (status < 0)
+		goto end;
+
 	break;
 
 case __NR_readlink:
 case __NR_readlinkat:
-	result = get_sysarg(child, SYSARG_RESULT);
+	result = peek_ureg(child, SYSARG_RESULT);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
 	if ((int) result < 0) {
 		status = 0;
 		goto end;
 	}
 
 	/* Avoid the detranslation of partial result. */
-	status = (int) get_sysarg(child, SYSARG_3);
+	status = (int) peek_ureg(child, SYSARG_3);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
 	if ((int) result == status) {
 		status = 0;
 		goto end;
@@ -58,7 +73,10 @@ case __NR_readlinkat:
 	if (status < 0)
 		break;
 
-	set_sysarg(child, SYSARG_RESULT, (word_t)status);
+	status = poke_ureg(child, SYSARG_RESULT, (word_t) status);
+	if (status < 0)
+		goto end;
+
 	break;
 
 default:
