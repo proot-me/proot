@@ -150,7 +150,8 @@ int poke_ureg(struct child_info *child, int index, word_t value)
 	/* Check we are using only the 32 LSB when running 32-bit
 	 * processes on x86_64. */
 	if (child->uregs == uregs2
-	    && (value >> 32) != 0)
+	    && (value >> 32) != 0
+	    && (value >> 32) != 0xFFFFFFFF)
 		notice(WARNING, INTERNAL, "value too large for a 32-bit register");
 #endif
 

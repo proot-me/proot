@@ -410,11 +410,6 @@ int translate_syscall(pid_t pid)
 		child->uregs = uregs2;
 	else
 		child->uregs = uregs;
-
-	if (child->uregs != uregs) {
-		notice(WARNING, USER, "32-bit binaries not yet supported by PRoot/x64");
-		return -ENOSYS;
-	}
 #else
 	child->uregs = uregs;
 #endif /* ARCH_X86_64 */
