@@ -26,8 +26,10 @@
 #define SYSCALL_H
 
 #include <stddef.h>     /* offsetof(), */
+#include <limits.h>     /* PATH_MAX, */
 
 #include "arch.h" /* word_t */
+#include "child_info.h"
 
 enum sysarg {
 	SYSARG_NUM = 0,
@@ -44,6 +46,8 @@ enum sysarg {
 	SYSARG_LAST  = SYSARG_RESULT
 };
 
+#define STACK_POINTER (SYSARG_LAST + 1)
+
 /**
  * Compute the offset of the register @reg_name in the USER area.
  */
@@ -53,9 +57,8 @@ enum sysarg {
 
 extern void init_module_syscall(int sanity_check, int allow_unknown, int allow_ptrace);
 extern int translate_syscall(pid_t pid);
-extern word_t get_sysarg(pid_t pid, enum sysarg sysarg);
-extern void set_sysarg(pid_t pid, enum sysarg sysarg, word_t value);
-extern int get_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
-extern int set_sysarg_path(pid_t pid, char path[PATH_MAX], enum sysarg sysarg);
+extern int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
+extern int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
+extern int is_execve(struct child_info *child);
 
 #endif /* SYSCALL_H */

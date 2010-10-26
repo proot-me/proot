@@ -54,6 +54,7 @@ static void reset_child(struct child_info *child, int free_trigger)
 	if (free_trigger != 0 && child->trigger != NULL)
 		free(child->trigger);
 	child->trigger = NULL;
+	child->uregs  = NULL;
 }
 
 /**

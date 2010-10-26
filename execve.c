@@ -42,6 +42,7 @@
 #include "path.h"
 #include "child_mem.h"
 #include "notice.h"
+#include "ureg.h"
 
 #include "compat.h"
 
@@ -178,7 +179,7 @@ static int substitute_argv0(char **argv[], int nb_new_args, ...)
 
 	/* Move the old entries to let space at the beginning for the
 	 * new ones. */
-	memmove(*argv + nb_new_args, *argv + 1, i * sizeof (char *));
+	memmove(*argv + nb_new_args, *argv + 1, i * sizeof(char *));
 
 	/* Each new entries will be allocated into the heap since we
 	 * don't rely on the liveness of the input parameters. */
@@ -229,7 +230,7 @@ static int insert_runner_args(char **argv[])
 
 	/* Move the old entries to let space at the beginning for the
 	 * new ones. */
-	memmove(*argv + 1 + nb_runner_args, *argv + 1, (i - 1) * sizeof (char *));
+	memmove(*argv + 1 + nb_runner_args, *argv + 1, (i - 1) * sizeof(char *));
 
 	/* Each new entries will be allocated into the heap since we
 	 * don't rely on the liveness of the input parameters. */
@@ -435,10 +436,10 @@ end:
 
 /**
  * Copy the *@argv[] of the current execve(2) from the memory space of
- * the child process @pid.  This function returns -errno if an error
+ * the @child process.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-static int get_argv(pid_t pid, char **argv[])
+static int get_argv(struct child_info *child, char **argv[])
 {
 	word_t child_argv;
 	word_t argp;
@@ -446,15 +447,30 @@ static int get_argv(pid_t pid, char **argv[])
 	int status;
 	int i;
 
-	child_argv = get_sysarg(pid, SYSARG_2);
+#ifdef ARCH_X86_64
+#    define sizeof_word(child) ((child)->uregs == uregs \
+				? sizeof(word_t)	\
+				: sizeof(word_t) / 2)
+#else
+#    define sizeof_word(child) (sizeof(word_t))
+#endif
+
+	child_argv = peek_ureg(child, SYSARG_2);
+	if (errno != 0)
+		return -errno;
 
 	/* Compute the number of entries in argv[]. */
 	for (i = 0; ; i++) {
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, pid,
-				       child_argv + i * sizeof(word_t), NULL);
+		argp = (word_t) ptrace(PTRACE_PEEKDATA, child->pid,
+				       child_argv + i * sizeof_word(child), NULL);
 		if (errno != 0)
 			return -EFAULT;
 
+#ifdef ARCH_X86_64
+		/* Use only the 32 LSB when running 32-bit processes. */
+		if (child->uregs == uregs2)
+			argp &= 0xFFFFFFFF;
+#endif
 		/* End of argv[]. */
 		if (argp == 0)
 			break;
@@ -471,14 +487,19 @@ static int get_argv(pid_t pid, char **argv[])
 	for (i = 0; i < nb_argv; i++) {
 		char arg[ARG_MAX];
 
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, pid,
-				       child_argv + i * sizeof(word_t), NULL);
+		argp = (word_t) ptrace(PTRACE_PEEKDATA, child->pid,
+				       child_argv + i * sizeof_word(child), NULL);
 		if (errno != 0)
 			return -EFAULT;
 
+#ifdef ARCH_X86_64
+		/* Use only the 32 LSB when running 32-bit processes. */
+		if (child->uregs == uregs2)
+			argp &= 0xFFFFFFFF;
+#endif
 		assert(argp != 0);
 
-		status = get_child_string(pid, arg, argp, ARG_MAX);
+		status = get_child_string(child, arg, argp, ARG_MAX);
 		if (status < 0)
 			return status;
 		if (status >= ARG_MAX)
@@ -495,7 +516,7 @@ static int get_argv(pid_t pid, char **argv[])
 }
 
 /**
- * Copy the @argv[] to the memory space of the child process @pid.
+ * Copy the @argv[] to the memory space of the @child process.
  * This function returns -errno if an error occured, otherwise 0.
  *
  * Technically, we use the memory below the stack pointer to store the
@@ -507,7 +528,7 @@ static int get_argv(pid_t pid, char **argv[])
  *     /                       \                  \           \
  *    | argv[0] | argv[1] | ... | "/bin/script.sh" | "/bin/sh" |
  */
-static int set_argv(pid_t pid, char *argv[])
+static int set_argv(struct child_info *child, char *argv[])
 {
 	word_t *child_args;
 
@@ -530,9 +551,9 @@ static int set_argv(pid_t pid, char *argv[])
 		return -ENOMEM;
 
 	/* Copy the new arguments in the child's stack. */
-	previous_sp = (word_t) ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
+	previous_sp = peek_ureg(child, STACK_POINTER);
 	if (errno != 0) {
-		status = -EFAULT;
+		status = -errno;
 		goto end;
 	}
 
@@ -541,7 +562,7 @@ static int set_argv(pid_t pid, char *argv[])
 		size = strlen(argv[i]) + 1;
 		argp -= size;
 
-		status = copy_to_child(pid, argp, argv[i], size);
+		status = copy_to_child(child, argp, argv[i], size);
 		if (status < 0)
 			goto end;
 
@@ -553,9 +574,21 @@ static int set_argv(pid_t pid, char *argv[])
 
 	/* Copy the pointers to the new arguments backward in the stack. */
 	for (i = nb_argv - 1; i >= 0; i--) {
-		child_argv -= sizeof(word_t);
+		child_argv -= sizeof_word(child);
 
-		status = ptrace(PTRACE_POKEDATA, pid, child_argv, child_args[i]);
+#ifdef ARCH_X86_64
+		/* Don't overwrite the "extra" 32-bit part. */
+		if (child->uregs == uregs2) {
+			argp = (word_t) ptrace(PTRACE_PEEKDATA, child->pid, child_argv, NULL);
+			if (errno != 0)
+				return -EFAULT;
+
+			assert(child_args[i] >> 32 == 0);
+			child_args[i] |= (argp & 0xFFFFFFFF00000000ULL);
+		}
+#endif
+
+		status = ptrace(PTRACE_POKEDATA, child->pid, child_argv, child_args[i]);
 		if (status <0) {
 			status = -EFAULT;
 			goto end;
@@ -563,15 +596,15 @@ static int set_argv(pid_t pid, char *argv[])
 	}
 
 	/* Update the pointer to the new argv[]. */
-	set_sysarg(pid, SYSARG_2, child_argv);
+	status = poke_ureg(child, SYSARG_2, child_argv);
+	if (status < 0)
+		goto end;
 
 	/* Update the stack pointer to ensure [internal] coherency. It prevents
 	 * memory corruption if functions like set_sysarg_path() are called later. */
-	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), child_argv);
-	if (status < 0) {
-		status = -EFAULT;
+	status = poke_ureg(child, STACK_POINTER, child_argv);
+	if (status < 0)
 		goto end;
-	}
 
 end:
 	free(child_args);
@@ -635,11 +668,11 @@ int translate_execve(struct child_info *child)
 	int status;
 	int i;
 
-	status = get_sysarg_path(child->pid, path, SYSARG_1);
+	status = get_sysarg_path(child, path, SYSARG_1);
 	if (status < 0)
 		return status;
 
-	status = get_argv(child->pid, &argv);
+	status = get_argv(child, &argv);
 	if (status < 0)
 		goto end;
 
@@ -694,7 +727,7 @@ int translate_execve(struct child_info *child)
 
 	/* Rebuild argv[] only if something has changed. */
 	if (argv != NULL && (nb_shebang != 0 || runner[0] != '\0')) {
-		size = set_argv(child->pid, argv);
+		size = set_argv(child, argv);
 		if (size < 0) {
 			status = size;
 			goto end;
@@ -706,7 +739,7 @@ int translate_execve(struct child_info *child)
 	if (status < 0)
 		goto end;
 
-	status = set_sysarg_path(child->pid, path2, SYSARG_1);
+	status = set_sysarg_path(child, path2, SYSARG_1);
 	if (status < 0)
 		goto end;
 

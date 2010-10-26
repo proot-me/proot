@@ -5,8 +5,7 @@
  *     cpp -dM /usr/include/asm/unistd.h | grep '^#define __NR_'
  */
 
-#ifndef SYSNUM_X86_64_H
-#define SYSNUM_X86_64_H
+#include "sysnum-undefined.h"
 
 #define __NR__sysctl 156
 #define __NR_accept 43
@@ -392,5 +391,3 @@
 #define __NR_pciconfig_write -75
 #define __NR_recv -76
 #define __NR_send -77
-
-#endif /* SYSNUM_X86_64_H */

@@ -22,18 +22,21 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef CHILD_H
-#define CHILD_H
+#ifndef UREG_H
+#define UREG_H
 
-#include <limits.h>    /* PATH_MAX, */
-#include <sys/types.h> /* pid_t, size_t, */
+#include <sys/types.h> /* off_t */
 
-#include "arch.h" /* word_t, */
 #include "child_info.h"
 
-extern word_t resize_child_stack(struct child_info *child, ssize_t size);
-extern int copy_to_child(struct child_info *child, word_t dest_child, const void *src_parent, word_t size);
-extern int copy_from_child(struct child_info *child, void *dest_parent, word_t src_child, word_t size);
-extern int get_child_string(struct child_info *child, void *dest_parent, word_t src_child, word_t max_size);
+#define UREGS_LENGTH 9
+extern off_t uregs[UREGS_LENGTH];
 
-#endif /* CHILD_H */
+#if defined(ARCH_X86_64)
+extern off_t uregs2[UREGS_LENGTH];
+#endif
+
+extern word_t peek_ureg(struct child_info *child, int index);
+extern int poke_ureg(struct child_info *child, int index, word_t value);
+
+#endif /* UREG_H */

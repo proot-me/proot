@@ -36,25 +36,24 @@
 #include "child_mem.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
 #include "syscall.h" /* USER_REGS_OFFSET, */
+#include "ureg.h"    /* peek_ureg(), poke_ureg(), */
 #include "notice.h"
 
 /**
- * Resize by @size bytes the stack of the child @pid. This function
+ * Resize by @size bytes the stack of the @child. This function
  * returns 0 if an error occured, otherwise it returns the address of
  * the new stack pointer within the child's memory space.
  */
-word_t resize_child_stack(pid_t pid, ssize_t size)
+word_t resize_child_stack(struct child_info *child, ssize_t size)
 {
 	word_t stack_pointer;
 	long status;
 
 	/* Get the current value of the stack pointer from the child's
 	 * USER area. */
-	status = ptrace(PTRACE_PEEKUSER, pid, USER_REGS_OFFSET(REG_SP), NULL);
+	stack_pointer = peek_ureg(child, STACK_POINTER);
 	if (errno != 0)
 		return 0;
-
-	stack_pointer = (word_t)status;
 
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= size)
@@ -68,7 +67,7 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 
 	/* Set the new value of the stack pointer in the child's USER
 	 * area. */
-	status = ptrace(PTRACE_POKEUSER, pid, USER_REGS_OFFSET(REG_SP), stack_pointer);
+	status = poke_ureg(child, STACK_POINTER, stack_pointer);
 	if (status < 0)
 		return 0;
 
@@ -77,10 +76,10 @@ word_t resize_child_stack(pid_t pid, ssize_t size)
 
 /**
  * Copy @size bytes from the buffer @src_parent to the address
- * @dest_child within the memory space of the child process @pid. It
+ * @dest_child within the memory space of the @child process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t size)
+int copy_to_child(struct child_info *child, word_t dest_child, const void *src_parent, word_t size)
 {
 	word_t *src  = (word_t *)src_parent;
 	word_t *dest = (word_t *)dest_child;
@@ -98,7 +97,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		status = ptrace(PTRACE_POKEDATA, pid, dest + i, src[i]);
+		status = ptrace(PTRACE_POKEDATA, child->pid, dest + i, src[i]);
 		if (status < 0) {
 			notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 			return -EFAULT;
@@ -108,7 +107,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 	/* Copy the bytes in the last word carefully since we have
 	 * overwrite only the relevant ones. */
 
-	word = ptrace(PTRACE_PEEKDATA, pid, dest + i, NULL);
+	word = ptrace(PTRACE_PEEKDATA, child->pid, dest + i, NULL);
 	if (errno != 0) {
 		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
@@ -120,7 +119,7 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 	for (j = 0; j < nb_trailing_bytes; j++)
 		last_dest_word[j] = last_src_word[j];
 
-	status = ptrace(PTRACE_POKEDATA, pid, dest + i, word);
+	status = ptrace(PTRACE_POKEDATA, child->pid, dest + i, word);
 	if (status < 0) {
 		notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 		return -EFAULT;
@@ -131,10 +130,10 @@ int copy_to_child(pid_t pid, word_t dest_child, const void *src_parent, word_t s
 
 /**
  * Copy @size bytes to the buffer @dest_parent from the address
- * @src_child within the memory space of the child process @pid. It
+ * @src_child within the memory space of the @child process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
+int copy_from_child(struct child_info *child, void *dest_parent, word_t src_child, word_t size)
 {
 	word_t *src  = (word_t *)src_child;
 	word_t *dest = (word_t *)dest_parent;
@@ -151,7 +150,7 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+		word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
 		if (errno != 0) {
 			notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 			return -EFAULT;
@@ -162,7 +161,7 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond the @to buffer. */
 
-	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+	word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
 	if (errno != 0) {
 		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
@@ -179,12 +178,12 @@ int copy_from_child(pid_t pid, void *dest_parent, word_t src_child, word_t size)
 
 /**
  * Copy to @dest_parent at most @max_size bytes from the string
- * pointed to by @src_child within the memory space of the child
- * process @pid. This function returns -errno on error, otherwise
+ * pointed to by @src_child within the memory space of the @child
+ * process. This function returns -errno on error, otherwise
  * it returns the number in bytes of the string, including the
  * end-of-string terminator.
  */
-int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_size)
+int get_child_string(struct child_info *child, void *dest_parent, word_t src_child, word_t max_size)
 {
 	word_t *src  = (word_t *)src_child;
 	word_t *dest = (word_t *)dest_parent;
@@ -201,7 +200,7 @@ int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+		word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
 		if (errno != 0)
 			return -EFAULT;
 
@@ -217,7 +216,7 @@ int get_child_string(pid_t pid, void *dest_parent, word_t src_child, word_t max_
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond the @to buffer. */
 
-	word = ptrace(PTRACE_PEEKDATA, pid, src + i, NULL);
+	word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
 	if (errno != 0)
 		return -EFAULT;
 
