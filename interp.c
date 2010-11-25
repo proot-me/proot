@@ -36,9 +36,10 @@
 #include "notice.h"
 
 /**
- * Expand the shebang of @filename in *@argv[]. This function returns
+ * Expand the shebang of @path in *@argv[]. This function returns
  * -errno if an error occured, 1 if a shebang was found and expanded,
- * otherwise 0.
+ * otherwise 0. @path is updated to point to the detranslated path
+ * (interpreter or script).
  *
  * Extract from "man 2 execve":
  *
@@ -46,34 +47,21 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-int expand_script_interp(struct child_info *child, char *filename, char **argv[])
+int expand_script_interp(struct child_info *child, char path[PATH_MAX], char **argv[])
 {
 	char interpreter[PATH_MAX];
 	char argument[ARG_MAX];
-	char path[PATH_MAX];
 	char tmp;
 
+	int status2;
 	int status;
 	int fd;
 	int i;
-
-	status = translate_path(child, path, AT_FDCWD, filename, REGULAR);
-	if (status < 0)
-		return status;
 
 	/* Inspect the executable.  */
 	fd = open(path, O_RDONLY);
 	if (fd < 0)
 		return -errno;
-
-	/* Don't try to execute scripts that don't have the
-	 * "executable" bit. Do this after open(2) to avoid
-	 * "permission denied" instead of "no such file". */
-	status = access(path, X_OK);
-	if (status < 0) {
-		status = -errno;
-		goto end;
-	}
 
 	status = read(fd, interpreter, 2 * sizeof(char));
 	if (status < 0) {
@@ -180,19 +168,31 @@ argument:
 end:
 	close(fd);
 
-	if (status <= 0)
+	/* Did an error occur? */
+	if (status < 0)
 		return status;
 
-	VERBOSE(3, "expand shebang: %s -> %s %s %s",
-		(*argv)[0], interpreter, argument, filename);
+	status2 = detranslate_path(path, 1);
+	if (status2 < 0)
+		return status2;
 
 	switch (status) {
+	case 0:
+		/* Does this file use a script interpreter? */
+		return 0;
+
 	case 1:
-		status = substitute_argv0(argv, 2, interpreter, filename);
+		VERBOSE(3, "expand shebang: %s -> %s %s",
+			(*argv)[0], interpreter, path);
+
+		status = substitute_argv0(argv, 2, interpreter, path);
 		break;
 
 	case 2:
-		status = substitute_argv0(argv, 3, interpreter, argument, filename);
+		VERBOSE(3, "expand shebang: %s -> %s %s %s",
+			(*argv)[0], interpreter, argument, path);
+
+		status = substitute_argv0(argv, 3, interpreter, argument, path);
 		break;
 
 	default:
@@ -203,7 +203,7 @@ end:
 		return status;
 
 	/* Inform the caller about the program to execute. */
-	strcpy(filename, interpreter);
+	strcpy(path, interpreter);
 
 	return 1;
 }
@@ -213,7 +213,7 @@ end:
  * -errno if an error occured, 1 if a ELF interpreter was found and
  * expanded, otherwise 0.
  */
-int expand_elf_interp(struct child_info *child, char *filename, char **argv[])
+int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv[])
 {
 	return 0;
 }

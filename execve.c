@@ -23,7 +23,8 @@
  * Inspired by: execve(2) from the Linux kernel.
  */
 
-#include <unistd.h>       /* access(2), */
+#include <unistd.h>       /* access(2), lstat(2), */
+#include <sys/stat.h>     /* lstat(2), S_ISREG(), */
 #include <limits.h>       /* PATH_MAX, ARG_MAX, */
 #include <errno.h>        /* ENAMETOOLONG, */
 #include <sys/ptrace.h>   /* ptrace(2), */
@@ -210,6 +211,9 @@ static int insert_runner_args(char **argv[])
 	char *tmp2;
 	char *tmp;
 	int i;
+
+	if (runner_args[0] == '\0')
+		return 0;
 
 	for (i = 0; (*argv)[i] != NULL; i++)
 		;
@@ -490,64 +494,87 @@ int translate_execve(struct child_info *child)
 	if (status < 0)
 		goto end;
 
-	/* Expand the shebang iteratively. */
+	/* Expand the shebang, recursively despite what the man page said. */
 	do {
-		nb_interp++;
-		status = expand_script_interp(child, path, &argv);
-	} while(status > 0);
-	if (status < 0)
-		goto end;
+		struct stat statl;
 
-	status = translate_path(child, path2, AT_FDCWD, path, REGULAR);
-	if (status < 0)
-		goto end;
-		
-	/* I prefer the binfmt_misc approach instead of invoking
-	 * the runner unconditionally. */
-	if (runner[0] != '\0') {
-		/* Don't launch the runner if the program
-		 * doesn't exist or isn't readable/executable. */
-		status = access(path2, F_OK);
+		/* Remember it was initialized to -1 */
+		nb_interp++;
+
+		strcpy(path2, path);
+		status = translate_path(child, path, AT_FDCWD, path2, REGULAR);
+		if (status < 0)
+			break;
+
+		/* Don't try to launch the program if it doesn't exist
+		 * or isn't executable. */
+		status = access(path, F_OK);
 		if (status < 0) {
 			status = -ENOENT;
 			goto end;
 		}
 
-		status = access(path2, R_OK);
+		status = access(path, X_OK);
 		if (status < 0) {
 			status = -EACCES;
 			goto end;
 		}
 
-		status = access(path2, X_OK);
-		if (status < 0) {
-			status = -EACCES;
+		/* Ensure it is a regular file. */
+		status = lstat(path, &statl);
+		if (status < 0 || !S_ISREG(statl.st_mode)) {
+			status = -EPERM;
 			goto end;
 		}
+
+		/* This function also check access(path, R_OK) */
+		status = expand_script_interp(child, path, &argv);
+	} while(status > 0);
+	if (status < 0)
+		goto end;
+
+	/* I prefer the binfmt_misc approach instead of invoking
+	 * the runner/loader unconditionally. */
+	if (runner[0] != '\0') {
+		nb_interp++;
 
 		status = substitute_argv0(&argv, 2, runner, path);
 		if (status < 0)
 			goto end;
 
-		if (runner_args[0] != '\0') {
-			status = insert_runner_args(&argv);
-			if (status < 0)
-				goto end;
-		}
+		status = insert_runner_args(&argv);
+		if (status < 0)
+			goto end;
 
 		/* Launch the runner actually. */
 		strcpy(path2, runner);
 	}
+	else {
+		status = translate_path(child, path2, AT_FDCWD, path, REGULAR);
+		if (status < 0)
+			goto end;
 
-	/* Expand the ELF interpreter, if any. */
-	status = expand_elf_interp(child, path, &argv);
-	if (status < 0)
-		goto end;
-	if (status > 0)
-		nb_interp++;
+		/* Expand the ELF interpreter, if any. */
+		status = expand_elf_interp(child, path2, &argv);
+		if (status < 0)
+			goto end;
+		if (status > 0) {
+			nb_interp++;
+
+			/* Sanity check: an ELF interpreter is expected to not
+			 * require an ELF interpreter on Linux. */
+			status = expand_elf_interp(child, path2, &argv);
+			if (status < 0)
+				goto end;
+			if (status > 0) {
+				status = -EPERM;
+				goto end;
+			}
+		}
+	}
 
 	/* Rebuild argv[] only if something has changed. */
-	if (argv != NULL && (nb_interp != 0 || runner[0] != '\0')) {
+	if (argv != NULL && nb_interp != 0) {
 		size = set_argv(child, argv);
 		if (size < 0) {
 			status = size;
