@@ -50,11 +50,15 @@ static void reset_child(struct child_info *child, int free_trigger)
 	child->sysnum = -1;
 	child->status = 0;
 	child->output = 0;
+	child->uregs  = NULL;
 
 	if (free_trigger != 0 && child->trigger != NULL)
 		free(child->trigger);
 	child->trigger = NULL;
-	child->uregs  = NULL;
+
+	if (child->exe != NULL)
+		free(child->exe);
+	child->exe = NULL;
 }
 
 /**

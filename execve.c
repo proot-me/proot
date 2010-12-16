@@ -48,14 +48,17 @@
 static char runner[PATH_MAX] = { '\0', };
 static char runner_args[ARG_MAX] = { '\0', };
 static int nb_runner_args;
+static int skip_elf_interp = 0;
 
 /**
  * Initialize internal data of the execve module.
  */
-void init_module_execve(const char *opt_runner)
+void init_module_execve(const char *opt_runner, int no_elf_interp)
 {
 	int status;
 	char *tmp, *tmp2, *tmp3;
+
+	skip_elf_interp = no_elf_interp;
 
 	if (opt_runner == NULL)
 		return;
@@ -554,21 +557,23 @@ int translate_execve(struct child_info *child)
 		if (status < 0)
 			goto end;
 
-		/* Expand the ELF interpreter, if any. */
-		status = expand_elf_interp(child, path2, &argv);
-		if (status < 0)
-			goto end;
-		if (status > 0) {
-			nb_interp++;
-
-			/* Sanity check: an ELF interpreter is expected to not
-			 * require an ELF interpreter on Linux. */
+		if (!skip_elf_interp) {
+			/* Expand the ELF interpreter, if any. */
 			status = expand_elf_interp(child, path2, &argv);
 			if (status < 0)
 				goto end;
 			if (status > 0) {
-				status = -EPERM;
-				goto end;
+				nb_interp++;
+
+				/* Sanity check: an ELF interpreter is expected
+				 * to not require an ELF interpreter on Linux. */
+				status = expand_elf_interp(child, path2, &argv);
+				if (status < 0)
+					goto end;
+				if (status > 0) {
+					status = -EPERM;
+					goto end;
+				}
 			}
 		}
 	}

@@ -29,17 +29,19 @@
 #include <limits.h> /* PATH_MAX, ARG_MAX, */
 #include <errno.h>  /* ENAMETOOLONG, */
 #include <assert.h> /* assert(3), */
+#include <stdint.h> /* *int*_t */
 
 #include "interp.h"
 #include "path.h"
 #include "execve.h"
 #include "notice.h"
+#include "elf.h"
 
 /**
  * Expand the shebang of @path in *@argv[]. This function returns
  * -errno if an error occured, 1 if a shebang was found and expanded,
  * otherwise 0. @path is updated to point to the detranslated path
- * (interpreter or script).
+ * (interpreter or binary).
  *
  * Extract from "man 2 execve":
  *
@@ -209,11 +211,174 @@ end:
 }
 
 /**
- * Expand the shebang of @filename in *@argv[]. This function returns
- * -errno if an error occured, 1 if a ELF interpreter was found and
- * expanded, otherwise 0.
+ * Expand the ELF interpreter of @filename in *@argv[]. This function
+ * returns -errno if an error occured, 1 if a ELF interpreter was
+ * found and expanded, otherwise 0.  @path is updated to point to the
+ * detranslated path (interpreter or binary).
  */
 int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv[])
 {
-	return 0;
+	char interpreter[PATH_MAX];
+	char interp[PATH_MAX] = { '\0' };
+
+	union elf_header elf_header;
+	union program_header program_header;
+
+	int status;
+	int fd;
+	int i;
+
+	uint64_t elf_phoff;
+	uint16_t elf_phentsize;
+	uint16_t elf_phnum;
+
+	uint64_t segment_offset;
+	uint64_t segment_size;
+
+	/* Read the ELF header. */
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		return -errno;
+
+	status = read(fd, &elf_header, sizeof(elf_header));
+	if (status != sizeof(elf_header)) {
+		status = -EACCES;
+		goto end;
+	}
+
+	/* Check if it is an ELF file. */
+	if (   ELF_IDENT(elf_header, 0) != 0x7f
+	    || ELF_IDENT(elf_header, 1) != 'E'
+	    || ELF_IDENT(elf_header, 2) != 'L'
+	    || ELF_IDENT(elf_header, 3) != 'F') {
+		status = -EACCES;
+		goto end;
+	}
+
+	/* Check if it is a known class (32-bit or 64-bit). */
+	if (   !IS_CLASS32(elf_header)
+	    && !IS_CLASS64(elf_header)) {
+		status = -EACCES;
+		goto end;
+	}
+
+	/* Get class-specific fields. */
+	elf_phoff     = ELF_FIELD(elf_header, phoff);
+	elf_phentsize = ELF_FIELD(elf_header, phentsize);
+	elf_phnum     = ELF_FIELD(elf_header, phnum);
+
+	/*
+	 * Some sanity checks regarding the current
+	 * support of the ELF specification in PRoot.
+	 */
+
+	if (elf_phnum >= 0xffff) {
+		notice(WARNING, INTERNAL, "%s: big PH tables are not yet supported.", path);
+		status = -EACCES;
+		goto end;
+	}
+
+	if (!KNOWN_PHENTSIZE(elf_header, elf_phentsize)) {
+		notice(WARNING, INTERNAL, "%s: unsupported size of program header.", path);
+		status = -EACCES;
+		goto end;
+	}
+
+	/*
+	 * Search the INTERP entry into the program header table.
+	 */
+
+	status = (int) lseek(fd, elf_phoff, SEEK_SET);
+	if (status < 0) {
+		status = -EACCES;
+		goto end;
+	}
+
+	for (i = 0; i < elf_phnum; i++) {
+		status = read(fd, &program_header, elf_phentsize);
+		if (status != elf_phentsize) {
+			status = -EACCES;
+			goto end;
+		}
+
+		if (!IS_INTERP(elf_header, program_header))
+			continue;
+
+		/*
+		 * Found the INTERP entry.
+		 */
+
+		segment_offset = PROGRAM_FIELD(elf_header, program_header, offset);
+		segment_size   = PROGRAM_FIELD(elf_header, program_header, filesz);
+
+		if (segment_size >= sizeof(interp) - 1) {
+			status = -EACCES;
+			goto end;
+		}
+
+		status = (int) lseek(fd, segment_offset, SEEK_SET);
+		if (status < 0) {
+			status = -EACCES;
+			goto end;
+		}
+
+		status = read(fd, interp, segment_size);
+		if (status < 0) {
+			status = -EACCES;
+			goto end;
+		}
+		interp[segment_size] = '\0';
+	}
+
+	if (interp[0] == '\0') {
+		status = 0;
+		goto end;
+	}
+
+	/*
+	 * Prepend the ELF interpreter just like we do for script
+	 * interpreters:
+	 *
+	 *     execve("/bin/ls", argv, = [ "-l" , ... ], envp);
+	 *
+	 * becomes:
+	 *
+	 *     execve("/lib/ld-linux.so", argv, = [ "/bin/ls", "-l" , ... ], envp);
+	 */
+
+	status = translate_path(child, interpreter, AT_FDCWD, interp, REGULAR);
+	if (status < 0)
+		goto end;
+
+	status = detranslate_path(path, 1);
+	if (status < 0)
+		goto end;
+
+	VERBOSE(3, "expand ELF .interp: %s -> %s %s",
+		(*argv)[0], interpreter, path);
+
+	status = substitute_argv0(argv, 2, interpreter, path);
+	if (status < 0)
+		goto end;
+
+	/* Remember the actual executable since /proc/self/exe points
+	 * to the ELF interpreter instead. */
+	child->exe = strdup(path);
+
+	/* Inform the caller about the program to execute. */
+	strcpy(path, interpreter);
+	status = 0;
+
+end:
+	close(fd);
+
+	/* Deleayed error handling */
+	if (status < 0)
+		return status;
+
+	/* Is there an INTERP entry? */
+	if (interp[0] == '\0')
+		return 0;
+	else
+		return 1;
 }
