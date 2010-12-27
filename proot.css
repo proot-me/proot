@@ -14,6 +14,8 @@ body {
     background-color: white;
 
     border: 1px solid #dddddd;
+    border-radius: 1em;
+    -moz-border-radius: 1em;
 
     max-width: 50em;
     min-width: 25em;
