@@ -133,7 +133,7 @@ int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg s
 }
 
 /**
- * Translate @path and puts the result in the @child's memory address
+ * Translate @path and put the result in the @child's memory address
  * space pointed to by the @sysarg argument of the current
  * syscall. See the documentation of translate_path() about the
  * meaning of @deref_final. This function returns -errno if an error
@@ -306,11 +306,11 @@ end:
 
 /**
  * Translate the output arguments of the syscall @child->sysnum in the
- * @child->pid process area. This function optionnaly detranslate the
+ * @child->pid process area. This function optionally detranslates the
  * path stored at @child->output in the child's memory space, it also
  * sets the result of this syscall to @child->status if an error
  * occured previously during the translation, that is, if
- * @child->status is lesser than 0, otherwise @child->status bytes of
+ * @child->status is less than 0, otherwise @child->status bytes of
  * the child's stack are "deallocated" to free the space used to store
  * the previously translated paths.
  */

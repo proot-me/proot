@@ -234,7 +234,7 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 }
 
 /**
- * Check if @path is [hosted by] an excluded paths.
+ * Check if @path is [hosted by] an excluded path.
  */
 static int is_excluded(const char *path)
 {
@@ -259,11 +259,11 @@ static int is_excluded(const char *path)
 }
 
 /**
- * Copy in @result the anonicalization (see `man 3 realpath`) of
+ * Copy in @result the canonicalization (see `man 3 realpath`) of
  * @fake_path regarding to @root. The path to canonicalize could be
  * either absolute or relative to @result. When the last component of
  * @fake_path is a link, it is dereferenced only if @deref_final is
- * true -- it is usefull for syscalls like lstat(2). The parameter
+ * true -- it is useful for syscalls like lstat(2). The parameter
  * @nb_readlink should be set to 0 unless you know what you are
  * doing. This function returns -errno if an error occured, otherwise
  * it returns 0.
@@ -372,7 +372,7 @@ static int canonicalize(pid_t pid,
 		tmp[status] = '\0';
 
 		/* Remove the leading "root" part if needed, it's
-		 * usefull for "/proc/self/cwd/" for instance. */
+		 * useful for "/proc/self/cwd/" for instance. */
 		status = detranslate_path(tmp, 0);
 		if (status < 0)
 			return status;
@@ -567,7 +567,7 @@ end:
 
 /**
  * Remove the leading "root" part of a previously translated @path and
- * copies the result in @result. It returns 0 if the leading part was
+ * copy the result in @result. It returns 0 if the leading part was
  * not the "root" (@path is copied as-is into @result), otherwise it
  * returns the size in bytes of @result, including the end-of-string
  * terminator. On error it returns -errno.
@@ -703,7 +703,7 @@ static int list_open_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
 }
 
 /**
- * Warn for files that are open. It is usefull right after PRoot has
+ * Warn for files that are open. It is useful right after PRoot has
  * attached a process.
  */
 int list_open_fd(pid_t pid)
