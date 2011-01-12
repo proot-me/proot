@@ -6,9 +6,9 @@ LDFLAGS  = -static
 
 OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ureg.o
 
-VERSION := $(shell git describe --dirty --abbrev=8 --always 2>/dev/null)
+VERSION := $(shell git describe --tags --dirty --abbrev=8 --always 2>/dev/null)
 ifndef VERSION
-    VERSION := beta2?
+    VERSION := v0.4+
 endif
 
 all: proot
