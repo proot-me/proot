@@ -23,10 +23,8 @@
  * Inspired by: execve(2) from the Linux kernel.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>        /* open(2), */
-#include <unistd.h>       /* read(2), access(2), */
+#include <unistd.h>       /* access(2), lstat(2), */
+#include <sys/stat.h>     /* lstat(2), S_ISREG(), */
 #include <limits.h>       /* PATH_MAX, ARG_MAX, */
 #include <errno.h>        /* ENAMETOOLONG, */
 #include <sys/ptrace.h>   /* ptrace(2), */
@@ -43,24 +41,24 @@
 #include "child_mem.h"
 #include "notice.h"
 #include "ureg.h"
+#include "interp.h"
 
 #include "compat.h"
-
-#ifndef ARG_MAX
-#define ARG_MAX 131072
-#endif
 
 static char runner[PATH_MAX] = { '\0', };
 static char runner_args[ARG_MAX] = { '\0', };
 static int nb_runner_args;
+static int skip_elf_interp = 0;
 
 /**
  * Initialize internal data of the execve module.
  */
-void init_module_execve(const char *opt_runner)
+void init_module_execve(const char *opt_runner, int no_elf_interp)
 {
 	int status;
 	char *tmp, *tmp2, *tmp3;
+
+	skip_elf_interp = no_elf_interp;
 
 	if (opt_runner == NULL)
 		return;
@@ -157,7 +155,7 @@ void init_module_execve(const char *opt_runner)
  *
  *    | new_argv[0] | ... | new_argv[nb - 1] | argv[1] | ... | argv[n] |
  */
-static int substitute_argv0(char **argv[], int nb_new_args, ...)
+int substitute_argv0(char **argv[], int nb_new_args, ...)
 {
 	va_list args;
 	void *tmp;
@@ -217,6 +215,9 @@ static int insert_runner_args(char **argv[])
 	char *tmp;
 	int i;
 
+	if (runner_args[0] == '\0')
+		return 0;
+
 	for (i = 0; (*argv)[i] != NULL; i++)
 		;
 	i++; /* Don't miss the trailing NULL terminator. */
@@ -260,178 +261,6 @@ static int insert_runner_args(char **argv[])
 	assert(tmp == NULL);
 
 	return 0;
-}
-
-/**
- * Expand the shebang of @filename in *@argv[]. This function returns
- * -errno if an error occured, otherwise 0.
- *
- * Extract from "man 2 execve":
- *
- *     On Linux, the entire string following the interpreter name is
- *     passed as a *single* argument to the interpreter, and this
- *     string can include white space.
- */
-static int expand_shebang(struct child_info *child, char *filename, char **argv[])
-{
-	char interpreter[PATH_MAX];
-	char argument[ARG_MAX];
-	char path[PATH_MAX];
-	char tmp;
-
-	int status;
-	int fd;
-	int i;
-
-	status = translate_path(child, path, AT_FDCWD, filename, REGULAR);
-	if (status < 0)
-		return status;
-
-	/* Inspect the executable.  */
-	fd = open(path, O_RDONLY);
-	if (fd < 0)
-		return -errno;
-
-	/* Don't try to execute scripts that don't have the
-	 * "executable" bit. Do this after open(2) to avoid
-	 * "permission denied" instead of "no such file". */
-	status = access(path, X_OK);
-	if (status < 0) {
-		status = -errno;
-		goto end;
-	}
-
-	status = read(fd, interpreter, 2 * sizeof(char));
-	if (status < 0) {
-		status = -errno;
-		goto end;
-	}
-	if (status < 2 * sizeof(char)) {
-		status = 0;
-		goto end;
-	}
-
-	/* Check if it really is a script text. */
-	if (interpreter[0] != '#' || interpreter[1] != '!') {
-		status = 0;
-		goto end;
-	}
-
-	/* Skip leading spaces. */
-	do {
-		status = read(fd, &tmp, sizeof(char));
-		if (status < 0) {
-			status = -errno;
-			goto end;
-		}
-		if (status < sizeof(char)) {
-			status = 0;
-			goto end;
-		}
-	} while (tmp == ' ' || tmp == '\t');
-
-	/* Slurp the interpreter path until the first space or end-of-line. */
-	for (i = 0; i < PATH_MAX; i++) {
-		switch (tmp) {
-		case ' ':
-		case '\t':
-			/* Remove spaces in between the interpreter
-			 * and the hypothetical argument. */
-			interpreter[i] = '\0';
-			break;
-
-		case '\n':
-		case '\r':
-			/* There is no argument. */
-			interpreter[i] = '\0';
-			status = 1;
-			goto end;
-
-		default:
-			/* There is an argument if the previous
-			 * character in interpreter[] is '\0'. */
-			if (i > 1 && interpreter[i - 1] == '\0')
-				goto argument;
-			else
-				interpreter[i] = tmp;
-			break;
-		}
-
-		status = read(fd, &tmp, sizeof(char));
-		if (status < 0) {
-			status = -errno;
-			goto end;
-		}
-		if (status < sizeof(char)) {
-			status = 0;
-			goto end;
-		}
-	}
-
-	/* The interpreter path is too long. */
-	status = -ENAMETOOLONG;
-	goto end;
-
-argument:
-	/* Slurp the argument until the end-of-line. */
-	for (i = 0; i < ARG_MAX; i++) {
-		switch (tmp) {
-		case '\n':
-		case '\r':
-			argument[i] = '\0';
-
-			/* Remove trailing spaces. */
-			for (i--; i > 0 && (argument[i] == ' ' || argument[i] == '\t'); i--)
-				argument[i] = '\0';
-
-			status = 2;
-			goto end;
-
-		default:
-			argument[i] = tmp;
-			break;
-		}
-
-		status = read(fd, &tmp, sizeof(char));
-		if (status != sizeof(char)) {
-			status = 0;
-			goto end;
-		}
-	}
-
-	/* The argument is too long, just ignore it. */
-	argument[0] = '\0';
-	status = 1;
-
-end:
-	close(fd);
-
-	if (status <= 0)
-		return status;
-
-	VERBOSE(3, "expand shebang: %s -> %s %s %s",
-		(*argv)[0], interpreter, argument, filename);
-
-	switch (status) {
-	case 1:
-		status = substitute_argv0(argv, 2, interpreter, filename);
-		break;
-
-	case 2:
-		status = substitute_argv0(argv, 3, interpreter, argument, filename);
-		break;
-
-	default:
-		assert(0);
-		break;
-	}
-	if (status < 0)
-		return status;
-
-	/* Inform the caller about the program to execute. */
-	strcpy(filename, interpreter);
-
-	return 1;
 }
 
 /**
@@ -616,14 +445,6 @@ end:
 }
 
 /**
- * XXX: TODO
- */
-static int check_elf_interpreter(const char *file)
-{
-	return 0;
-}
-
-/**
  * Translate the arguments of the execve() syscall made by the @child
  * process. This syscall needs a very special treatment for script
  * files because according to "man 2 execve":
@@ -663,7 +484,7 @@ int translate_execve(struct child_info *child)
 	char path2[PATH_MAX];
 	char **argv = NULL;
 
-	int nb_shebang = -1;
+	int nb_interp = -1;
 	int size = 0;
 	int status;
 	int i;
@@ -676,68 +497,95 @@ int translate_execve(struct child_info *child)
 	if (status < 0)
 		goto end;
 
-	/* Expand the shebang iteratively. */
+	/* Expand the shebang, recursively despite what the man page said. */
 	do {
-		nb_shebang++;
-		status = expand_shebang(child, path, &argv);
-	} while(status > 0);
-	if (status < 0)
-		goto end;
+		struct stat statl;
 
-	status = translate_path(child, path2, AT_FDCWD, path, REGULAR);
-	if (status < 0)
-		goto end;
-		
-	/* I prefer the binfmt_misc approach instead of invoking
-	 * the runner unconditionally. */
-	if (runner[0] != '\0') {
-		/* Don't launch the runner if the program
-		 * doesn't exist or isn't readable/executable. */
-		status = access(path2, F_OK);
+		/* Remember it was initialized to -1 */
+		nb_interp++;
+
+		strcpy(path2, path);
+		status = translate_path(child, path, AT_FDCWD, path2, REGULAR);
+		if (status < 0)
+			break;
+
+		/* Don't try to launch the program if it doesn't exist
+		 * or isn't executable. */
+		status = access(path, F_OK);
 		if (status < 0) {
 			status = -ENOENT;
 			goto end;
 		}
 
-		status = access(path2, R_OK);
+		status = access(path, X_OK);
 		if (status < 0) {
 			status = -EACCES;
 			goto end;
 		}
 
-		status = access(path2, X_OK);
-		if (status < 0) {
-			status = -EACCES;
+		/* Ensure it is a regular file. */
+		status = lstat(path, &statl);
+		if (status < 0 || !S_ISREG(statl.st_mode)) {
+			status = -EPERM;
 			goto end;
 		}
+
+		/* This function also check access(path, R_OK) */
+		status = expand_script_interp(child, path, &argv);
+	} while(status > 0);
+	if (status < 0)
+		goto end;
+
+	/* I prefer the binfmt_misc approach instead of invoking
+	 * the runner/loader unconditionally. */
+	if (runner[0] != '\0') {
+		nb_interp++;
 
 		status = substitute_argv0(&argv, 2, runner, path);
 		if (status < 0)
 			goto end;
 
-		if (runner_args[0] != '\0') {
-			status = insert_runner_args(&argv);
-			if (status < 0)
-				goto end;
-		}
+		status = insert_runner_args(&argv);
+		if (status < 0)
+			goto end;
 
 		/* Launch the runner actually. */
 		strcpy(path2, runner);
 	}
+	else {
+		status = translate_path(child, path2, AT_FDCWD, path, REGULAR);
+		if (status < 0)
+			goto end;
+
+		if (!skip_elf_interp) {
+			/* Expand the ELF interpreter, if any. */
+			status = expand_elf_interp(child, path2, &argv);
+			if (status < 0)
+				goto end;
+			if (status > 0) {
+				nb_interp++;
+
+				/* Sanity check: an ELF interpreter is expected
+				 * to not require an ELF interpreter on Linux. */
+				status = expand_elf_interp(child, path2, &argv);
+				if (status < 0)
+					goto end;
+				if (status > 0) {
+					status = -EPERM;
+					goto end;
+				}
+			}
+		}
+	}
 
 	/* Rebuild argv[] only if something has changed. */
-	if (argv != NULL && (nb_shebang != 0 || runner[0] != '\0')) {
+	if (argv != NULL && nb_interp != 0) {
 		size = set_argv(child, argv);
 		if (size < 0) {
 			status = size;
 			goto end;
 		}
 	}
-
-	/* Ensure someone is not using a nasty ELF interpreter. */
-	status = check_elf_interpreter(path2);
-	if (status < 0)
-		goto end;
 
 	status = set_sysarg_path(child, path2, SYSARG_1);
 	if (status < 0)

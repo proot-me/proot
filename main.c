@@ -47,6 +47,7 @@ static char **opt_args = &opt_args_default[0];
 static const char *opt_pwd = NULL;
 static const char *opt_runner = NULL;
 
+static int opt_no_elf_interp = 0;
 static int opt_many_jobs = 0;
 static int opt_allow_unknown = 0;
 static int opt_allow_ptrace = 0;
@@ -79,6 +80,7 @@ static void exit_usage(void)
 	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
 	puts("  -U <X>        deletes the variable <X> from the environment");
 /*	puts("  -b <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
+	puts("  -e            don't use the ELF interpreter (typically \"ld.so\") as runner");
 	puts("  -q <runner>   use <runner> to handle each process; you can pass options by");
 	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
 	puts("                Note the runner will be translated once it accessed the program");
@@ -172,6 +174,10 @@ static pid_t parse_options(int argc, char *argv[])
 				notice(WARNING, SYSTEM, "unsetenv(\"%s\")", argv[i]);
 			break;
 
+		case 'e':
+			opt_no_elf_interp = 1;
+			break;
+
 		case 'q':
 			i++;
 			if (i >= argc)
@@ -256,7 +262,7 @@ static pid_t parse_options(int argc, char *argv[])
 	init_module_path(opt_new_root, opt_runner != NULL);
 	init_module_child_info();
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
-	init_module_execve(opt_runner);
+	init_module_execve(opt_runner, opt_no_elf_interp);
 
 	return pid;
 }

@@ -37,6 +37,7 @@ struct child_info {
 	word_t output; /* Address in the child's memory space of the output argument. */
 	char *trigger; /* Name of the file/directory used to start the path translation. */
 	off_t *uregs;  /* Current register bank, also used to know the current ABI. */
+	char *exe;     /* Path to the executable, à la /proc/self/exe. */
 };
 
 typedef int (*foreach_child_t)(pid_t pid);

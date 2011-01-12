@@ -22,17 +22,12 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef EXECVE_H
-#define EXECVE_H
+#ifndef INTERP_H
+#define INTERP_H
 
 #include "child_info.h"
 
-extern void init_module_execve(const char *runner, int no_elf_interp);
-extern int translate_execve(struct child_info *child);
-extern int substitute_argv0(char **argv[], int nb_new_args, ...);
+extern int expand_script_interp(struct child_info *child, char path[PATH_MAX], char **argv[]);
+extern int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv[]);
 
-#ifndef ARG_MAX
-#define ARG_MAX 131072
-#endif
-
-#endif /* EXECVE_H */
+#endif /* INTERP_H */
