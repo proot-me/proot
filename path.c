@@ -402,30 +402,18 @@ static int canonicalize(pid_t pid,
  * It is useful when using a runner that needs shared libraries or
  * reads some configuration files, for instance.
  */
-static int is_delayed(struct child_info *child, char path[PATH_MAX])
+static int is_delayed(struct child_info *child, const char *path)
 {
-	if (is_execve(child)) {
-		if (strlen(path) >= PATH_MAX)
-			return -ENAMETOOLONG;
-
-		child->trigger = strdup(path);
-		if (child->trigger == NULL)
-			return -ENOMEM;
-
+	if (child->trigger == NULL)
 		return 0;
-	}
-	else {
-		if (child->trigger == NULL)
-			return 0;
 
-		if (strcmp(child->trigger, path) != 0)
-			return 1;
+	if (strcmp(child->trigger, path) != 0)
+		return 1;
 
-		free(child->trigger);
-		child->trigger = NULL;
+	free(child->trigger);
+	child->trigger = NULL;
 
-		return 0;
-	}
+	return 0;
 }
 
 /**
@@ -532,7 +520,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 
 	/* Don't use the result of the canonicalization if the
 	 * translation is delayed, use the origin input path instead. */
-	status = use_runner != 0 && child != NULL ? is_delayed(child, result) : 0;
+	status = use_runner != 0 && child != NULL ? is_delayed(child, fake_path) : 0;
 	if (status < 0)
 		return status;
 	if (status != 0) {

@@ -59,6 +59,5 @@ extern void init_module_syscall(int sanity_check, int allow_unknown, int allow_p
 extern int translate_syscall(pid_t pid);
 extern int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
 extern int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
-extern int is_execve(struct child_info *child);
 
 #endif /* SYSCALL_H */

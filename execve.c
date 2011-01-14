@@ -444,6 +444,53 @@ end:
 	return previous_sp - child_argv;
 }
 
+static int expand_interp(struct child_info *child, char filename[PATH_MAX], char **argv[], expand_interp_t callback, int skip_interp_expansion)
+{
+	char path[PATH_MAX];
+	struct stat statl;
+	int status;
+
+	/*
+	 * Don't try to launch the program if it:
+	 *     - doesn't exist; or
+	 *     - isn't executable; or
+	 *     - isn't a regular file.
+	 */
+
+	status = translate_path(child, path, AT_FDCWD, filename, REGULAR);
+	if (status < 0)
+		return -1;
+
+	status = access(path, F_OK);
+	if (status < 0)
+		return -ENOENT;
+
+	status = access(path, X_OK);
+	if (status < 0)
+		return -EACCES;
+
+	status = lstat(path, &statl);
+	if (status < 0 || !S_ISREG(statl.st_mode))
+		return -EPERM;
+
+	if (skip_interp_expansion)
+		return 0;
+
+	/* Expand the interpreter. */
+	status = callback(child, path, filename, argv);
+	if (status <= 0)
+		return status;
+
+	/* Sanity check: an interpreter doesn't request an[other]
+	 * interpreter on Linux.  In the case of ELF this check
+	 * ensures the interpreter is in the ELF format. */
+	status = callback(child, filename, NULL, argv);
+	if (status < 0)
+		return status;
+
+	return 1;
+}
+
 /**
  * Translate the arguments of the execve() syscall made by the @child
  * process. This syscall needs a very special treatment for script
@@ -480,16 +527,15 @@ end:
  */
 int translate_execve(struct child_info *child)
 {
-	char path[PATH_MAX];
-	char path2[PATH_MAX];
+	char filename[PATH_MAX];
 	char **argv = NULL;
 
-	int nb_interp = -1;
+	int nb_interp = 0;
 	int size = 0;
 	int status;
 	int i;
 
-	status = get_sysarg_path(child, path, SYSARG_1);
+	status = get_sysarg_path(child, filename, SYSARG_1);
 	if (status < 0)
 		return status;
 
@@ -497,51 +543,17 @@ int translate_execve(struct child_info *child)
 	if (status < 0)
 		goto end;
 
-	/* Expand the shebang, recursively despite what the man page said. */
-	do {
-		struct stat statl;
-
-		/* Remember it was initialized to -1 */
-		nb_interp++;
-
-		strcpy(path2, path);
-		status = translate_path(child, path, AT_FDCWD, path2, REGULAR);
-		if (status < 0)
-			break;
-
-		/* Don't try to launch the program if it doesn't exist
-		 * or isn't executable. */
-		status = access(path, F_OK);
-		if (status < 0) {
-			status = -ENOENT;
-			goto end;
-		}
-
-		status = access(path, X_OK);
-		if (status < 0) {
-			status = -EACCES;
-			goto end;
-		}
-
-		/* Ensure it is a regular file. */
-		status = lstat(path, &statl);
-		if (status < 0 || !S_ISREG(statl.st_mode)) {
-			status = -EPERM;
-			goto end;
-		}
-
-		/* This function also check access(path, R_OK) */
-		status = expand_script_interp(child, path, &argv);
-	} while(status > 0);
+	status = expand_interp(child, filename, &argv, expand_script_interp, 0);
 	if (status < 0)
 		goto end;
+	nb_interp += status;
 
 	/* I prefer the binfmt_misc approach instead of invoking
 	 * the runner/loader unconditionally. */
 	if (runner[0] != '\0') {
 		nb_interp++;
 
-		status = substitute_argv0(&argv, 2, runner, path);
+		status = substitute_argv0(&argv, 2, runner, filename);
 		if (status < 0)
 			goto end;
 
@@ -549,33 +561,22 @@ int translate_execve(struct child_info *child)
 		if (status < 0)
 			goto end;
 
+		/* Delayed the translation of the newly instantiated
+		 * runner until it accesses the program to execute,
+		 * that way the runner can first access its own files
+		 * outside of the rootfs. */
+		child->trigger = strdup(filename);
+		if (child->trigger == NULL)
+			return -ENOMEM;
+
 		/* Launch the runner actually. */
-		strcpy(path2, runner);
+		strcpy(filename, runner);
 	}
 	else {
-		status = translate_path(child, path2, AT_FDCWD, path, REGULAR);
+		status = expand_interp(child, filename, &argv, expand_elf_interp, skip_elf_interp);
 		if (status < 0)
 			goto end;
-
-		if (!skip_elf_interp) {
-			/* Expand the ELF interpreter, if any. */
-			status = expand_elf_interp(child, path2, &argv);
-			if (status < 0)
-				goto end;
-			if (status > 0) {
-				nb_interp++;
-
-				/* Sanity check: an ELF interpreter is expected
-				 * to not require an ELF interpreter on Linux. */
-				status = expand_elf_interp(child, path2, &argv);
-				if (status < 0)
-					goto end;
-				if (status > 0) {
-					status = -EPERM;
-					goto end;
-				}
-			}
-		}
+		nb_interp += status;
 	}
 
 	/* Rebuild argv[] only if something has changed. */
@@ -587,7 +588,9 @@ int translate_execve(struct child_info *child)
 		}
 	}
 
-	status = set_sysarg_path(child, path2, SYSARG_1);
+	VERBOSE(4, "execve: %s", filename);
+
+	status = set_sysarg_path(child, filename, SYSARG_1);
 	if (status < 0)
 		goto end;
 

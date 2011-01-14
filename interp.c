@@ -40,8 +40,8 @@
 /**
  * Expand the shebang of @path in *@argv[]. This function returns
  * -errno if an error occured, 1 if a shebang was found and expanded,
- * otherwise 0. @path is updated to point to the detranslated path
- * (interpreter or binary).
+ * otherwise 0. @filename is updated with the name of the interpreter,
+ * if any.
  *
  * Extract from "man 2 execve":
  *
@@ -49,13 +49,12 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-int expand_script_interp(struct child_info *child, char path[PATH_MAX], char **argv[])
+int expand_script_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[])
 {
 	char interpreter[PATH_MAX];
 	char argument[ARG_MAX];
 	char tmp;
 
-	int status2;
 	int status;
 	int fd;
 	int i;
@@ -171,30 +170,25 @@ end:
 	close(fd);
 
 	/* Did an error occur? */
-	if (status < 0)
+	if (status <= 0)
 		return status;
 
-	status2 = detranslate_path(path, 1);
-	if (status2 < 0)
-		return status2;
+	/* Special invocation to check if a script interpreter use
+	 * a[nother] script interpreter, this is a sanity check made
+	 * by execve.c:expand_interp(). */
+	if (filename == NULL)
+		return -EPERM;
+
+	VERBOSE(3, "expand shebang: %s -> %s %s %s",
+		(*argv)[0], interpreter, argument, filename);
 
 	switch (status) {
-	case 0:
-		/* Does this file use a script interpreter? */
-		return 0;
-
 	case 1:
-		VERBOSE(3, "expand shebang: %s -> %s %s",
-			(*argv)[0], interpreter, path);
-
-		status = substitute_argv0(argv, 2, interpreter, path);
+		status = substitute_argv0(argv, 2, interpreter, filename);
 		break;
 
 	case 2:
-		VERBOSE(3, "expand shebang: %s -> %s %s %s",
-			(*argv)[0], interpreter, argument, path);
-
-		status = substitute_argv0(argv, 3, interpreter, argument, path);
+		status = substitute_argv0(argv, 3, interpreter, argument, filename);
 		break;
 
 	default:
@@ -204,22 +198,21 @@ end:
 	if (status < 0)
 		return status;
 
-	/* Inform the caller about the program to execute. */
-	strcpy(path, interpreter);
-
+	strcpy(filename, interpreter);
 	return 1;
 }
 
 /**
- * Expand the ELF interpreter of @filename in *@argv[]. This function
+ * Expand the ELF interpreter of @path in *@argv[]. This function
  * returns -errno if an error occured, 1 if a ELF interpreter was
- * found and expanded, otherwise 0.  @path is updated to point to the
- * detranslated path (interpreter or binary).
+ * found and expanded, otherwise 0.  @filename is updated with the
+ * name of the interpreter, if any.
  */
-int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv[])
+int expand_elf_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[])
 {
 	char interpreter[PATH_MAX];
 	char interp[PATH_MAX] = { '\0' };
+
 
 	union elf_header elf_header;
 	union program_header program_header;
@@ -335,6 +328,12 @@ int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv
 		goto end;
 	}
 
+	/* Special invocation to check if an ELF interpreter use
+	 * an[other] ELF interpreter, this is a sanity check made by
+	 * execve.c:expand_interp(). */
+	if (filename == NULL)
+		return -EPERM;
+
 	/*
 	 * Prepend the ELF interpreter just like we do for script
 	 * interpreters:
@@ -350,14 +349,10 @@ int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv
 	if (status < 0)
 		goto end;
 
-	status = detranslate_path(path, 1);
-	if (status < 0)
-		goto end;
-
 	VERBOSE(3, "expand ELF .interp: %s -> %s %s",
-		(*argv)[0], interpreter, path);
+		(*argv)[0], interpreter, filename);
 
-	status = substitute_argv0(argv, 2, interpreter, path);
+	status = substitute_argv0(argv, 2, interpreter, filename);
 	if (status < 0)
 		goto end;
 
@@ -365,14 +360,12 @@ int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv
 	 * to the ELF interpreter instead. */
 	child->exe = strdup(path);
 
-	/* Inform the caller about the program to execute. */
-	strcpy(path, interpreter);
+	strcpy(filename, interpreter);
 	status = 0;
-
 end:
 	close(fd);
 
-	/* Deleayed error handling */
+	/* Delayed error handling */
 	if (status < 0)
 		return status;
 

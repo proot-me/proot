@@ -305,6 +305,28 @@ end:
 }
 
 /**
+ * Check if the current syscall of @child actually is execve(2)
+ * regarding the current ABI.
+ */
+static int is_execve(struct child_info *child)
+{
+	if (child->uregs == uregs) {
+		#include SYSNUM_HEADER
+		return child->sysnum == __NR_execve;
+	}
+#ifdef SYSNUM_HEADER2
+	else if (child->uregs == uregs2) {
+		#include SYSNUM_HEADER2
+		return child->sysnum == __NR_execve;
+	}
+#endif
+	else {
+		notice(WARNING, INTERNAL, "unknown ABI (%p)", child->uregs);
+		return 0;
+	}
+}
+
+/**
  * Translate the output arguments of the syscall @child->sysnum in the
  * @child->pid process area. This function optionally detranslates the
  * path stored at @child->output in the child's memory space, it also
@@ -421,26 +443,4 @@ int translate_syscall(pid_t pid)
 		return translate_syscall_enter(child);
 	else
 		return translate_syscall_exit(child);
-}
-
-/**
- * Check if the current syscall of @child actually is execve(2)
- * regarding the current ABI.
- */
-int is_execve(struct child_info *child)
-{
-	if (child->uregs == uregs) {
-		#include SYSNUM_HEADER
-		return child->sysnum == __NR_execve;
-	}
-#ifdef SYSNUM_HEADER2
-	else if (child->uregs == uregs2) {
-		#include SYSNUM_HEADER2
-		return child->sysnum == __NR_execve;
-	}
-#endif
-	else {
-		notice(WARNING, INTERNAL, "unknown ABI (%p)", child->uregs);
-		return 0;
-	}
 }

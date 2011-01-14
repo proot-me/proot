@@ -27,7 +27,9 @@
 
 #include "child_info.h"
 
-extern int expand_script_interp(struct child_info *child, char path[PATH_MAX], char **argv[]);
-extern int expand_elf_interp(struct child_info *child, char path[PATH_MAX], char **argv[]);
+typedef int (* expand_interp_t)(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[]);
+
+extern int expand_script_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[]);
+extern int expand_elf_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[]);
 
 #endif /* INTERP_H */
