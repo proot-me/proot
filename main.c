@@ -52,6 +52,7 @@ static int opt_many_jobs = 0;
 static int opt_allow_unknown = 0;
 static int opt_allow_ptrace = 0;
 
+static int opt_qemu = 0;
 static int opt_check_fd = 0;
 static int opt_check_syscall = 0;
 
@@ -70,14 +71,16 @@ static void exit_usage(void)
 	puts("Main options:");
 	puts("  -m <path>     mirror <path> from the real rootfs into the alternate rootfs");
 /*	puts("  -b <p1> <p2>  bind <p1> from the real rootfs to <p2> in the alternate rootfs"); */
+/*	puts("  -r <runner>   XXX */
 	puts("  -q <qemu>     use <qemu> to handle each process; you can pass options by");
 	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
-	puts("  -e            don't use the ELF interpreter (typically \"ld.so\") as runner");
+	puts("  -e            don't use the ELF interpreter (typically \"ld.so\") as loader");
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("");
 	puts("Alias options:");
 	puts("  -M            alias for: -m /dev -m /proc -m /sys -m /etc/passwd ");
 	puts("                    -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
+/*	puts("  -R <runner>   XXX */
 	puts("  -Q <qemu>     alias for: -q <qemu> -M");
 	puts("  -W            alias for: -w $PWD -m $PWD");
 	puts("");
@@ -170,9 +173,12 @@ static pid_t parse_options(int argc, char *argv[])
 			break;
 
 		case 'q':
+			opt_qemu = 1;
+			/* fall through. */
+		case 'r':
 			i++;
 			if (i >= argc)
-				notice(ERROR, USER, "missing value for the option -q");
+				notice(ERROR, USER, "missing value for the option -r/-q");
 			opt_runner = argv[i];
 			break;
 
@@ -185,11 +191,14 @@ static pid_t parse_options(int argc, char *argv[])
 			break;
 
 		case 'Q':
+			opt_qemu = 1;
+			/* fall through. */
+		case 'R':
 			i++;
 			if (i >= argc)
-				notice(ERROR, USER, "missing value for the option -Q");
+				notice(ERROR, USER, "missing value for the option -R/-Q");
 			opt_runner = argv[i];
-			/* fall trhough. */
+			/* fall through. */
 		case 'M':
 			mirror_path("/dev");
 			mirror_path("/proc");
@@ -252,7 +261,7 @@ static pid_t parse_options(int argc, char *argv[])
 	init_module_path(opt_new_root, opt_runner != NULL);
 	init_module_child_info();
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
-	init_module_execve(opt_runner, opt_no_elf_interp);
+	init_module_execve(opt_runner, opt_qemu, opt_no_elf_interp);
 
 	return pid; /* XXX: pid attachement not yet [officially] supported. */
 }

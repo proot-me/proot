@@ -49,11 +49,12 @@ static char runner[PATH_MAX] = { '\0', };
 static char runner_args[ARG_MAX] = { '\0', };
 static int nb_runner_args;
 static int skip_elf_interp = 0;
+static int runner_is_qemu = 0;
 
 /**
  * Initialize internal data of the execve module.
  */
-void init_module_execve(const char *opt_runner, int no_elf_interp)
+void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
 {
 	int status;
 	char *tmp, *tmp2, *tmp3;
@@ -62,6 +63,8 @@ void init_module_execve(const char *opt_runner, int no_elf_interp)
 
 	if (opt_runner == NULL)
 		return;
+
+	runner_is_qemu = opt_qemu;
 
 	/* Split apart the name of the runner and its options, if any. */
 	tmp = index(opt_runner, ',');
@@ -235,8 +238,7 @@ static int insert_runner_args(char **argv[])
 
 	/* Each new entries will be allocated into the heap since we
 	 * don't rely on the liveness of the input parameters. */
-	tmp = runner_args;
-	tmp2 = runner_args;
+	tmp = tmp2 = runner_args;
 	for (i = 1; i <= nb_runner_args; i++) {
 		assert(tmp != NULL);
 		ptrdiff_t size;
@@ -529,6 +531,7 @@ int translate_execve(struct child_info *child)
 {
 	char filename[PATH_MAX];
 	char **argv = NULL;
+	char *argv0 = NULL;
 
 	int nb_interp = 0;
 	int size = 0;
@@ -543,6 +546,10 @@ int translate_execve(struct child_info *child)
 	if (status < 0)
 		goto end;
 
+	/* Save the original argv[0] so QEMU will pass it to the program. */
+	if (runner_is_qemu && runner[0] != '\0')
+		argv0 = strdup(argv[0]);
+
 	status = expand_interp(child, filename, &argv, expand_script_interp, 0);
 	if (status < 0)
 		goto end;
@@ -553,7 +560,10 @@ int translate_execve(struct child_info *child)
 	if (runner[0] != '\0') {
 		nb_interp++;
 
-		status = substitute_argv0(&argv, 2, runner, filename);
+		if (argv0 != NULL)
+			status = substitute_argv0(&argv, 4, runner, "-0", argv0, filename);
+		else
+			status = substitute_argv0(&argv, 2, runner, filename);
 		if (status < 0)
 			goto end;
 
@@ -600,6 +610,9 @@ end:
 			free(argv[i]);
 		free(argv);
 	}
+
+	if (argv0 != NULL)
+		free(argv0);
 
 	if (status < 0)
 		return status;

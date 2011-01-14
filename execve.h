@@ -27,7 +27,7 @@
 
 #include "child_info.h"
 
-extern void init_module_execve(const char *runner, int no_elf_interp);
+extern void init_module_execve(const char *runner, int runner_is_qemu, int no_elf_interp);
 extern int translate_execve(struct child_info *child);
 extern int substitute_argv0(char **argv[], int nb_new_args, ...);
 
