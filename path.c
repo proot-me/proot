@@ -48,8 +48,8 @@ static char root[PATH_MAX];
 static size_t root_length;
 static int use_runner = 0;
 
-static int nb_excluded = 0;
-static char **excluded = NULL;
+static int nb_mirrored = 0;
+static char **mirrored = NULL;
 
 /**
  * Initialize internal data of the path translator.
@@ -68,10 +68,10 @@ void init_module_path(const char *new_root, int opt_runner)
 }
 
 /**
- * Save @path in the list of paths that are "excluded" for the
+ * Save @path in the list of paths that are "mirrored" for the
  * translation meachnism.
  */
-void exclude_path(const char *path)
+void mirror_path(const char *path)
 {
 	char *real_path;
 	char **tmp;
@@ -80,15 +80,15 @@ void exclude_path(const char *path)
 	if (real_path == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", path);
 
-	tmp = realloc(excluded, (nb_excluded + 1) * sizeof(char *));
+	tmp = realloc(mirrored, (nb_mirrored + 1) * sizeof(char *));
 	if (tmp == NULL) {
 		notice(WARNING, SYSTEM, "realloc()");
 		return;
 	}
 
-	excluded = tmp;
-	excluded[nb_excluded] = real_path;
-	nb_excluded++;
+	mirrored = tmp;
+	mirrored[nb_mirrored] = real_path;
+	nb_mirrored++;
 }
 
 #define FINAL_NORMAL    1
@@ -234,24 +234,24 @@ static inline int join_paths(int number_paths, char result[PATH_MAX], ...)
 }
 
 /**
- * Check if @path is [hosted by] an excluded path.
+ * Check if @path is [hosted by] a mirrored path.
  */
-static int is_excluded(const char *path)
+static int is_mirrored(const char *path)
 {
 	int i;
 
-	for (i = 0; i < nb_excluded; i++) {
+	for (i = 0; i < nb_mirrored; i++) {
 		size_t length_path = strlen(path);
-		size_t length_excluded = strlen(excluded[i]);
+		size_t length_mirrored = strlen(mirrored[i]);
 
-		if (length_excluded > length_path)
+		if (length_mirrored > length_path)
 			continue;
 
-		if (   path[length_excluded] != '/'
-		    && path[length_excluded] != '\0')
+		if (   path[length_mirrored] != '/'
+		    && path[length_mirrored] != '\0')
 			continue;
 
-		if (strncmp(excluded[i], path, length_excluded) == 0)
+		if (strncmp(mirrored[i], path, length_mirrored) == 0)
 			return 1;
 	}
 
@@ -328,13 +328,13 @@ static int canonicalize(pid_t pid,
 		}
 
 		/* Check which kind of directory we have to
-		   canonicalize; either an excluded path or a
+		   canonicalize; either a mirrored path or a
 		   translatable one. */
 		status = join_paths(2, tmp, result, component);
 		if (status < 0)
 			return status;
 
-		if (is_excluded(tmp)) {
+		if (is_mirrored(tmp)) {
 			strcpy(real_entry, tmp);
 		}
 		else {
@@ -455,7 +455,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 			return -ENAMETOOLONG;
 		tmp[status] = '\0';
 
-		if (is_excluded(tmp)) {
+		if (is_mirrored(tmp)) {
 			strcpy(result, tmp);
 		}
 		else {
@@ -530,9 +530,9 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 		goto end;
 	}
 
-	/* Don't append the new root to the result of the
-	 * canonicalization if it's not an excluded path. */
-	if (is_excluded(result))
+	/* Don't prepend the new root to the result of the
+	 * canonicalization if it is a mirrored path. */
+	if (is_mirrored(result))
 		goto end;
 
 	strcpy(tmp, result);
@@ -567,7 +567,7 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 	assert(initialized != 0);
 
 	/* Check if it is a translatable path. */
-	if (is_excluded(path))
+	if (is_mirrored(path))
 		return 0;
 
 	/* Ensure the path is within the new root. */
@@ -643,7 +643,7 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 			continue;
 
 		/* Check if it is a translatable path. */
-		if (is_excluded(path))
+		if (is_mirrored(path))
 			continue;
 
 		status = callback(pid, atoi(dirent->d_name), path);

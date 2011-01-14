@@ -61,52 +61,43 @@ static int opt_check_syscall = 0;
 static void exit_usage(void)
 {
 	puts("");
-	puts("PRoot-" xstr(VERSION) ": user-mode alternative to chroot(1) based on ptrace(2)\n");
+	puts("PRoot-" xstr(VERSION) ": relocate programs to an alternate root file-system");
+	puts("");
 	puts("Usages:");
-	puts("  proot [options] <fake_root>");
-	puts("  proot [options] <fake_root> <path> [args]");
-	puts("  proot [options] <fake_root> <pid>");
+	puts("  proot [options] /path/to/alternate/rootfs");
+	puts("  proot [options] /path/to/alternate/rootfs program [options]");
 	puts("");
-	puts("Arguments:");
-	puts("  <fake_root>   is the path to the fake root file system");
-	puts("  <path>        is the path of the program to launch, default is $SHELL");
-	puts("  [args]        are the optional arguments passed to <program>");
-	puts("  <pid>         is the identifier of the process to attach on-the-fly");
-	puts("");
-	puts("Common options:");
+	puts("Main options:");
+	puts("  -m <path>     mirror <path> from the real rootfs into the alternate rootfs");
+/*	puts("  -b <p1> <p2>  bind <p1> from the real rootfs to <p2> in the alternate rootfs"); */
+	puts("  -q <qemu>     use <qemu> to handle each process; you can pass options by");
+	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
+	puts("  -e            don't use the ELF interpreter (typically \"ld.so\") as runner");
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
-	puts("  -x <path>     don't translate access to <path> (can be repeated)");
+	puts("");
+	puts("Alias options:");
+	puts("  -M            alias for: -m /dev -m /proc -m /sys -m /etc/passwd ");
+	puts("                    -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
+	puts("  -Q <qemu>     alias for: -q <qemu> -M");
+	puts("  -W            alias for: -w $PWD -m $PWD");
+	puts("");
+	puts("Misc. options:");
 	puts("  -v            increase the verbose level");
 	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
 	puts("  -U <X>        deletes the variable <X> from the environment");
-/*	puts("  -b <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
-	puts("  -e            don't use the ELF interpreter (typically \"ld.so\") as runner");
-	puts("  -q <runner>   use <runner> to handle each process; you can pass options by");
-	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
-	puts("                Note the runner will be translated once it accessed the program");
-	puts("");
-	puts("Alias options:");
-	puts("  -W            alias for: -w $PWD -x $PWD");
-	puts("  -X            alias for: -x /dev -x /etc -x /proc -x /sys");
-	puts("  -Q <runner>   alias for: -q <runner> -x /dev -x /proc -x /sys");
-	puts("");
-	puts("Insecure options:");
-/*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
 	puts("  -u            don't block unknown syscalls");
 	puts("  -p            don't block ptrace(2)");
-	puts("");
-	puts("Debug options:");
+/*	puts("  -f <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
+/*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
 	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)");
 	puts("  -s            check /proc/$pid/syscall agrees with the internal state");
 	puts("");
 	puts("Examples:");
-	puts("  proot -X /usr/local/slackware64-13.1/");
-	puts("  proot -x /dev -x /proc /usr/local/slackware64-13.1/ /usr/bin/elinks");
-	puts("  proot -Q qemu-sh4 -W /usr/local/stlinux-sh4-2.3 ./minigzip");
-	puts("  proot -q qemu-sh4,-g,1234 /usr/local/stlinux-sh4-2.3 /usr/bin/avmshell");
+	puts("  proot -M /media/slackware64-13.1/");
+	puts("  proot -Q qemu-arm /media/armedslack-12.2 /usr/bin/emacs");
 	puts("");
 	puts("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...");
-	puts("Copyright (C) 2010 STMicroelectronics, licensed under GPL v2 or later");
+	puts("Copyright (C) 2010 STMicroelectronics, licensed under GPL v2 or later.");
 	puts("");
 
 	exit(EXIT_FAILURE);
@@ -137,11 +128,11 @@ static pid_t parse_options(int argc, char *argv[])
 			opt_pwd = argv[i];
 			break;
 
-		case 'x':
+		case 'm':
 			i++;
 			if (i >= argc)
-				notice(ERROR, USER, "missing value for the option -x");
-			exclude_path(argv[i]);
+				notice(ERROR, USER, "missing value for the option -m");
+			mirror_path(argv[i]);
 			break;
 
 		case 'v':
@@ -190,14 +181,7 @@ static pid_t parse_options(int argc, char *argv[])
 			if (opt_pwd == NULL)
 				notice(WARNING, SYSTEM, "getenv(\"PWD\")");
 			else
-				exclude_path(opt_pwd);
-			break;
-
-		case 'X':
-			exclude_path("/dev");
-			exclude_path("/etc");
-			exclude_path("/proc");
-			exclude_path("/sys");
+				mirror_path(opt_pwd);
 			break;
 
 		case 'Q':
@@ -205,9 +189,15 @@ static pid_t parse_options(int argc, char *argv[])
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -Q");
 			opt_runner = argv[i];
-			exclude_path("/dev");
-			exclude_path("/proc");
-			exclude_path("/sys");
+			/* fall trhough. */
+		case 'M':
+			mirror_path("/dev");
+			mirror_path("/proc");
+			mirror_path("/sys");
+			mirror_path("/etc/passwd");
+			mirror_path("/etc/group");
+			mirror_path("/etc/localtime");
+			mirror_path("/etc/nsswitch.conf");
 			break;
 
 		case 'j':
@@ -264,7 +254,7 @@ static pid_t parse_options(int argc, char *argv[])
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace);
 	init_module_execve(opt_runner, opt_no_elf_interp);
 
-	return pid;
+	return pid; /* XXX: pid attachement not yet [officially] supported. */
 }
 
 static void launch_process()
@@ -475,7 +465,17 @@ int main(int argc, char *argv[])
 	if (length_argv0 < length_proot
 	    || strcmp(argv[0] + length_argv0 - length_proot, "proot") != 0) {
 		execv(argv[0], argv);
-		notice(ERROR, SYSTEM, "execv(\"%s\") [bad interpreter/runner ?]", argv[0]);
+		notice(WARNING, SYSTEM, "execv(\"%s\")", argv[0]);
+		notice(INFO, USER, "Possible causes:");
+		notice(INFO, USER, "  * \"%s\" was not found in the specified rootfs", argv[0]);
+		notice(INFO, USER, "      ($PATH not yet supported).");
+		notice(INFO, USER, "  * \"%s\" is a script but its interpreter (/bin/sh for", argv[0]);
+		notice(INFO, USER, "      instance) was not found in the specfied rootfs.");
+		notice(INFO, USER, "  * \"%s\" is an ELF but its interpreter (ld-linux.so", argv[0]);
+		notice(INFO, USER, "      typically) was not found in the specfied rootfs.");
+		notice(INFO, USER, "  * the <qemu> (if specified) does not work.");
+		notice(INFO, USER, "Try to run with -v to get a better diagnostic.");
+		exit(EXIT_FAILURE);
 	}
 
 	pid = parse_options(argc, argv);
