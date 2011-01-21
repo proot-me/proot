@@ -131,6 +131,9 @@ static pid_t parse_options(int argc, char *argv[])
 			opt_pwd = argv[i];
 			break;
 
+		case 'x':
+			notice(WARNING, USER, "option -x is deprecated, use -m instead");
+			/* fall through. */
 		case 'm':
 			i++;
 			if (i >= argc)
@@ -198,6 +201,10 @@ static pid_t parse_options(int argc, char *argv[])
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -R/-Q");
 			opt_runner = argv[i];
+			/* fall through. */
+		case 'X':
+			if (argv[i][1] == 'X')
+				notice(WARNING, USER, "option -X is deprecated, use -M instead");
 			/* fall through. */
 		case 'M':
 			mirror_path("/dev");
