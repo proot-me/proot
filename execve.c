@@ -475,8 +475,10 @@ static int expand_interp(struct child_info *child, char filename[PATH_MAX], char
 	if (status < 0 || !S_ISREG(statl.st_mode))
 		return -EPERM;
 
-	if (skip_interp_expansion)
+	if (skip_interp_expansion) {
+		strcpy(filename, path);
 		return 0;
+	}
 
 	/* Expand the interpreter. */
 	status = callback(child, path, filename, argv);
