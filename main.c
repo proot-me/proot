@@ -78,8 +78,8 @@ static void exit_usage(void)
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("");
 	puts("Alias options:");
-	puts("  -M            alias for: -m /dev -m /proc -m /sys -m /etc/passwd ");
-	puts("                    -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
+	puts("  -M            alias for: -m $HOME -m /dev -m /proc -m /sys -m /etc/passwd");
+	puts("                      -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
 /*	puts("  -R <runner>   XXX */
 	puts("  -Q <qemu>     alias for: -q <qemu> -M");
 	puts("  -W            alias for: -w $PWD -m $PWD");
@@ -207,6 +207,8 @@ static pid_t parse_options(int argc, char *argv[])
 				notice(WARNING, USER, "option -X is deprecated, use -M instead");
 			/* fall through. */
 		case 'M':
+			if (getenv("HOME") != NULL)
+				mirror_path(getenv("HOME"));
 			mirror_path("/dev");
 			mirror_path("/proc");
 			mirror_path("/sys");
