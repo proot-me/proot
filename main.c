@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot: a PTrace based chroot alike.
  *
- * Copyright (C) 2010 STMicroelectronics
+ * Copyright (C) 2010, 2011 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -62,7 +62,7 @@ static int opt_check_syscall = 0;
 static void exit_usage(void)
 {
 	puts("");
-	puts("PRoot-" xstr(VERSION) ": relocate programs to an alternate root file-system");
+	puts("PRoot-" xstr(VERSION) ": relocate programs to an alternate root file-system, à la chroot.");
 	puts("");
 	puts("Usages:");
 	puts("  proot [options] /path/to/alternate/rootfs");
@@ -100,7 +100,7 @@ static void exit_usage(void)
 	puts("  proot -Q qemu-arm /media/armedslack-12.2 /usr/bin/emacs");
 	puts("");
 	puts("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...");
-	puts("Copyright (C) 2010 STMicroelectronics, licensed under GPL v2 or later.");
+	puts("Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.");
 	puts("");
 
 	exit(EXIT_FAILURE);
