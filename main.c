@@ -86,18 +86,18 @@ static void exit_usage(void)
 	puts("");
 	puts("Misc. options:");
 	puts("  -v            increase the verbose level");
-	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>");
-	puts("  -U <X>        deletes the variable <X> from the environment");
+/*	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>"); */
+/*	puts("  -U <X>        deletes the variable <X> from the environment"); */
 	puts("  -u            don't block unknown syscalls");
 	puts("  -p            don't block ptrace(2)");
 /*	puts("  -f <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
 /*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
-	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)");
-	puts("  -s            check /proc/$pid/syscall agrees with the internal state");
+/*	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)"); */
+/*	puts("  -s            check /proc/$pid/syscall agrees with the internal state"); */
 	puts("");
 	puts("Examples:");
 	puts("  proot -M /media/slackware64-13.1/");
-	puts("  proot -Q qemu-arm /media/armedslack-12.2 /usr/bin/emacs");
+	puts("  proot -Q qemu-arm /media/armedslack-12.2/ /usr/bin/emacs");
 	puts("");
 	puts("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...");
 	puts("Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.");
