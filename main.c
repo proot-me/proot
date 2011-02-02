@@ -92,7 +92,7 @@ static void exit_usage(void)
 	puts("  -p            don't block ptrace(2)");
 /*	puts("  -f <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
 /*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
-/*	puts("  -d            check every /proc/$pid/fd/* point to a translated path (slow!)"); */
+/*	puts("  -d            check every /proc/$pid/fd/\* point to a translated path (slow!)"); */
 /*	puts("  -s            check /proc/$pid/syscall agrees with the internal state"); */
 	puts("");
 	puts("Examples:");
@@ -474,14 +474,12 @@ static int event_loop()
 
 int main(int argc, char *argv[])
 {
-	size_t length_argv0 = strlen(argv[0]);
-	size_t length_proot = strlen("proot");
 	pid_t pid;
 
 	/* Use myself as a launcher. We need a launcher to
 	 * ensure the first execve(2) is catched by PRoot. */
-	if (length_argv0 < length_proot
-	    || strcmp(argv[0] + length_argv0 - length_proot, "proot") != 0) {
+	if (   strlen(argv[0]) < strlen("/proot")
+	    || strcmp(argv[0] + strlen(argv[0]) - strlen("/proot"), "/proot") != 0) {
 		execv(argv[0], argv);
 		notice(WARNING, SYSTEM, "execv(\"%s\")", argv[0]);
 		notice(INFO, USER, "Possible causes:");
