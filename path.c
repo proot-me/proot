@@ -520,10 +520,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 
 	/* Don't use the result of the canonicalization if the
 	 * translation is delayed, use the origin input path instead. */
-	status = use_runner != 0 && child != NULL ? is_delayed(child, fake_path) : 0;
-	if (status < 0)
-		return status;
-	if (status != 0) {
+	if (use_runner != 0 && child != NULL && is_delayed(child, fake_path)) {
 		if (strlen(fake_path) >= PATH_MAX)
 			return -ENAMETOOLONG;
 		strcpy(result, fake_path);
