@@ -315,15 +315,25 @@ static void launch_process()
 				if (errno == 0)
 					errno = -status;
 				notice(WARNING, SYSTEM, "translate_path(\"%s\")", opt_pwd);
+				goto default_pwd;
 			}
 
 			status = chdir(pwd);
-			if (status < 0)
+			if (status < 0) {
 				notice(WARNING, SYSTEM, "chdir(\"%s\")", pwd);
+				goto default_pwd;
+			}
+
+			status = detranslate_path(pwd, 1);
+			if (status < 0) {
+				notice(WARNING, SYSTEM, "detranslate_path(\"%s\")", pwd);
+				goto default_pwd;
+			}
 		}
-		else
+		else {
+		default_pwd:
 			strcpy(pwd, "/");
-		detranslate_path(pwd, 1);
+		}
 
 		status = setenv("PWD", pwd, 1);
 		if (status < 0)
