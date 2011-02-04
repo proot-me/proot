@@ -438,49 +438,17 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	if (fake_path[0] == '/') {
 		strcpy(result, "/");
 	}
-	/* Is it relative to the current working directory? */
-	else if (dir_fd == AT_FDCWD) {
-		/* Format the path to the "virtual" link to child's cwd. */
-		status = sprintf(link, "/proc/%d/cwd", pid);
-		if (status < 0)
-			return -EPERM;
-		if (status >= sizeof(link))
-			return -EPERM;
-
-		/* Read the value of this "virtual" link. */
-		status = readlink(link, tmp, PATH_MAX);
-		if (status < 0)
-			return -EPERM;
-		if (status >= PATH_MAX)
-			return -ENAMETOOLONG;
-		tmp[status] = '\0';
-
-		if (is_mirrored(tmp)) {
-			strcpy(result, tmp);
-		}
-		else {
-			/* Ensure the current working directory is
-			   within the new root once the child process
-			   did a chdir(2). */
-			if (strncmp(tmp, root, root_length) != 0) {
-				notice(WARNING, INTERNAL, "child %d is out of my control (1)", pid);
-				return -EPERM;
-			}
-
-			strcpy(result, tmp + root_length);
-		}
-
-		/* Special case when child's cwd == root. */
-		if (result[0] == '\0')
-			strcpy(result, "/");
-	}
-	/* It's relative to a directory referred by a descriptors, see
-	 * openat(2) for details. */
+	/* It is relative to the current working directory or to a
+	 * directory referred by a descriptors, see openat(2) for
+	 * details. */
 	else {
 		struct stat statl;
 
 		/* Format the path to the "virtual" link. */
-		status = sprintf(link, "/proc/%d/fd/%d", pid, dir_fd);
+		if (dir_fd == AT_FDCWD)
+			status = sprintf(link, "/proc/%d/cwd", pid);
+		else
+			status = sprintf(link, "/proc/%d/fd/%d", pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
@@ -494,15 +462,12 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 			return -ENAMETOOLONG;
 		result[status] = '\0';
 
-		/* Ensure it points to a path (not a socket or
-		 * somethink like that). */
-		if (result[0] != '/')
-			return -ENOTDIR;
-
-		/* Ensure it points to a directory. */
-		status = stat(result, &statl);
-		if (!S_ISDIR(statl.st_mode))
-			return -ENOTDIR;
+		if (dir_fd != AT_FDCWD) {
+			/* Ensure it points to a directory. */
+			status = stat(result, &statl);
+			if (!S_ISDIR(statl.st_mode))
+				return -ENOTDIR;
+		}
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
