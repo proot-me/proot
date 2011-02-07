@@ -57,7 +57,7 @@ case __NR_readlinkat:
 	}
 
 	/* Avoid the detranslation of partial result. */
-	status = (int) peek_ureg(child, SYSARG_3);
+	status = (int) peek_ureg(child, child->sysnum == __NR_readlink ? SYSARG_3 : SYSARG_4);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
