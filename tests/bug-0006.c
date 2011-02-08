@@ -22,6 +22,7 @@ int main(void)
 			perror("readlink()");
 			exit(EXIT_FAILURE);
 		}
+		path[status] = '\0';
 		printf("child: %s =", path);
 		break;
 
@@ -30,7 +31,7 @@ int main(void)
 
 		status = syscall(SYS_getcwd, path, PATH_MAX);
 		if (status < 0) {
-			perror("readlink()");
+			perror("getcwd()");
 			exit(EXIT_FAILURE);
 		}
 		printf("= parent: %s\n", path);

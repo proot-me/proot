@@ -177,12 +177,15 @@ static int translate_sysarg(struct child_info *child, enum sysarg sysarg, int de
  * Detranslate the path pointed to by @addr in the @child's memory
  * space (@size bytes max). It returns the number of bytes used by the
  * new path pointed to by @addr, including the string terminator.
+ *
+ * Keep in sync' with sysnum_exit.c
  */
 #define GETCWD   1
 #define READLINK 2
 static int detranslate_addr(struct child_info *child, word_t addr, int size, int mode)
 {
 	char path[PATH_MAX];
+	int new_size;
 	int status;
 
 	assert(size >= 0);
@@ -201,24 +204,33 @@ static int detranslate_addr(struct child_info *child, word_t addr, int size, int
 	status = detranslate_path(path, mode == GETCWD);
 	if (status < 0)
 		return status;
+	new_size = status;
 
-	size = strlen(path);
-
-	/* Only getcwd(2) puts the terminating \0. */
-	if (mode == GETCWD)
-		size++;
-
-	/* The original path doesn't need detranslation. */
-	if (size == 0)
+	/* The original path doesn't need detranslation, i.e it is a
+	 * symetric mirror. */
+	if (new_size == 0) {
+		new_size = size;
 		goto skip_overwrite;
+	}
+
+	if (mode == GETCWD) {
+		if (new_size > size)
+			return -ERANGE;
+	}
+	else { /* READLINK */
+		/* Don't include the terminating '\0'. */
+		new_size--;
+		if (new_size > size)
+			new_size = size;
+	}
 
 	/* Overwrite the path. */
-	status = copy_to_child(child, addr, path, size);
+	status = copy_to_child(child, addr, path, new_size);
 	if (status < 0)
 		return status;
 
 skip_overwrite:
-	return size;
+	return new_size;
 }
 
 /**
