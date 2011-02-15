@@ -23,7 +23,7 @@
  * Inspired by: strace.
  */
 
-#include <unistd.h>     /* fork(2), chdir(2), exec*(3), */
+#include <unistd.h>     /* fork(2), chdir(2), exec*(3), readlink(2), */
 #include <stdlib.h>     /* exit(3), EXIT_*, */
 #include <stdio.h>      /* puts(3), */
 #include <sys/wait.h>   /* wait(2), */
@@ -31,6 +31,7 @@
 #include <limits.h>     /* PATH_MAX, */
 #include <string.h>     /* strcmp(3), */
 #include <errno.h>      /* errno(3), */
+#include <libgen.h>     /* basename(3), */
 
 #include "path.h"
 #include "child_info.h"
@@ -485,22 +486,38 @@ static int event_loop()
 int main(int argc, char *argv[])
 {
 	pid_t pid;
+	ssize_t status;
+	char argv0[PATH_MAX];
+	char self[PATH_MAX];
+	char *basename_argv0;
+	char *basename_self;
+
+	strcpy(argv0, argv[0]);
+	basename_argv0 = basename(argv0);
+
+	status = readlink("/proc/self/exe", self, sizeof(self));
+	if (status < 0) {
+		notice(WARNING, SYSTEM, "readlink(\"/proc/self/exe\")");
+		/* Fallback to "proot" if "/proc" is not mirrored. */
+		strcpy(self, "proot");
+		status = sizeof("proot");
+	}
+	if (status == sizeof(self))
+		notice(ERROR, INTERNAL, "readlink(\"/proc/self/exe\") too long");
+	self[status] = '\0';
+	basename_self = basename(self);
 
 	/* Use myself as a launcher. We need a launcher to
 	 * ensure the first execve(2) is catched by PRoot. */
-	if (   strlen(argv[0]) < strlen("/proot")
-	    || strcmp(argv[0] + strlen(argv[0]) - strlen("/proot"), "/proot") != 0) {
+	if (strcmp(basename_argv0, basename_self) != 0) {
 		execv(argv[0], argv);
 		notice(WARNING, SYSTEM, "execv(\"%s\")", argv[0]);
-		notice(INFO, USER, "Possible causes:");
-		notice(INFO, USER, "  * \"%s\" was not found in the specified rootfs", argv[0]);
-		notice(INFO, USER, "      ($PATH not yet supported).");
-		notice(INFO, USER, "  * \"%s\" is a script but its interpreter (/bin/sh for", argv[0]);
-		notice(INFO, USER, "      instance) was not found in the specfied rootfs.");
-		notice(INFO, USER, "  * \"%s\" is an ELF but its interpreter (ld-linux.so", argv[0]);
-		notice(INFO, USER, "      typically) was not found in the specfied rootfs.");
-		notice(INFO, USER, "  * the <qemu> (if specified) does not work.");
-		notice(INFO, USER, "Try to run with -v to get a better diagnostic.");
+		notice(INFO, USER, "Possible causes:\n"
+		       "  * <program> was not found ($PATH not yet supported);\n"
+		       "  * <program> is a script but its interpreter (/bin/sh for instance) was not found;\n"
+		       "  * <program> is an ELF but its interpreter (/lib/ld-linux.so typically) was not found; or\n"
+		       "  * <qemu> (if specified) does not work correctly.\n"
+		       "Try to run with -v to get a better diagnostic.");
 		exit(EXIT_FAILURE);
 	}
 
