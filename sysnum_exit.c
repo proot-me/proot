@@ -22,6 +22,7 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
+/* Keep in sync' with detranslate_addr(). */
 switch (child->sysnum) {
 case __NR_getcwd:
 	result = peek_ureg(child, SYSARG_RESULT);
@@ -57,7 +58,7 @@ case __NR_readlinkat:
 	}
 
 	/* Avoid the detranslation of partial result. */
-	status = (int) peek_ureg(child, SYSARG_3);
+	status = (int) peek_ureg(child, child->sysnum == __NR_readlink ? SYSARG_3 : SYSARG_4);
 	if (errno != 0) {
 		status = -errno;
 		goto end;

@@ -15,6 +15,7 @@ int main(void)
 		perror("readlink()");
 		exit(EXIT_FAILURE);
 	}
+	path[status] = '\0';
 
 	if (status != strlen(path)) {
 		fprintf(stderr, "readlink() returned the wrong size %d != %d.\n", status, strlen(path));

@@ -70,8 +70,8 @@ static void exit_usage(void)
 	puts("  proot [options] /path/to/alternate/rootfs program [options]");
 	puts("");
 	puts("Main options:");
-	puts("  -m <path>     mirror <path> from the real rootfs into the alternate rootfs");
-/*	puts("  -b <p1> <p2>  bind <p1> from the real rootfs to <p2> in the alternate rootfs"); */
+	puts("  -m <p1>[:p2]  mirror path <p1> from the real rootfs into the alternate rootfs");
+	puts("                at location <p2> if specified, otherwise at the same location.");
 /*	puts("  -r <runner>   XXX */
 	puts("  -q <qemu>     use <qemu> to handle each process; you can pass options by");
 	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
@@ -139,7 +139,12 @@ static pid_t parse_options(int argc, char *argv[])
 			i++;
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -m");
-			mirror_path(argv[i]);
+			ptr = strchr(argv[i], ':');
+			if (ptr != NULL) {
+				*ptr = '\0';
+				ptr++;
+			}
+			mirror_path(argv[i], ptr);
 			break;
 
 		case 'v':
@@ -191,7 +196,7 @@ static pid_t parse_options(int argc, char *argv[])
 			if (opt_pwd == NULL)
 				notice(WARNING, SYSTEM, "getenv(\"PWD\")");
 			else
-				mirror_path(opt_pwd);
+				mirror_path(opt_pwd, NULL);
 			break;
 
 		case 'Q':
@@ -209,14 +214,14 @@ static pid_t parse_options(int argc, char *argv[])
 			/* fall through. */
 		case 'M':
 			if (getenv("HOME") != NULL)
-				mirror_path(getenv("HOME"));
-			mirror_path("/dev");
-			mirror_path("/proc");
-			mirror_path("/sys");
-			mirror_path("/etc/passwd");
-			mirror_path("/etc/group");
-			mirror_path("/etc/localtime");
-			mirror_path("/etc/nsswitch.conf");
+				mirror_path(getenv("HOME"), NULL);
+			mirror_path("/dev", NULL);
+			mirror_path("/proc", NULL);
+			mirror_path("/sys", NULL);
+			mirror_path("/etc/passwd", NULL);
+			mirror_path("/etc/group", NULL);
+			mirror_path("/etc/localtime", NULL);
+			mirror_path("/etc/nsswitch.conf", NULL);
 			break;
 
 		case 'j':

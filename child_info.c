@@ -31,6 +31,7 @@
 #include <limits.h>     /* ULONG_MAX, */
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
+#include <string.h>     /* bzero(3), */
 
 #include "child_info.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
@@ -46,19 +47,15 @@ static size_t nb_children = 0;
  */
 static void reset_child(struct child_info *child, int free_trigger)
 {
-	child->pid    = 0;
-	child->sysnum = -1;
-	child->status = 0;
-	child->output = 0;
-	child->uregs  = NULL;
-
 	if (free_trigger != 0 && child->trigger != NULL)
 		free(child->trigger);
-	child->trigger = NULL;
 
 	if (child->exe != NULL)
 		free(child->exe);
-	child->exe = NULL;
+
+	bzero(child, sizeof(struct child_info));
+
+	child->sysnum = -1;
 }
 
 /**
