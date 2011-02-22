@@ -33,9 +33,6 @@
 #include <sys/user.h>    /* struct user*, */
 #include <stdlib.h>      /* exit(3), */
 #include <string.h>      /* strlen(3), */
-#ifndef OLD_BROKEN_DISTRO
-#include <sys/inotify.h> /* IN_DONT_FOLLOW, */
-#endif
 
 #include "syscall.h"
 #include "arch.h"

@@ -26,7 +26,6 @@
 #define COMPAT_H
 
 /* Local definitions for compatibility with old and/or broken distros... */
-#ifdef OLD_BROKEN_DISTRO
 #    ifndef AT_FDCWD
 #        define AT_FDCWD		-100
 #    endif
@@ -63,6 +62,5 @@
 #    ifndef PTRACE_EVENT_CLONE
 #        define PTRACE_EVENT_CLONE	3
 #    endif
-#endif /* OLD_BROKEN_DISTRO */
 
 #endif /* COMPAT_H */

@@ -37,6 +37,8 @@
 #include "notice.h"
 #include "elf.h"
 
+#include "compat.h"
+
 /**
  * Expand the shebang of @path in *@argv[]. This function returns
  * -errno if an error occured, 1 if a shebang was found and expanded,
