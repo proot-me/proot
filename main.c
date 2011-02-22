@@ -80,7 +80,8 @@ static void exit_usage(void)
 	puts("");
 	puts("Alias options:");
 	puts("  -M            alias for: -m $HOME -m /dev -m /proc -m /sys -m /etc/passwd");
-	puts("                      -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
+	puts("                           -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
+	puts("                           -m /etc/resolv.conf");
 /*	puts("  -R <runner>   XXX */
 	puts("  -Q <qemu>     alias for: -q <qemu> -M");
 	puts("  -W            alias for: -w $PWD -m $PWD");
@@ -213,15 +214,21 @@ static pid_t parse_options(int argc, char *argv[])
 				notice(WARNING, USER, "option -X is deprecated, use -M instead");
 			/* fall through. */
 		case 'M':
-			if (getenv("HOME") != NULL)
-				mirror_path(getenv("HOME"), NULL);
-			mirror_path("/dev", NULL);
-			mirror_path("/proc", NULL);
-			mirror_path("/sys", NULL);
+			/* Usefull for the glibc, generally only one access. */
 			mirror_path("/etc/passwd", NULL);
 			mirror_path("/etc/group", NULL);
-			mirror_path("/etc/localtime", NULL);
 			mirror_path("/etc/nsswitch.conf", NULL);
+			mirror_path("/etc/resolv.conf", NULL);
+
+			/* Path with dynamic content. */
+			mirror_path("/dev", NULL);
+			mirror_path("/sys", NULL);
+			mirror_path("/proc", NULL);
+
+			/* Commonly accssed paths. */
+			mirror_path("/etc/localtime", NULL);
+			if (getenv("HOME") != NULL)
+				mirror_path(getenv("HOME"), NULL);
 			break;
 
 		case 'j':
