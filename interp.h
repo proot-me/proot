@@ -26,10 +26,21 @@
 #define INTERP_H
 
 #include "child_info.h"
+#include "execve.h" /* ARG_MAX, */
 
-typedef int (* expand_interp_t)(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[]);
+typedef int (* extract_interp_t)(struct child_info *child,
+				 const char *t_path,
+				 char u_interp[PATH_MAX],
+				 char argument[ARG_MAX]);
 
-extern int expand_script_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[]);
-extern int expand_elf_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[]);
+extern int extract_script_interp(struct child_info *child,
+				 const char *t_path,
+				 char u_interp[PATH_MAX],
+				 char argument[ARG_MAX]);
+
+extern int extract_elf_interp(struct child_info *child,
+				 const char *t_path,
+				 char u_interp[PATH_MAX],
+				 char argument[ARG_MAX]);
 
 #endif /* INTERP_H */

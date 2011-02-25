@@ -158,7 +158,7 @@ void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
  *
  *    | new_argv[0] | ... | new_argv[nb - 1] | argv[1] | ... | argv[n] |
  */
-int substitute_argv0(char **argv[], int nb_new_args, ...)
+static int substitute_argv0(char **argv[], int nb_new_args, ...)
 {
 	va_list args;
 	void *tmp;
@@ -446,52 +446,115 @@ end:
 	return previous_sp - child_argv;
 }
 
-static int expand_interp(struct child_info *child, char filename[PATH_MAX], char **argv[], expand_interp_t callback, int skip_interp_expansion)
+/**
+ * Translate @u_path into @t_path and check if this latter
+ * exists, is executable and is a regular file.  Also, it
+ * copies in @u_interp the ELF/script interpreter (and its
+ * @argument) of @t_path.  This nested function returns -errno
+ * if an error occured, 1 if there's an interpreter otherwise
+ * 0.
+ */
+int translate_n_check(struct child_info *child, char t_path[PATH_MAX], const char *u_path)
 {
-	char path[PATH_MAX];
 	struct stat statl;
 	int status;
 
-	/*
-	 * Don't try to launch the program if it:
-	 *     - doesn't exist; or
-	 *     - isn't executable; or
-	 *     - isn't a regular file.
-	 */
-
-	status = translate_path(child, path, AT_FDCWD, filename, REGULAR);
+	status = translate_path(child, t_path, AT_FDCWD, u_path, REGULAR);
 	if (status < 0)
-		return -1;
+		return status;
 
-	status = access(path, F_OK);
+	status = access(t_path, F_OK);
 	if (status < 0)
 		return -ENOENT;
 
-	status = access(path, X_OK);
+	status = access(t_path, X_OK);
 	if (status < 0)
 		return -EACCES;
 
-	status = lstat(path, &statl);
+	status = lstat(t_path, &statl);
 	if (status < 0 || !S_ISREG(statl.st_mode))
 		return -EPERM;
 
-	if (skip_interp_expansion) {
-		strcpy(filename, path);
+	return 0;
+}
+
+/**
+ * XXX
+ */
+static int expand_interp(struct child_info *child,
+			 const char *u_path,
+			 char t_interp[PATH_MAX],
+			 char u_interp[PATH_MAX],
+			 char **argv[],
+			 extract_interp_t callback)
+{
+	char argument[ARG_MAX];
+
+	char dummy_path[PATH_MAX];
+	char dummy_arg[ARG_MAX];
+
+	int status;
+
+	status = translate_n_check(child, t_interp, u_path);
+	if (status < 0)
+		return status;
+
+	/* Don't XXX t_interp is XXX. */
+	if (callback == extract_elf_interp && skip_elf_interp) {
+		strcpy(u_interp, u_path);
 		return 0;
 	}
 
-	/* Expand the interpreter. */
-	status = callback(child, path, filename, argv);
-	if (status <= 0)
+	/* Extract the interpreter of t_interp in u_interp + argument. */
+	status = callback(child, t_interp, u_interp, argument);
+	if (status < 0)
+		return status;
+
+	/* No interpreter XXX t_interp is XXX. */
+	if (status == 0) {
+		strcpy(u_interp, u_path);
+		return 0;
+	}
+
+	status = translate_n_check(child, t_interp, u_interp);
+	if (status < 0)
 		return status;
 
 	/* Sanity check: an interpreter doesn't request an[other]
 	 * interpreter on Linux.  In the case of ELF this check
-	 * ensures the interpreter is in the ELF format. */
-	status = callback(child, filename, NULL, argv);
+	 * ensures the interpreter is in the ELF format.  Note
+	 * 'u_interp' and 'argument' are actually not used. */
+	status = callback(child, t_interp, dummy_path, dummy_arg);
+	if (status < 0)
+		return status;
+	if (status != 0)
+		return -EPERM;
+
+	/*
+	 * Substitute argv[0] with the ELF/script interpreter:
+	 *
+	 *     execve("/bin/sh", { "/bin/sh", "/test.sh", NULL }, { NULL });
+	 *
+	 * becomes:
+	 *
+	 *     execve("/lib/ld.so", { "/lib/ld.so", "/bin/sh", "/test.sh", NULL }, { NULL });
+	 *
+	 * Note: actually the first parameter of execve() is changed
+	 * in the caller because it depends on the use of a runner.
+	 */
+
+	VERBOSE(3, "expand shebang: %s -> %s %s %s",
+		(*argv)[0], u_path, argument, u_path);
+
+	if (argument[0] != '\0')
+		status = substitute_argv0(argv, 3, u_interp, argument, u_path);
+	else
+		status = substitute_argv0(argv, 2, u_interp, u_path);
 	if (status < 0)
 		return status;
 
+	/* Remember at this point t_interp is the translation of
+	 * u_interp. */
 	return 1;
 }
 
@@ -531,7 +594,10 @@ static int expand_interp(struct child_info *child, char filename[PATH_MAX], char
  */
 int translate_execve(struct child_info *child)
 {
-	char filename[PATH_MAX];
+	char u_path[PATH_MAX];
+	char t_interp[PATH_MAX];
+	char u_interp[PATH_MAX];
+
 	char **argv = NULL;
 	char *argv0 = NULL;
 
@@ -540,7 +606,7 @@ int translate_execve(struct child_info *child)
 	int status;
 	int i;
 
-	status = get_sysarg_path(child, filename, SYSARG_1);
+	status = get_sysarg_path(child, u_path, SYSARG_1);
 	if (status < 0)
 		return status;
 
@@ -552,7 +618,7 @@ int translate_execve(struct child_info *child)
 	if (runner_is_qemu && runner[0] != '\0')
 		argv0 = strdup(argv[0]);
 
-	status = expand_interp(child, filename, &argv, expand_script_interp, 0);
+	status = expand_interp(child, u_path, t_interp, u_interp, &argv, extract_script_interp);
 	if (status < 0)
 		goto end;
 	nb_interp += status;
@@ -563,9 +629,9 @@ int translate_execve(struct child_info *child)
 		nb_interp++;
 
 		if (argv0 != NULL)
-			status = substitute_argv0(&argv, 4, runner, "-0", argv0, filename);
+			status = substitute_argv0(&argv, 4, runner, "-0", argv0, u_interp);
 		else
-			status = substitute_argv0(&argv, 2, runner, filename);
+			status = substitute_argv0(&argv, 2, runner, u_interp);
 		if (status < 0)
 			goto end;
 
@@ -577,19 +643,25 @@ int translate_execve(struct child_info *child)
 		 * runner until it accesses the program to execute,
 		 * that way the runner can first access its own files
 		 * outside of the rootfs. */
-		child->trigger = strdup(filename);
+		child->trigger = strdup(u_interp);
 		if (child->trigger == NULL)
 			return -ENOMEM;
 
 		/* Launch the runner actually. */
-		strcpy(filename, runner);
+		strcpy(t_interp, runner);
 	}
 	else {
-		status = expand_interp(child, filename, &argv, expand_elf_interp, skip_elf_interp);
+		status = expand_interp(child, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
 		if (status < 0)
 			goto end;
 		nb_interp += status;
 	}
+
+	VERBOSE(4, "execve: %s", t_interp);
+
+	status = set_sysarg_path(child, t_interp, SYSARG_1);
+	if (status < 0)
+		goto end;
 
 	/* Rebuild argv[] only if something has changed. */
 	if (argv != NULL && nb_interp != 0) {
@@ -599,12 +671,6 @@ int translate_execve(struct child_info *child)
 			goto end;
 		}
 	}
-
-	VERBOSE(4, "execve: %s", filename);
-
-	status = set_sysarg_path(child, filename, SYSARG_1);
-	if (status < 0)
-		goto end;
 
 end:
 	if (argv != NULL) {

@@ -38,10 +38,9 @@
 #include "elf.h"
 
 /**
- * Expand the shebang of @path in *@argv[]. This function returns
- * -errno if an error occured, 1 if a shebang was found and expanded,
- * otherwise 0. @filename is updated with the name of the interpreter,
- * if any.
+ * Extract the shebang of @t_path in @u_interp and @arg_max. This
+ * function returns -errno if an error occured, 1 if a shebang was
+ * found and extracted, otherwise 0.
  *
  * Extract from "man 2 execve":
  *
@@ -49,33 +48,36 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-int expand_script_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[])
+int extract_script_interp(struct child_info *child,
+			  const char *t_path,
+			  char u_interp[PATH_MAX],
+			  char argument[ARG_MAX])
 {
-	char interpreter[PATH_MAX];
-	char argument[ARG_MAX];
 	char tmp;
 
 	int status;
 	int fd;
 	int i;
 
+	argument[0] = '\0';
+
 	/* Inspect the executable.  */
-	fd = open(path, O_RDONLY);
+	fd = open(t_path, O_RDONLY);
 	if (fd < 0)
 		return -errno;
 
-	status = read(fd, interpreter, 2 * sizeof(char));
+	status = read(fd, u_interp, 2 * sizeof(char));
 	if (status < 0) {
 		status = -errno;
 		goto end;
 	}
-	if (status < 2 * sizeof(char)) {
+	if (status < 2 * sizeof(char)) { /* EOF */
 		status = 0;
 		goto end;
 	}
 
 	/* Check if it really is a script text. */
-	if (interpreter[0] != '#' || interpreter[1] != '!') {
+	if (u_interp[0] != '#' || u_interp[1] != '!') {
 		status = 0;
 		goto end;
 	}
@@ -87,7 +89,7 @@ int expand_script_interp(struct child_info *child, const char *path, char filena
 			status = -errno;
 			goto end;
 		}
-		if (status < sizeof(char)) {
+		if (status < sizeof(char)) { /* EOF */
 			status = 0;
 			goto end;
 		}
@@ -100,23 +102,24 @@ int expand_script_interp(struct child_info *child, const char *path, char filena
 		case '\t':
 			/* Remove spaces in between the interpreter
 			 * and the hypothetical argument. */
-			interpreter[i] = '\0';
+			u_interp[i] = '\0';
 			break;
 
 		case '\n':
 		case '\r':
 			/* There is no argument. */
-			interpreter[i] = '\0';
+			u_interp[i] = '\0';
+			argument[0] = '\0';
 			status = 1;
 			goto end;
 
 		default:
 			/* There is an argument if the previous
-			 * character in interpreter[] is '\0'. */
-			if (i > 1 && interpreter[i - 1] == '\0')
+			 * character in u_interp[] is '\0'. */
+			if (i > 1 && u_interp[i - 1] == '\0')
 				goto argument;
 			else
-				interpreter[i] = tmp;
+				u_interp[i] = tmp;
 			break;
 		}
 
@@ -125,8 +128,10 @@ int expand_script_interp(struct child_info *child, const char *path, char filena
 			status = -errno;
 			goto end;
 		}
-		if (status < sizeof(char)) {
-			status = 0;
+		if (status < sizeof(char)) { /* EOF */
+			u_interp[i] = '\0';
+			argument[0] = '\0';
+			status = 1;
 			goto end;
 		}
 	}
@@ -147,7 +152,7 @@ argument:
 			for (i--; i > 0 && (argument[i] == ' ' || argument[i] == '\t'); i--)
 				argument[i] = '\0';
 
-			status = 2;
+			status = 1;
 			goto end;
 
 		default:
@@ -156,64 +161,39 @@ argument:
 		}
 
 		status = read(fd, &tmp, sizeof(char));
-		if (status != sizeof(char)) {
-			status = 0;
+		if (status < 0) {
+			status = -errno;
+			goto end;
+		}
+		if (status < sizeof(char)) { /* EOF */
+			argument[0] = '\0';
+			status = 1;
 			goto end;
 		}
 	}
 
 	/* The argument is too long, just ignore it. */
 	argument[0] = '\0';
-	status = 1;
-
 end:
 	close(fd);
 
-	/* Did an error occur? */
+	/* Did an error occur or isn't a script? */
 	if (status <= 0)
 		return status;
 
-	/* Special invocation to check if a script interpreter use
-	 * a[nother] script interpreter, this is a sanity check made
-	 * by execve.c:expand_interp(). */
-	if (filename == NULL)
-		return -EPERM;
-
-	VERBOSE(3, "expand shebang: %s -> %s %s %s",
-		(*argv)[0], interpreter, argument, filename);
-
-	switch (status) {
-	case 1:
-		status = substitute_argv0(argv, 2, interpreter, filename);
-		break;
-
-	case 2:
-		status = substitute_argv0(argv, 3, interpreter, argument, filename);
-		break;
-
-	default:
-		assert(0);
-		break;
-	}
-	if (status < 0)
-		return status;
-
-	strcpy(filename, interpreter);
 	return 1;
 }
 
 /**
- * Expand the ELF interpreter of @path in *@argv[]. This function
+ * Extract the ELF interpreter of @path in @u_interp. This function
  * returns -errno if an error occured, 1 if a ELF interpreter was
- * found and expanded, otherwise 0.  @filename is updated with the
- * name of the interpreter, if any.
+ * found and extracted, otherwise 0.
  */
-int expand_elf_interp(struct child_info *child, const char *path, char filename[PATH_MAX], char **argv[])
+int extract_elf_interp(struct child_info *child,
+		       const char *t_path,
+		       char u_interp[PATH_MAX],
+		       char argument[ARG_MAX])
 {
-	char interpreter[PATH_MAX];
-	char interp[PATH_MAX] = { '\0' };
-
-
 	union elf_header elf_header;
 	union program_header program_header;
 
@@ -228,8 +208,11 @@ int expand_elf_interp(struct child_info *child, const char *path, char filename[
 	uint64_t segment_offset;
 	uint64_t segment_size;
 
+	u_interp[0] = '\0';
+	argument[0] = '\0';
+
 	/* Read the ELF header. */
-	fd = open(path, O_RDONLY);
+	fd = open(t_path, O_RDONLY);
 	if (fd < 0)
 		return -errno;
 
@@ -266,13 +249,13 @@ int expand_elf_interp(struct child_info *child, const char *path, char filename[
 	 */
 
 	if (elf_phnum >= 0xffff) {
-		notice(WARNING, INTERNAL, "%s: big PH tables are not yet supported.", path);
+		notice(WARNING, INTERNAL, "%s: big PH tables are not yet supported.", t_path);
 		status = -EACCES;
 		goto end;
 	}
 
 	if (!KNOWN_PHENTSIZE(elf_header, elf_phentsize)) {
-		notice(WARNING, INTERNAL, "%s: unsupported size of program header.", path);
+		notice(WARNING, INTERNAL, "%s: unsupported size of program header.", t_path);
 		status = -EACCES;
 		goto end;
 	}
@@ -304,7 +287,7 @@ int expand_elf_interp(struct child_info *child, const char *path, char filename[
 		segment_offset = PROGRAM_FIELD(elf_header, program_header, offset);
 		segment_size   = PROGRAM_FIELD(elf_header, program_header, filesz);
 
-		if (segment_size >= sizeof(interp) - 1) {
+		if (segment_size >= PATH_MAX) {
 			status = -EACCES;
 			goto end;
 		}
@@ -315,53 +298,18 @@ int expand_elf_interp(struct child_info *child, const char *path, char filename[
 			goto end;
 		}
 
-		status = read(fd, interp, segment_size);
+		status = read(fd, u_interp, segment_size);
 		if (status < 0) {
 			status = -EACCES;
 			goto end;
 		}
-		interp[segment_size] = '\0';
+		u_interp[segment_size] = '\0';
 	}
 
-	if (interp[0] == '\0') {
+	/* No INTERP entry was found. */
+	if (u_interp[0] == '\0')
 		status = 0;
-		goto end;
-	}
 
-	/* Special invocation to check if an ELF interpreter use
-	 * an[other] ELF interpreter, this is a sanity check made by
-	 * execve.c:expand_interp(). */
-	if (filename == NULL)
-		return -EPERM;
-
-	/*
-	 * Prepend the ELF interpreter just like we do for script
-	 * interpreters:
-	 *
-	 *     execve("/bin/ls", argv, = [ "-l" , ... ], envp);
-	 *
-	 * becomes:
-	 *
-	 *     execve("/lib/ld-linux.so", argv, = [ "/bin/ls", "-l" , ... ], envp);
-	 */
-
-	status = translate_path(child, interpreter, AT_FDCWD, interp, REGULAR);
-	if (status < 0)
-		goto end;
-
-	VERBOSE(3, "expand ELF .interp: %s -> %s %s",
-		(*argv)[0], interpreter, filename);
-
-	status = substitute_argv0(argv, 2, interpreter, filename);
-	if (status < 0)
-		goto end;
-
-	/* Remember the actual executable since /proc/self/exe points
-	 * to the ELF interpreter instead. */
-	child->exe = strdup(path);
-
-	strcpy(filename, interpreter);
-	status = 0;
 end:
 	close(fd);
 
@@ -370,7 +318,7 @@ end:
 		return status;
 
 	/* Is there an INTERP entry? */
-	if (interp[0] == '\0')
+	if (u_interp[0] == '\0')
 		return 0;
 	else
 		return 1;
