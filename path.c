@@ -260,7 +260,9 @@ static int substitute_mirror(int which, char path[PATH_MAX])
 /**
  * Copy in @component the first path component pointed to by @cursor,
  * this later is updated to point to the next component for a further
- * call. Also, this function set @is_final to:
+ * call. This function returns:
+ *
+ *     - -errno if an error occured.
  *
  *     - FINAL_FORCE_DIR if it the last component of the path but we
  *       really expect a directory.
@@ -268,11 +270,8 @@ static int substitute_mirror(int which, char path[PATH_MAX])
  *     - FINAL_NORMAL if it the last component of the path.
  *
  *     - 0 otherwise.
- *
- * This function returns -errno if an error
- * occured, otherwise it returns 0.
  */
-static inline int next_component(char component[NAME_MAX], const char **cursor, int *is_final)
+static inline int next_component(char component[NAME_MAX], const char **cursor)
 {
 	const char *start;
 	ptrdiff_t length;
@@ -280,7 +279,6 @@ static inline int next_component(char component[NAME_MAX], const char **cursor, 
 
 	/* Sanity checks. */
 	assert(component != NULL);
-	assert(is_final  != NULL);
 	assert(cursor    != NULL);
 
 	/* Skip leading path separators. */
@@ -308,9 +306,9 @@ static inline int next_component(char component[NAME_MAX], const char **cursor, 
 		(*cursor)++;
 
 	if (**cursor == '\0')
-		*is_final = (want_dir
-			     ? FINAL_FORCE_DIR
-			     : FINAL_NORMAL);
+		return (want_dir
+			? FINAL_FORCE_DIR
+			: FINAL_NORMAL);
 
 	return 0;
 }
@@ -441,9 +439,10 @@ static int canonicalize(pid_t pid,
 		char real_entry[PATH_MAX];
 		struct stat statl;
 
-		status = next_component(component, &cursor, &is_final);
+		status = next_component(component, &cursor);
 		if (status < 0)
 			return status;
+		is_final = status;
 
 		if (strcmp(component, ".") == 0)
 			continue;
