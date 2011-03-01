@@ -65,72 +65,6 @@ struct mirror {
 
 static struct mirror *mirror_list = NULL;
 
-static int canonicalize(pid_t, const char *, int, char[PATH_MAX], unsigned int);
-
-/**
- * Initialize internal data of the path translator.
- */
-void init_module_path(const char *new_root, int opt_runner)
-{
-	struct mirror *mirror;
-
-	if (realpath(new_root, root) == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
-
-	if (strcmp(root, "/") == 0)
-		root_length = 0;
-	else
-		root_length = strlen(root);
-	use_runner = opt_runner;
-	initialized = 1;
-
-	/* Now the module is initialized so we can call
-	 * canonicalize() safely. */
-	for (mirror = mirror_list; mirror != NULL; mirror = mirror->next) {
-		char tmp[PATH_MAX];
-		int status;
-
-		assert(!mirror->sanitized);
-
-		strcpy(tmp, mirror->location.path);
-		mirror->location.path[0] = '\0';
-
-		/* Sanitize the location of the mirror within the
-		   alternate rootfs since it is assumed by
-		   substitute_mirror().  Note the real path is already
-		   sanitized in mirror_path().  */
-		status = canonicalize(0, tmp, 1, mirror->location.path, 0);
-		if (status < 0) {
-			notice(WARNING, INTERNAL, "sanitizing the mirror location \"%s\": %s",
-			       tmp, strerror(-status));
-			goto error;
-		}
-
-		if (strcmp(mirror->location.path, "/") == 0) {
-			notice(WARNING, USER, "can't create a mirror in \"/\"");
-			goto error;
-		}
-
-		mirror->need_substitution = strcmp(mirror->real.path, mirror->location.path);
-		mirror->location.length = strlen(mirror->location.path);
-
-		/* Remove the trailing path as expected by substitute_mirror(). */
-		if (mirror->location.path[mirror->location.length - 1] == '/') {
-			mirror->location.path[mirror->location.length - 1] = '\0';
-			mirror->location.length--;
-		}
-
-		mirror->sanitized = 1;
-
-		VERBOSE(1, "mirroring \"%s\" in \"%s\"", mirror->real.path, mirror->location.path);
-		continue;
-
-	error:
-		/* XXX TODO: remove this element from the list instead. */
-		mirror->sanitized = 0;
-	}
-}
-
 /**
  * Save @path in the list of paths that are "mirrored" for the
  * translation mechanism.
@@ -531,6 +465,132 @@ static int canonicalize(pid_t pid,
 	}
 
 	return 0;
+}
+
+/**
+ * Create a "dummy" path up to the canonicalized mirror location
+ * @c_path, it cheats programs that walk up to it.
+ */
+static void create_dummy(char c_path[PATH_MAX])
+{
+	char t_current_path[PATH_MAX];
+	char t_path[PATH_MAX];
+	struct stat statl;
+	int status;
+	int is_final;
+	const char *cursor;
+
+	status = join_paths(2, t_path, root, c_path);
+	if (status < 0)
+		goto error;
+
+	status = lstat(t_path, &statl);
+	if (status == 0)
+		return;
+
+	if (errno != ENOENT)
+		goto error;
+
+	/* Skip the "root" part since we know it exists. */
+	strcpy(t_current_path, root);
+	cursor = t_path + root_length;
+
+	is_final = 0;
+	while (!is_final) {
+		char component[NAME_MAX];
+		char tmp[PATH_MAX];
+
+		status = next_component(component, &cursor);
+		if (status < 0)
+			goto error;
+		is_final = status;
+
+		strcpy(tmp, t_current_path);
+		status = join_paths(2, t_current_path, tmp, component);
+		if (status < 0)
+			goto error;
+
+		/* Note that even the final component is a directory,
+		 * actually its type doesn't matter since only the
+		 * entry in the parent directory is important to cheat
+		 * "walkers". */
+		status = mkdir(t_current_path, 0777);
+		if (status < 0 && errno != EEXIST)
+			goto error;
+	}
+
+	notice(INFO, USER, "create the mirror location \"%s\"", c_path);
+	return;
+
+error:
+	notice(WARNING, USER, "can't create the mirror location \"%s\":"
+	       "expect some troubles with programs that walk up to it");
+}
+
+/**
+ * Initialize internal data of the path translator.
+ */
+void init_module_path(const char *new_root, int opt_runner)
+{
+	struct mirror *mirror;
+
+	if (realpath(new_root, root) == NULL)
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
+
+	if (strcmp(root, "/") == 0)
+		root_length = 0;
+	else
+		root_length = strlen(root);
+	use_runner = opt_runner;
+	initialized = 1;
+
+	/* Now the module is initialized so we can call
+	 * canonicalize() safely. */
+	for (mirror = mirror_list; mirror != NULL; mirror = mirror->next) {
+		char tmp[PATH_MAX];
+		int status;
+
+		assert(!mirror->sanitized);
+
+		strcpy(tmp, mirror->location.path);
+		mirror->location.path[0] = '\0';
+
+		/* Sanitize the location of the mirror within the
+		   alternate rootfs since it is assumed by
+		   substitute_mirror().  Note the real path is already
+		   sanitized in mirror_path().  */
+		status = canonicalize(0, tmp, 1, mirror->location.path, 0);
+		if (status < 0) {
+			notice(WARNING, INTERNAL, "sanitizing the mirror location \"%s\": %s",
+			       tmp, strerror(-status));
+			goto error;
+		}
+
+		if (strcmp(mirror->location.path, "/") == 0) {
+			notice(WARNING, USER, "can't create a mirror in \"/\"");
+			goto error;
+		}
+
+		mirror->need_substitution = strcmp(mirror->real.path, mirror->location.path);
+		mirror->location.length = strlen(mirror->location.path);
+
+		/* Remove the trailing slash as expected by substitute_mirror(). */
+		if (mirror->location.path[mirror->location.length - 1] == '/') {
+			mirror->location.path[mirror->location.length - 1] = '\0';
+			mirror->location.length--;
+		}
+
+		create_dummy(mirror->location.path);
+
+		mirror->sanitized = 1;
+
+		VERBOSE(1, "mirroring \"%s\" in \"%s\"", mirror->real.path, mirror->location.path);
+		continue;
+
+	error:
+		/* XXX TODO: remove this element from the list instead. */
+		mirror->sanitized = 0;
+	}
 }
 
 /**
