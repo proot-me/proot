@@ -53,6 +53,9 @@
 #    ifndef PTRACE_O_TRACECLONE
 #        define PTRACE_O_TRACECLONE	0x00000008
 #    endif
+#    ifndef PTRACE_O_TRACEEXEC
+#        define PTRACE_O_TRACEEXEC	0x00000010
+#    endif
 #    ifndef PTRACE_EVENT_FORK
 #        define PTRACE_EVENT_FORK	1
 #    endif
@@ -61,6 +64,9 @@
 #    endif
 #    ifndef PTRACE_EVENT_CLONE
 #        define PTRACE_EVENT_CLONE	3
+#    endif
+#    ifndef PTRACE_EVENT_EXEC
+#        define PTRACE_EVENT_EXEC	4
 #    endif
 
 #endif /* COMPAT_H */
