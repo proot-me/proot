@@ -290,7 +290,6 @@ static pid_t parse_options(int argc, char *argv[])
 
 static void launch_process()
 {
-	char launcher[PATH_MAX];
 	char new_root[PATH_MAX];
 	char pwd[PATH_MAX];
 	long status;
@@ -303,10 +302,6 @@ static void launch_process()
 		notice(ERROR, SYSTEM, "fork()");
 
 	case 0: /* child */
-
-		if (realpath("/proc/self/exe", launcher) == NULL)
-			notice(ERROR, SYSTEM, "realpath(\"/proc/self/exe\")");
-
 		/* Declare myself as ptraceable before executing the
 		 * requested program. */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
@@ -367,8 +362,22 @@ static void launch_process()
 			fprintf(stderr, "\n");
 		}
 
-		status = execvp(launcher, opt_args);
-		notice(ERROR, SYSTEM, "execvp(\"%s\")", launcher);
+		/* Synchronize with the tracer's event loop.  Without
+		 * this trick the tracer only sees the "return" from
+		 * the next execve(2) so PRoot wouldn't handle the
+		 * interpreter/runner.  I also verified that strace
+		 * does the same thing. */
+		kill(getpid(), SIGSTOP);
+
+		execv(opt_args[0], opt_args);
+		notice(WARNING, SYSTEM, "execv(\"%s\")", opt_args[0]);
+		notice(INFO, USER, "Possible causes:\n"
+		       "  * <program> was not found ($PATH not yet supported);\n"
+		       "  * <program> is a script but its interpreter (/bin/sh for instance) was not found;\n"
+		       "  * <program> is an ELF but its interpreter (/lib/ld-linux.so typically) was not found; or\n"
+		       "  * <qemu> (if specified) does not work correctly.\n"
+		       "Try to run with -v to get a better diagnostic.");
+		exit(EXIT_FAILURE);
 
 	default: /* parent */
 		if (new_child(pid) == NULL)
@@ -441,6 +450,21 @@ static int event_loop()
 			signal = (child_status & 0xfff00) >> 8;
 
 			switch (signal) {
+			case SIGTRAP:
+				/* Distinguish some events from others and
+				 * automatically trace each new process with
+				 * the same options.  Note: only the first
+				 * process should come here (because of
+				 * TRACE*FORK/CLONE/EXEC). */
+				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
+						PTRACE_O_TRACESYSGOOD |
+						PTRACE_O_TRACEFORK    |
+						PTRACE_O_TRACEVFORK   |
+						PTRACE_O_TRACEEXEC    |
+						PTRACE_O_TRACECLONE);
+				if (status < 0)
+					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
+				/* Fall through. */
 			case SIGTRAP | 0x80:
 				status = translate_syscall(pid);
 				if (status < 0) {
@@ -451,19 +475,6 @@ static int event_loop()
 				signal = 0;
 				break;
 
-			case SIGTRAP:
-				/* Distinguish some events from others and
-				 * automatically trace each new process with
-				 * the same options.  Note: only the first
-				 * process should come here (because of
-				 * TRACE*FORK/CLONE). */
-				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
-						PTRACE_O_TRACESYSGOOD |
-						PTRACE_O_TRACEFORK    |
-						PTRACE_O_TRACEVFORK   |
-						PTRACE_O_TRACECLONE);
-				if (status < 0)
-					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 
 				signal = 0;
 				break;
@@ -471,6 +482,7 @@ static int event_loop()
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
+			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
 				/* Ignore these signals. */
 				signal = 0;
 				break;
@@ -498,40 +510,6 @@ static int event_loop()
 int main(int argc, char *argv[])
 {
 	pid_t pid;
-	ssize_t status;
-	char argv0[PATH_MAX];
-	char self[PATH_MAX];
-	char *basename_argv0;
-	char *basename_self;
-
-	strcpy(argv0, argv[0]);
-	basename_argv0 = basename(argv0);
-
-	status = readlink("/proc/self/exe", self, sizeof(self));
-	if (status < 0) {
-		notice(WARNING, SYSTEM, "readlink(\"/proc/self/exe\")");
-		/* Fallback to "proot" if "/proc" is not mirrored. */
-		strcpy(self, "proot");
-		status = sizeof("proot");
-	}
-	if (status == sizeof(self))
-		notice(ERROR, INTERNAL, "readlink(\"/proc/self/exe\") too long");
-	self[status] = '\0';
-	basename_self = basename(self);
-
-	/* Use myself as a launcher. We need a launcher to
-	 * ensure the first execve(2) is catched by PRoot. */
-	if (strcmp(basename_argv0, basename_self) != 0) {
-		execv(argv[0], argv);
-		notice(WARNING, SYSTEM, "execv(\"%s\")", argv[0]);
-		notice(INFO, USER, "Possible causes:\n"
-		       "  * <program> was not found ($PATH not yet supported);\n"
-		       "  * <program> is a script but its interpreter (/bin/sh for instance) was not found;\n"
-		       "  * <program> is an ELF but its interpreter (/lib/ld-linux.so typically) was not found; or\n"
-		       "  * <qemu> (if specified) does not work correctly.\n"
-		       "Try to run with -v to get a better diagnostic.");
-		exit(EXIT_FAILURE);
-	}
 
 	pid = parse_options(argc, argv);
 

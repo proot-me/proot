@@ -2,7 +2,7 @@ CC       = gcc
 LD       = $(CC)
 CPPFLAGS = 
 CFLAGS   = -Wall -O0 -g
-LDFLAGS  = -static
+LDFLAGS  = 
 
 OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ureg.o interp.o
 
