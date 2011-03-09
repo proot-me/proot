@@ -644,8 +644,10 @@ int translate_execve(struct child_info *child)
 		 * that way the runner can first access its own files
 		 * outside of the rootfs. */
 		child->trigger = strdup(u_interp);
-		if (child->trigger == NULL)
-			return -ENOMEM;
+		if (child->trigger == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
 
 		/* Launch the runner actually. */
 		strcpy(t_interp, runner);
