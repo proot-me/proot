@@ -190,7 +190,7 @@ static int substitute_argv0(char **argv[], int nb_new_args, ...)
 		(*argv)[i] = calloc(strlen(new_arg) + 1, sizeof(char));
 		if ((*argv)[i] == NULL) {
 			va_end(args);
-			return -ENOMEM; /* XXX: *argv is inconsistent! */
+			return -ENOMEM;
 		}
 		strcpy((*argv)[i], new_arg);
 	}
@@ -253,7 +253,7 @@ static int insert_runner_args(char **argv[])
 
 		(*argv)[i] = calloc(size, size * sizeof(char));
 		if ((*argv)[i] == NULL)
-			return -ENOMEM; /* XXX: *argv is inconsistent! */
+			return -ENOMEM;
 
 		strncpy((*argv)[i], tmp2, size - 1);
 		(*argv)[i][size] = '\0';
@@ -479,7 +479,10 @@ int translate_n_check(struct child_info *child, char t_path[PATH_MAX], const cha
 }
 
 /**
- * XXX
+ * Substitute *@argv[0] with the interpreter (and its argument) of the
+ * program pointed to by @u_path. The paths to the interpreter (or to
+ * the program itself if it doesn't use an interpreter) are stored in
+ * @t_interp and @u_interp (respectively translated and untranslated).
  */
 static int expand_interp(struct child_info *child,
 			 const char *u_path,
@@ -499,7 +502,9 @@ static int expand_interp(struct child_info *child,
 	if (status < 0)
 		return status;
 
-	/* Don't XXX t_interp is XXX. */
+	/* Skip the extraction of the ELF interpreter on demand, in
+	 * this case we execute the translation of u_path (t_interp)
+	 * directly. */
 	if (callback == extract_elf_interp && skip_elf_interp) {
 		strcpy(u_interp, u_path);
 		return 0;
@@ -510,7 +515,8 @@ static int expand_interp(struct child_info *child,
 	if (status < 0)
 		return status;
 
-	/* No interpreter XXX t_interp is XXX. */
+	/* No interpreter was found, in this case we execute the
+	 * translation of u_path (t_interp) directly. */
 	if (status == 0) {
 		strcpy(u_interp, u_path);
 		return 0;
