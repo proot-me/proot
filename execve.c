@@ -146,6 +146,65 @@ void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
 }
 
 /**
+ * Push into the environment pointed to by *@envp the entry @env
+ * (format is "variable=new_value"). If the variable is already
+ * defined in the environment then the old entry if copied into
+ * @old_env (format is "variable=old_value").
+ */
+static int push_env(char **envp[], const char *env, char old_env[ARG_MAX])
+{
+	size_t new_size;
+	size_t length;
+	char *tmp;
+	int i;
+
+	old_env[0] = '\0';
+
+	length = strcspn(env, "=");
+	if (length == strlen(env))
+		return -EINVAL;
+
+	/* Seach for the environment variable. */
+	for (i = 0; (*envp)[i] != NULL; i++) {
+		const char *value;
+
+		if (   strncmp(env, (*envp)[i], length) != 0
+		    || (*envp)[i][length] != '=')
+			continue;
+
+		if (strlen((*envp)[i]) < ARG_MAX)
+			strcpy(old_env, (*envp)[i]);
+
+		/* "value" includes the separator '='. */
+		value = env + length;
+
+		tmp = realloc((*envp)[i], (length + strlen(value) + 1) * sizeof(char));
+		if (tmp == NULL)
+			return  -ENOMEM;
+		(*envp)[i] = tmp;
+
+		strcpy((*envp)[i] + length, value);
+		return 0;
+	}
+
+	/* Allocate a new entry + the terminating NULL pointer. */
+	new_size = i + 2;
+
+	tmp = realloc(*envp, new_size * sizeof(char *));
+	if (tmp == NULL)
+		return -ENOMEM;
+	*envp = (char **)tmp;
+
+	(*envp)[new_size - 2] = strdup(env);
+	if ((*envp)[new_size - 2] == NULL)
+		return -ENOMEM;
+
+	(*envp)[new_size - 1] = NULL;
+
+	return 0;
+}
+
+/**
  * Substitute (and free) the first entry of *@argv with the C strings
  * specified in the variable parameter lists (@nb_new_args elements).
  * This function returns -errno if an error occured, otherwise 0.
@@ -270,7 +329,7 @@ static int insert_runner_args(char **argv[])
  * the @child process.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-static int get_argv(struct child_info *child, char **argv[])
+static int get_argv(struct child_info *child, char **argv[], enum sysarg sysarg)
 {
 	word_t child_argv;
 	word_t argp;
@@ -286,7 +345,7 @@ static int get_argv(struct child_info *child, char **argv[])
 #    define sizeof_word(child) (sizeof(word_t))
 #endif
 
-	child_argv = peek_ureg(child, SYSARG_2);
+	child_argv = peek_ureg(child, sysarg);
 	if (errno != 0)
 		return -errno;
 
@@ -359,7 +418,7 @@ static int get_argv(struct child_info *child, char **argv[])
  *     /                       \                  \           \
  *    | argv[0] | argv[1] | ... | "/bin/script.sh" | "/bin/sh" |
  */
-static int set_argv(struct child_info *child, char *argv[])
+static int set_argv(struct child_info *child, char *argv[], enum sysarg sysarg)
 {
 	word_t *child_args;
 
@@ -427,7 +486,7 @@ static int set_argv(struct child_info *child, char *argv[])
 	}
 
 	/* Update the pointer to the new argv[]. */
-	status = poke_ureg(child, SYSARG_2, child_argv);
+	status = poke_ureg(child, sysarg, child_argv);
 	if (status < 0)
 		goto end;
 
@@ -604,9 +663,12 @@ int translate_execve(struct child_info *child)
 	char t_interp[PATH_MAX];
 	char u_interp[PATH_MAX];
 
+	char old_ldpreload[ARG_MAX];
+	char **envp = NULL;
 	char **argv = NULL;
 	char *argv0 = NULL;
 
+	int modified_env = 0;
 	int nb_interp = 0;
 	int size = 0;
 	int status;
@@ -616,9 +678,15 @@ int translate_execve(struct child_info *child)
 	if (status < 0)
 		return status;
 
-	status = get_argv(child, &argv);
+	status = get_argv(child, &argv, SYSARG_2);
 	if (status < 0)
 		goto end;
+	assert(argv != NULL);
+
+	status = get_argv(child, &envp, SYSARG_3);
+	if (status < 0)
+		goto end;
+	assert(envp != NULL);
 
 	/* Save the original argv[0] so QEMU will pass it to the program. */
 	if (runner_is_qemu && runner[0] != '\0')
@@ -632,12 +700,53 @@ int translate_execve(struct child_info *child)
 	/* I prefer the binfmt_misc approach instead of invoking
 	 * the runner/loader unconditionally. */
 	if (runner[0] != '\0') {
+		int options;
+
 		nb_interp++;
 
-		if (argv0 != NULL)
-			status = substitute_argv0(&argv, 4, runner, "-0", argv0, u_interp);
-		else
+		status = push_env(&envp, "LD_PRELOAD=libgcc_s.so", old_ldpreload);
+
+		/* Use a truth table (instead of many nested if/else)
+		   to select the options to pass to QEMU:
+		       - 000 is for -0
+		       - 010 is for -U
+		       - 100 is for -E
+		   In this special case ("LD_PRELOAD") -U and -E are
+		   exclusive. */
+		options = (argv0 != NULL ? 1 : 0);
+		if (status >= 0) {
+			options += (old_ldpreload[0] == '\0' ? 2 : 4);
+			modified_env = 1;
+		}
+
+		switch (options) {
+		default:
+			notice(WARNING, INTERNAL, "%s:%d", __FILE__, __LINE__);
+			/* Fall through. */
+		case 0b000:
 			status = substitute_argv0(&argv, 2, runner, u_interp);
+			break;
+
+		case 0b001:
+			status = substitute_argv0(&argv, 4, runner, "-0", argv0, u_interp);
+			break;
+
+		case 0b010:
+			status = substitute_argv0(&argv, 4, runner, "-U", "LD_PRELOAD", u_interp);
+			break;
+
+		case 0b011:
+			status = substitute_argv0(&argv, 6, runner, "-U", "LD_PRELOAD", "-0", argv0, u_interp);
+			break;
+
+		case 0b100:
+			status = substitute_argv0(&argv, 4, runner, "-E", old_ldpreload, u_interp);
+			break;
+
+		case 0b101:
+			status = substitute_argv0(&argv, 6, runner, "-E", old_ldpreload, "-0", argv0, u_interp);
+			break;
+		}
 		if (status < 0)
 			goto end;
 
@@ -672,8 +781,17 @@ int translate_execve(struct child_info *child)
 		goto end;
 
 	/* Rebuild argv[] only if something has changed. */
-	if (argv != NULL && nb_interp != 0) {
-		size = set_argv(child, argv);
+	if (nb_interp != 0) {
+		size = set_argv(child, argv, SYSARG_2);
+		if (size < 0) {
+			status = size;
+			goto end;
+		}
+	}
+
+	/* Rebuild envp[] only if something has changed. */
+	if (modified_env != 0) {
+		size = set_argv(child, envp, SYSARG_3);
 		if (size < 0) {
 			status = size;
 			goto end;
@@ -681,6 +799,12 @@ int translate_execve(struct child_info *child)
 	}
 
 end:
+	if (envp != NULL) {
+		for (i = 0; envp[i] != NULL; i++)
+			free(envp[i]);
+		free(envp);
+	}
+
 	if (argv != NULL) {
 		for (i = 0; argv[i] != NULL; i++)
 			free(argv[i]);
