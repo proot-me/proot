@@ -32,6 +32,7 @@
 #include <string.h>     /* strcmp(3), */
 #include <errno.h>      /* errno(3), */
 #include <libgen.h>     /* basename(3), */
+#include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 
 #include "path.h"
 #include "child_info.h"
@@ -52,6 +53,7 @@ static int opt_no_elf_interp = 0;
 static int opt_many_jobs = 0;
 static int opt_allow_unknown = 0;
 static int opt_allow_ptrace = 0;
+static int opt_disable_aslr = 0;
 
 static int opt_qemu = 0;
 static int opt_check_fd = 0;
@@ -92,6 +94,7 @@ static void exit_usage(void)
 /*	puts("  -U <X>        deletes the variable <X> from the environment"); */
 	puts("  -u            don't block unknown syscalls");
 	puts("  -p            don't block ptrace(2)");
+	puts("  -a            disable randomization of the virtual address space (ASLR)");
 /*	puts("  -f <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
 /*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
 /*	puts("  -d            check every /proc/$pid/fd/\* point to a translated path (slow!)"); */
@@ -184,6 +187,8 @@ static pid_t parse_options(int argc, char *argv[])
 
 		case 'q':
 			opt_qemu = 1;
+			opt_disable_aslr = 1;
+			/* XXX LD_PRELOAD=libgcc_s.so */
 			/* fall through. */
 		case 'r':
 			i++;
@@ -202,6 +207,8 @@ static pid_t parse_options(int argc, char *argv[])
 
 		case 'Q':
 			opt_qemu = 1;
+			opt_disable_aslr = 1;
+			/* XXX LD_PRELOAD=libgcc_s.so */
 			/* fall through. */
 		case 'R':
 			i++;
@@ -247,6 +254,10 @@ static pid_t parse_options(int argc, char *argv[])
 
 		case 'p':
 			opt_allow_ptrace = 1;
+			break;
+
+		case 'a':
+			opt_disable_aslr = 1;
 			break;
 
 		case 'd':
@@ -360,6 +371,16 @@ static void launch_process()
 			for (i = 0; opt_args[i] != NULL; i++)
 				fprintf(stderr, " %s", opt_args[i]);
 			fprintf(stderr, "\n");
+		}
+
+		/* RHEL4 uses an ASLR mechanism that creates conflicts
+		 * between the layout of QEMU and the layout of the
+		 * target program. */
+		if (opt_disable_aslr != 0) {
+			status = personality(0xffffffff);
+			if (   status < 0
+			    || personality(status | ADDR_NO_RANDOMIZE) < 0)
+				notice(WARNING, INTERNAL, "can't disable ASLR");
 		}
 
 		/* Synchronize with the tracer's event loop.  Without
