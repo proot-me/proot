@@ -1,0 +1,154 @@
+Roadmap
+=======
+
+
+Release v0.7
+------------
+
+* Add specific support for LD_* environment variables when using QEMU.
+
+* Why QEMU does pthread cancellation when the target program cancels one of its thread?
+
+      Is it due to the RT signal used in NTPL? (TLPI 693)
+
+* Distinguish the runner mode ``-r/-R`` and QEMU specific modes ``-q/-Q``
+
+* Allow the execution of native programs in QEMU mode
+
+* Search the program in $PATH in non-interactive mode, à la sh
+
+      For instance: ``proot $ROOTFS ls /tmp`` instead of ``proot
+      $ROOTFS /bin/ls /tmp``
+
+* Fix the support for symbolic links when asymmetric mirrors are in use
+
+      See the commit 2f1276b2 and commit c10e2073 for details
+
+* Add support for coalesced options, for instance ``proot -eM``
+
+* Make ``/proc/self/exe`` point to the original program name
+
+      That was the prupose of the field ``exe`` in the structure
+      ``child_info``
+
+* Don't canonicalize if the path translation is delayed
+
+      In translate_path(): we don't use the result of the
+      canonicalization if the translation is delayed.  This point
+      depends actually on the input path, so why I don't detect sooner
+      that the canonicalization is useless?
+
+
+Release v0.8
+------------
+
+* Handle /proc/<pid>/(exe|cwd) where <pid> is a process traced by PRoot (i.e not only "self").
+
+* in event_loop(), replace::
+
+      while (get_nb_children() > 0) {
+          pid = waitpid(-1, &child_status, __WALL);
+          if (pid < 0)
+              notice(ERROR, SYSTEM, "waitpid()");
+          ...
+      }
+
+  with::
+
+      while (1) {
+          pid = waitpid(-1, &child_status, __WALL);
+          if (pid < 0)
+              if (errno != ECHILD)
+                  notice(ERROR, SYSTEM, "waitpid()");
+              else
+                  break;
+          ...
+      }
+      assert(get_nb_children() == 0)
+
+* Raise a warning when ptrace(P*K*USER) fails during translate_syscall()
+
+     Instead of silently ignoring this unexpected error.
+
+* Don't accept signal from traced child.
+
+* Kill all children when exiting (on_exit/atexit).
+
+
+Release v0.9
+------------
+
+* Be more accurate on reported errno (TLPI 564-565, 572).
+
+* Why doesn't "slackpkg upgrade" work under PRoot v0.3
+
+
+Release v1.0
+------------
+
+* Don't exit() on error
+
+* Explain why PRoot does not work with setuid programs
+
+* Fix the feature "attach on-the-fly"
+
+* Check the code coverage of PRoot
+
+* Use Valgrind & Coverity Prevent
+
+* Try Scrashme (syscall fuzzer) against PRoot
+
+
+Release v1.1
+------------
+
+* Add support to fake user/group id, à la "fakeroot".
+
+* Add support to fake the result of the "uname" syscall
+
+* Add support for binfmt_misc-like configuration for runners
+  
+* Fix support for runners that do execve()
+
+* Write an real ELF loader instead of using the ELF interpreter as a launcher
+
+
+Release v1.2
+------------
+
+* Remove most of string copy.
+
+* Use /proc/<pid>/mem instead of PTRACE_POKEDATA.
+
+* Use one PTRACE_[GS]ETREGS instead of several PTRACE_P*K*USER.
+
+* Don't move the stack pointer, use a pointer in the struct child_info
+
+* Use a share memory mapping instead of /proc/<pid>/mem or PTRACE_P*K*DATA.
+
+
+Release v1.3
+------------
+
+* Use a cache for translation results
+
+* Use a hash table to retrieve cached results + child's info
+
+
+Release v2.0
+------------
+
+* Make PRoot a multi-job program to avoid sequential syscall handling
+
+* Remove the use of PATH_MAX and ARG_MAX
+
+
+Not yet scheduled
+-----------------
+
+* Replace "readlink(XXX, path, PATH_MAX)" with "readlink(XXX, path, PATH_MAX - 1)"
+
+* get_child_string should return -ENAMETOOLONG when length(XXX) >= max_size
+
+* Replace if (XXX != 0) with if (XXX) except when XXX is a function call. 
+
