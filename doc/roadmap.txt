@@ -1,9 +1,25 @@
 Roadmap
 =======
 
+Release v0.6
+------------
+
+* Print hints about "-B", ASLR, "-e" if the last child was terminated.
+
+* Don't use substitute_argv0() to pass arguments to the runner.
+
+      Use a new version of insert_runner() instead.
+
+* Add command-line interface to set environment variables.
+
+      Rename push_env() in change_env() and enhance it to support the
+      "unset" feature.
+
 
 Release v0.7
 ------------
+
+* Become compatible with the new version of ptrace.
 
 * Add specific support for LD_* environment variables when using QEMU.
 
