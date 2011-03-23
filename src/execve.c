@@ -712,7 +712,8 @@ int translate_execve(struct child_info *child)
 		       - 010 is for -U
 		       - 100 is for -E
 		   In this special case ("LD_PRELOAD") -U and -E are
-		   exclusive. */
+		   exclusive.  Note this is an ugly code, it will be
+		   changed very soon (planned for v0.6). */
 		options = (argv0 != NULL ? 1 : 0);
 		if (status >= 0) {
 			options += (old_ldpreload[0] == '\0' ? 2 : 4);
@@ -723,27 +724,27 @@ int translate_execve(struct child_info *child)
 		default:
 			notice(WARNING, INTERNAL, "%s:%d", __FILE__, __LINE__);
 			/* Fall through. */
-		case 0b000:
+		case 0:
 			status = substitute_argv0(&argv, 2, runner, u_interp);
 			break;
 
-		case 0b001:
+		case 1:
 			status = substitute_argv0(&argv, 4, runner, "-0", argv0, u_interp);
 			break;
 
-		case 0b010:
+		case 2:
 			status = substitute_argv0(&argv, 4, runner, "-U", "LD_PRELOAD", u_interp);
 			break;
 
-		case 0b011:
+		case 3:
 			status = substitute_argv0(&argv, 6, runner, "-U", "LD_PRELOAD", "-0", argv0, u_interp);
 			break;
 
-		case 0b100:
+		case 4:
 			status = substitute_argv0(&argv, 4, runner, "-E", old_ldpreload, u_interp);
 			break;
 
-		case 0b101:
+		case 5:
 			status = substitute_argv0(&argv, 6, runner, "-E", old_ldpreload, "-0", argv0, u_interp);
 			break;
 		}
