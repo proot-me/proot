@@ -8,7 +8,7 @@ OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ure
 
 VERSION := $(shell git describe --tags --dirty --abbrev=8 --always 2>/dev/null)
 ifndef VERSION
-    VERSION := v0.5-30+
+    VERSION := v0.5-31+
 endif
 
 all: proot

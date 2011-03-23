@@ -68,5 +68,8 @@
 #    ifndef PTRACE_EVENT_EXEC
 #        define PTRACE_EVENT_EXEC	4
 #    endif
+#    ifndef ADDR_NO_RANDOMIZE
+#        define ADDR_NO_RANDOMIZE	0x0040000
+#    endif
 
 #endif /* COMPAT_H */
