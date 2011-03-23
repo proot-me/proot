@@ -704,7 +704,7 @@ int translate_execve(struct child_info *child)
 
 		nb_interp++;
 
-		status = push_env(&envp, "LD_PRELOAD=libgcc_s.so", old_ldpreload);
+		status = push_env(&envp, "LD_PRELOAD=libgcc_s.so.1", old_ldpreload);
 
 		/* Use a truth table (instead of many nested if/else)
 		   to select the options to pass to QEMU:
