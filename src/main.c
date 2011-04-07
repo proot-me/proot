@@ -85,7 +85,7 @@ static void exit_usage(void)
 	puts("                           -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
 	puts("                           -m /etc/resolv.conf");
 /*	puts("  -R <runner>   XXX */
-	puts("  -Q <qemu>     alias for: -q <qemu> -M");
+	puts("  -Q <qemu>     alias for: -q <qemu> -M -a");
 	puts("  -W            alias for: -w $PWD -m $PWD");
 	puts("");
 	puts("Misc. options:");
@@ -136,9 +136,6 @@ static pid_t parse_options(int argc, char *argv[])
 			opt_pwd = argv[i];
 			break;
 
-		case 'x':
-			notice(WARNING, USER, "option -x is deprecated, use -m instead");
-			/* fall through. */
 		case 'm':
 			i++;
 			if (i >= argc)
@@ -215,10 +212,6 @@ static pid_t parse_options(int argc, char *argv[])
 			if (i >= argc)
 				notice(ERROR, USER, "missing value for the option -R/-Q");
 			opt_runner = argv[i];
-			/* fall through. */
-		case 'X':
-			if (argv[i][1] == 'X')
-				notice(WARNING, USER, "option -X is deprecated, use -M instead");
 			/* fall through. */
 		case 'M':
 			/* Usefull for the glibc, generally only one access. */
@@ -297,6 +290,28 @@ static pid_t parse_options(int argc, char *argv[])
 	init_module_execve(opt_runner, opt_qemu, opt_no_elf_interp);
 
 	return pid; /* XXX: pid attachement not yet [officially] supported. */
+}
+
+static void print_execve_help(char *argv0)
+{
+	notice(WARNING, SYSTEM, "execv(\"%s\")", argv0);
+
+	notice(INFO, USER, "\
+Possible causes:");
+	notice(INFO, USER, "\
+  * <program> was not found ($PATH not yet supported);");
+	notice(INFO, USER, "\
+  * <program> is a script but its interpreter (ex. /bin/sh) was not found;");
+	if (opt_runner || opt_qemu) {
+		notice(INFO, USER, "\
+  * <qemu> does not work correctly.");
+	}
+	else {
+		notice(INFO, USER, "\
+  * <program> is an ELF but its interpreter (ex. ld-linux.so) was not found;");
+		notice(INFO, USER, "\
+  * <program> is a foreign binary but no <qemu> was specified;");
+	}
 }
 
 static void launch_process()
@@ -391,13 +406,8 @@ static void launch_process()
 		kill(getpid(), SIGSTOP);
 
 		execv(opt_args[0], opt_args);
-		notice(WARNING, SYSTEM, "execv(\"%s\")", opt_args[0]);
-		notice(INFO, USER, "Possible causes:\n"
-		       "  * <program> was not found ($PATH not yet supported);\n"
-		       "  * <program> is a script but its interpreter (/bin/sh for instance) was not found;\n"
-		       "  * <program> is an ELF but its interpreter (/lib/ld-linux.so typically) was not found; or\n"
-		       "  * <qemu> (if specified) does not work correctly.\n"
-		       "Try to run with -v to get a better diagnostic.");
+
+		print_execve_help(opt_args[0]);
 		exit(EXIT_FAILURE);
 
 	default: /* parent */
@@ -425,6 +435,31 @@ static void attach_process(pid_t pid)
 	child = new_child(pid);
 	if (child == NULL)
 		exit(EXIT_FAILURE);
+}
+
+static void print_sigsegv_help()
+{
+	const char *message = NULL;
+
+	if (opt_runner || opt_qemu) {
+		message = (opt_disable_aslr
+			   ? "\
+add the option -Q <qemu>,-B,0x80000000 to specify an alternate base address."
+			   : "\
+add the option -a to disable ASLR since it can conflict with <qemu>.");
+	}
+	else if (opt_no_elf_interp)
+		message = "\
+remove the option -e to use the right ELF interpreter.";
+
+	if (message == NULL)
+		return;
+
+	notice(INFO, USER, "\
+<program> was terminated because it performed an illegal memory access, ");
+	notice(INFO, USER, "\
+technically it could be due to the usage of PRoot... You should try to ");
+	notice(INFO, USER, message);
 }
 
 static int event_loop()
@@ -457,6 +492,9 @@ static int event_loop()
 			VERBOSE(get_nb_children() != 1,
 				"pid %d: terminated with signal %d",
 				pid, WTERMSIG(child_status));
+			if (   WTERMSIG(child_status) == SIGSEGV
+			    && get_nb_children() == 1)
+				print_sigsegv_help();
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
