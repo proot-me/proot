@@ -668,8 +668,8 @@ int translate_execve(struct child_info *child)
 	char **argv = NULL;
 	char *argv0 = NULL;
 
-	int modified_env = 0;
-	int nb_interp = 0;
+	int modified_env  = 0;
+	int modified_argv = 0;
 	int size = 0;
 	int status;
 	int i;
@@ -695,14 +695,13 @@ int translate_execve(struct child_info *child)
 	status = expand_interp(child, u_path, t_interp, u_interp, &argv, extract_script_interp);
 	if (status < 0)
 		goto end;
-	nb_interp += status;
+	if (status > 0)
+		modified_argv = 1;
 
 	/* I prefer the binfmt_misc approach instead of invoking
 	 * the runner/loader unconditionally. */
 	if (runner[0] != '\0') {
 		int options;
-
-		nb_interp++;
 
 		status = push_env(&envp, "LD_PRELOAD=libgcc_s.so.1", old_ldpreload);
 
@@ -750,6 +749,7 @@ int translate_execve(struct child_info *child)
 		}
 		if (status < 0)
 			goto end;
+		modified_argv = 1;
 
 		status = insert_runner_args(&argv);
 		if (status < 0)
@@ -772,7 +772,8 @@ int translate_execve(struct child_info *child)
 		status = expand_interp(child, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
 		if (status < 0)
 			goto end;
-		nb_interp += status;
+		if (status > 0)
+			modified_argv = 1;
 	}
 
 	VERBOSE(4, "execve: %s", t_interp);
@@ -782,7 +783,7 @@ int translate_execve(struct child_info *child)
 		goto end;
 
 	/* Rebuild argv[] only if something has changed. */
-	if (nb_interp != 0) {
+	if (modified_argv != 0) {
 		size = set_argv(child, argv, SYSARG_2);
 		if (size < 0) {
 			status = size;
