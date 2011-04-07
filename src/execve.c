@@ -205,9 +205,6 @@ static int push_env(char **envp[], const char *env, char old_env[ARG_MAX])
 	return 0;
 }
 
-#define substitute_argv0(argv, nb_new_args, ...) \
-	push_args(true, argv, nb_new_args, __VA_ARGS__)
-
 /**
  * Add @nb_new_args new C strings to the argument list *@argv.  If
  * @replace_argv0 is true then the previous argv[0] is freed and
@@ -232,6 +229,7 @@ static int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...)
 	va_list args;
 	void *tmp;
 
+	int nb_moved_old_args;
 	int nb_old_args;
 	int i;
 
@@ -254,21 +252,23 @@ static int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...)
 		return -ENOMEM;
 	*argv = tmp;
 
-	/* Compute the new position of old entries: they are shifted
-	 * to the right.  */
+	/* Compute the new position and the number of moved old
+	 * entries: they are shifted to the right.  */
+	nb_moved_old_args = nb_old_args;
 	dest_old_args = *argv + nb_new_args;
-	if (replace_argv0) {
-		free(*argv[0]);
-		*argv[0] = NULL;
+	if (!replace_argv0) {
+		dest_old_args++;
+		nb_moved_old_args--;
 	}
 	else {
-		dest_old_args++;
+		free(*argv[0]);
+		*argv[0] = NULL;
 	}
 
 	/* Move the old entries to let space at the beginning for the
 	 * new ones, note that argv[0] is not moved whether it is
 	 * overwritten or not. */
-	memmove(dest_old_args, *argv + 1, nb_old_args * sizeof(char *));
+	memmove(dest_old_args, *argv + 1, nb_moved_old_args * sizeof(char *));
 
 	/* Each new entry will be allocated into the heap since we
 	 * don't rely on the liveness of the input parameters. */
@@ -508,7 +508,6 @@ static int set_argv(struct child_info *child, char *argv[], enum sysarg sysarg)
 			child_args[i] |= (argp & 0xFFFFFFFF00000000ULL);
 		}
 #endif
-
 		status = ptrace(PTRACE_POKEDATA, child->pid, child_argv, child_args[i]);
 		if (status <0) {
 			status = -EFAULT;
@@ -544,7 +543,7 @@ end:
  * if an error occured, 1 if there's an interpreter otherwise
  * 0.
  */
-int translate_n_check(struct child_info *child, char t_path[PATH_MAX], const char *u_path)
+static int translate_n_check(struct child_info *child, char t_path[PATH_MAX], const char *u_path)
 {
 	struct stat statl;
 	int status;
@@ -643,9 +642,9 @@ static int expand_interp(struct child_info *child,
 		(*argv)[0], u_path, argument, u_path);
 
 	if (argument[0] != '\0')
-		status = substitute_argv0(argv, 3, u_interp, argument, u_path);
+		status = push_args(true, argv, 3, u_interp, argument, u_path);
 	else
-		status = substitute_argv0(argv, 2, u_interp, u_path);
+		status = push_args(true, argv, 2, u_interp, u_path);
 	if (status < 0)
 		return status;
 
@@ -697,7 +696,6 @@ int translate_execve(struct child_info *child)
 	char old_ldpreload[ARG_MAX];
 	char **envp = NULL;
 	char **argv = NULL;
-	char *argv0 = NULL;
 
 	int modified_env  = 0;
 	int modified_argv = 0;
@@ -719,74 +717,39 @@ int translate_execve(struct child_info *child)
 		goto end;
 	assert(envp != NULL);
 
-	/* Save the original argv[0] so QEMU will pass it to the program. */
-	if (runner_is_qemu && runner[0] != '\0')
-		argv0 = strdup(argv[0]);
-
 	status = expand_interp(child, u_path, t_interp, u_interp, &argv, extract_script_interp);
 	if (status < 0)
 		goto end;
 	if (status > 0)
 		modified_argv = 1;
 
-	/* I prefer the binfmt_misc approach instead of invoking
+	/* I'd prefer the binfmt_misc approach instead of invoking
 	 * the runner/loader unconditionally. */
 	if (runner[0] != '\0') {
-		int options;
-
-		status = push_env(&envp, "LD_PRELOAD=libgcc_s.so.1", old_ldpreload);
-
-		/* Use a truth table (instead of many nested if/else)
-		   to select the options to pass to QEMU:
-		       - 000 is for -0
-		       - 010 is for -U
-		       - 100 is for -E
-		   In this special case ("LD_PRELOAD") -U and -E are
-		   exclusive.  Note this is an ugly code, it will be
-		   changed very soon (planned for v0.6). */
-		options = (argv0 != NULL ? 1 : 0);
-		if (status >= 0) {
-			options += (old_ldpreload[0] == '\0' ? 2 : 4);
-			modified_env = 1;
-		}
-
-		switch (options) {
-		default:
-			notice(WARNING, INTERNAL, "%s:%d", __FILE__, __LINE__);
-			/* Fall through. */
-		case 0:
-			status = substitute_argv0(&argv, 2, runner, u_interp);
-			break;
-
-		case 1:
-			status = substitute_argv0(&argv, 4, runner, "-0", argv0, u_interp);
-			break;
-
-		case 2:
-			status = substitute_argv0(&argv, 4, runner, "-U", "LD_PRELOAD", u_interp);
-			break;
-
-		case 3:
-			status = substitute_argv0(&argv, 6, runner, "-U", "LD_PRELOAD", "-0", argv0, u_interp);
-			break;
-
-		case 4:
-			status = substitute_argv0(&argv, 4, runner, "-E", old_ldpreload, u_interp);
-			break;
-
-		case 5:
-			status = substitute_argv0(&argv, 6, runner, "-E", old_ldpreload, "-0", argv0, u_interp);
-			break;
-		}
+		status = push_args(true, &argv, 2, runner, u_interp);
 		if (status < 0)
 			goto end;
 		modified_argv = 1;
+
+		if (runner_is_qemu) {
+			/* Errors are ignored here since harmless. */
+			status = push_env(&envp, "LD_PRELOAD=libgcc_s.so", old_ldpreload);
+			if (status >= 0) {
+				modified_env = 1;
+
+				if (old_ldpreload[0] != '\0')
+					push_args(false, &argv, 2, "-E", old_ldpreload);
+				else
+					push_args(false, &argv, 2, "-U", "LD_PRELOAD");
+			}
+			push_args(false, &argv, 2, "-0", u_interp);
+		}
 
 		status = insert_runner_args(&argv);
 		if (status < 0)
 			goto end;
 
-		/* Delayed the translation of the newly instantiated
+		/* Delay the translation of the newly instantiated
 		 * runner until it accesses the program to execute,
 		 * that way the runner can first access its own files
 		 * outside of the rootfs. */
@@ -843,9 +806,6 @@ end:
 			free(argv[i]);
 		free(argv);
 	}
-
-	if (argv0 != NULL)
-		free(argv0);
 
 	if (status < 0)
 		return status;
