@@ -33,6 +33,7 @@
 #include <string.h>       /* strlen(3), */
 #include <stdlib.h>       /* realpath(3), exit(3), EXIT_*, */
 #include <assert.h>       /* assert(3), */
+#include <stdbool.h>      /* bool, true, false */
 
 #include "execve.h"
 #include "arch.h"
@@ -204,54 +205,86 @@ static int push_env(char **envp[], const char *env, char old_env[ARG_MAX])
 	return 0;
 }
 
+#define substitute_argv0(argv, nb_new_args, ...) \
+	push_args(true, argv, nb_new_args, __VA_ARGS__)
+
 /**
- * Substitute (and free) the first entry of *@argv with the C strings
- * specified in the variable parameter lists (@nb_new_args elements).
- * This function returns -errno if an error occured, otherwise 0.
+ * Add @nb_new_args new C strings to the argument list *@argv.  If
+ * @replace_argv0 is true then the previous argv[0] is freed and
+ * replaced with the first new entry. This function returns -errno if
+ * an error occured, otherwise 0.
  *
  *  Technically:
  *
- *    | argv[0] | argv[1] | ... | argv[n] |
+ *    | old[0] | old[1] | ... | old[n] |
  *
- *  becomes:
+ *  becomes as follow when !replace_argv0:
  *
- *    | new_argv[0] | ... | new_argv[nb - 1] | argv[1] | ... | argv[n] |
+ *    | old[0] | new[0] | ... | new[nb - 1] | old[1] | ... | old[n] |
+ *
+ *  otherwise as follow:
+ *
+ *    | new[0] | ... | new[nb - 1] | old[1] | ... | old[n] |
  */
-static int substitute_argv0(char **argv[], int nb_new_args, ...)
+static int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...)
 {
+	char **dest_old_args;
 	va_list args;
 	void *tmp;
+
+	int nb_old_args;
 	int i;
 
+	assert(nb_new_args > 0);
+
+	/* Count the number of old entries... */
 	for (i = 0; (*argv)[i] != NULL; i++)
 		;
-	assert(i > 0);
+	nb_old_args = i + 1; /* ... including NULL terminator slot... */
 
-	/* Don't kill *argv if the reallocation failed, all entries
-	 * will be freed in translate_execve(). */
-	tmp = realloc(*argv, (nb_new_args + i) * sizeof(char *));
+	/* ... minus one if the argv[0] slot is re-used. */
+	if (replace_argv0)
+		nb_old_args--;
+	assert(nb_old_args > 0);
+
+	/* Don't kill *argv if the reallocation has failed, all
+	 * entries will be freed in translate_execve(). */
+	tmp = realloc(*argv, (nb_new_args + nb_old_args) * sizeof(char *));
 	if (tmp == NULL)
 		return -ENOMEM;
 	*argv = tmp;
 
-	free(*argv[0]);
-	*argv[0] = NULL;
+	/* Compute the new position of old entries: they are shifted
+	 * to the right.  */
+	dest_old_args = *argv + nb_new_args;
+	if (replace_argv0) {
+		free(*argv[0]);
+		*argv[0] = NULL;
+	}
+	else {
+		dest_old_args++;
+	}
 
 	/* Move the old entries to let space at the beginning for the
-	 * new ones. */
-	memmove(*argv + nb_new_args, *argv + 1, i * sizeof(char *));
+	 * new ones, note that argv[0] is not moved whether it is
+	 * overwritten or not. */
+	memmove(dest_old_args, *argv + 1, nb_old_args * sizeof(char *));
 
-	/* Each new entries will be allocated into the heap since we
+	/* Each new entry will be allocated into the heap since we
 	 * don't rely on the liveness of the input parameters. */
 	va_start(args, nb_new_args);
 	for (i = 0; i < nb_new_args; i++) {
+		int dest_index = i;
 		char *new_arg = va_arg(args, char *);
-		(*argv)[i] = calloc(strlen(new_arg) + 1, sizeof(char));
-		if ((*argv)[i] == NULL) {
+
+		if (!replace_argv0)
+			dest_index++;
+
+		(*argv)[dest_index] = strdup(new_arg);
+		if ((*argv)[dest_index] == NULL) {
 			va_end(args);
 			return -ENOMEM;
 		}
-		strcpy((*argv)[i], new_arg);
 	}
 	va_end(args);
 
@@ -395,11 +428,9 @@ static int get_argv(struct child_info *child, char **argv[], enum sysarg sysarg)
 		if (status >= ARG_MAX)
 			return -ENAMETOOLONG;
 
-		(*argv)[i] = calloc(status, sizeof(char));
+		(*argv)[i] = strdup(arg);
 		if ((*argv)[i] == NULL)
 			return -ENOMEM;
-
-		strcpy((*argv)[i], arg);
 	}
 
 	return 0;
