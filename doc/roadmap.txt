@@ -1,12 +1,6 @@
 Roadmap
 =======
 
-Release v0.6
-------------
-
-* Print hints about "-B", ASLR, "-e" if the last child was terminated.
-
-
 Release v0.7
 ------------
 
@@ -89,6 +83,27 @@ Release v0.8
 
 Release v0.9
 ------------
+
+* Emulate brk for programs that assume it's after the data segment.
+
+      Some heap managers (as found in Bash and Emacs) assume the
+      program break is right after *their* data segment but it's not
+      the case when the GNU dynamic loader is invoked directly, as in
+      PRoot without the -e option::
+
+          +---------------+
+          | program code  |
+          +---------------+ <- code end [static]
+          | program data  |
+          +---------------+ <- data end [static]
+          :               :
+          +---------------+
+          | loader code   |
+          +---------------+
+          | loader data   |
+          +---------------+
+          | loader heap   |
+          +---------------+ <- break [dynamic]
 
 * Be more accurate on reported errno (TLPI 564-565, 572).
 

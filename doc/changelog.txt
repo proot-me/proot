@@ -1,0 +1,42 @@
+Release v0.6
+============
+
+New features
+------------
+
+* Added support for "asymmetric" path mirrors.
+
+    The command-line option for mirrors was extended to support the
+    syntax "-m <p1>:<p2>" where <p1> is the location of the mirror
+    within the alternate rootfs and <p2> is the path to the real
+    directory/file.  For instance you can now mirror the whole host
+    rootfs in the directory "/hostfs" within the alternate rootfs that
+    way::
+
+        proot -m /:/hostfs ...
+
+* Added an option to disable ASLR (Address Space Layout
+  Randomization).
+
+    RHEL4 and Ubuntu 10.04 use an ASLR mechanism that creates
+    conflicts between the layout of QEMU and the layout of the target
+    program.  This new option is automatically set when QEMU is used.
+
+* Added "/etc/resolv.conf" and $HOME to the list of mirrored paths
+  when using the option -M or -Q.
+
+Fixes
+-----
+
+* Fixed the detranslation of getcwd(2) and readlink(2).
+
+* Improved the build compatibility on old/broken distro.
+
+* Added support for pthread cancellation when QEMU is used.
+
+* Set QEMU's fake argv[0] to the program actually launched, not to the
+  initial script name.
+
+* Create the path up to the mirror location to cheat "walking"
+  programs.
+
