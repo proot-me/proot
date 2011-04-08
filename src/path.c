@@ -524,7 +524,7 @@ static void create_dummy(char c_path[PATH_MAX])
 
 error:
 	notice(WARNING, USER, "can't create the mirror location \"%s\": "
-	       "expect some troubles with programs that walk up to it");
+	       "expect some troubles with programs that walk up to it", c_path);
 }
 
 /**
