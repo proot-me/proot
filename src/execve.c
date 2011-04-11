@@ -733,7 +733,7 @@ int translate_execve(struct child_info *child)
 
 		if (runner_is_qemu) {
 			/* Errors are ignored here since harmless. */
-			status = push_env(&envp, "LD_PRELOAD=libgcc_s.so", old_ldpreload);
+			status = push_env(&envp, "LD_PRELOAD=libgcc_s.so.1", old_ldpreload);
 			if (status >= 0) {
 				modified_env = 1;
 
