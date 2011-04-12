@@ -27,12 +27,13 @@
 #include <sys/types.h>   /* pid_t, */
 #include <assert.h>      /* assert(3), */
 #include <limits.h>      /* PATH_MAX, */
-#include <stddef.h>      /* intptr_t, */
+#include <stddef.h>      /* intptr_t, offsetof(3), */
 #include <errno.h>       /* errno(3), */
 #include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
 #include <sys/user.h>    /* struct user*, */
 #include <stdlib.h>      /* exit(3), */
 #include <string.h>      /* strlen(3), */
+#include <sys/utsname.h> /* struct utsname, */
 
 #include "syscall.h"
 #include "arch.h"
@@ -47,17 +48,19 @@
 
 static int allow_unknown = 0;
 static int allow_ptrace = 0;
+static const char *kernel_release;
 
 /**
  * Initialize internal data of the syscall module.
  */
-void init_module_syscall(int sanity_check, int opt_allow_unknown, int opt_allow_ptrace)
+void init_module_syscall(int sanity_check, int opt_allow_unknown, int opt_allow_ptrace, const char *opt_kernel_release)
 {
 	if (sanity_check != 0)
 		notice(WARNING, USER, "option -s not yet supported");
 
-	allow_unknown = opt_allow_unknown;
-	allow_ptrace = opt_allow_ptrace;
+	allow_unknown  = opt_allow_unknown;
+	allow_ptrace   = opt_allow_ptrace;
+	kernel_release = opt_kernel_release;
 }
 
 /**

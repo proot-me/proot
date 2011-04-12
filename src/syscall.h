@@ -55,7 +55,7 @@ enum sysarg {
 	(offsetof(struct user, regs)			\
 	 + offsetof(struct user_regs_struct, reg_name))
 
-extern void init_module_syscall(int sanity_check, int allow_unknown, int allow_ptrace);
+extern void init_module_syscall(int sanity_check, int allow_unknown, int allow_ptrace, const char *kernel_release);
 extern int translate_syscall(pid_t pid);
 extern int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
 extern int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);

@@ -43,6 +43,7 @@ case __NR_getcwd:
 	if (status < 0)
 		goto end;
 
+	status = 0;
 	break;
 
 case __NR_readlink:
@@ -78,6 +79,46 @@ case __NR_readlinkat:
 	if (status < 0)
 		goto end;
 
+	status = 0;
+	break;
+
+case __NR_uname:
+	if (kernel_release != NULL) {
+		struct utsname utsname;
+		word_t release_addr;
+		size_t release_size;
+
+		result = peek_ureg(child, SYSARG_RESULT);
+		if (errno != 0) {
+			status = -errno;
+			goto end;
+		}
+		if ((int) result < 0) {
+			status = 0;
+			goto end;
+		}
+
+		result = peek_ureg(child, SYSARG_1);
+		if (errno != 0) {
+			status = -errno;
+			goto end;
+		}
+
+		release_addr = result + offsetof(struct utsname, release);
+		release_size = sizeof(utsname.release);
+
+		status = get_child_string(child, &(utsname.release), release_addr, release_size);
+		if (status < 0)
+			goto end;
+
+		strncpy(utsname.release, kernel_release, release_size);
+		utsname.release[release_size - 1] = '\0';
+
+		status = copy_to_child(child, release_addr, &(utsname.release), strlen(utsname.release) + 1);
+		if (status < 0)
+			goto end;
+	}
+	status = 0;
 	break;
 
 default:
