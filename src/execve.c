@@ -125,9 +125,11 @@ void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
 				VERBOSE(1, "runner is %s", runner);
 
 				free(tmp3);
+				tmp3 = NULL;
 				return;
 			}
 			free(tmp3);
+			tmp3 = NULL;
 
 		next:
 			tmp2 = tmp;
@@ -528,6 +530,7 @@ static int set_argv(struct child_info *child, char *argv[], enum sysarg sysarg)
 
 end:
 	free(child_args);
+	child_args = NULL;
 
 	if (status < 0)
 		return status;
@@ -796,15 +799,22 @@ int translate_execve(struct child_info *child)
 
 end:
 	if (envp != NULL) {
-		for (i = 0; envp[i] != NULL; i++)
+		for (i = 0; envp[i] != NULL; i++) {
 			free(envp[i]);
+			envp[i] = NULL;
+		}
 		free(envp);
+		envp = NULL;
 	}
 
 	if (argv != NULL) {
-		for (i = 0; argv[i] != NULL; i++)
+		for (i = 0; argv[i] != NULL; i++) {
 			free(argv[i]);
+			argv[i] = NULL;
+		}
 		free(argv);
+		argv = NULL;
+	}
 	}
 
 	if (status < 0)

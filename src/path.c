@@ -107,6 +107,7 @@ void mirror_path(const char *path, const char *location)
 
 error:
 	free(mirror);
+	mirror = NULL;
 	return;
 }
 
