@@ -699,6 +699,7 @@ int translate_execve(struct child_info *child)
 	char old_ldpreload[ARG_MAX];
 	char **envp = NULL;
 	char **argv = NULL;
+	char *argv0 = NULL;
 
 	int modified_env  = 0;
 	int modified_argv = 0;
@@ -714,6 +715,9 @@ int translate_execve(struct child_info *child)
 	if (status < 0)
 		goto end;
 	assert(argv != NULL);
+
+	if(runner_is_qemu)
+		argv0 = strdup(argv[0]);
 
 	status = get_argv(child, &envp, SYSARG_3);
 	if (status < 0)
@@ -732,7 +736,6 @@ int translate_execve(struct child_info *child)
 		status = push_args(true, &argv, 2, runner, u_interp);
 		if (status < 0)
 			goto end;
-		modified_argv = 1;
 
 		if (runner_is_qemu) {
 			/* Errors are ignored here since harmless. */
@@ -745,8 +748,12 @@ int translate_execve(struct child_info *child)
 				else
 					push_args(false, &argv, 2, "-U", "LD_PRELOAD");
 			}
-			push_args(false, &argv, 2, "-0", u_interp);
+			if (modified_argv == 0)
+				push_args(false, &argv, 2, "-0", argv0);
+			else
+				push_args(false, &argv, 2, "-0", u_interp);
 		}
+		modified_argv = 1;
 
 		status = insert_runner_args(&argv);
 		if (status < 0)
@@ -815,6 +822,10 @@ end:
 		free(argv);
 		argv = NULL;
 	}
+
+	if (argv0 != NULL) {
+		free(argv0);
+		argv0 = NULL;
 	}
 
 	if (status < 0)
