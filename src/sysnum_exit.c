@@ -36,13 +36,6 @@ case __NR_getcwd:
 	}
 
 	status = detranslate_addr(child, child->output, result, GETCWD);
-	if (status < 0)
-		break;
-
-	status = poke_ureg(child, SYSARG_RESULT, (word_t) status);
-	if (status < 0)
-		goto end;
-
 	break;
 
 case __NR_readlink:
@@ -71,13 +64,6 @@ case __NR_readlinkat:
 	assert((int) result <= status);
 
 	status = detranslate_addr(child, child->output, result, READLINK);
-	if (status < 0)
-		break;
-
-	status = poke_ureg(child, SYSARG_RESULT, (word_t) status);
-	if (status < 0)
-		goto end;
-
 	break;
 
 default:
