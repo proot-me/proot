@@ -160,6 +160,15 @@ static int substitute_mirror(int which, char path[PATH_MAX])
 		    && path[ref->length] != '\0')
 			continue;
 
+		/* Don't substitute systematically the prefix of the
+		 * rootfs when used as an asymmetric mirror, as with:
+		 *
+		 *     proot -m /usr:/location /usr/local/slackware
+		 */
+		if (   which == MIRROR_REAL
+		    && strncmp(path, root, root_length) == 0)
+			continue;
+
 		/* Using strncmp(3) to compare paths works fine here
 		 * because both pathes were sanitized, i.e. there is
 		 * no redundant ".", ".." or "/". */
