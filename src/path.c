@@ -727,6 +727,11 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 
 	assert(initialized != 0);
 
+	/* Don't try to detranslate relative paths (typically the
+	 * target of a relative symbolic link). */
+	if (path[0] != '/')
+		return 0;
+
 	/* Check if it is a translatable path. */
 	switch (substitute_mirror(MIRROR_REAL, path)) {
 	case 0:
