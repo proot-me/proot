@@ -410,12 +410,8 @@ static int translate_syscall_exit(struct child_info *child)
 		status = -ENOSYS;
 	}
 
-	if (status < 0) {
-		status = poke_ureg(child, SYSARG_RESULT, (word_t) status);
-		if (status < 0)
-			goto end;
-	}
-
+	/* "status" was updated in sysnum_exit.c.  */
+	status = poke_ureg(child, SYSARG_RESULT, (word_t) status);
 end:
 	if (status > 0)
 		status = 0;

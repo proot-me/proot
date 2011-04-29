@@ -28,7 +28,23 @@ Release v0.7
 
 * Fix the support for symbolic links when asymmetric mirrors are in use
 
-      See the commit 2f1276b2 and commit c10e2073 for details
+      See the commit 2f1276b2 and commit c10e2073 for details.  For
+      instance::
+
+      ~$ ./proot -m /:/hostfs /usr/local/slack/slackware-13.1/
+      ~$ cd /hostfs/sw # -> /usr/local/sw
+      /hostfs/sw$ pwd -L
+      /hostfs/sw
+      /hostfs/sw$ pwd -P
+      bash: ../sysdeps/unix/sysv/linux/getcwd.c:132: __getcwd: Assertion `...' failed.
+      proot: pid 19766: terminated with signal 6
+
+      another example::
+
+      $ ./proot -m /proc -m /:/hostfs /usr/local/slack/slackware-13.1/
+      /$ cd /hostfs/etc
+      /hostfs/etc$ ls -l /proc/self/cwd
+      lrwxrwxrwx 1 1000 users 0 2011-04-28 17:06 /proc/self/cwd -> /hos
 
 * Add support for coalesced options, for instance ``proot -eM``
 

@@ -87,6 +87,10 @@ void mirror_path(const char *path, const char *location)
 
 	mirror->real.length = strlen(mirror->real.path);
 
+	/* Special case when the real rootfs is mirrored. */
+	if (mirror->real.length == 1)
+		mirror->real.length = 0;
+
 	tmp = location ? location : path;
 	if (strlen(tmp) >= PATH_MAX) {
 		notice(ERROR, INTERNAL, "mirror location \"%s\" is too long", tmp);
@@ -124,7 +128,7 @@ error:
  *       ("symetric" mirror)
  *
  *     * 1 if it is a mirror location and a substitution was performed
- *       ("asymetric" mirror)
+ *       ("asymmetric" mirror)
  */
 static int substitute_mirror(int which, char path[PATH_MAX])
 {
@@ -154,12 +158,28 @@ static int substitute_mirror(int which, char path[PATH_MAX])
 			return -1;
 		}
 
+		/* Skip comparisons that obviously fail. */
 		if (ref->length > path_length)
 			continue;
 
 		if (   path[ref->length] != '/'
 		    && path[ref->length] != '\0')
 			continue;
+
+		if (which == MIRROR_REAL) {
+			/* Don't substitute systematically the prefix of the
+			 * rootfs when used as an asymmetric mirror, as with:
+			 *
+			 *     proot -m /usr:/location /usr/local/slackware
+			 */
+			if (strncmp(path, root, root_length) == 0)
+				continue;
+
+			/* Avoid an extra trailing '/' when in the
+			 * asymmetric mirror of the real rootfs. */
+			if (ref->length == 0 &&	path_length == 1)
+				path_length = 0;
+		}
 
 		/* Using strncmp(3) to compare paths works fine here
 		 * because both pathes were sanitized, i.e. there is
@@ -182,6 +202,13 @@ static int substitute_mirror(int which, char path[PATH_MAX])
 		memmove(path + anti_ref->length, path + ref->length, path_length - ref->length);
 		memcpy(path, anti_ref->path, anti_ref->length);
 		path[path_length - ref->length + anti_ref->length] = '\0';
+
+		/* Special case when the real rootfs is mirrored at
+		 * the location pointed to by path[]. */
+		if (path[0] == '\0') {
+			path[0] = '/';
+			path[1] = '\0';
+		}
 
 		return 1;
 	}
@@ -716,17 +743,21 @@ end:
 }
 
 /**
- * Remove the leading "root" part of a previously translated @path and
- * copy the result in @result. It returns 0 if the leading part was
- * not the "root" (@path is copied as-is into @result), otherwise it
- * returns the size in bytes of @result, including the end-of-string
- * terminator. On error it returns -errno.
+ * Remove the leading "root" part of a previously translated @path. It
+ * returns 0 if the leading part was not the "root", otherwise it
+ * returns the size in bytes of the updated @path, including the
+ * end-of-string terminator. On error it returns -errno.
  */
 int detranslate_path(char path[PATH_MAX], int sanity_check)
 {
-	int new_length;
+	size_t new_length;
 
 	assert(initialized != 0);
+
+	/* Don't try to detranslate relative paths (typically the
+	 * target of a relative symbolic link). */
+	if (path[0] != '/')
+		return 0;
 
 	/* Check if it is a translatable path. */
 	switch (substitute_mirror(MIRROR_REAL, path)) {
@@ -747,6 +778,7 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 	}
 
 	/* Remove the leading part, that is, the "root". */
+	assert(strlen(path) >= root_length);
 	new_length = strlen(path) - root_length;
 	if (new_length != 0) {
 		memmove(path, path + root_length, new_length);
