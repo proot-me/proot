@@ -82,9 +82,9 @@ static void exit_usage(void)
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("");
 	puts("Alias options:");
-	puts("  -M            alias for: -m $HOME -m /dev -m /proc -m /sys -m /etc/passwd");
-	puts("                           -m /etc/group -m /etc/localtime -m /etc/nsswitch.conf");
-	puts("                           -m /etc/resolv.conf");
+	puts("  -M            alias for: -m $HOME -m /tmp -m /dev -m /proc -m /sys");
+	puts("                           -m /etc/passwd -m /etc/group -m /etc/localtime");
+	puts("                           -m /etc/nsswitch.conf -m /etc/resolv.conf");
 /*	puts("  -R <runner>   XXX */
 	puts("  -Q <qemu>     alias for: -q <qemu> -M -a");
 	puts("  -W            alias for: -w $PWD -m $PWD");
@@ -227,7 +227,8 @@ static pid_t parse_options(int argc, char *argv[])
 			mirror_path("/sys", NULL);
 			mirror_path("/proc", NULL);
 
-			/* Commonly accssed paths. */
+			/* Commonly accessed paths. */
+			mirror_path("/tmp", NULL);
 			mirror_path("/etc/localtime", NULL);
 			if (getenv("HOME") != NULL)
 				mirror_path(getenv("HOME"), NULL);
