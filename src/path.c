@@ -23,7 +23,7 @@
  * Inspired by: realpath() from the GNU C Library.
  */
 
-#include <unistd.h>   /* readlink(2), lstat(2), readlink(2) */
+#include <unistd.h>   /* readlink(2), lstat(2), readlinkat(2) */
 #include <assert.h>   /* assert(3), */
 #include <string.h>   /* strcmp(3), strcpy(3), strncpy(3), memmove(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -40,6 +40,7 @@
 #include "path.h"
 #include "notice.h"
 #include "syscall.h"
+#include "config.h"
 
 #include "compat.h"
 
@@ -808,10 +809,6 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 	int status;
 	DIR *dirp;
 
-#ifndef readlinkat
-	char tmp[PATH_MAX];
-#endif
-
 	/* Format the path to the "virtual" directory. */
 	status = sprintf(proc_fd, "/proc/%d/fd", pid);
 	if (status < 0 || status >= sizeof(proc_fd))
@@ -824,9 +821,10 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 
 	while ((dirent = readdir(dirp)) != NULL) {
 		/* Read the value of this "virtual" link. */
-#ifdef readlinkat
+#ifdef HAVE_READLINKAT
 		status = readlinkat(dirfd(dirp), dirent->d_name, path, PATH_MAX);
 #else
+		char tmp[PATH_MAX];
 		if (strlen(proc_fd) + strlen(dirent->d_name) + 1 >= PATH_MAX)
 			continue;
 		strcpy(tmp, proc_fd);
