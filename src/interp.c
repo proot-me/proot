@@ -306,6 +306,8 @@ int extract_elf_interp(struct child_info *child,
 			goto end;
 		}
 		u_interp[segment_size] = '\0';
+
+		break;
 	}
 
 	/* No INTERP entry was found. */
