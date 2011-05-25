@@ -1,6 +1,6 @@
 CC       = gcc
 LD       = $(CC)
-CPPFLAGS = 
+CPPFLAGS = -MD -DVERSION=$(VERSION)
 CFLAGS   = -Wall -O0 -g
 LDFLAGS  = 
 
@@ -8,21 +8,17 @@ OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ure
 
 VERSION := $(shell git describe --tags --dirty --abbrev=8 --always 2>/dev/null)
 ifndef VERSION
-    VERSION := v0.5-34+
+    VERSION := v0.6.1+
 endif
 
-all: proot
-
 proot: $(OBJECTS)
-	$(LD) $(LDFLAGS) $(OBJECTS) -o $@
+	$(LD) $(LDFLAGS) $^ -o $@
 
-%.o: %.c *.h Makefile
-	$(CC) -DVERSION=$(VERSION) $(CPPFLAGS) $(CFLAGS) $< -c -o $@
+DEPS = $(patsubst %.o, %.d, $(OBJECTS))
+-include $(DEPS)
 
-######################################################################
-# Phony targets follow.
+$(OBJECTS): Makefile
 
 .PHONY: clean
-
 clean:
-	rm -f $(OBJECTS) proot *.gcno *.gcda *.info
+	rm -f $(OBJECTS) proot
