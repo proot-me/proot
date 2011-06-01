@@ -54,16 +54,22 @@ proot: $(OBJECTS)
 	$($(quiet)LD) $(LDFLAGS) $^ -o $@
 
 %.o: %.c
-	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $< -o $@
+	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+
+%.d: %.c
+	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -M -MG $< -MF $@
 
 ######################################################################
 # Dependancies
 
-DEPS = $(patsubst %.o, %.d, $(OBJECTS))
--include $(DEPS)
+DEPS = $(OBJECTS:.o=.d)
 
-$(OBJECTS) config.h: Makefile
-$(OBJECTS): config.h
+.DELETE_ON_ERROR:
+$(OBJECTS) $(DEPS) config.h: Makefile
+
+ifneq ($(MAKECMDGOALS), clean)
+-include $(DEPS)
+endif
 
 ######################################################################
 # PHONY targets
