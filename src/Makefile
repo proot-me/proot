@@ -15,6 +15,7 @@ all: proot
 # Beautified output
 
 quiet_GEN = @echo "  GEN	$@"; $(GEN)
+quiet_DEP = @echo "  DEP	$@"; $(CC)
 quiet_CC  = @echo "  CC	$@"; $(CC)
 quiet_LD  = @echo "  LD	$@"; $(LD)
 
@@ -59,7 +60,7 @@ proot: $(OBJECTS)
 	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -c $(SRC)/$*.c -o $@
 
 %.d: %.c
-	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -M -MT '$*.o $*.d' -MG $(SRC)/$*.c -MF $@
+	$($(quiet)DEP) $(CPPFLAGS) $(CFLAGS) -M -MT '$*.o $*.d' -MG $(SRC)/$*.c -MF $@
 
 ######################################################################
 # Dependancies
