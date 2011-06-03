@@ -53,11 +53,11 @@ config.h:
 proot: $(OBJECTS)
 	$($(quiet)LD) $(LDFLAGS) $^ -o $@
 
-%.o: %.c
-	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
+%.o: %.d
+	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -c $*.c -o $@
 
 %.d: %.c
-	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -M -MG $< -MF $@
+	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -M -MT '$*.o $*.d' -MG $*.c -MF $@
 
 ######################################################################
 # Dependancies
@@ -67,13 +67,20 @@ DEPS = $(OBJECTS:.o=.d)
 .DELETE_ON_ERROR:
 $(OBJECTS) $(DEPS) config.h: Makefile
 
-ifneq ($(MAKECMDGOALS), clean)
--include $(DEPS)
+ifneq ($(MAKECMDGOALS), distclean)
+    ifneq (, $(findstring distclean, $(MAKECMDGOALS)))
+        $(error The target "distclean" shall be invoked separately)
+    else
+        -include $(DEPS)
+    endif
 endif
 
 ######################################################################
 # PHONY targets
 
-.PHONY: clean
+.PHONY: clean distclean
 clean:
-	$(RM) -f $(OBJECTS) $(DEPS) config.h conftest.c proot
+	$(RM) -f $(OBJECTS) proot
+
+distclean: clean
+	$(RM) -f $(DEPS) config.h
