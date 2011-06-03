@@ -3,7 +3,7 @@ RM       = rm
 
 CC       = gcc
 LD       = $(CC)
-CPPFLAGS = 
+CPPFLAGS = -I$(PWD)
 CFLAGS   = -Wall -O0 -g
 LDFLAGS  = 
 
@@ -47,6 +47,8 @@ config.h:
 		rm conftest.c'
 	$(Q)echo "#endif /* CONFIG_H */" >> $@
 
+SRC   = $(dir $(firstword $(MAKEFILE_LIST)))/
+
 ######################################################################
 # Build rules
 
@@ -54,10 +56,10 @@ proot: $(OBJECTS)
 	$($(quiet)LD) $(LDFLAGS) $^ -o $@
 
 %.o: %.d
-	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -c $*.c -o $@
+	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -c $(SRC)/$*.c -o $@
 
 %.d: %.c
-	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -M -MT '$*.o $*.d' -MG $*.c -MF $@
+	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -M -MT '$*.o $*.d' -MG $(SRC)/$*.c -MF $@
 
 ######################################################################
 # Dependancies
@@ -67,9 +69,9 @@ DEPS = $(OBJECTS:.o=.d)
 .DELETE_ON_ERROR:
 $(OBJECTS) $(DEPS) config.h: Makefile
 
-ifneq ($(MAKECMDGOALS), distclean)
-    ifneq (, $(findstring distclean, $(MAKECMDGOALS)))
-        $(error The target "distclean" shall be invoked separately)
+ifneq ($(MAKECMDGOALS), clean)
+    ifneq (,$(filter clean, $(MAKECMDGOALS)))
+        $(error The target "clean" shall be invoked separately)
     else
         -include $(DEPS)
     endif
@@ -78,9 +80,6 @@ endif
 ######################################################################
 # PHONY targets
 
-.PHONY: clean distclean
+.PHONY: clean
 clean:
-	$(RM) -f $(OBJECTS) proot
-
-distclean: clean
-	$(RM) -f $(DEPS) config.h
+	$(RM) -f $(OBJECTS) proot $(DEPS) config.h
