@@ -40,7 +40,7 @@
 #include "path.h"
 #include "notice.h"
 #include "syscall.h"
-#include "config.h"
+#include "readlinkat.h"
 
 #include "compat.h"
 
