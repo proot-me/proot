@@ -39,7 +39,7 @@
 #include "syscall.h" /* translate_syscall(), */
 #include "execve.h"
 #include "notice.h"
-#include "version.h"
+#include "config.h"
 
 #include "compat.h"
 

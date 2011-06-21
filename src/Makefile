@@ -14,8 +14,7 @@ all: proot
 ######################################################################
 # Beautified output
 
-quiet_GEN = @echo "  GEN	$(1)"; $(GEN)
-quiet_DEP = @echo "  DEP	$@"; $(CC)
+quiet_GEN = @echo "  GEN	$@"; $(GEN)
 quiet_CC  = @echo "  CC	$@"; $(CC)
 quiet_LD  = @echo "  LD	$@"; $(LD)
 
@@ -31,69 +30,57 @@ endif
 ######################################################################
 # Auto-configuration
 
-SRC = $(dir $(firstword $(MAKEFILE_LIST)))
-
-GEN_HEADERS = version.h readlinkat.h
-
-define generate =
-  $(1): $(2)
-	$($(quiet)GEN)
-	$(Q)echo "/* This file is auto-generated, edit at your own risk.  */" > $(1)
-	$(Q)echo "#ifndef $(3)" >> $(1)
-	$(Q)echo "#define $(3)" >> $(1)
-	$(Q)sh -c '$(value $(3))' >> $(1)
-	$(Q)echo "#endif /* $(3) */" >> $(1)
-endef
-
-## version.h ##
-
 DEFAULT_VERSION = v0.6.1+
-GEN_VERSION_H = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always) 2>/dev/null; \
-	if [ -z "$${VERSION}" ]; then echo "\#define VERSION $(DEFAULT_VERSION)"; else echo "\#define VERSION $${VERSION}"; fi;
-$(eval $(call generate,version.h,,GEN_VERSION_H))
+CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always) 2>/dev/null; \
+		if [ -z "$${VERSION}" ];                         \
+		then echo "\#define VERSION $(DEFAULT_VERSION)"; \
+		else echo "\#define VERSION $${VERSION}";        \
+		fi;
 
-## readlinkat.h ##
+.IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o
+.check_readlinkat: .check_readlinkat.o
+	$(LINK)
 
-.IGNORE .INTERMEDIATE: .check_readlinkat.o
-.check_readlinkat.o:
-	$(COMPILE)
+CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
 
-GEN_READLINKAT_H = if [ -e .check_readlinkat.o ]; then echo "\#define HAVE_READLINKAT"; fi
-$(eval $(call generate,readlinkat.h,.check_readlinkat.o,GEN_READLINKAT_H))
+config.h: .check_readlinkat
+	$($(quiet)GEN)
+	$(Q)echo "/* This file is auto-generated, edit at your own risk.  */" > $@
+	$(Q)echo "#ifndef CONFIG_H"      >> $@
+	$(Q)echo "#define CONFIG_H"      >> $@
+	$(Q)sh -c '$(CHECK_VERSION)'     >> $@
+	$(Q)sh -c '$(CHECK_READLINKAT)'  >> $@
+	$(Q)echo "#endif /* CONFIG_H */" >> $@
 
 ######################################################################
 # Build rules
 
+SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
+COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$*.c -o $@
+LINK    = $($(quiet)LD) $(LDFLAGS) -o $@ $^
+
 proot: $(OBJECTS)
-	$($(quiet)LD) $(LDFLAGS) $^ -o $@
+	$(LINK)
 
-COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -c $(SRC)$*.c -o $@
+# A little bit overkill since only main.c and path.c depend on
+# config.h as of now.
+$(OBJECTS): config.h
 
-%.o: %.d
+%.o: %.c
 	$(COMPILE)
 
-%.d: %.c
-	$($(quiet)DEP) $(CPPFLAGS) $(CFLAGS) -M -MT '$*.o $*.d' -MG $(SRC)$*.c -MF $@
-
 ######################################################################
-# Dependancies
-
-DEPS = $(OBJECTS:.o=.d)
+# Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) $(DEPS) $(GEN_HEADERS): Makefile
+$(OBJECTS) config.h: Makefile
 
-ifneq ($(MAKECMDGOALS), clean)
-    ifneq (,$(filter clean, $(MAKECMDGOALS)))
-        $(error The target "clean" shall be invoked separately)
-    else
-        -include $(DEPS)
-    endif
-endif
+DEPS = $(OBJECTS:.o=.d)
+-include $(DEPS)
 
 ######################################################################
 # PHONY targets
 
 .PHONY: clean
 clean:
-	-$(RM) -f $(OBJECTS) proot $(DEPS) $(GEN_HEADERS)
+	-$(RM) -f $(OBJECTS) proot $(DEPS) config.h
