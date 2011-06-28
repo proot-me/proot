@@ -30,7 +30,7 @@ endif
 ######################################################################
 # Auto-configuration
 
-DEFAULT_VERSION = v0.6.1+
+DEFAULT_VERSION = v0.6.1
 CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always) 2>/dev/null; \
 		if [ -z "$${VERSION}" ];                         \
 		then echo "\#define VERSION $(DEFAULT_VERSION)"; \

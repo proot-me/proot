@@ -1,3 +1,13 @@
+Release v0.6.1
+==============
+
+* Add `/tmp` to the list of mirrored paths when using -M.
+
+* Fix the ELF interpreter extraction.
+
+* Rewrite the build system.
+
+
 Release v0.6
 ============
 
