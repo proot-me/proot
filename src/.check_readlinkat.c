@@ -1,3 +1,4 @@
+#define _ATFILE_SOURCE
 #include <unistd.h>
 
 int main(void)

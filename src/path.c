@@ -23,6 +23,7 @@
  * Inspired by: realpath() from the GNU C Library.
  */
 
+#define _ATFILE_SOURCE
 #include <unistd.h>   /* readlink(2), lstat(2), readlinkat(2) */
 #include <assert.h>   /* assert(3), */
 #include <string.h>   /* strcmp(3), strcpy(3), strncpy(3), memmove(3), */
