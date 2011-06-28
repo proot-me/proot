@@ -1,6 +1,12 @@
+# If you want to build outside of the source tree, you have to specify
+# VPATH in the command-line:
+#
+#     SRC = ${SOMEWHERE}/proot/src
+#     make -f ${SRC}/GNUmakefile VPATH=${SRC}
+
 GIT      = git
 RM       = rm
-DEP      = $(CC)
+INSTALL  = install
 CC       = gcc
 LD       = $(CC)
 CPPFLAGS = -I$(PWD)
@@ -9,7 +15,7 @@ LDFLAGS  =
 
 OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ureg.o interp.o
 
-all: proot
+.DEFAULT_GOAL = proot
 
 ######################################################################
 # Beautified output
@@ -17,29 +23,36 @@ all: proot
 quiet_GEN = @echo "  GEN	$@"; $(GEN)
 quiet_CC  = @echo "  CC	$@"; $(CC)
 quiet_LD  = @echo "  LD	$@"; $(LD)
+quiet_INSTALL = @echo "  INSTALL	$@"; $(INSTALL)
 
-VERBOSE = 0
-ifeq ($(VERBOSE), 0)
+V = 0
+ifeq ($(V), 0)
     quiet = quiet_
     Q     = @
+    silently = >/dev/null 2>&1
 else
     quiet = 
     Q     = 
+    silently = 
 endif
 
 ######################################################################
 # Auto-configuration
 
 DEFAULT_VERSION = v0.6.1
-CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always) 2>/dev/null; \
+CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>/dev/null); \
 		if [ -z "$${VERSION}" ];                         \
 		then echo "\#define VERSION $(DEFAULT_VERSION)"; \
 		else echo "\#define VERSION $${VERSION}";        \
 		fi;
 
-.IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o
+.SILENT .IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o
+
+.check_readlinkat.o: .check_readlinkat.c
+	$(COMPILE:echo=false) $(silently)
+
 .check_readlinkat: .check_readlinkat.o
-	$(LINK)
+	$(LINK:echo=false) $(silently)
 
 CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
 
@@ -62,9 +75,10 @@ LINK    = $($(quiet)LD) $(LDFLAGS) -o $@ $^
 proot: $(OBJECTS)
 	$(LINK)
 
-# A little bit overkill since only main.c and path.c depend on
-# config.h as of now.
-$(OBJECTS): config.h
+# Special case to compute which files depend on the auto-generated
+# file "config.h".
+NEED_CONFIG := $(notdir $(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"config.h"' $(SRC)*.c)))
+$(NEED_CONFIG): config.h
 
 %.o: %.c
 	$(COMPILE)
@@ -73,14 +87,20 @@ $(OBJECTS): config.h
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) config.h: Makefile
+$(OBJECTS) config.h: $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d)
+DEPS = $(OBJECTS:.o=.d) .check_readlinkat.d
 -include $(DEPS)
 
 ######################################################################
 # PHONY targets
 
-.PHONY: clean
-clean:
+PREFIX = /usr/local
+DESTDIR = $(PREFIX)/bin
+
+.PHONY: clean distclean install
+clean distclean:
 	-$(RM) -f $(OBJECTS) proot $(DEPS) config.h
+
+install: proot
+	$($(quiet)INSTALL) proot $(DESTDIR)
