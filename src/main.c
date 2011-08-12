@@ -272,8 +272,13 @@ static pid_t parse_options(int argc, char *argv[])
 			opt_check_syscall = 1;
 			break;
 
-		default:
+		case 'h':
 			exit_usage();
+			break;
+
+		default:
+			notice(ERROR, USER, "unknown option '-%c', try '-h' for help.", argv[i][1]);
+			break;
 		}
 	}
 
