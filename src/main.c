@@ -448,31 +448,6 @@ static void attach_process(pid_t pid)
 		exit(EXIT_FAILURE);
 }
 
-static void print_sigsegv_help()
-{
-	const char *message = NULL;
-
-	if (opt_runner || opt_qemu) {
-		message = (opt_disable_aslr
-			   ? "\
-add the option -Q <qemu>,-B,0x80000000 to specify an alternate base address."
-			   : "\
-add the option -a to disable ASLR since it can conflict with <qemu>.");
-	}
-	else if (opt_no_elf_interp)
-		message = "\
-remove the option -e to use the right ELF interpreter.";
-
-	if (message == NULL)
-		return;
-
-	notice(INFO, USER, "\
-<program> was terminated because it performed an illegal memory access, ");
-	notice(INFO, USER, "\
-technically it could be due to the usage of PRoot... You should try to ");
-	notice(INFO, USER, message);
-}
-
 static int event_loop()
 {
 	int last_exit_status = -1;
@@ -503,9 +478,6 @@ static int event_loop()
 			VERBOSE(get_nb_children() != 1,
 				"pid %d: terminated with signal %d",
 				pid, WTERMSIG(child_status));
-			if (   WTERMSIG(child_status) == SIGSEGV
-			    && get_nb_children() == 1)
-				print_sigsegv_help();
 			delete_child(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
