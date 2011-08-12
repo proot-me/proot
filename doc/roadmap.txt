@@ -94,6 +94,8 @@ Release v0.8
 
 * Don't accept signal from traced child.
 
+* Add a stealth mode where over-the-stack content is restored.
+
 * Kill all children when exiting (on_exit/atexit).
 
 
