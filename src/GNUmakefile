@@ -98,9 +98,12 @@ DEPS = $(OBJECTS:.o=.d) .check_readlinkat.d
 PREFIX = /usr/local
 DESTDIR = $(PREFIX)/bin
 
-.PHONY: clean distclean install
+.PHONY: clean distclean install uninstall
 clean distclean:
 	-$(RM) -f $(OBJECTS) proot $(DEPS) config.h
 
 install: proot
 	$($(quiet)INSTALL) proot $(DESTDIR)
+
+uninstall:
+	-$(RM) -f $(DESTDIR)/proot
