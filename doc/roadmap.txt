@@ -98,6 +98,11 @@ Release v0.8
 
 * Kill all children when exiting (on_exit/atexit).
 
+* Fix canonicalization of pathes that are expected to exist but doesn't.
+
+  For instance ``ls /DOESNT_EXIST/../bin`` shouldn't succeed (reported
+  by Yves JANIN).
+
 
 Release v0.9
 ------------
