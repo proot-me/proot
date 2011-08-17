@@ -762,13 +762,15 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 		return 0;
 
 	/* Check if it is a translatable path. */
-	switch (substitute_mirror(MIRROR_REAL, path)) {
-	case 0:
-		return 0;
-	case 1:
-		return strlen(path) + 1;
-	default:
-		break;
+	if (sanity_check) {
+		switch (substitute_mirror(MIRROR_REAL, path)) {
+		case 0:
+			return 0;
+		case 1:
+			return strlen(path) + 1;
+		default:
+			break;
+		}
 	}
 
 	/* Ensure the path is within the new root. */
