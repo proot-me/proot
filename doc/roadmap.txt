@@ -4,6 +4,8 @@ Roadmap
 Release v0.7
 ------------
 
+* Add support for response file (as suggested by Christophe GUILLON).
+
 * Add command-line interface to set environment variables.
 
       Rename push_env() in change_env() and enhance it to support the
