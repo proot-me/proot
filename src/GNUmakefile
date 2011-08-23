@@ -23,7 +23,7 @@ OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ure
 quiet_GEN = @echo "  GEN	$@"; $(GEN)
 quiet_CC  = @echo "  CC	$@"; $(CC)
 quiet_LD  = @echo "  LD	$@"; $(LD)
-quiet_INSTALL = @echo "  INSTALL	$@"; $(INSTALL)
+quiet_INSTALL = @echo "  INSTALL	$?"; $(INSTALL)
 
 V = 0
 ifeq ($(V), 0)
@@ -103,7 +103,7 @@ clean distclean:
 	-$(RM) -f $(OBJECTS) proot $(DEPS) config.h
 
 install: proot
-	$($(quiet)INSTALL) proot $(DESTDIR)
+	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
 
 uninstall:
 	-$(RM) -f $(DESTDIR)/proot
