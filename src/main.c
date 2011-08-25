@@ -92,6 +92,7 @@ static void exit_usage(void)
 	puts("");
 	puts("Misc. options:");
 	puts("  -v            increase the verbose level");
+	puts("  -V            print the version then exit");
 /*	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>"); */
 /*	puts("  -U <X>        deletes the variable <X> from the environment"); */
 	puts("  -u            don't block unknown syscalls");
@@ -153,6 +154,11 @@ static pid_t parse_options(int argc, char *argv[])
 
 		case 'v':
 			verbose_level++;
+			break;
+
+		case 'V':
+			puts("PRoot version " xstr(VERSION));
+			exit(EXIT_FAILURE);
 			break;
 
 		case 'D':
