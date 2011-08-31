@@ -294,9 +294,7 @@ static pid_t parse_options(int argc, char *argv[])
 	opt_new_root = argv[i];
 
 	if (argc - i == 1) {
-		char *shell = getenv("SHELL");
-		if (shell != NULL)
-			opt_args_default[0] = shell;
+		opt_args_default[0] = "/bin/sh";
 	}
 	else  {
 		opt_args = &argv[i + 1];
