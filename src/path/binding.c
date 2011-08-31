@@ -254,7 +254,7 @@ static void create_dummy(char c_path[PATH_MAX], const char * real_path)
 	const char *cursor;
 	int type;
 
-	/* Determine the type of the element to be binded:
+	/* Determine the type of the element to be bound:
 	   1: file
 	   0: directory
 	*/

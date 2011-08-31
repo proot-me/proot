@@ -1,0 +1,278 @@
+=======
+ PRoot
+=======
+
+-------------------------------------------------------------------------
+``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
+-------------------------------------------------------------------------
+
+:Date: 2012-01-12
+:Version: 0.7.1
+:Manual section: 1
+
+
+Synopsis
+========
+
+**proot** [*option*] ... */path/to/guest/rootfs* [*program* [*arg*] ...]
+
+
+Description
+===========
+
+PRoot is an user-mode implementation of ``chroot``, ``mount --bind``,
+and ``binfmt_misc``, that means users don't need any privilege or
+setup to use an arbitrary directory as the new root file-system, to
+make files accessible somewhere else in the file-system hierarchy, and
+to execute programs built for another CPU architecture transparently
+through QEMU.  PRoot relies on ``ptrace``, an unprivileged system-call
+available in every Linux kernels.
+
+The new root file-system, a.k.a *guest rootfs*, typically contains a
+Linux distribution.  By default PRoot confines the execution of
+programs to the guest rootfs only, however users can use the built-in
+*mount/bind* mechanism to access files and directories from the actual
+root file-system, a.k.a *host rootfs*, as if they were part of the
+guest rootfs.
+
+When the guest Linux distribution is made for a CPU architecture
+incompatible with the host one, PRoot uses QEMU to execute
+transparently guest programs.  It's a convenient way to develop, to
+build, and to validate any guest Linux packages seamlessly on users'
+computer, just as if they were in a *native* guest environment.  That
+way all of the cross-compilation issues are avoided.
+
+PRoot can also *mix* the execution of host programs and the execution
+of guest programs emulated by QEMU.  This is useful to use programs
+that aren't available initially in the guest environment and to speed
+up build-time by using cross-compilation tools or any CPU independent
+program, like interpreters.
+
+
+Options
+=======
+
+This section is a work-in-progress.
+
+
+Regular options
+---------------
+
+-b path, --bind=path, -m path, --mount=path
+    Make the content of *path* accessible in the guest rootfs.
+
+-q command, --qemu=command
+    Execute guest programs through QEMU as specified by *command*.
+
+-x path, --allow-host-execution=path
+    Bind ``/`` to *path* and allow the execution of host programs.
+
+-w path, --pwd=path, --cwd=path
+    Set the initial working directory to *path*, default is ``/``.
+
+-e, --ignore-elf-interpreter
+    Don't use the ELF interpreter to load native programs.
+
+-u, --allow-unkonwn-syscalls
+    Allow the execution of unknown syscalls.
+
+-p, --allow-ptrace-syscall
+    Allow the execution of the syscall ``ptrace``.
+
+-a, --disable-aslr
+    Disable randomization of the virtual address space (ASLR).
+
+-k string, --kernel-release=string
+    Force syscall ``uname`` to report *string* as kernel release.
+
+-0, --root-id
+    Force syscalls ``get*id`` to report identity 0, aka "root".
+
+-v, --verbose
+    Increase the level of debug information.
+
+-V, --version, --about
+    Print version, copyright, license, and contact, then exit.
+
+-h, --help, --usage
+    Print the version and the command-line usage, then exit.
+
+
+Alias options
+-------------
+
+This section is a work-in-progress.
+
+-B, -M, --use-recommended-bindings
+    Alias: ``-b`` for each path of a recommended list.
+
+    Here is the list of recommended paths:
+
+    * /etc/host.conf
+    * /etc/hosts
+    * /etc/hosts.equiv
+    * /etc/mtab
+    * /etc/netgroup
+    * /etc/networks
+    * /etc/passwd
+    * /etc/group
+    * /etc/nsswitch.conf
+    * /etc/resolv.conf
+    * /etc/localtime
+    * /dev
+    * /sys
+    * /proc
+    * /tmp
+    * $HOME
+
+-Q command
+    Alias: ``-q *command* -a -B``.
+
+-X command, --mixed-qemu=command
+    Alias: ``-Q *command* -x /host-rootfs``.
+
+-W, --in-place
+    Alias: ``-b $PWD -w $PWD``.
+
+
+Exit Status
+===========
+
+If an internal error occured, ``proot`` returns a non-zero exit
+status, otherwise it returns the exit status of the last terminated
+process.  When an error occured, the only way to know if it comes
+comes from the process or from ``proot`` is to have a look at the
+error message.
+
+
+Files
+=====
+
+PRoot reads links in ``/proc/<pid>/fd/`` to support `openat(2)`-like
+syscalls made by the guest programs.
+
+
+Example
+=======
+
+In the following examples the directories ``/mnt/slackware-7.0`` and
+``/mnt/armslack-12.2/`` contain a Linux distribution respectively made
+for x86 CPUs and ARM CPUs.
+
+
+``chroot``
+----------
+
+To execute a program inside a given Linux distribution, users just
+have to specify the path to the guest rootfs followed by the desired
+command.  The example below executes the program ``cat`` to print the
+content of a file, both are from the guest distro::
+
+    proot /mnt/slackware-7.0/ cat /etc/motd
+
+The default command is ``/bin/sh`` if none were specified, thus the
+shortest way to confine an interactive shell and all its sub-processes
+is::
+
+    proot /mnt/slackware-7.0/
+
+
+``mount --bind``
+----------------
+
+The option ``-b``, short for ``--bind``, makes files from the host
+rootfs accessible in the confined environment just as if they were
+initially part of the guest rootfs.  It is sometimes required to run
+programs that rely on some specific files::
+
+    proot -b /proc /mnt/slackware-7.0/ ps
+
+Actually there's a bunch of such specific files, that's why PRoot
+provides the option ``-B`` to bind automatically a pre-defined list of
+recommended paths::
+
+    proot -B /mnt/slackware-7.0/ ps
+
+The bind mechanism can also be used to relocate files and directories
+in the host rootfs by using ``/`` as the path to the guest rootfs.  It
+is quite handy to cheat programs that perform access to hard-coded
+locations, like not well written installation scripts::
+
+    proot -b /tmp/alternate_usr:/usr / make install
+
+or to substitute system configuration files, for example the DNS
+setting::
+
+    proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com
+
+
+``binfmt_misc``
+---------------
+
+PRoot uses QEMU to execute programs built for a CPU architecture
+incompatible with the host one.  From users' point-of-view, emulated
+guest programs are executed transparently, that is, just like host
+programs.  To enable this feature users just have to specify which
+instance of QEMU they want to use with the option ``-q`` or ``-Q``
+(this latter implies ``-B``)::
+
+    proot -Q qemu-arm /mnt/armslack-12.2/
+
+The parameter of the ``-q/-Q`` option is actually a whole QEMU
+command, for instance to enable its GDB server on port 1234::
+
+    proot -Q "qemu-arm -g 1234" /mnt/armslack-12.2/ emacs
+
+PRoot has a mode to allow the execution of host programs alongside
+emulated guest programs, that is, they share the same file-system
+namespace.  It's typically useful to extend the list of available
+programs and to speed up build-time significantly.  This mixed-mode is
+enable by substituting the ``-Q`` option with ``-X``, then the content
+of the host rootfs is accessible through ``/host-rootfs``::
+
+    proot -X qemu-arm /mnt/armslack-12.2/
+    
+    $ file /bin/echo
+    [...] ELF 32-bit LSB executable, ARM [...]
+    $ file /host-rootfs/bin/echo
+    [...] ELF 64-bit LSB executable, x86-64 [...]
+    $ /host-rootfs/bin/echo 'Hello mixed world!'
+    Hello mixed world!
+
+Since both host and guest programs use the guest rootfs as ``/``,
+users may want to deactivate explicitly cross-filesystem support found
+in most GNU cross-compilation tools.  For example with GCC configured
+to cross-compile to the ARM target::
+
+    proot -X qemu-arm /mnt/armslack-12.2/
+    
+    $ export CC=/host-rootfs/opt/cross-tools/arm-linux/bin/gcc
+    $ export CFLAGS="--sysroot=/"   # could be optional indeed
+    $ ./configure; make
+
+As with regular files, a host instance of a program can be bound over
+its guest instance.  Here is an example where the guest ``sh`` and
+``make`` binaries are overlaid by the host ones::
+
+   proot -Q qemu-arm -b /bin/sh -b /usr/bin/make /mnt/armslack-12.2/
+
+It's worth mentioning that even when mixing the execution of host
+programs and the execution of emulated guest programs, they still
+believe they are running in a native guest environment.  As a
+demonstration, here is a partial output of a typical ``./configure``
+script::
+
+    checking whether the C compiler is a cross-compiler... no
+
+
+See Also
+========
+
+chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1), bindfs(1)
+
+
+Colophon
+========
+
+Contact cedric.vincent@gmail.com for bug reports, suggestions, ...
+Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.

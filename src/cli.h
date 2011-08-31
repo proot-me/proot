@@ -20,28 +20,30 @@ struct option {
 	struct argument arguments[5];
 };
 
-#define VERSION "0.7.0"
-#define SUBTITLE "chroot, mount --bind, and binfmt_misc with no privilege"
-#define SYNOPSIS "proot [option] ... /path/to/guest/rootfs [program [arg] ...]"
+static const char *version = "0.7.1";
+static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
+static const char *synopsis = "proot [option] ... /path/to/guest/rootfs [program [arg] ...]";
+static const char *colophon = "Contact cedric.vincent@gmail.com for bug reports, suggestions, ...\n\
+Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.";
 
 static char *recommended_bindings[] = {
-	  "/etc/host.conf",
-	  "/etc/hosts",
-	  "/etc/hosts.equiv",
-	  "/etc/mtab",
-	  "/etc/netgroup",
-	  "/etc/networks",
-	  "/etc/passwd",
-	  "/etc/group",
-	  "/etc/nsswitch.conf",
-	  "/etc/resolv.conf",
-	  "/dev",
-	  "/sys",
-	  "/proc",
-	  "/tmp",
-	  "/etc/localtime",
-	  "$HOME",
-	  NULL
+	"/etc/host.conf",
+	"/etc/hosts",
+	"/etc/hosts.equiv",
+	"/etc/mtab",
+	"/etc/netgroup",
+	"/etc/networks",
+	"/etc/passwd",
+	"/etc/group",
+	"/etc/nsswitch.conf",
+	"/etc/resolv.conf",
+	"/etc/localtime",
+	"/dev",
+	"/sys",
+	"/proc",
+	"/tmp",
+	"$HOME",
+	NULL,
 };
 
 static void handle_option_b(char *value);
@@ -79,7 +81,7 @@ static struct option options[] = {
 		{ .name = "--qemu", .separator = '=', .value = "command" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_q,
-	  .description = "Execute programs through QEMU as specified by *command*.",
+	  .description = "Execute guest programs through QEMU as specified by *command*.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -96,7 +98,7 @@ static struct option options[] = {
 		{ .name = "--cwd", .separator = '=', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_w,
-	  .description = "Set the working directory to *path*, default is \"/\".",
+	  .description = "Set the initial working directory to *path*, default is /.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -120,7 +122,7 @@ static struct option options[] = {
 		{ .name = "--allow-ptrace-syscall", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_p,
-	  .description = "Allow the execution of the syscall \"ptrace\".",
+	  .description = "Allow the execution of the syscall ptrace.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -136,7 +138,7 @@ static struct option options[] = {
 		{ .name = "--kernel-release", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_k,
-	  .description = "Force syscall \"uname\" to report *string* as kernel release.",
+	  .description = "Force syscall uname to report *string* as kernel release.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -144,7 +146,7 @@ static struct option options[] = {
 		{ .name = "--root-id", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_0,
-	  .description = "Force syscalls \"get*id\" to report identity 0, aka \"root\".",
+	  .description = "Force syscalls get*id to report identity 0, aka \"root\".",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -176,16 +178,17 @@ static struct option options[] = {
 	  .arguments = {
 		{ .name = "-B", .separator = '\0', .value = NULL },
 		{ .name = "-M", .separator = '\0', .value = NULL },
+		{ .name = "--use-recommended-bindings", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_B,
-	  .description = "Alias: \"-b path\" for each path of a recommended list.",
+	  .description = "Alias: -b for each path of a recommended list.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-Q", .separator = ' ', .value = "command" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_Q,
-	  .description = "Alias: \"-q *command* -a -B\".",
+	  .description = "Alias: -q *command* -a -B.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
@@ -193,14 +196,15 @@ static struct option options[] = {
 		{ .name = "--mixed-qemu", .separator = '=', .value = "command" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_X,
-	  .description = "Alias: \"-Q *command* -x /host-rootfs\".",
+	  .description = "Alias: -Q *command* -x /host-rootfs.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-W", .separator = '\0', .value = NULL },
+		{ .name = "--in-place", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_W,
-	  .description = "Alias: \"-b $PWD -w $PWD\".",
+	  .description = "Alias: -b $PWD -w $PWD.",
 	},
 };
 

@@ -228,9 +228,8 @@ static void handle_option_v(char *value)
 
 static void handle_option_V(char *value)
 {
-	printf("PRoot %s: %s.\n", VERSION, SUBTITLE);
-	printf("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...\n");
-	printf("Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.\n");
+	printf("PRoot %s: %s.\n", version, subtitle);
+	printf("%s\n", colophon);
 	exit(EXIT_FAILURE);
 }
 
@@ -282,8 +281,8 @@ static void print_usage(bool detailed)
 
 #define DETAIL(a) if (detailed) a
 
-	DETAIL(printf("PRoot %s: %s.\n\n", VERSION, SUBTITLE));
-	printf("Usage:\n  %s\n", SYNOPSIS);
+	DETAIL(printf("PRoot %s: %s.\n\n", version, subtitle));
+	printf("Usage:\n  %s\n", synopsis);
 	DETAIL(printf("\n"));
 
 	for (i = 0; i < NB_OPTIONS; i++) {
@@ -313,6 +312,9 @@ static void print_usage(bool detailed)
 				printf("\t");
 		}
 	}
+
+	if (detailed)
+		printf("%s\n", colophon);
 }
 
 static char *default_command[] = { "/bin/sh", NULL };

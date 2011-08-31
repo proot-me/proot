@@ -1,0 +1,138 @@
+/* TODO: pre can wrap */
+
+* {
+    padding: 0;
+    margin: 0;
+
+    color: #333333;
+    line-height: 1.5em;
+}
+
+html {
+    background-color: #dddddd;
+}
+
+body {
+    background-color: white;
+
+    border: 1px solid #dddddd;
+    border-radius: 1em;
+    -moz-border-radius: 1em;
+
+    max-width: 50em;
+    min-width: 25em;
+
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 1.5em;
+    margin-bottom: 1.5em;
+
+    -moz-box-shadow: 0 0 5px 5px #333333;
+    -webkit-box-shadow: 0 0 5px 5px #333333;
+    box-shadow: 0 0 1em 0.5em #333333;
+}
+
+h1 {
+    color: orange;
+    text-align: center;
+    text-shadow: 2px 3px 3px #333333;
+    font-size: 3em;
+}
+
+h2 {
+    margin: 1em;
+    margin-bottom: 0.5em;
+
+    border-bottom: 1px dotted gray;
+}
+
+h3 {
+    margin-left: 1em;
+    font-style: italic;
+}
+
+#contents {
+    text-align: center;
+
+    background-color: grey;
+    border-top: 1px solid #dddddd;
+    border-bottom: 1px solid #dddddd;
+
+    margin-right: -1px;
+    border-right: 1px solid gray;
+    margin-left: -1px;
+    border-left: 1px solid gray;
+    
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+}
+
+#contents li {
+    display: inline;
+
+    margin-left: 3%;
+    margin-right: 3%;
+}
+
+#contents a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    border-bottom: none;
+}
+
+#contents a:hover {
+    border-bottom: 2px solid orange;
+}
+
+a {
+    text-decoration: none;
+    border-bottom: 1px solid orange;
+}
+
+p {
+    text-align: justify;
+
+    margin-left: 2em;
+    margin-right: 2em;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+ol {
+    margin-left: 5em;
+    margin-right: 2em;
+    margin-top: 0.5em;
+    margin-bottom: 1em;
+}
+
+li {
+    margin-bottom: 0.5em;
+}
+
+table {
+    margin-left: 2em;
+    margin-right: 2em;
+}
+
+.footnote {
+    font-size: smaller;
+}
+
+pre {
+    margin: 2em ;
+    margin-top: 0.5em ;
+    margin-bottom: 1em ;
+
+    padding: 0.5em;
+
+    background-color: #dddddd;
+    color: black;
+}
+
+@media print {
+    * {
+        background-color: transparent ! important;
+        border: none ! important;
+    }
+}
