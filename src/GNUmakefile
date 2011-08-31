@@ -1,9 +1,8 @@
-# If you want to build outside of the source tree, you have to specify
-# VPATH in the command-line:
-#
-#     SRC = ${SOMEWHERE}/proot/src
-#     make -f ${SRC}/GNUmakefile VPATH=${SRC}
+# If you want to build outside of the source tree, use the -f option:
+#     make -f ${SOMEWHERE}/proot/src/GNUmakefile
 
+# the VPATH variable must points to the actual makefile directory
+VPATH	:= $(dir $(lastword $(MAKEFILE_LIST)))
 GIT      = git
 RM       = rm
 INSTALL  = install
