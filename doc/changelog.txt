@@ -1,3 +1,29 @@
+Release v0.6.2
+==============
+
+* Change the default command from $SHELL to "/bin/sh".  The previous
+  behaviour led to an unexpected error -- from user's point-of-view --
+  when $SHELL didn't exit in the new root file-system.
+
+* Fix *partially* support for readlink(2) when mirror pathes are in
+  use.  Prior this patch, any symbolic link -- that points to an
+  absolute path which prefix is equal to the host-side of any mirror
+  path -- was bugged.  For instance, the command "proot -m /bin:/host
+  $ROOTFS /usr/bin/readlink /usr/bin/ps" returned "/host" instead of
+  "/bin/ps".
+
+* Add the option "-V" to print the version then exit.
+
+* Be more explicit when a wrong command-line argument is used.
+
+* Remove the SIGSEGV help message: it was too confusing to the user.
+
+* Use a new shining build-system (again :D).
+
+Special thanks go to those contributors: Yves JANIN, Remi Duraffort
+and Christophe GUILLON.
+
+
 Release v0.6.1
 ==============
 
