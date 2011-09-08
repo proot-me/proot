@@ -141,6 +141,8 @@ Release v0.9
 
 * Why doesn't "slackpkg upgrade" work under PRoot v0.3
 
+* Emulate ptrace() so as to allow a ptraced GDB on another ptraced process.
+
 
 Release v1.0
 ------------
