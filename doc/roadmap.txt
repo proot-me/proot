@@ -4,8 +4,6 @@ Roadmap
 Release v0.7
 ------------
 
-* Add support for response file (as suggested by Christophe GUILLON).
-
 * Add command-line interface to set environment variables.
 
       Rename push_env() in change_env() and enhance it to support the
@@ -65,6 +63,12 @@ Release v0.7
 
 Release v0.8
 ------------
+
+* Add a "multi-process" mode where there's one fork of PRoot per monitored process.
+
+      Each time a new_child structure is created, PRoot forks itself.
+      Be sure that the tracer of this new process really is the new
+      forked PRoot! (Thanks Yves for this comment)
 
 * Handle /proc/<pid>/(exe|cwd) where <pid> is a process traced by PRoot (i.e not only "self").
 
