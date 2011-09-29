@@ -105,6 +105,25 @@ case __NR_uname:
 	status = 0;
 	break;
 
+case __NR_getuid:
+case __NR_getgid:
+case __NR_getegid:
+case __NR_geteuid:
+case __NR_getuid32:
+case __NR_getgid32:
+case __NR_geteuid32:
+case __NR_getegid32:
+	status = 0;
+	if (fake_id0)
+		break;
+	goto end;
+
+case __NR_getresuid:
+case __NR_getresuid32:
+case __NR_getresgid:
+case __NR_getresgid32:
+	/* TODO.  */
+
 default:
 	status = 0;
 	goto end;

@@ -27,6 +27,7 @@
 
 #include <stddef.h>     /* offsetof(), */
 #include <limits.h>     /* PATH_MAX, */
+#include <stdbool.h>    /* bool ,true, false, */
 
 #include "arch.h" /* word_t */
 #include "child_info.h"
@@ -55,7 +56,7 @@ enum sysarg {
 	(offsetof(struct user, regs)			\
 	 + offsetof(struct user_regs_struct, reg_name))
 
-extern void init_module_syscall(int sanity_check, int allow_unknown, int allow_ptrace, const char *kernel_release);
+extern void init_module_syscall(bool sanity_check, bool allow_unknown, bool allow_ptrace, bool fake_id0, const char *kernel_release);
 extern int translate_syscall(pid_t pid);
 extern int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
 extern int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);

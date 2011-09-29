@@ -52,8 +52,9 @@ static const char *opt_runner = NULL;
 
 static int opt_no_elf_interp = 0;
 static int opt_many_jobs = 0;
-static int opt_allow_unknown = 0;
-static int opt_allow_ptrace = 0;
+static bool opt_allow_unknown = false;
+static bool opt_allow_ptrace = false;
+static bool opt_fake_id0 = false;
 static int opt_disable_aslr = 0;
 static const char *opt_kernel_release = NULL;
 
@@ -99,6 +100,7 @@ static void exit_usage(void)
 	puts("  -p            don't block ptrace(2)");
 	puts("  -a            disable randomization of the virtual address space (ASLR)");
 	puts("  -k <string>   make uname(2) report <string> as the kernel release");
+	puts("  -0            make get*[gu]id report the user/group identity 0 (\"root\" id)");
 /*	puts("  -f <file>     read the configuration for \"binfmt_misc\" support from <file>"); */
 /*	puts("  -j <integer>  use <integer> jobs (faster but prone to race condition exploit)"); */
 /*	puts("  -d            check every /proc/$pid/fd/\* point to a translated path (slow!)"); */
@@ -270,6 +272,10 @@ static pid_t parse_options(int argc, char *argv[])
 			opt_kernel_release = argv[i];
 			break;
 
+		case '0':
+			opt_fake_id0 = true;
+			break;
+
 		case 'd':
 			opt_check_fd = 1;
 			break;
@@ -306,7 +312,7 @@ static pid_t parse_options(int argc, char *argv[])
 
 	init_module_path(opt_new_root, opt_runner != NULL);
 	init_module_child_info();
-	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace, opt_kernel_release);
+	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace, opt_fake_id0, opt_kernel_release);
 	init_module_execve(opt_runner, opt_qemu, opt_no_elf_interp);
 
 	return pid; /* XXX: pid attachement not yet [officially] supported. */

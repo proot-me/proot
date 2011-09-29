@@ -46,21 +46,23 @@
 
 #include "compat.h"
 
-static int allow_unknown = 0;
-static int allow_ptrace = 0;
+static bool allow_unknown = false;
+static bool allow_ptrace = false;
+static bool fake_id0 = false;
 static const char *kernel_release;
 
 /**
  * Initialize internal data of the syscall module.
  */
-void init_module_syscall(int sanity_check, int opt_allow_unknown, int opt_allow_ptrace, const char *opt_kernel_release)
+void init_module_syscall(bool sanity_check, bool allow_unknown_, bool allow_ptrace_, bool fake_id0_, const char *kernel_release_)
 {
 	if (sanity_check != 0)
 		notice(WARNING, USER, "option -s not yet supported");
 
-	allow_unknown  = opt_allow_unknown;
-	allow_ptrace   = opt_allow_ptrace;
-	kernel_release = opt_kernel_release;
+	allow_unknown  = allow_unknown_;
+	allow_ptrace   = allow_ptrace_;
+	fake_id0       = fake_id0_;
+	kernel_release = kernel_release_;
 }
 
 /**
