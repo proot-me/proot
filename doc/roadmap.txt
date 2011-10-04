@@ -24,8 +24,8 @@ Release v0.7
 
 * Add command-line interface to set environment variables.
 
-      Rename push_env() in change_env() and enhance it to support the
-      "unset" feature.
+    Rename push_env() in change_env() and enhance it to support the
+    "unset" feature.
 
 * Become compatible with the new version of ptrace.
 
@@ -33,7 +33,7 @@ Release v0.7
 
 * Why QEMU does pthread cancellation when the target program cancels one of its thread?
 
-      Is it due to the RT signal used in NTPL? (TLPI 693)
+    Is it due to the RT signal used in NTPL? (TLPI 693)
 
 * Distinguish the runner mode ``-r/-R`` and QEMU specific modes ``-q/-Q``
 
@@ -41,13 +41,13 @@ Release v0.7
 
 * Search the program in $PATH in non-interactive mode, à la sh
 
-      For instance: ``proot $ROOTFS ls /tmp`` instead of ``proot
-      $ROOTFS /bin/ls /tmp``
+    For instance: ``proot $ROOTFS ls /tmp`` instead of ``proot
+    $ROOTFS /bin/ls /tmp``
 
 * Fix the support for symbolic links when asymmetric mirrors are in use
 
-      See the commit 2f1276b2 and commit c10e2073 for details.  For
-      instance::
+    See the commit 2f1276b2 and commit c10e2073 for details.  For
+    instance::
 
       ~$ ./proot -m /:/hostfs /usr/local/slack/slackware-13.1/
       ~$ cd /hostfs/sw # -> /usr/local/sw
@@ -57,7 +57,7 @@ Release v0.7
       bash: ../sysdeps/unix/sysv/linux/getcwd.c:132: __getcwd: Assertion `...' failed.
       proot: pid 19766: terminated with signal 6
 
-      another example::
+    another example::
 
       $ ./proot -m /proc -m /:/hostfs /usr/local/slack/slackware-13.1/
       /$ cd /hostfs/etc
@@ -68,15 +68,15 @@ Release v0.7
 
 * Make ``/proc/self/exe`` point to the original program name
 
-      That was the prupose of the field ``exe`` in the structure
-      ``child_info``
+    That was the prupose of the field ``exe`` in the structure
+    ``child_info``
 
 * Don't canonicalize if the path translation is delayed
 
-      In translate_path(): we don't use the result of the
-      canonicalization if the translation is delayed.  This point
-      depends actually on the input path, so why I don't detect sooner
-      that the canonicalization is useless?
+    In translate_path(): we don't use the result of the
+    canonicalization if the translation is delayed.  This point
+    depends actually on the input path, so why I don't detect sooner
+    that the canonicalization is useless?
 
 
 Release v0.8
@@ -84,9 +84,9 @@ Release v0.8
 
 * Add a "multi-process" mode where there's one fork of PRoot per monitored process.
 
-      Each time a new_child structure is created, PRoot forks itself.
-      Be sure that the tracer of this new process really is the new
-      forked PRoot! (Thanks Yves for this comment)
+    Each time a new_child structure is created, PRoot forks itself.
+    Be sure that the tracer of this new process really is the new
+    forked PRoot! (Thanks Yves for this comment)
 
 * Handle /proc/<pid>/(exe|cwd) where <pid> is a process traced by PRoot (i.e not only "self").
 
@@ -114,7 +114,7 @@ Release v0.8
 
 * Raise a warning when ptrace(P*K*USER) fails during translate_syscall()
 
-     Instead of silently ignoring this unexpected error.
+   Instead of silently ignoring this unexpected error.
 
 * Don't accept signal from traced child.
 
@@ -124,12 +124,12 @@ Release v0.8
 
 * Fix canonicalization of pathes that are expected to exist but doesn't.
 
-  For instance ``ls /DOESNT_EXIST/../bin`` shouldn't succeed (reported
-  by Yves JANIN).
+    For instance ``ls /DOESNT_EXIST/../bin`` shouldn't succeed
+    (reported by Yves JANIN).
 
 * Fix support for pathes ending with "/." (reported by Yves JANIN)
 
-  For instance:
+    For instance:
 
       proot: translate("/" + "/this/is/a/test/.")
       proot:          -> "/usr/local/slack/install/slackware-13.1-d1/this/is/a/test"
@@ -140,24 +140,24 @@ Release v0.9
 
 * Emulate brk for programs that assume it's after the data segment.
 
-      Some heap managers (as found in Bash and Emacs) assume the
-      program break is right after *their* data segment but it's not
-      the case when the GNU dynamic loader is invoked directly, as in
-      PRoot without the -e option::
+    Some heap managers (as found in Bash and Emacs) assume the program
+    break is right after *their* data segment but it's not the case
+    when the GNU dynamic loader is invoked directly, as in PRoot
+    without the -e option::
 
-          +---------------+
-          | program code  |
-          +---------------+ <- code end [static]
-          | program data  |
-          +---------------+ <- data end [static]
-          :               :
-          +---------------+
-          | loader code   |
-          +---------------+
-          | loader data   |
-          +---------------+
-          | loader heap   |
-          +---------------+ <- break [dynamic]
+      +---------------+
+      | program code  |
+      +---------------+ <- code end [static]
+      | program data  |
+      +---------------+ <- data end [static]
+      :               :
+      +---------------+
+      | loader code   |
+      +---------------+
+      | loader data   |
+      +---------------+
+      | loader heap   |
+      +---------------+ <- break [dynamic]
 
 * Be more accurate on reported errno (TLPI 564-565, 572).
 
