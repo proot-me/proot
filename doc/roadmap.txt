@@ -1,6 +1,24 @@
 Roadmap
 =======
 
+Release v0.6.3
+--------------
+
+* Fix support for "/" as path to the alternate root (reported by Christophe GUILLON).
+
+    How to reproduce::
+
+      $ proot -w $PWD / /bin/sh -c 'echo $PWD'
+
+    current output::
+
+      //home/guillon
+
+    expected output::
+
+      /home/guillon
+
+
 Release v0.7
 ------------
 
