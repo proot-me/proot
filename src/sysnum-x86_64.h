@@ -3,6 +3,7 @@
  * This file was generated thanks to the following command:
  *
  *     cpp -dM /usr/include/asm/unistd.h | grep '^#define __NR_'
+ *
  */
 
 #include "sysnum-undefined.h"
@@ -53,6 +54,8 @@
 #define __NR_faccessat 269
 #define __NR_fadvise64 221
 #define __NR_fallocate 285
+#define __NR_fanotify_init 300
+#define __NR_fanotify_mark 301
 #define __NR_fchdir 81
 #define __NR_fchmod 91
 #define __NR_fchmodat 268
@@ -178,6 +181,7 @@
 #define __NR_prctl 157
 #define __NR_pread64 17
 #define __NR_preadv 295
+#define __NR_prlimit64 302
 #define __NR_pselect6 270
 #define __NR_ptrace 101
 #define __NR_putpmsg 182

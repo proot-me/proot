@@ -58,6 +58,8 @@
 #undef __NR_fadvise64
 #undef __NR_fadvise64_64
 #undef __NR_fallocate
+#undef __NR_fanotify_init
+#undef __NR_fanotify_mark
 #undef __NR_fchdir
 #undef __NR_fchmod
 #undef __NR_fchmodat
@@ -216,6 +218,7 @@
 #undef __NR_prctl
 #undef __NR_pread64
 #undef __NR_preadv
+#undef __NR_prlimit64
 #undef __NR_prof
 #undef __NR_profil
 #undef __NR_pselect6

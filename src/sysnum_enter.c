@@ -67,6 +67,8 @@ case __NR_exit_group:
 case __NR_fadvise64:
 case __NR_fadvise64_64:
 case __NR_fallocate:
+case __NR_fanotify_init:
+case __NR_fanotify_mark:
 case __NR_fchdir:
 case __NR_fchmod:
 case __NR_fchown:
@@ -198,6 +200,7 @@ case __NR_ppoll:
 case __NR_prctl:
 case __NR_pread64:
 case __NR_preadv:
+case __NR_prlimit64:
 case __NR_prof:
 case __NR_profil:
 case __NR_pselect6:

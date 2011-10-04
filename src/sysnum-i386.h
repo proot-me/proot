@@ -34,6 +34,7 @@
 #define __NR_setpriority 97
 #define __NR_rt_sigqueueinfo 178
 #define __NR_nanosleep 162
+#define __NR_fanotify_init 338
 #define __NR_lremovexattr 236
 #define __NR_read 3
 #define __NR_fadvise64_64 272
@@ -63,6 +64,7 @@
 #define __NR_utime 30
 #define __NR_poll 168
 #define __NR_mq_timedsend (__NR_mq_open+2)
+#define __NR_prlimit64 340
 #define __NR_stat64 195
 #define __NR_timerfd_gettime 326
 #define __NR_removexattr 235
@@ -327,6 +329,7 @@
 #define __NR_timer_settime (__NR_timer_create+1)
 #define __NR_oldolduname 59
 #define __NR_sync 36
+#define __NR_fanotify_mark 339
 #define __NR_setsid 66
 #define __NR_prof 44
 #define __NR_setfsgid 139
