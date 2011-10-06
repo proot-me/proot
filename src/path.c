@@ -383,6 +383,18 @@ static int canonicalize(pid_t pid,
 	if (nb_readlink > MAXSYMLINKS)
 		return -ELOOP;
 
+#ifdef BENCHMARK_TRACEE_HANDLING
+	size_t result_length = strlen(result);
+	size_t fake_length = strlen(fake_path);
+	if (result_length + fake_length + 1 >= PATH_MAX)
+		return -ENAMETOOLONG;
+	else {
+		result[result_length] = '/';
+		strcpy(result + result_length + 1, fake_path);
+		return 0;
+	}
+#endif
+
 	/* Sanity checks. */
 	assert(fake_path != NULL);
 	assert(result != NULL);
@@ -755,6 +767,10 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 	size_t new_length;
 
 	assert(initialized != 0);
+
+#if BENCHMARK_TRACEE_HANDLING
+	return 0;
+#endif
 
 	/* Don't try to detranslate relative paths (typically the
 	 * target of a relative symbolic link). */

@@ -532,10 +532,6 @@ static int event_loop()
 				signal = 0;
 				break;
 
-
-				signal = 0;
-				break;
-
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			case SIGTRAP | PTRACE_EVENT_CLONE << 8:

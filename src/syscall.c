@@ -431,6 +431,12 @@ int translate_syscall(pid_t pid)
 	struct child_info *child;
 	int status __attribute__ ((unused));
 
+#ifdef BENCHMARK_PTRACE
+	/* Check if the process is still alive. */
+	(void) ptrace(PTRACE_PEEKUSER, pid, uregs[STACK_POINTER], NULL);
+	return -errno;
+#endif
+
 	/* Get the information about this child. */
 	child = get_child_info(pid);
 	assert(child != NULL);
