@@ -32,6 +32,7 @@
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
 #include <string.h>     /* bzero(3), */
+#include <stdbool.h>    /* bool, true, false, */
 
 #include "child_info.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
@@ -45,12 +46,12 @@ static size_t nb_children = 0;
 /**
  * Reset the default values for the structure @child.
  */
-static void reset_child(struct child_info *child, int free_trigger)
+static void reset_child(struct child_info *child, bool free_fields)
 {
-	if (free_trigger != 0 && child->trigger != NULL)
+	if (free_fields && child->trigger != NULL)
 		free(child->trigger);
 
-	if (child->exe != NULL)
+	if (free_fields && child->exe != NULL)
 		free(child->exe);
 
 	bzero(child, sizeof(struct child_info));
@@ -72,7 +73,7 @@ void init_module_child_info()
 
 	/* Set the default values for each entry. */
 	for(i = 0; i < nb_elements; i++)
-		reset_child(&children_info[i], 0);
+		reset_child(&children_info[i], false);
 
 	max_children = nb_elements;
 }
@@ -98,7 +99,7 @@ struct child_info *new_child(pid_t pid)
 
 		/* Set the default values for each new entry. */
 		for(i = max_children; i < 2 * max_children; i++)
-			reset_child(&new_children_info[i], 0);
+			reset_child(&new_children_info[i], false);
 
 		first_slot = max_children; /* Skip non-empty slot. */
 		max_children = 2 * max_children;
@@ -133,7 +134,7 @@ void delete_child(pid_t pid)
 	child = get_child_info(pid);
 	assert(child != NULL);
 
-	reset_child(child, 1);
+	reset_child(child, true);
 }
 
 /**
