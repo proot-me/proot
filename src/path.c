@@ -50,113 +50,113 @@ static char root[PATH_MAX];
 static size_t root_length;
 static int use_runner = 0;
 
-struct mirror_path {
+struct binding_path {
 	char path[PATH_MAX];
 	size_t length;
 };
 
-struct mirror {
-	struct mirror_path real;
-	struct mirror_path location;
+struct binding {
+	struct binding_path real;
+	struct binding_path location;
 
 	int sanitized;
 	int need_substitution;
 
-	struct mirror *next;
+	struct binding *next;
 };
 
-static struct mirror *mirror_list = NULL;
+static struct binding *bindings = NULL;
 
 /**
- * Save @path in the list of paths that are "mirrored" for the
+ * Save @path in the list of paths that are bound for the
  * translation mechanism.
  */
-void mirror_path(const char *path, const char *location)
+void bind_path(const char *path, const char *location)
 {
-	struct mirror *mirror;
+	struct binding *binding;
 	const char *tmp;
 
-	mirror = calloc(1, sizeof(struct mirror));
-	if (mirror == NULL) {
+	binding = calloc(1, sizeof(struct binding));
+	if (binding == NULL) {
 		notice(WARNING, SYSTEM, "calloc()");
 		return;
 	}
 
-	if (realpath(path, mirror->real.path) == NULL) {
+	if (realpath(path, binding->real.path) == NULL) {
 		notice(WARNING, SYSTEM, "realpath(\"%s\")", path);
 		goto error;
 	}
 
-	mirror->real.length = strlen(mirror->real.path);
+	binding->real.length = strlen(binding->real.path);
 
-	/* Special case when the real rootfs is mirrored. */
-	if (mirror->real.length == 1)
-		mirror->real.length = 0;
+	/* Special case when the real rootfs is bound. */
+	if (binding->real.length == 1)
+		binding->real.length = 0;
 
 	tmp = location ? location : path;
 	if (strlen(tmp) >= PATH_MAX) {
-		notice(ERROR, INTERNAL, "mirror location \"%s\" is too long", tmp);
+		notice(ERROR, INTERNAL, "binding location \"%s\" is too long", tmp);
 		goto error;
 	}
 
-	strcpy(mirror->location.path, tmp);
+	strcpy(binding->location.path, tmp);
 
-	/* The sanitization of mirror->location is delayed until
+	/* The sanitization of binding->location is delayed until
 	 * init_module_path(). */
-	mirror->location.length = 0;
-	mirror->sanitized = 0;
+	binding->location.length = 0;
+	binding->sanitized = 0;
 
-	mirror->next = mirror_list;
-	mirror_list = mirror;
+	binding->next = bindings;
+	bindings = binding;
 
 	return;
 
 error:
-	free(mirror);
-	mirror = NULL;
+	free(binding);
+	binding = NULL;
 	return;
 }
 
-#define MIRROR_LOCATION 1
-#define MIRROR_REAL     2
+#define BINDING_LOCATION 1
+#define BINDING_REAL     2
 
 /**
- * Substitute the mirror location (if any) with the real path in
+ * Substitute the binding location (if any) with the real path in
  * @path.  This function returns:
  *
- *     * -1 if it is not a mirror location
+ *     * -1 if it is not a binding location
  *
- *     * 0 if it is a mirror location but no substitution is needed
- *       ("symetric" mirror)
+ *     * 0 if it is a binding location but no substitution is needed
+ *       ("symetric" binding)
  *
- *     * 1 if it is a mirror location and a substitution was performed
- *       ("asymmetric" mirror)
+ *     * 1 if it is a binding location and a substitution was performed
+ *       ("asymmetric" binding)
  */
-static int substitute_mirror(int which, char path[PATH_MAX])
+static int substitute_binding(int which, char path[PATH_MAX])
 {
-	struct mirror *mirror;
+	struct binding *binding;
 	size_t path_length = strlen(path);
 
-	for (mirror = mirror_list; mirror != NULL; mirror = mirror->next) {
-		struct mirror_path *ref;
-		struct mirror_path *anti_ref;
+	for (binding = bindings; binding != NULL; binding = binding->next) {
+		struct binding_path *ref;
+		struct binding_path *anti_ref;
 
-		if (!mirror->sanitized)
+		if (!binding->sanitized)
 			continue;
 
 		switch (which) {
-		case MIRROR_LOCATION:
-			ref      = &mirror->location;
-			anti_ref = &mirror->real;
+		case BINDING_LOCATION:
+			ref      = &binding->location;
+			anti_ref = &binding->real;
 			break;
 
-		case MIRROR_REAL:
-			ref      = &mirror->real;
-			anti_ref = &mirror->location;
+		case BINDING_REAL:
+			ref      = &binding->real;
+			anti_ref = &binding->location;
 			break;
 
 		default:
-			notice(WARNING, INTERNAL, "unexpected value for mirror reference");
+			notice(WARNING, INTERNAL, "unexpected value for binding reference");
 			return -1;
 		}
 
@@ -168,9 +168,9 @@ static int substitute_mirror(int which, char path[PATH_MAX])
 		    && path[ref->length] != '\0')
 			continue;
 
-		if (which == MIRROR_REAL) {
+		if (which == BINDING_REAL) {
 			/* Don't substitute systematically the prefix of the
-			 * rootfs when used as an asymmetric mirror, as with:
+			 * rootfs when used as an asymmetric binding, as with:
 			 *
 			 *     proot -m /usr:/location /usr/local/slackware
 			 */
@@ -178,7 +178,7 @@ static int substitute_mirror(int which, char path[PATH_MAX])
 				continue;
 
 			/* Avoid an extra trailing '/' when in the
-			 * asymmetric mirror of the real rootfs. */
+			 * asymmetric binding of the real rootfs. */
 			if (ref->length == 0 &&	path_length == 1)
 				path_length = 0;
 		}
@@ -189,23 +189,23 @@ static int substitute_mirror(int which, char path[PATH_MAX])
 		if (strncmp(ref->path, path, ref->length) != 0)
 			continue;
 
-		/* Is it a "symetric" mirror" */
-		if (mirror->need_substitution == 0)
+		/* Is it a "symetric" binding?  */
+		if (binding->need_substitution == 0)
 			return 0;
 
 		/* Ensure the substitution will not create a buffer
 		 * overflow. */
 		if (path_length - ref->length + anti_ref->length >= PATH_MAX)  {
-			notice(WARNING, INTERNAL, "Can't handle mirrored path %s: pathname too long");
+			notice(WARNING, INTERNAL, "Can't handle binding %s: pathname too long");
 			return -1;
 		}
 
-		/* Replace the mirror location with the real path. */
+		/* Replace the binding location with the real path. */
 		memmove(path + anti_ref->length, path + ref->length, path_length - ref->length);
 		memcpy(path, anti_ref->path, anti_ref->length);
 		path[path_length - ref->length + anti_ref->length] = '\0';
 
-		/* Special case when the real rootfs is mirrored at
+		/* Special case when the real rootfs is bound at
 		 * the location pointed to by path[]. */
 		if (path[0] == '\0') {
 			path[0] = '/';
@@ -441,13 +441,13 @@ static int canonicalize(pid_t pid,
 		}
 
 		/* Check which kind of directory we have to
-		   canonicalize; either a mirrored path or a
+		   canonicalize; either a binding or a
 		   translatable one. */
 		status = join_paths(2, tmp, result, component);
 		if (status < 0)
 			return status;
 
-		if (substitute_mirror(MIRROR_LOCATION, tmp) >= 0) {
+		if (substitute_binding(BINDING_LOCATION, tmp) >= 0) {
 			strcpy(real_entry, tmp);
 		}
 		else {
@@ -510,7 +510,7 @@ static int canonicalize(pid_t pid,
 }
 
 /**
- * Create a "dummy" path up to the canonicalized mirror location
+ * Create a "dummy" path up to the canonicalized binding location
  * @c_path, it cheats programs that walk up to it.
  */
 static void create_dummy(char c_path[PATH_MAX])
@@ -561,11 +561,11 @@ static void create_dummy(char c_path[PATH_MAX])
 			goto error;
 	}
 
-	notice(INFO, USER, "create the mirror location \"%s\"", c_path);
+	notice(INFO, USER, "create the binding location \"%s\"", c_path);
 	return;
 
 error:
-	notice(WARNING, USER, "can't create the mirror location \"%s\": "
+	notice(WARNING, USER, "can't create the binding location \"%s\": "
 	       "expect some troubles with programs that walk up to it", c_path);
 }
 
@@ -574,7 +574,7 @@ error:
  */
 void init_module_path(const char *new_root, int opt_runner)
 {
-	struct mirror *mirror;
+	struct binding *binding;
 
 	if (realpath(new_root, root) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
@@ -588,50 +588,50 @@ void init_module_path(const char *new_root, int opt_runner)
 
 	/* Now the module is initialized so we can call
 	 * canonicalize() safely. */
-	for (mirror = mirror_list; mirror != NULL; mirror = mirror->next) {
+	for (binding = bindings; binding != NULL; binding = binding->next) {
 		char tmp[PATH_MAX];
 		int status;
 
-		assert(!mirror->sanitized);
+		assert(!binding->sanitized);
 
-		strcpy(tmp, mirror->location.path);
-		mirror->location.path[0] = '\0';
+		strcpy(tmp, binding->location.path);
+		binding->location.path[0] = '\0';
 
-		/* Sanitize the location of the mirror within the
+		/* Sanitize the location of the binding within the
 		   alternate rootfs since it is assumed by
-		   substitute_mirror().  Note the real path is already
-		   sanitized in mirror_path().  */
-		status = canonicalize(0, tmp, 1, mirror->location.path, 0);
+		   substitute_binding().  Note the real path is already
+		   sanitized in bind_path().  */
+		status = canonicalize(0, tmp, 1, binding->location.path, 0);
 		if (status < 0) {
-			notice(WARNING, INTERNAL, "sanitizing the mirror location \"%s\": %s",
+			notice(WARNING, INTERNAL, "sanitizing the binding location \"%s\": %s",
 			       tmp, strerror(-status));
 			goto error;
 		}
 
-		if (strcmp(mirror->location.path, "/") == 0) {
-			notice(WARNING, USER, "can't create a mirror in \"/\"");
+		if (strcmp(binding->location.path, "/") == 0) {
+			notice(WARNING, USER, "can't create a binding in \"/\"");
 			goto error;
 		}
 
-		mirror->need_substitution = strcmp(mirror->real.path, mirror->location.path);
-		mirror->location.length = strlen(mirror->location.path);
+		binding->need_substitution = strcmp(binding->real.path, binding->location.path);
+		binding->location.length = strlen(binding->location.path);
 
-		/* Remove the trailing slash as expected by substitute_mirror(). */
-		if (mirror->location.path[mirror->location.length - 1] == '/') {
-			mirror->location.path[mirror->location.length - 1] = '\0';
-			mirror->location.length--;
+		/* Remove the trailing slash as expected by substitute_binding(). */
+		if (binding->location.path[binding->location.length - 1] == '/') {
+			binding->location.path[binding->location.length - 1] = '\0';
+			binding->location.length--;
 		}
 
-		create_dummy(mirror->location.path);
+		create_dummy(binding->location.path);
 
-		mirror->sanitized = 1;
+		binding->sanitized = 1;
 
-		VERBOSE(1, "mirroring \"%s\" in \"%s\"", mirror->real.path, mirror->location.path);
+		VERBOSE(1, "binding \"%s\" in \"%s\"", binding->real.path, binding->location.path);
 		continue;
 
 	error:
 		/* XXX TODO: remove this element from the list instead. */
-		mirror->sanitized = 0;
+		binding->sanitized = 0;
 	}
 }
 
@@ -732,10 +732,9 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 	}
 
 	/* Don't prepend the new root to the result of the
-	 * canonicalization if it is a mirrored path, instead
-	 * substitute the mirror location (leading part) with the real
-	 * path.*/
-	if (substitute_mirror(MIRROR_LOCATION, result) >= 0)
+	 * canonicalization if it is a binding, instead substitute the
+	 * binding location (leading part) with the real path.*/
+	if (substitute_binding(BINDING_LOCATION, result) >= 0)
 		goto end;
 
 	strcpy(tmp, result);
@@ -779,7 +778,7 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 
 	/* Check if it is a translatable path. */
 	if (sanity_check) {
-		switch (substitute_mirror(MIRROR_REAL, path)) {
+		switch (substitute_binding(BINDING_REAL, path)) {
 		case 0:
 			return 0;
 		case 1:

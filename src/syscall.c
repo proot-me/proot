@@ -209,7 +209,7 @@ static int detranslate_addr(struct tracee_info *tracee, word_t addr, int size, i
 	new_size = status;
 
 	/* The original path doesn't need detranslation, i.e it is a
-	 * symetric mirror. */
+	 * symetric binding. */
 	if (new_size == 0) {
 		new_size = size;
 		goto skip_overwrite;

@@ -68,34 +68,32 @@ static int opt_check_syscall = 0;
 static void exit_usage(void)
 {
 	puts("");
-	puts("PRoot-" xstr(VERSION) ": relocate programs to an alternate root file-system, à la chroot.");
+	puts("PRoot-" xstr(VERSION) ": isolate programs in a guest root file-system.");
 	puts("");
 	puts("Usages:");
-	puts("  proot [options] /path/to/alternate/rootfs");
-	puts("  proot [options] /path/to/alternate/rootfs program [options]");
+	puts("  proot [options] /path/to/guest/rootfs");
+	puts("  proot [options] /path/to/guest/rootfs program [options]");
 	puts("");
 	puts("Main options:");
-	puts("  -m <p1>[:p2]  mirror path <p1> from the real rootfs into the alternate rootfs");
-	puts("                at location <p2> if specified, otherwise at the same location.");
+	puts("  -b <p1>[:p2]  bind host path <p1> in the guest rootfs (to <p2> if specified)");
 /*	puts("  -r <runner>   XXX */
-	puts("  -q <qemu>     use <qemu> to handle each process; you can pass options by");
-	puts("                using a comma-separated list, for instance \"qemu-sh4,-g,1234\"");
-	puts("  -e            don't use the ELF interpreter (typically \"ld.so\") as loader");
+	puts("  -q <qemu>     use <qemu> to handle each new process");
 	puts("  -w <path>     set the working directory to <path> (default is \"/\")");
 	puts("");
 	puts("Alias options:");
-	puts("  -M            alias for: -m $HOME -m /tmp -m /dev -m /proc -m /sys");
-	puts("                           -m /etc/passwd -m /etc/group -m /etc/localtime");
-	puts("                           -m /etc/nsswitch.conf -m /etc/resolv.conf");
+	puts("  -B            alias for: -b $HOME -b /tmp -b /dev -b /proc -b /sys");
+	puts("                           -b /etc/passwd -b /etc/group -b /etc/localtime");
+	puts("                           -b /etc/nsswitch.conf -b /etc/resolv.conf");
 /*	puts("  -R <runner>   XXX */
-	puts("  -Q <qemu>     alias for: -q <qemu> -M -a");
-	puts("  -W            alias for: -w $PWD -m $PWD");
+	puts("  -Q <qemu>     alias for: -q <qemu> -B -a");
+	puts("  -W            alias for: -w $PWD -b $PWD");
 	puts("");
 	puts("Misc. options:");
 	puts("  -v            increase the verbose level");
-	puts("  -V            print the version then exit");
+	puts("  -V            print version/copyright/license/contact then exit");
 /*	puts("  -D <X>=<Y>    set the environment variable <X> to <Y>"); */
 /*	puts("  -U <X>        deletes the variable <X> from the environment"); */
+	puts("  -e            don't use the ELF interpreter (typically \"ld.so\") as loader");
 	puts("  -u            don't block unknown syscalls");
 	puts("  -p            don't block ptrace(2)");
 	puts("  -a            disable randomization of the virtual address space (ASLR)");
@@ -107,13 +105,14 @@ static void exit_usage(void)
 /*	puts("  -s            check /proc/$pid/syscall agrees with the internal state"); */
 	puts("");
 	puts("Examples:");
-	puts("  proot -M /media/slackware64-13.1/");
-	puts("  proot -Q qemu-arm /media/armedslack-12.2/ /usr/bin/emacs");
+	puts("  proot -B /media/slackware-13.37/");
+	puts("  proot -Q qemu-arm /media/armedslack-13.37/ /usr/bin/emacs");
 	puts("");
-	puts("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...");
-	puts("Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.");
+	puts("Notes:");
+	puts("  * \"/bin/sh\" is launched by default if no program were specified.");
+	puts("  * you can pass options to QEMU directly by specifying a");
+	puts("    comma-separated list, for instance \"-Q qemu-arm,-g,1234\".");
 	puts("");
-
 	exit(EXIT_FAILURE);
 }
 
@@ -143,15 +142,18 @@ static pid_t parse_options(int argc, char *argv[])
 			break;
 
 		case 'm':
+			notice(WARNING, USER, "option -m is deprecated, use -b instead");
+			/* fall through. */
+		case 'b':
 			i++;
 			if (i >= argc)
-				notice(ERROR, USER, "missing value for the option -m");
+				notice(ERROR, USER, "missing value for the option -b/-m");
 			ptr = strchr(argv[i], ':');
 			if (ptr != NULL) {
 				*ptr = '\0';
 				ptr++;
 			}
-			mirror_path(argv[i], ptr);
+			bind_path(argv[i], ptr);
 			break;
 
 		case 'v':
@@ -160,6 +162,9 @@ static pid_t parse_options(int argc, char *argv[])
 
 		case 'V':
 			puts("PRoot version " xstr(VERSION));
+			puts("");
+			puts("Contact cedric.vincent@gmail.com for bug reports, suggestions, ...");
+			puts("Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.");
 			exit(EXIT_FAILURE);
 			break;
 
@@ -210,7 +215,7 @@ static pid_t parse_options(int argc, char *argv[])
 			if (opt_pwd == NULL)
 				notice(WARNING, SYSTEM, "getenv(\"PWD\")");
 			else
-				mirror_path(opt_pwd, NULL);
+				bind_path(opt_pwd, NULL);
 			break;
 
 		case 'Q':
@@ -225,22 +230,26 @@ static pid_t parse_options(int argc, char *argv[])
 			opt_runner = argv[i];
 			/* fall through. */
 		case 'M':
+			if (argv[i][1] == 'M')
+				notice(WARNING, USER, "option -M is deprecated, use -B instead");
+			/* fall through. */
+		case 'B':
 			/* Usefull for the glibc, generally only one access. */
-			mirror_path("/etc/passwd", NULL);
-			mirror_path("/etc/group", NULL);
-			mirror_path("/etc/nsswitch.conf", NULL);
-			mirror_path("/etc/resolv.conf", NULL);
+			bind_path("/etc/passwd", NULL);
+			bind_path("/etc/group", NULL);
+			bind_path("/etc/nsswitch.conf", NULL);
+			bind_path("/etc/resolv.conf", NULL);
 
 			/* Path with dynamic content. */
-			mirror_path("/dev", NULL);
-			mirror_path("/sys", NULL);
-			mirror_path("/proc", NULL);
+			bind_path("/dev", NULL);
+			bind_path("/sys", NULL);
+			bind_path("/proc", NULL);
 
 			/* Commonly accessed paths. */
-			mirror_path("/tmp", NULL);
-			mirror_path("/etc/localtime", NULL);
+			bind_path("/tmp", NULL);
+			bind_path("/etc/localtime", NULL);
 			if (getenv("HOME") != NULL)
-				mirror_path(getenv("HOME"), NULL);
+				bind_path(getenv("HOME"), NULL);
 			break;
 
 		case 'j':
