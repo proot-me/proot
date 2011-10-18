@@ -50,7 +50,7 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-int extract_script_interp(struct child_info *child,
+int extract_script_interp(struct tracee_info *tracee,
 			  const char *t_path,
 			  char u_interp[PATH_MAX],
 			  char argument[ARG_MAX])
@@ -191,7 +191,7 @@ end:
  * returns -errno if an error occured, 1 if a ELF interpreter was
  * found and extracted, otherwise 0.
  */
-int extract_elf_interp(struct child_info *child,
+int extract_elf_interp(struct tracee_info *tracee,
 		       const char *t_path,
 		       char u_interp[PATH_MAX],
 		       char argument[ARG_MAX])

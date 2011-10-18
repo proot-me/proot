@@ -25,20 +25,20 @@
 #ifndef INTERP_H
 #define INTERP_H
 
-#include "child_info.h"
+#include "tracee_info.h"
 #include "execve.h" /* ARG_MAX, */
 
-typedef int (* extract_interp_t)(struct child_info *child,
+typedef int (* extract_interp_t)(struct tracee_info *tracee,
 				 const char *t_path,
 				 char u_interp[PATH_MAX],
 				 char argument[ARG_MAX]);
 
-extern int extract_script_interp(struct child_info *child,
+extern int extract_script_interp(struct tracee_info *tracee,
 				 const char *t_path,
 				 char u_interp[PATH_MAX],
 				 char argument[ARG_MAX]);
 
-extern int extract_elf_interp(struct child_info *child,
+extern int extract_elf_interp(struct tracee_info *tracee,
 				 const char *t_path,
 				 char u_interp[PATH_MAX],
 				 char argument[ARG_MAX]);

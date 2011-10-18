@@ -12,7 +12,7 @@ CPPFLAGS = -I$(PWD)
 CFLAGS   = -Wall -O0 -g
 LDFLAGS  = 
 
-OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ureg.o interp.o
+OBJECTS = main.o tracee_info.o tracee_mem.o syscall.o path.o execve.o notice.o ureg.o interp.o
 
 .DEFAULT_GOAL = proot
 

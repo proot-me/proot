@@ -35,7 +35,7 @@
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 
 #include "path.h"
-#include "child_info.h"
+#include "tracee_info.h"
 #include "syscall.h" /* translate_syscall(), */
 #include "execve.h"
 #include "notice.h"
@@ -311,7 +311,7 @@ static pid_t parse_options(int argc, char *argv[])
 		pid = 0;
 
 	init_module_path(opt_new_root, opt_runner != NULL);
-	init_module_child_info();
+	init_module_tracee_info();
 	init_module_syscall(opt_check_syscall, opt_allow_unknown, opt_allow_ptrace, opt_fake_id0, opt_kernel_release);
 	init_module_execve(opt_runner, opt_qemu, opt_no_elf_interp);
 
@@ -437,7 +437,7 @@ static void launch_process()
 		exit(EXIT_FAILURE);
 
 	default: /* parent */
-		if (new_child(pid) == NULL)
+		if (new_tracee(pid) == NULL)
 			exit(EXIT_FAILURE);
 		break;
 	}
@@ -446,7 +446,7 @@ static void launch_process()
 static void attach_process(pid_t pid)
 {
 	long status;
-	struct child_info *child;
+	struct tracee_info *tracee;
 
 	notice(WARNING, USER, "attaching a process on-the-fly is still experimental");
 
@@ -458,53 +458,53 @@ static void attach_process(pid_t pid)
 	 * until they are closed. */
 	list_open_fd(pid);
 
-	child = new_child(pid);
-	if (child == NULL)
+	tracee = new_tracee(pid);
+	if (tracee == NULL)
 		exit(EXIT_FAILURE);
 }
 
 static int event_loop()
 {
 	int last_exit_status = -1;
-	int child_status;
+	int tracee_status;
 	long status;
 	int signal;
 	pid_t pid;
 
 	signal = 0;
-	while (get_nb_children() > 0) {
-		/* Wait for the next child's stop. */
-		pid = waitpid(-1, &child_status, __WALL);
+	while (get_nb_tracees() > 0) {
+		/* Wait for the next tracee's stop. */
+		pid = waitpid(-1, &tracee_status, __WALL);
 		if (pid < 0)
 			notice(ERROR, SYSTEM, "waitpid()");
 
-		/* Check every child file descriptors. */
+		/* Check every tracee file descriptors. */
 		if (opt_check_fd != 0)
-			foreach_child(check_fd);
+			foreach_tracee(check_fd);
 
-		if (WIFEXITED(child_status)) {
+		if (WIFEXITED(tracee_status)) {
 			VERBOSE(1, "pid %d: exited with status %d",
-			           pid, WEXITSTATUS(child_status));
-			last_exit_status = WEXITSTATUS(child_status);
-			delete_child(pid);
+			           pid, WEXITSTATUS(tracee_status));
+			last_exit_status = WEXITSTATUS(tracee_status);
+			delete_tracee(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
-		else if (WIFSIGNALED(child_status)) {
-			VERBOSE(get_nb_children() != 1,
+		else if (WIFSIGNALED(tracee_status)) {
+			VERBOSE(get_nb_tracees() != 1,
 				"pid %d: terminated with signal %d",
-				pid, WTERMSIG(child_status));
-			delete_child(pid);
+				pid, WTERMSIG(tracee_status));
+			delete_tracee(pid);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
-		else if (WIFCONTINUED(child_status)) {
+		else if (WIFCONTINUED(tracee_status)) {
 			VERBOSE(1, "pid %d: continued", pid);
 			signal = SIGCONT;
 		}
-		else if (WIFSTOPPED(child_status)) {
+		else if (WIFSTOPPED(tracee_status)) {
 
 			/* Don't WSTOPSIG() to extract the signal
 			 * since it clears the PTRACE_EVENT_* bits. */
-			signal = (child_status & 0xfff00) >> 8;
+			signal = (tracee_status & 0xfff00) >> 8;
 
 			switch (signal) {
 			case SIGTRAP:
@@ -526,7 +526,7 @@ static int event_loop()
 				status = translate_syscall(pid);
 				if (status < 0) {
 					/* The process died in a syscall. */
-					delete_child(pid);
+					delete_tracee(pid);
 					continue; /* Skip the call to ptrace(SYSCALL). */
 				}
 				signal = 0;
@@ -550,8 +550,8 @@ static int event_loop()
 			signal = 0;
 		}
 
-		/* Restart the child and stop it at the next entry or exit of
-		 * a system call. */
+		/* Restart the tracee and stop it at the next entry or
+		 * exit of a system call. */
 		status = ptrace(PTRACE_SYSCALL, pid, NULL, signal);
 		if (status < 0)
 			notice(ERROR, SYSTEM, "ptrace(SYSCALL)");

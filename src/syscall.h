@@ -30,7 +30,7 @@
 #include <stdbool.h>    /* bool ,true, false, */
 
 #include "arch.h" /* word_t */
-#include "child_info.h"
+#include "tracee_info.h"
 
 enum sysarg {
 	SYSARG_NUM = 0,
@@ -58,7 +58,7 @@ enum sysarg {
 
 extern void init_module_syscall(bool sanity_check, bool allow_unknown, bool allow_ptrace, bool fake_id0, const char *kernel_release);
 extern int translate_syscall(pid_t pid);
-extern int get_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
-extern int set_sysarg_path(struct child_info *child, char path[PATH_MAX], enum sysarg sysarg);
+extern int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg);
+extern int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg);
 
 #endif /* SYSCALL_H */

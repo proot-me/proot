@@ -109,11 +109,11 @@
 #endif
 
 /**
- * Return the value of the @child's register @index (regarding
+ * Return the value of the @tracee's register @index (regarding
  * uregs[]). This function sets the special global variable errno if
  * an error occured.
  */
-word_t peek_ureg(struct child_info *child, int index)
+word_t peek_ureg(struct tracee_info *tracee, int index)
 {
 	word_t result;
 
@@ -121,13 +121,13 @@ word_t peek_ureg(struct child_info *child, int index)
 	assert(index >= SYSARG_NUM);
 	assert(index <= STACK_POINTER);
 
-	/* Get the argument register from the child's USER area. */
-	result = ptrace(PTRACE_PEEKUSER, child->pid, child->uregs[index], NULL);
+	/* Get the argument register from the tracee's USER area. */
+	result = ptrace(PTRACE_PEEKUSER, tracee->pid, tracee->uregs[index], NULL);
 
 #ifdef ARCH_X86_64
 	/* Use only the 32 least significant bits (LSB) when running
 	 * 32-bit processes on x86_64. */
-	if (child->uregs == uregs2)
+	if (tracee->uregs == uregs2)
 		result &= 0xFFFFFFFF;
 #endif
 
@@ -135,10 +135,10 @@ word_t peek_ureg(struct child_info *child, int index)
 }
 
 /**
- * Set the @child's register @index (regarding uregs[]) to @value.
+ * Set the @tracee's register @index (regarding uregs[]) to @value.
  * This function returns -errno if an error occured.
  */
-int poke_ureg(struct child_info *child, int index, word_t value)
+int poke_ureg(struct tracee_info *tracee, int index, word_t value)
 {
 	  long status;
 
@@ -149,14 +149,14 @@ int poke_ureg(struct child_info *child, int index, word_t value)
 #ifdef ARCH_X86_64
 	/* Check we are using only the 32 LSB when running 32-bit
 	 * processes on x86_64. */
-	if (child->uregs == uregs2
+	if (tracee->uregs == uregs2
 	    && (value >> 32) != 0
 	    && (value >> 32) != 0xFFFFFFFF)
 		notice(WARNING, INTERNAL, "value too large for a 32-bit register");
 #endif
 
-	  /* Set the argument register in the child's USER area. */
-	  status = ptrace(PTRACE_POKEUSER, child->pid, child->uregs[index], value);
+	  /* Set the argument register in the tracee's USER area. */
+	  status = ptrace(PTRACE_POKEUSER, tracee->pid, tracee->uregs[index], value);
 	  if (status < 0)
 		  return -errno;
 

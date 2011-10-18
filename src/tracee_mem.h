@@ -22,18 +22,18 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef CHILD_H
-#define CHILD_H
+#ifndef TRACEE_MEM_H
+#define TRACEE_MEM_H
 
 #include <limits.h>    /* PATH_MAX, */
 #include <sys/types.h> /* pid_t, size_t, */
 
 #include "arch.h" /* word_t, */
-#include "child_info.h"
+#include "tracee_info.h"
 
-extern word_t resize_child_stack(struct child_info *child, ssize_t size);
-extern int copy_to_child(struct child_info *child, word_t dest_child, const void *src_parent, word_t size);
-extern int copy_from_child(struct child_info *child, void *dest_parent, word_t src_child, word_t size);
-extern int get_child_string(struct child_info *child, void *dest_parent, word_t src_child, word_t max_size);
+extern word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size);
+extern int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
+extern int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t size);
+extern int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t max_size);
 
-#endif /* CHILD_H */
+#endif /* TRACEE_MEM_H */

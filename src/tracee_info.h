@@ -22,31 +22,31 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef CHILD_INFO_H
-#define CHILD_INFO_H
+#ifndef TRACEE_INFO_H
+#define TRACEE_INFO_H
 
 #include <sys/types.h> /* pid_t, size_t, */
 
 #include "arch.h" /* word_t, */
 
-/* Information related to a child process. */
-struct child_info {
+/* Information related to a tracee process. */
+struct tracee_info {
 	pid_t  pid;    /* Process identifier. */
 	word_t sysnum; /* Current syscall (-1 if none). */
-	int    status; /* -errno if < 0, otherwise amount of bytes used in the child's stack. */
-	word_t output; /* Address in the child's memory space of the output argument. */
+	int    status; /* -errno if < 0, otherwise amount of bytes used in the tracee's stack. */
+	word_t output; /* Address in the tracee's memory space of the output argument. */
 	char *trigger; /* Name of the file/directory used to start the path translation. */
 	off_t *uregs;  /* Current register bank, also used to know the current ABI. */
 	char *exe;     /* Path to the executable, à la /proc/self/exe. */
 };
 
-typedef int (*foreach_child_t)(pid_t pid);
+typedef int (*foreach_tracee_t)(pid_t pid);
 
-extern void init_module_child_info(void);
-extern struct child_info *new_child(pid_t pid);
-extern void delete_child(pid_t pid);
-extern size_t get_nb_children(void);
-extern struct child_info *get_child_info(pid_t pid);
-extern int foreach_child(foreach_child_t callback);
+extern void init_module_tracee_info(void);
+extern struct tracee_info *new_tracee(pid_t pid);
+extern void delete_tracee(pid_t pid);
+extern size_t get_nb_tracees(void);
+extern struct tracee_info *get_tracee_info(pid_t pid);
+extern int foreach_tracee(foreach_tracee_t callback);
 
-#endif /* CHILD_INFO_H */
+#endif /* TRACEE_INFO_H */

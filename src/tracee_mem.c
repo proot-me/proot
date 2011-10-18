@@ -33,25 +33,25 @@
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
 
-#include "child_mem.h"
+#include "tracee_mem.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
 #include "syscall.h" /* USER_REGS_OFFSET, */
 #include "ureg.h"    /* peek_ureg(), poke_ureg(), */
 #include "notice.h"
 
 /**
- * Resize by @size bytes the stack of the @child. This function
+ * Resize by @size bytes the stack of the @tracee. This function
  * returns 0 if an error occured, otherwise it returns the address of
- * the new stack pointer within the child's memory space.
+ * the new stack pointer within the tracee's memory space.
  */
-word_t resize_child_stack(struct child_info *child, ssize_t size)
+word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size)
 {
 	word_t stack_pointer;
 	long status;
 
-	/* Get the current value of the stack pointer from the child's
+	/* Get the current value of the stack pointer from the tracee's
 	 * USER area. */
-	stack_pointer = peek_ureg(child, STACK_POINTER);
+	stack_pointer = peek_ureg(tracee, STACK_POINTER);
 	if (errno != 0)
 		return 0;
 
@@ -65,9 +65,9 @@ word_t resize_child_stack(struct child_info *child, ssize_t size)
 	/* Remember the stack grows downward. */
 	stack_pointer -= size;
 
-	/* Set the new value of the stack pointer in the child's USER
+	/* Set the new value of the stack pointer in the tracee's USER
 	 * area. */
-	status = poke_ureg(child, STACK_POINTER, stack_pointer);
+	status = poke_ureg(tracee, STACK_POINTER, stack_pointer);
 	if (status < 0)
 		return 0;
 
@@ -75,14 +75,14 @@ word_t resize_child_stack(struct child_info *child, ssize_t size)
 }
 
 /**
- * Copy @size bytes from the buffer @src_parent to the address
- * @dest_child within the memory space of the @child process. It
+ * Copy @size bytes from the buffer @src_tracer to the address
+ * @dest_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int copy_to_child(struct child_info *child, word_t dest_child, const void *src_parent, word_t size)
+int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *src_tracer, word_t size)
 {
-	word_t *src  = (word_t *)src_parent;
-	word_t *dest = (word_t *)dest_child;
+	word_t *src  = (word_t *)src_tracer;
+	word_t *dest = (word_t *)dest_tracee;
 
 	long   status;
 	word_t word, i, j;
@@ -97,7 +97,7 @@ int copy_to_child(struct child_info *child, word_t dest_child, const void *src_p
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		status = ptrace(PTRACE_POKEDATA, child->pid, dest + i, src[i]);
+		status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, src[i]);
 		if (status < 0) {
 			notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 			return -EFAULT;
@@ -107,7 +107,7 @@ int copy_to_child(struct child_info *child, word_t dest_child, const void *src_p
 	/* Copy the bytes in the last word carefully since we have
 	 * overwrite only the relevant ones. */
 
-	word = ptrace(PTRACE_PEEKDATA, child->pid, dest + i, NULL);
+	word = ptrace(PTRACE_PEEKDATA, tracee->pid, dest + i, NULL);
 	if (errno != 0) {
 		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
@@ -119,7 +119,7 @@ int copy_to_child(struct child_info *child, word_t dest_child, const void *src_p
 	for (j = 0; j < nb_trailing_bytes; j++)
 		last_dest_word[j] = last_src_word[j];
 
-	status = ptrace(PTRACE_POKEDATA, child->pid, dest + i, word);
+	status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, word);
 	if (status < 0) {
 		notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 		return -EFAULT;
@@ -129,14 +129,14 @@ int copy_to_child(struct child_info *child, word_t dest_child, const void *src_p
 }
 
 /**
- * Copy @size bytes to the buffer @dest_parent from the address
- * @src_child within the memory space of the @child process. It
+ * Copy @size bytes to the buffer @dest_tracer from the address
+ * @src_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int copy_from_child(struct child_info *child, void *dest_parent, word_t src_child, word_t size)
+int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t size)
 {
-	word_t *src  = (word_t *)src_child;
-	word_t *dest = (word_t *)dest_parent;
+	word_t *src  = (word_t *)src_tracee;
+	word_t *dest = (word_t *)dest_tracer;
 
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
@@ -150,7 +150,7 @@ int copy_from_child(struct child_info *child, void *dest_parent, word_t src_chil
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
+		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0) {
 			notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 			return -EFAULT;
@@ -161,7 +161,7 @@ int copy_from_child(struct child_info *child, void *dest_parent, word_t src_chil
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond the @to buffer. */
 
-	word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
+	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0) {
 		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
@@ -177,16 +177,16 @@ int copy_from_child(struct child_info *child, void *dest_parent, word_t src_chil
 }
 
 /**
- * Copy to @dest_parent at most @max_size bytes from the string
- * pointed to by @src_child within the memory space of the @child
+ * Copy to @dest_tracer at most @max_size bytes from the string
+ * pointed to by @src_tracee within the memory space of the @tracee
  * process. This function returns -errno on error, otherwise
  * it returns the number in bytes of the string, including the
  * end-of-string terminator.
  */
-int get_child_string(struct child_info *child, void *dest_parent, word_t src_child, word_t max_size)
+int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t max_size)
 {
-	word_t *src  = (word_t *)src_child;
-	word_t *dest = (word_t *)dest_parent;
+	word_t *src  = (word_t *)src_tracee;
+	word_t *dest = (word_t *)dest_tracer;
 
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
@@ -200,7 +200,7 @@ int get_child_string(struct child_info *child, void *dest_parent, word_t src_chi
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
+		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0)
 			return -EFAULT;
 
@@ -216,7 +216,7 @@ int get_child_string(struct child_info *child, void *dest_parent, word_t src_chi
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond the @to buffer. */
 
-	word = ptrace(PTRACE_PEEKDATA, child->pid, src + i, NULL);
+	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0)
 		return -EFAULT;
 

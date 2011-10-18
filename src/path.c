@@ -641,16 +641,16 @@ void init_module_path(const char *new_root, int opt_runner)
  * It is useful when using a runner that needs shared libraries or
  * reads some configuration files, for instance.
  */
-static int is_delayed(struct child_info *child, const char *path)
+static int is_delayed(struct tracee_info *tracee, const char *path)
 {
-	if (child->trigger == NULL)
+	if (tracee->trigger == NULL)
 		return 0;
 
-	if (strcmp(child->trigger, path) != 0)
+	if (strcmp(tracee->trigger, path) != 0)
 		return 1;
 
-	free(child->trigger);
-	child->trigger = NULL;
+	free(tracee->trigger);
+	tracee->trigger = NULL;
 
 	return 0;
 }
@@ -662,7 +662,7 @@ static int is_delayed(struct child_info *child, const char *path)
  * the current working directory).  See the documentation of
  * canonicalize() for the meaning of @deref_final.
  */
-int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final)
+int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final)
 {
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	char tmp[PATH_MAX];
@@ -671,7 +671,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 
 	assert(initialized != 0);
 
-	pid = (child != NULL ? child->pid : getpid());
+	pid = (tracee != NULL ? tracee->pid : getpid());
 
 	/* Use "/" as the base if it is an absolute [fake] path. */
 	if (fake_path[0] == '/') {
@@ -724,7 +724,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 
 	/* Don't use the result of the canonicalization if the
 	 * translation is delayed, use the origin input path instead. */
-	if (use_runner != 0 && child != NULL && is_delayed(child, fake_path)) {
+	if (use_runner != 0 && tracee != NULL && is_delayed(tracee, fake_path)) {
 		if (strlen(fake_path) >= PATH_MAX)
 			return -ENAMETOOLONG;
 		strcpy(result, fake_path);
@@ -746,7 +746,7 @@ int translate_path(struct child_info *child, char result[PATH_MAX], int dir_fd, 
 	/* Small sanity check. */
 	if (deref_final != 0 && realpath(result, tmp) != NULL) {
 		if (strncmp(tmp, root, root_length) != 0) {
-			notice(WARNING, INTERNAL, "child %d is out of my control (2)", pid);
+			notice(WARNING, INTERNAL, "tracee %d is out of my control (2)", pid);
 			return -EPERM;
 		}
 	}
@@ -877,7 +877,7 @@ static int check_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
 {
 	/* XXX TODO: don't warn for files that were open before the attach. */
 	if (strncmp(root, path, root_length) != 0) {
-		notice(WARNING, INTERNAL, "child %d is out of my control (3)", pid);
+		notice(WARNING, INTERNAL, "tracee %d is out of my control (3)", pid);
 		notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, root);
 		return -pid;
 	}

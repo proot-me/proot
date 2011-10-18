@@ -39,7 +39,7 @@
 #include "arch.h"
 #include "syscall.h"
 #include "path.h"
-#include "child_mem.h"
+#include "tracee_mem.h"
 #include "notice.h"
 #include "ureg.h"
 #include "interp.h"
@@ -361,39 +361,39 @@ static int insert_runner_args(char **argv[])
 
 /**
  * Copy the *@argv[] of the current execve(2) from the memory space of
- * the @child process.  This function returns -errno if an error
+ * the @tracee process.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-static int get_argv(struct child_info *child, char **argv[], enum sysarg sysarg)
+static int get_argv(struct tracee_info *tracee, char **argv[], enum sysarg sysarg)
 {
-	word_t child_argv;
+	word_t tracee_argv;
 	word_t argp;
 	int nb_argv;
 	int status;
 	int i;
 
 #ifdef ARCH_X86_64
-#    define sizeof_word(child) ((child)->uregs == uregs \
+#    define sizeof_word(tracee) ((tracee)->uregs == uregs \
 				? sizeof(word_t)	\
 				: sizeof(word_t) / 2)
 #else
-#    define sizeof_word(child) (sizeof(word_t))
+#    define sizeof_word(tracee) (sizeof(word_t))
 #endif
 
-	child_argv = peek_ureg(child, sysarg);
+	tracee_argv = peek_ureg(tracee, sysarg);
 	if (errno != 0)
 		return -errno;
 
 	/* Compute the number of entries in argv[]. */
 	for (i = 0; ; i++) {
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, child->pid,
-				       child_argv + i * sizeof_word(child), NULL);
+		argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid,
+				       tracee_argv + i * sizeof_word(tracee), NULL);
 		if (errno != 0)
 			return -EFAULT;
 
 #ifdef ARCH_X86_64
 		/* Use only the 32 LSB when running 32-bit processes. */
-		if (child->uregs == uregs2)
+		if (tracee->uregs == uregs2)
 			argp &= 0xFFFFFFFF;
 #endif
 		/* End of argv[]. */
@@ -412,19 +412,19 @@ static int get_argv(struct child_info *child, char **argv[], enum sysarg sysarg)
 	for (i = 0; i < nb_argv; i++) {
 		char arg[ARG_MAX];
 
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, child->pid,
-				       child_argv + i * sizeof_word(child), NULL);
+		argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid,
+				       tracee_argv + i * sizeof_word(tracee), NULL);
 		if (errno != 0)
 			return -EFAULT;
 
 #ifdef ARCH_X86_64
 		/* Use only the 32 LSB when running 32-bit processes. */
-		if (child->uregs == uregs2)
+		if (tracee->uregs == uregs2)
 			argp &= 0xFFFFFFFF;
 #endif
 		assert(argp != 0);
 
-		status = get_child_string(child, arg, argp, ARG_MAX);
+		status = get_tracee_string(tracee, arg, argp, ARG_MAX);
 		if (status < 0)
 			return status;
 		if (status >= ARG_MAX)
@@ -439,7 +439,7 @@ static int get_argv(struct child_info *child, char **argv[], enum sysarg sysarg)
 }
 
 /**
- * Copy the @argv[] to the memory space of the @child process.
+ * Copy the @argv[] to the memory space of the @tracee process.
  * This function returns -errno if an error occured, otherwise 0.
  *
  * Technically, we use the memory below the stack pointer to store the
@@ -451,12 +451,12 @@ static int get_argv(struct child_info *child, char **argv[], enum sysarg sysarg)
  *     /                       \                  \           \
  *    | argv[0] | argv[1] | ... | "/bin/script.sh" | "/bin/sh" |
  */
-static int set_argv(struct child_info *child, char *argv[], enum sysarg sysarg)
+static int set_argv(struct tracee_info *tracee, char *argv[], enum sysarg sysarg)
 {
-	word_t *child_args;
+	word_t *tracee_args;
 
 	word_t previous_sp;
-	word_t child_argv;
+	word_t tracee_argv;
 	word_t argp;
 
 	int nb_argv;
@@ -469,12 +469,12 @@ static int set_argv(struct child_info *child, char *argv[], enum sysarg sysarg)
 		VERBOSE(4, "set argv[%d] = %s", i, argv[i]);
 
 	nb_argv = i + 1;
-	child_args = calloc(nb_argv, sizeof(word_t));
-	if (child_args == NULL)
+	tracee_args = calloc(nb_argv, sizeof(word_t));
+	if (tracee_args == NULL)
 		return -ENOMEM;
 
-	/* Copy the new arguments in the child's stack. */
-	previous_sp = peek_ureg(child, STACK_POINTER);
+	/* Copy the new arguments in the tracee's stack. */
+	previous_sp = peek_ureg(tracee, STACK_POINTER);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
@@ -485,32 +485,32 @@ static int set_argv(struct child_info *child, char *argv[], enum sysarg sysarg)
 		size = strlen(argv[i]) + 1;
 		argp -= size;
 
-		status = copy_to_child(child, argp, argv[i], size);
+		status = copy_to_tracee(tracee, argp, argv[i], size);
 		if (status < 0)
 			goto end;
 
-		child_args[i] = argp;
+		tracee_args[i] = argp;
 	}
 
-	child_args[i] = 0;
-	child_argv = argp;
+	tracee_args[i] = 0;
+	tracee_argv = argp;
 
 	/* Copy the pointers to the new arguments backward in the stack. */
 	for (i = nb_argv - 1; i >= 0; i--) {
-		child_argv -= sizeof_word(child);
+		tracee_argv -= sizeof_word(tracee);
 
 #ifdef ARCH_X86_64
 		/* Don't overwrite the "extra" 32-bit part. */
-		if (child->uregs == uregs2) {
-			argp = (word_t) ptrace(PTRACE_PEEKDATA, child->pid, child_argv, NULL);
+		if (tracee->uregs == uregs2) {
+			argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, tracee_argv, NULL);
 			if (errno != 0)
 				return -EFAULT;
 
-			assert(child_args[i] >> 32 == 0);
-			child_args[i] |= (argp & 0xFFFFFFFF00000000ULL);
+			assert(tracee_args[i] >> 32 == 0);
+			tracee_args[i] |= (argp & 0xFFFFFFFF00000000ULL);
 		}
 #endif
-		status = ptrace(PTRACE_POKEDATA, child->pid, child_argv, child_args[i]);
+		status = ptrace(PTRACE_POKEDATA, tracee->pid, tracee_argv, tracee_args[i]);
 		if (status <0) {
 			status = -EFAULT;
 			goto end;
@@ -518,24 +518,24 @@ static int set_argv(struct child_info *child, char *argv[], enum sysarg sysarg)
 	}
 
 	/* Update the pointer to the new argv[]. */
-	status = poke_ureg(child, sysarg, child_argv);
+	status = poke_ureg(tracee, sysarg, tracee_argv);
 	if (status < 0)
 		goto end;
 
 	/* Update the stack pointer to ensure [internal] coherency. It prevents
 	 * memory corruption if functions like set_sysarg_path() are called later. */
-	status = poke_ureg(child, STACK_POINTER, child_argv);
+	status = poke_ureg(tracee, STACK_POINTER, tracee_argv);
 	if (status < 0)
 		goto end;
 
 end:
-	free(child_args);
-	child_args = NULL;
+	free(tracee_args);
+	tracee_args = NULL;
 
 	if (status < 0)
 		return status;
 
-	return previous_sp - child_argv;
+	return previous_sp - tracee_argv;
 }
 
 /**
@@ -546,12 +546,12 @@ end:
  * if an error occured, 1 if there's an interpreter otherwise
  * 0.
  */
-static int translate_n_check(struct child_info *child, char t_path[PATH_MAX], const char *u_path)
+static int translate_n_check(struct tracee_info *tracee, char t_path[PATH_MAX], const char *u_path)
 {
 	struct stat statl;
 	int status;
 
-	status = translate_path(child, t_path, AT_FDCWD, u_path, REGULAR);
+	status = translate_path(tracee, t_path, AT_FDCWD, u_path, REGULAR);
 	if (status < 0)
 		return status;
 
@@ -581,7 +581,7 @@ static int translate_n_check(struct child_info *child, char t_path[PATH_MAX], co
  * the program itself if it doesn't use an interpreter) are stored in
  * @t_interp and @u_interp (respectively translated and untranslated).
  */
-static int expand_interp(struct child_info *child,
+static int expand_interp(struct tracee_info *tracee,
 			 const char *u_path,
 			 char t_interp[PATH_MAX],
 			 char u_interp[PATH_MAX],
@@ -595,7 +595,7 @@ static int expand_interp(struct child_info *child,
 
 	int status;
 
-	status = translate_n_check(child, t_interp, u_path);
+	status = translate_n_check(tracee, t_interp, u_path);
 	if (status < 0)
 		return status;
 
@@ -608,7 +608,7 @@ static int expand_interp(struct child_info *child,
 	}
 
 	/* Extract the interpreter of t_interp in u_interp + argument. */
-	status = callback(child, t_interp, u_interp, argument);
+	status = callback(tracee, t_interp, u_interp, argument);
 	if (status < 0)
 		return status;
 
@@ -619,7 +619,7 @@ static int expand_interp(struct child_info *child,
 		return 0;
 	}
 
-	status = translate_n_check(child, t_interp, u_interp);
+	status = translate_n_check(tracee, t_interp, u_interp);
 	if (status < 0)
 		return status;
 
@@ -627,7 +627,7 @@ static int expand_interp(struct child_info *child,
 	 * interpreter on Linux.  In the case of ELF this check
 	 * ensures the interpreter is in the ELF format.  Note
 	 * 'u_interp' and 'argument' are actually not used. */
-	status = callback(child, t_interp, dummy_path, dummy_arg);
+	status = callback(tracee, t_interp, dummy_path, dummy_arg);
 	if (status < 0)
 		return status;
 	if (status != 0)
@@ -662,7 +662,7 @@ static int expand_interp(struct child_info *child,
 }
 
 /**
- * Translate the arguments of the execve() syscall made by the @child
+ * Translate the arguments of the execve() syscall made by the @tracee
  * process. This syscall needs a very special treatment for script
  * files because according to "man 2 execve":
  *
@@ -695,7 +695,7 @@ static int expand_interp(struct child_info *child,
  *
  *     execve("/tmp/new_root/bin/sh", argv = [ "/bin/sh", "/bin/script.sh", "arg1", arg2", ... ], envp);
  */
-int translate_execve(struct child_info *child)
+int translate_execve(struct tracee_info *tracee)
 {
 	char u_path[PATH_MAX];
 	char t_interp[PATH_MAX];
@@ -712,11 +712,11 @@ int translate_execve(struct child_info *child)
 	int status;
 	int i;
 
-	status = get_sysarg_path(child, u_path, SYSARG_1);
+	status = get_sysarg_path(tracee, u_path, SYSARG_1);
 	if (status < 0)
 		return status;
 
-	status = get_argv(child, &argv, SYSARG_2);
+	status = get_argv(tracee, &argv, SYSARG_2);
 	if (status < 0)
 		goto end;
 	assert(argv != NULL);
@@ -724,12 +724,12 @@ int translate_execve(struct child_info *child)
 	if(runner_is_qemu)
 		argv0 = strdup(argv[0]);
 
-	status = get_argv(child, &envp, SYSARG_3);
+	status = get_argv(tracee, &envp, SYSARG_3);
 	if (status < 0)
 		goto end;
 	assert(envp != NULL);
 
-	status = expand_interp(child, u_path, t_interp, u_interp, &argv, extract_script_interp);
+	status = expand_interp(tracee, u_path, t_interp, u_interp, &argv, extract_script_interp);
 	if (status < 0)
 		goto end;
 	if (status > 0)
@@ -768,8 +768,8 @@ int translate_execve(struct child_info *child)
 		 * runner until it accesses the program to execute,
 		 * that way the runner can first access its own files
 		 * outside of the rootfs. */
-		child->trigger = strdup(u_interp);
-		if (child->trigger == NULL) {
+		tracee->trigger = strdup(u_interp);
+		if (tracee->trigger == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
@@ -778,7 +778,7 @@ int translate_execve(struct child_info *child)
 		strcpy(t_interp, runner);
 	}
 	else {
-		status = expand_interp(child, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
+		status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
 		if (status < 0)
 			goto end;
 		if (status > 0)
@@ -787,13 +787,13 @@ int translate_execve(struct child_info *child)
 
 	VERBOSE(4, "execve: %s", t_interp);
 
-	status = set_sysarg_path(child, t_interp, SYSARG_1);
+	status = set_sysarg_path(tracee, t_interp, SYSARG_1);
 	if (status < 0)
 		goto end;
 
 	/* Rebuild argv[] only if something has changed. */
 	if (modified_argv != 0) {
-		size = set_argv(child, argv, SYSARG_2);
+		size = set_argv(tracee, argv, SYSARG_2);
 		if (size < 0) {
 			status = size;
 			goto end;
@@ -802,7 +802,7 @@ int translate_execve(struct child_info *child)
 
 	/* Rebuild envp[] only if something has changed. */
 	if (modified_env != 0) {
-		size = set_argv(child, envp, SYSARG_3);
+		size = set_argv(tracee, envp, SYSARG_3);
 		if (size < 0) {
 			status = size;
 			goto end;

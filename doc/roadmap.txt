@@ -75,7 +75,7 @@ Release v0.7
 * Make ``/proc/self/exe`` point to the original program name
 
     That was the prupose of the field ``exe`` in the structure
-    ``child_info``
+    ``tracee_info``
 
 * Don't canonicalize if the path translation is delayed
 
@@ -90,7 +90,7 @@ Release v0.8
 
 * Add a "multi-process" mode where there's one fork of PRoot per monitored process.
 
-    Each time a new_child structure is created, PRoot forks itself.
+    Each time a new_tracee structure is created, PRoot forks itself.
     Be sure that the tracer of this new process really is the new
     forked PRoot! (Thanks Yves for this comment)
 
@@ -98,8 +98,8 @@ Release v0.8
 
 * in event_loop(), replace::
 
-      while (get_nb_children() > 0) {
-          pid = waitpid(-1, &child_status, __WALL);
+      while (get_nb_tracees() > 0) {
+          pid = waitpid(-1, &tracee_status, __WALL);
           if (pid < 0)
               notice(ERROR, SYSTEM, "waitpid()");
           ...
@@ -108,7 +108,7 @@ Release v0.8
   with::
 
       while (1) {
-          pid = waitpid(-1, &child_status, __WALL);
+          pid = waitpid(-1, &tracee_status, __WALL);
           if (pid < 0)
               if (errno != ECHILD)
                   notice(ERROR, SYSTEM, "waitpid()");
@@ -116,17 +116,17 @@ Release v0.8
                   break;
           ...
       }
-      assert(get_nb_children() == 0)
+      assert(get_nb_tracees() == 0)
 
 * Raise a warning when ptrace(P*K*USER) fails during translate_syscall()
 
    Instead of silently ignoring this unexpected error.
 
-* Don't accept signal from traced child.
+* Don't accept signal from tracees.
 
 * Add a stealth mode where over-the-stack content is restored.
 
-* Kill all children when exiting (on_exit/atexit).
+* Kill all tracees when exiting (on_exit/atexit).
 
 * Fix canonicalization of pathes that are expected to exist but doesn't.
 
@@ -211,7 +211,7 @@ Release v1.2
 
 * Use one PTRACE_[GS]ETREGS instead of several PTRACE_P*K*USER.
 
-* Don't move the stack pointer, use a pointer in the struct child_info
+* Don't move the stack pointer, use a pointer in the struct tracee_info
 
 * Use a share memory mapping instead of /proc/<pid>/mem or PTRACE_P*K*DATA.
 
@@ -221,7 +221,7 @@ Release v1.3
 
 * Use a cache for translation results
 
-* Use a hash table to retrieve cached results + child's info
+* Use a hash table to retrieve cached results + tracee's info
 
 
 Release v2.0
@@ -237,7 +237,7 @@ Not yet scheduled
 
 * Replace "readlink(XXX, path, PATH_MAX)" with "readlink(XXX, path, PATH_MAX - 1)"
 
-* get_child_string should return -ENAMETOOLONG when length(XXX) >= max_size
+* get_tracee_string should return -ENAMETOOLONG when length(XXX) >= max_size
 
 * Replace if (XXX != 0) with if (XXX) except when XXX is a function call. 
 

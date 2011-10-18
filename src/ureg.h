@@ -27,7 +27,7 @@
 
 #include <sys/types.h> /* off_t */
 
-#include "child_info.h"
+#include "tracee_info.h"
 
 #define UREGS_LENGTH 9
 extern off_t uregs[UREGS_LENGTH];
@@ -36,7 +36,7 @@ extern off_t uregs[UREGS_LENGTH];
 extern off_t uregs2[UREGS_LENGTH];
 #endif
 
-extern word_t peek_ureg(struct child_info *child, int index);
-extern int poke_ureg(struct child_info *child, int index, word_t value);
+extern word_t peek_ureg(struct tracee_info *tracee, int index);
+extern int poke_ureg(struct tracee_info *tracee, int index, word_t value);
 
 #endif /* UREG_H */
