@@ -24,7 +24,7 @@
 
 /* Keep in sync' with detranslate_addr(). */
 switch (tracee->sysnum) {
-case __NR_getcwd:
+case PR_getcwd:
 	result = peek_ureg(tracee, SYSARG_RESULT);
 	if (errno != 0) {
 		status = -errno;
@@ -38,8 +38,8 @@ case __NR_getcwd:
 	status = detranslate_addr(tracee, tracee->output, result, GETCWD);
 	break;
 
-case __NR_readlink:
-case __NR_readlinkat:
+case PR_readlink:
+case PR_readlinkat:
 	result = peek_ureg(tracee, SYSARG_RESULT);
 	if (errno != 0) {
 		status = -errno;
@@ -51,7 +51,7 @@ case __NR_readlinkat:
 	}
 
 	/* Avoid the detranslation of partial result. */
-	status = (int) peek_ureg(tracee, tracee->sysnum == __NR_readlink ? SYSARG_3 : SYSARG_4);
+	status = (int) peek_ureg(tracee, tracee->sysnum == PR_readlink ? SYSARG_3 : SYSARG_4);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
@@ -66,7 +66,7 @@ case __NR_readlinkat:
 	status = detranslate_addr(tracee, tracee->output, result, READLINK);
 	break;
 
-case __NR_uname:
+case PR_uname:
 	if (kernel_release != NULL) {
 		struct utsname utsname;
 		word_t release_addr;
@@ -105,23 +105,23 @@ case __NR_uname:
 	status = 0;
 	break;
 
-case __NR_getuid:
-case __NR_getgid:
-case __NR_getegid:
-case __NR_geteuid:
-case __NR_getuid32:
-case __NR_getgid32:
-case __NR_geteuid32:
-case __NR_getegid32:
+case PR_getuid:
+case PR_getgid:
+case PR_getegid:
+case PR_geteuid:
+case PR_getuid32:
+case PR_getgid32:
+case PR_geteuid32:
+case PR_getegid32:
 	status = 0;
 	if (fake_id0)
 		break;
 	goto end;
 
-case __NR_getresuid:
-case __NR_getresuid32:
-case __NR_getresgid:
-case __NR_getresgid32:
+case PR_getresuid:
+case PR_getresuid32:
+case PR_getresgid:
+case PR_getresgid32:
 	/* TODO.  */
 
 default:
