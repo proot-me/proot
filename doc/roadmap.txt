@@ -28,6 +28,24 @@ Release v0.6.3
 Release v0.7
 ------------
 
+* Rewrite the architecture of the sources:
+
+    main.c
+    notice.c
+    execve/args.c
+    execve/execve.c
+    execve/interp.c
+    execve/ldso.c
+    path/binding.c
+    path/canon.c
+    path/path.c
+    syscall/enter.c
+    syscall/exit.c
+    syscall/syscall.c
+    tracee/info.c
+    tracee/mem.c
+    tracee/ureg.c
+
 * Add command-line interface to set environment variables.
 
     Rename push_env() in change_env() and enhance it to support the
