@@ -235,6 +235,12 @@ static pid_t parse_options(int argc, char *argv[])
 			/* fall through. */
 		case 'B':
 			/* Usefull for the glibc, generally only one access. */
+			bind_path("/etc/host.conf", NULL);
+			bind_path("/etc/hosts", NULL);
+			bind_path("/etc/hosts.equiv", NULL);
+			bind_path("/etc/mtab", NULL);
+			bind_path("/etc/netgroup", NULL);
+			bind_path("/etc/networks", NULL);
 			bind_path("/etc/passwd", NULL);
 			bind_path("/etc/group", NULL);
 			bind_path("/etc/nsswitch.conf", NULL);
