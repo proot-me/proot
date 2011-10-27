@@ -22,25 +22,22 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef INTERP_H
-#define INTERP_H
+#ifndef ARGS_H
+#define ARGS_H
 
-#include "tracee/info.h"
-#include "execve/args.h" /* ARG_MAX, */
+#include <stdbool.h>
+#include "syscall/syscall.h" /* enum sysarg */
 
-typedef int (* extract_interp_t)(struct tracee_info *tracee,
-				 const char *t_path,
-				 char u_interp[PATH_MAX],
-				 char argument[ARG_MAX]);
+#ifndef ARG_MAX
+#define ARG_MAX 131072
+#endif
 
-extern int extract_script_interp(struct tracee_info *tracee,
-				 const char *t_path,
-				 char u_interp[PATH_MAX],
-				 char argument[ARG_MAX]);
+extern void init_runner_args(const char *runner);
+extern int push_env(char **envp[], const char *env, char old_env[ARG_MAX]);
+extern int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...);
+extern int insert_runner_args(char **argv[]);
+extern int get_args(struct tracee_info *tracee, char **argv[], enum sysarg sysarg);
+extern int set_args(struct tracee_info *tracee, char *argv[], enum sysarg sysarg);
+extern void free_args(char *argv[]);
 
-extern int extract_elf_interp(struct tracee_info *tracee,
-				 const char *t_path,
-				 char u_interp[PATH_MAX],
-				 char argument[ARG_MAX]);
-
-#endif /* INTERP_H */
+#endif /* ARGS_H */

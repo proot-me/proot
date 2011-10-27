@@ -23,32 +23,20 @@
  * Inspired by: execve(2) from the Linux kernel.
  */
 
-#include <unistd.h>       /* access(2), lstat(2), */
-#include <sys/stat.h>     /* lstat(2), S_ISREG(), */
-#include <limits.h>       /* PATH_MAX, ARG_MAX, */
-#include <errno.h>        /* ENAMETOOLONG, */
-#include <sys/ptrace.h>   /* ptrace(2), */
-#include <sys/user.h>     /* struct user*, */
-#include <stdarg.h>       /* va_*(3), */
-#include <string.h>       /* strlen(3), */
-#include <stdlib.h>       /* realpath(3), exit(3), EXIT_*, */
-#include <assert.h>       /* assert(3), */
-#include <stdbool.h>      /* bool, true, false */
+#include <sys/stat.h> /* lstat(2), S_ISREG(), */
+#include <unistd.h>   /* access(2), lstat(2), */
+#include <string.h>   /* string(3), */
+#include <stdlib.h>   /* realpath(3), getenv(3),  */
+#include <assert.h>   /* assert(3), */
+#include <errno.h>    /* E*, */
 
 #include "execve/execve.h"
-#include "arch.h"
-#include "syscall/syscall.h"
-#include "path/path.h"
-#include "tracee/mem.h"
-#include "notice.h"
-#include "tracee/ureg.h"
+#include "execve/args.h"
 #include "execve/interp.h"
-
-#include "compat.h"
+#include "notice.h"
+#include "path/path.h"
 
 static char runner[PATH_MAX] = { '\0', };
-static char runner_args[ARG_MAX] = { '\0', };
-static int nb_runner_args;
 static int skip_elf_interp = 0;
 static int runner_is_qemu = 0;
 
@@ -67,19 +55,7 @@ void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
 
 	runner_is_qemu = opt_qemu;
 
-	/* Split apart the name of the runner and its options, if any. */
-	tmp = index(opt_runner, ',');
-	if (tmp != NULL) {
-		*tmp = '\0';
-		tmp++;
-
-		if (strlen(tmp) >= ARG_MAX)
-			notice(ERROR, USER, "the option \"-q %s\" is too long", opt_runner);
-
-		strcpy(runner_args, tmp);
-		for (nb_runner_args = 1; (tmp = index(tmp, ',')) != NULL; nb_runner_args++)
-			tmp++;
-	}
+	init_runner_args(opt_runner);
 
 	/* Search for the runner in $PATH only if it is not a relative
 	 * not an absolute path. */
@@ -146,396 +122,6 @@ void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
 	status = access(runner, X_OK);
 	if (status < 0)
 		notice(ERROR, SYSTEM, "access(\"%s\", X_OK)", runner);
-}
-
-/**
- * Push into the environment pointed to by *@envp the entry @env
- * (format is "variable=new_value"). If the variable is already
- * defined in the environment then the old entry if copied into
- * @old_env (format is "variable=old_value").
- */
-static int push_env(char **envp[], const char *env, char old_env[ARG_MAX])
-{
-	size_t new_size;
-	size_t length;
-	char *tmp;
-	int i;
-
-	old_env[0] = '\0';
-
-	length = strcspn(env, "=");
-	if (length == strlen(env))
-		return -EINVAL;
-
-	/* Seach for the environment variable. */
-	for (i = 0; (*envp)[i] != NULL; i++) {
-		const char *value;
-
-		if (   strncmp(env, (*envp)[i], length) != 0
-		    || (*envp)[i][length] != '=')
-			continue;
-
-		if (strlen((*envp)[i]) < ARG_MAX)
-			strcpy(old_env, (*envp)[i]);
-
-		/* "value" includes the separator '='. */
-		value = env + length;
-
-		tmp = realloc((*envp)[i], (length + strlen(value) + 1) * sizeof(char));
-		if (tmp == NULL)
-			return  -ENOMEM;
-		(*envp)[i] = tmp;
-
-		strcpy((*envp)[i] + length, value);
-		return 0;
-	}
-
-	/* Allocate a new entry + the terminating NULL pointer. */
-	new_size = i + 2;
-
-	tmp = realloc(*envp, new_size * sizeof(char *));
-	if (tmp == NULL)
-		return -ENOMEM;
-	*envp = (char **)tmp;
-
-	(*envp)[new_size - 2] = strdup(env);
-	if ((*envp)[new_size - 2] == NULL)
-		return -ENOMEM;
-
-	(*envp)[new_size - 1] = NULL;
-
-	return 0;
-}
-
-/**
- * Add @nb_new_args new C strings to the argument list *@argv.  If
- * @replace_argv0 is true then the previous argv[0] is freed and
- * replaced with the first new entry. This function returns -errno if
- * an error occured, otherwise 0.
- *
- *  Technically:
- *
- *    | old[0] | old[1] | ... | old[n] |
- *
- *  becomes as follow when !replace_argv0:
- *
- *    | old[0] | new[0] | ... | new[nb - 1] | old[1] | ... | old[n] |
- *
- *  otherwise as follow:
- *
- *    | new[0] | ... | new[nb - 1] | old[1] | ... | old[n] |
- */
-static int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...)
-{
-	char **dest_old_args;
-	va_list args;
-	void *tmp;
-
-	int nb_moved_old_args;
-	int nb_old_args;
-	int i;
-
-	assert(nb_new_args > 0);
-
-	/* Count the number of old entries... */
-	for (i = 0; (*argv)[i] != NULL; i++)
-		;
-	nb_old_args = i + 1; /* ... including NULL terminator slot... */
-
-	/* ... minus one if the argv[0] slot is re-used. */
-	if (replace_argv0)
-		nb_old_args--;
-	assert(nb_old_args > 0);
-
-	/* Don't kill *argv if the reallocation has failed, all
-	 * entries will be freed in translate_execve(). */
-	tmp = realloc(*argv, (nb_new_args + nb_old_args) * sizeof(char *));
-	if (tmp == NULL)
-		return -ENOMEM;
-	*argv = tmp;
-
-	/* Compute the new position and the number of moved old
-	 * entries: they are shifted to the right.  */
-	nb_moved_old_args = nb_old_args;
-	dest_old_args = *argv + nb_new_args;
-	if (!replace_argv0) {
-		dest_old_args++;
-		nb_moved_old_args--;
-	}
-	else {
-		free(*argv[0]);
-		*argv[0] = NULL;
-	}
-
-	/* Move the old entries to let space at the beginning for the
-	 * new ones, note that argv[0] is not moved whether it is
-	 * overwritten or not. */
-	memmove(dest_old_args, *argv + 1, nb_moved_old_args * sizeof(char *));
-
-	/* Each new entry will be allocated into the heap since we
-	 * don't rely on the liveness of the input parameters. */
-	va_start(args, nb_new_args);
-	for (i = 0; i < nb_new_args; i++) {
-		int dest_index = i;
-		char *new_arg = va_arg(args, char *);
-
-		if (!replace_argv0)
-			dest_index++;
-
-		(*argv)[dest_index] = strdup(new_arg);
-		if ((*argv)[dest_index] == NULL) {
-			va_end(args);
-			return -ENOMEM;
-		}
-	}
-	va_end(args);
-
-	return 0;
-}
-
-/**
- * Insert each entry of runner_args[] in between the first entry of
- * *@argv and its sucessor.  This function returns -errno if an error
- * occured, otherwise 0.
- *
- *  Technically:
- *
- *    | argv[0] | argv[1] | ... | argv[n] |
- *
- *  becomes:
- *
- *    | argv[0] | runner_args[0] | ... | runner_args[n] | argv[m] |
- */
-static int insert_runner_args(char **argv[])
-{
-	char *tmp2;
-	char *tmp;
-	int i;
-
-	if (runner_args[0] == '\0')
-		return 0;
-
-	for (i = 0; (*argv)[i] != NULL; i++)
-		;
-	i++; /* Don't miss the trailing NULL terminator. */
-
-	/* Don't kill *argv if the reallocation failed, all entries
-	 * will be freed in translate_execve(). */
-	tmp = realloc(*argv, (nb_runner_args + i) * sizeof(char *));
-	if (tmp == NULL)
-		return -ENOMEM;
-	*argv = (void *)tmp;
-
-	/* Move the old entries to let space at the beginning for the
-	 * new ones. */
-	memmove(*argv + 1 + nb_runner_args, *argv + 1, (i - 1) * sizeof(char *));
-
-	/* Each new entries will be allocated into the heap since we
-	 * don't rely on the liveness of the input parameters. */
-	tmp = tmp2 = runner_args;
-	for (i = 1; i <= nb_runner_args; i++) {
-		assert(tmp != NULL);
-		ptrdiff_t size;
-
-		tmp = index(tmp, ',');
-		if (tmp == NULL)
-			size = strlen(tmp2) + 1;
-		else {
-			tmp++;
-			size = tmp - tmp2;
-		}
-
-		(*argv)[i] = calloc(size, size * sizeof(char));
-		if ((*argv)[i] == NULL)
-			return -ENOMEM;
-
-		strncpy((*argv)[i], tmp2, size - 1);
-		(*argv)[i][size] = '\0';
-
-		tmp2 = tmp;
-	}
-	assert(tmp == NULL);
-
-	return 0;
-}
-
-/**
- * Copy the *@argv[] of the current execve(2) from the memory space of
- * the @tracee process.  This function returns -errno if an error
- * occured, otherwise 0.
- */
-static int get_argv(struct tracee_info *tracee, char **argv[], enum sysarg sysarg)
-{
-	word_t tracee_argv;
-	word_t argp;
-	int nb_argv;
-	int status;
-	int i;
-
-#ifdef ARCH_X86_64
-#    define sizeof_word(tracee) ((tracee)->uregs == uregs \
-				? sizeof(word_t)	\
-				: sizeof(word_t) / 2)
-#else
-#    define sizeof_word(tracee) (sizeof(word_t))
-#endif
-
-	tracee_argv = peek_ureg(tracee, sysarg);
-	if (errno != 0)
-		return -errno;
-
-	/* Compute the number of entries in argv[]. */
-	for (i = 0; ; i++) {
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid,
-				       tracee_argv + i * sizeof_word(tracee), NULL);
-		if (errno != 0)
-			return -EFAULT;
-
-#ifdef ARCH_X86_64
-		/* Use only the 32 LSB when running 32-bit processes. */
-		if (tracee->uregs == uregs2)
-			argp &= 0xFFFFFFFF;
-#endif
-		/* End of argv[]. */
-		if (argp == 0)
-			break;
-	}
-	nb_argv = i;
-
-	*argv = calloc(nb_argv + 1, sizeof(char *));
-	if (*argv == NULL)
-		return -ENOMEM;
-
-	(*argv)[nb_argv] = NULL;
-	
-	/* Slurp arguments until the end of argv[]. */
-	for (i = 0; i < nb_argv; i++) {
-		char arg[ARG_MAX];
-
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid,
-				       tracee_argv + i * sizeof_word(tracee), NULL);
-		if (errno != 0)
-			return -EFAULT;
-
-#ifdef ARCH_X86_64
-		/* Use only the 32 LSB when running 32-bit processes. */
-		if (tracee->uregs == uregs2)
-			argp &= 0xFFFFFFFF;
-#endif
-		assert(argp != 0);
-
-		status = get_tracee_string(tracee, arg, argp, ARG_MAX);
-		if (status < 0)
-			return status;
-		if (status >= ARG_MAX)
-			return -ENAMETOOLONG;
-
-		(*argv)[i] = strdup(arg);
-		if ((*argv)[i] == NULL)
-			return -ENOMEM;
-	}
-
-	return 0;
-}
-
-/**
- * Copy the @argv[] to the memory space of the @tracee process.
- * This function returns -errno if an error occured, otherwise 0.
- *
- * Technically, we use the memory below the stack pointer to store the
- * new arguments and the new array of pointers to these arguments:
- *
- *                                          <- stack pointer
- *                                                          \
- *       argv[]           argv1              argv0           \
- *     /                       \                  \           \
- *    | argv[0] | argv[1] | ... | "/bin/script.sh" | "/bin/sh" |
- */
-static int set_argv(struct tracee_info *tracee, char *argv[], enum sysarg sysarg)
-{
-	word_t *tracee_args;
-
-	word_t previous_sp;
-	word_t tracee_argv;
-	word_t argp;
-
-	int nb_argv;
-	size_t size;
-	long status;
-	int i;
-
-	/* Compute the number of entries. */
-	for (i = 0; argv[i] != NULL; i++)
-		VERBOSE(4, "set argv[%d] = %s", i, argv[i]);
-
-	nb_argv = i + 1;
-	tracee_args = calloc(nb_argv, sizeof(word_t));
-	if (tracee_args == NULL)
-		return -ENOMEM;
-
-	/* Copy the new arguments in the tracee's stack. */
-	previous_sp = peek_ureg(tracee, STACK_POINTER);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
-
-	argp = previous_sp;
-	for (i = 0; argv[i] != NULL; i++) {
-		size = strlen(argv[i]) + 1;
-		argp -= size;
-
-		status = copy_to_tracee(tracee, argp, argv[i], size);
-		if (status < 0)
-			goto end;
-
-		tracee_args[i] = argp;
-	}
-
-	tracee_args[i] = 0;
-	tracee_argv = argp;
-
-	/* Copy the pointers to the new arguments backward in the stack. */
-	for (i = nb_argv - 1; i >= 0; i--) {
-		tracee_argv -= sizeof_word(tracee);
-
-#ifdef ARCH_X86_64
-		/* Don't overwrite the "extra" 32-bit part. */
-		if (tracee->uregs == uregs2) {
-			argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, tracee_argv, NULL);
-			if (errno != 0)
-				return -EFAULT;
-
-			assert(tracee_args[i] >> 32 == 0);
-			tracee_args[i] |= (argp & 0xFFFFFFFF00000000ULL);
-		}
-#endif
-		status = ptrace(PTRACE_POKEDATA, tracee->pid, tracee_argv, tracee_args[i]);
-		if (status <0) {
-			status = -EFAULT;
-			goto end;
-		}
-	}
-
-	/* Update the pointer to the new argv[]. */
-	status = poke_ureg(tracee, sysarg, tracee_argv);
-	if (status < 0)
-		goto end;
-
-	/* Update the stack pointer to ensure [internal] coherency. It prevents
-	 * memory corruption if functions like set_sysarg_path() are called later. */
-	status = poke_ureg(tracee, STACK_POINTER, tracee_argv);
-	if (status < 0)
-		goto end;
-
-end:
-	free(tracee_args);
-	tracee_args = NULL;
-
-	if (status < 0)
-		return status;
-
-	return previous_sp - tracee_argv;
 }
 
 /**
@@ -710,13 +296,12 @@ int translate_execve(struct tracee_info *tracee)
 	int modified_argv = 0;
 	int size = 0;
 	int status;
-	int i;
 
 	status = get_sysarg_path(tracee, u_path, SYSARG_1);
 	if (status < 0)
 		return status;
 
-	status = get_argv(tracee, &argv, SYSARG_2);
+	status = get_args(tracee, &argv, SYSARG_2);
 	if (status < 0)
 		goto end;
 	assert(argv != NULL);
@@ -724,7 +309,7 @@ int translate_execve(struct tracee_info *tracee)
 	if(runner_is_qemu)
 		argv0 = strdup(argv[0]);
 
-	status = get_argv(tracee, &envp, SYSARG_3);
+	status = get_args(tracee, &envp, SYSARG_3);
 	if (status < 0)
 		goto end;
 	assert(envp != NULL);
@@ -793,7 +378,7 @@ int translate_execve(struct tracee_info *tracee)
 
 	/* Rebuild argv[] only if something has changed. */
 	if (modified_argv != 0) {
-		size = set_argv(tracee, argv, SYSARG_2);
+		size = set_args(tracee, argv, SYSARG_2);
 		if (size < 0) {
 			status = size;
 			goto end;
@@ -802,7 +387,7 @@ int translate_execve(struct tracee_info *tracee)
 
 	/* Rebuild envp[] only if something has changed. */
 	if (modified_env != 0) {
-		size = set_argv(tracee, envp, SYSARG_3);
+		size = set_args(tracee, envp, SYSARG_3);
 		if (size < 0) {
 			status = size;
 			goto end;
@@ -810,23 +395,8 @@ int translate_execve(struct tracee_info *tracee)
 	}
 
 end:
-	if (envp != NULL) {
-		for (i = 0; envp[i] != NULL; i++) {
-			free(envp[i]);
-			envp[i] = NULL;
-		}
-		free(envp);
-		envp = NULL;
-	}
-
-	if (argv != NULL) {
-		for (i = 0; argv[i] != NULL; i++) {
-			free(argv[i]);
-			argv[i] = NULL;
-		}
-		free(argv);
-		argv = NULL;
-	}
+	free_args(envp);
+	free_args(argv);
 
 	if (argv0 != NULL) {
 		free(argv0);

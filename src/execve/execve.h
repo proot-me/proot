@@ -30,8 +30,4 @@
 extern void init_module_execve(const char *runner, int runner_is_qemu, int no_elf_interp);
 extern int translate_execve(struct tracee_info *tracee);
 
-#ifndef ARG_MAX
-#define ARG_MAX 131072
-#endif
-
 #endif /* EXECVE_H */
