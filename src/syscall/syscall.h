@@ -30,7 +30,7 @@
 #include <stdbool.h>    /* bool ,true, false, */
 
 #include "arch.h" /* word_t */
-#include "tracee_info.h"
+#include "tracee/info.h"
 
 enum sysarg {
 	SYSARG_NUM = 0,

@@ -28,9 +28,9 @@
 #include <assert.h>     /* assert(3), */
 #include <errno.h>      /* errno(3), */
 
-#include "ureg.h"
+#include "tracee/ureg.h"
 #include "notice.h"  /* notice(), */
-#include "syscall.h" /* enum sysarg, STACK_POINTER, */
+#include "syscall/syscall.h" /* enum sysarg, STACK_POINTER, */
 
 /* Specify the ABI registers (syscall argument passing, stack pointer).
  * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */

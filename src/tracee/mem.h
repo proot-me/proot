@@ -22,16 +22,18 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef EXECVE_H
-#define EXECVE_H
+#ifndef TRACEE_MEM_H
+#define TRACEE_MEM_H
 
-#include "tracee_info.h"
+#include <limits.h>    /* PATH_MAX, */
+#include <sys/types.h> /* pid_t, size_t, */
 
-extern void init_module_execve(const char *runner, int runner_is_qemu, int no_elf_interp);
-extern int translate_execve(struct tracee_info *tracee);
+#include "arch.h" /* word_t, */
+#include "tracee/info.h"
 
-#ifndef ARG_MAX
-#define ARG_MAX 131072
-#endif
+extern word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size);
+extern int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
+extern int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t size);
+extern int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t max_size);
 
-#endif /* EXECVE_H */
+#endif /* TRACEE_MEM_H */

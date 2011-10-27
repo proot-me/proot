@@ -38,9 +38,9 @@
 #include <sys/types.h> /* pid_t, */
 #include <dirent.h>   /* readdir(3), */
 
-#include "path.h"
+#include "path/path.h"
 #include "notice.h"
-#include "syscall.h"
+#include "syscall/syscall.h"
 #include "config.h"
 
 #include "compat.h"

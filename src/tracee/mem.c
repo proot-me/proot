@@ -33,10 +33,10 @@
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
 
-#include "tracee_mem.h"
+#include "tracee/mem.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
-#include "syscall.h" /* USER_REGS_OFFSET, */
-#include "ureg.h"    /* peek_ureg(), poke_ureg(), */
+#include "syscall/syscall.h" /* USER_REGS_OFFSET, */
+#include "tracee/ureg.h"    /* peek_ureg(), poke_ureg(), */
 #include "notice.h"
 
 /**

@@ -8,11 +8,19 @@ RM       = rm
 INSTALL  = install
 CC       = gcc
 LD       = $(CC)
-CPPFLAGS = -I$(PWD)
+CPPFLAGS = -I. -I$(VPATH)
 CFLAGS   = -Wall -O0 -g
 LDFLAGS  = 
 
-OBJECTS = main.o tracee_info.o tracee_mem.o syscall.o path.o execve.o notice.o ureg.o interp.o
+OBJECTS = main.o		\
+	notice.o		\
+	execve/execve.o		\
+	execve/interp.o		\
+	path/path.o		\
+	syscall/syscall.o	\
+	tracee/info.o		\
+	tracee/mem.o		\
+	tracee/ureg.o
 
 .DEFAULT_GOAL = proot
 
@@ -80,6 +88,7 @@ NEED_CONFIG := $(notdir $(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+
 $(NEED_CONFIG): config.h
 
 %.o: %.c
+	@mkdir -p $(dir $@)
 	$(COMPILE)
 
 ######################################################################

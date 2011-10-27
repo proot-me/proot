@@ -34,10 +34,10 @@
 #include <libgen.h>     /* basename(3), */
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 
-#include "path.h"
-#include "tracee_info.h"
-#include "syscall.h" /* translate_syscall(), */
-#include "execve.h"
+#include "path/path.h"
+#include "tracee/info.h"
+#include "syscall/syscall.h" /* translate_syscall(), */
+#include "execve/execve.h"
 #include "notice.h"
 #include "config.h"
 

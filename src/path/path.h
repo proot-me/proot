@@ -22,18 +22,30 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef TRACEE_MEM_H
-#define TRACEE_MEM_H
+#ifndef PATH_H
+#define PATH_H
 
-#include <limits.h>    /* PATH_MAX, */
-#include <sys/types.h> /* pid_t, size_t, */
+#include <sys/types.h> /* pid_t, */
+#include <fcntl.h> /* AT_FDCWD, */
 
-#include "arch.h" /* word_t, */
-#include "tracee_info.h"
+#include "tracee/info.h"
 
-extern word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size);
-extern int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
-extern int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t size);
-extern int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t max_size);
+/* Helper macros. */
+#define REGULAR 1
+#define SYMLINK 0
 
-#endif /* TRACEE_MEM_H */
+#define STRONG  1
+#define WEAK    0
+
+extern void init_module_path(const char *new_root, int use_runner);
+extern void bind_path(const char *path, const char *location);
+extern int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
+extern int detranslate_path(char path[PATH_MAX], int sanity_check);
+
+extern int check_fd(pid_t pid);
+extern int list_open_fd(pid_t pid);
+
+/* Check if path interpretable relatively to dirfd, see openat(2) for details. */
+#define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
+
+#endif /* PATH_H */

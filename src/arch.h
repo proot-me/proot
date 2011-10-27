@@ -47,22 +47,22 @@ typedef unsigned long word_t;
 /* Architecture specific definitions. */
 #if defined(ARCH_X86_64)
 
-    #define SYSNUM_HEADER  "sysnum-x86_64.h"
-    #define SYSNUM_HEADER2 "sysnum-i386.h"
+    #define SYSNUM_HEADER  "syscall/sysnum-x86_64.h"
+    #define SYSNUM_HEADER2 "syscall/sysnum-i386.h"
 
 #elif defined(ARCH_ARM_EABI)
 
     #define user_regs_struct user_regs
-    #define SYSNUM_HEADER "sysnum-arm.h"
+    #define SYSNUM_HEADER "syscall/sysnum-arm.h"
 
 #elif defined(ARCH_X86)
 
-    #define SYSNUM_HEADER "sysnum-i386.h"
+    #define SYSNUM_HEADER "syscall/sysnum-i386.h"
 
 #elif defined(ARCH_SH4)
 
     #define user_regs_struct pt_regs
-    #define SYSNUM_HEADER "sysnum-sh4.h"
+    #define SYSNUM_HEADER "syscall/sysnum-sh4.h"
 
 #else
 

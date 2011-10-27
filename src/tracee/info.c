@@ -34,9 +34,9 @@
 #include <string.h>     /* bzero(3), */
 #include <stdbool.h>    /* bool, true, false, */
 
-#include "tracee_info.h"
+#include "tracee/info.h"
 #include "arch.h"    /* REG_SYSARG_*, word_t */
-#include "syscall.h" /* USER_REGS_OFFSET, */
+#include "syscall/syscall.h" /* USER_REGS_OFFSET, */
 #include "notice.h"
 
 static struct tracee_info *tracee_infos;

@@ -5,7 +5,7 @@
  *     cpp -dM /usr/include/asm/unistd.h | grep '^#define PR_' | sed s/PR_/PR_/g
  */
 
-#include "sysnum-undefined.h"
+#include "syscall/sysnum-undefined.h"
 
 #define PR_waitid 284
 #define PR_fdatasync 148

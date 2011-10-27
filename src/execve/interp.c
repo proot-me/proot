@@ -31,11 +31,11 @@
 #include <assert.h> /* assert(3), */
 #include <stdint.h> /* *int*_t */
 
-#include "interp.h"
-#include "path.h"
-#include "execve.h"
+#include "execve/interp.h"
+#include "path/path.h"
+#include "execve/execve.h"
 #include "notice.h"
-#include "elf.h"
+#include "execve/elf.h"
 
 #include "compat.h"
 

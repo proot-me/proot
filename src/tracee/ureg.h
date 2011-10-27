@@ -27,7 +27,7 @@
 
 #include <sys/types.h> /* off_t */
 
-#include "tracee_info.h"
+#include "tracee/info.h"
 
 #define UREGS_LENGTH 9
 extern off_t uregs[UREGS_LENGTH];

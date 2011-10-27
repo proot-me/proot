@@ -35,14 +35,14 @@
 #include <string.h>      /* strlen(3), */
 #include <sys/utsname.h> /* struct utsname, */
 
-#include "syscall.h"
+#include "syscall/syscall.h"
 #include "arch.h"
-#include "tracee_mem.h"
-#include "tracee_info.h"
-#include "path.h"
-#include "execve.h"
+#include "tracee/mem.h"
+#include "tracee/info.h"
+#include "path/path.h"
+#include "execve/execve.h"
 #include "notice.h"
-#include "ureg.h"
+#include "tracee/ureg.h"
 
 #include "compat.h"
 
@@ -287,15 +287,15 @@ static int translate_syscall_enter(struct tracee_info *tracee)
 	/* Translate input arguments. */
 	if (tracee->uregs == uregs) {
 		#include SYSNUM_HEADER
-		#include "sysnum_enter.c"
+		#include "syscall/enter.c"
 	}
 #ifdef SYSNUM_HEADER2
 	else if (tracee->uregs == uregs2) {
 		#include SYSNUM_HEADER2
-		#include "sysnum_enter.c"
+		#include "syscall/enter.c"
 	}
 #endif
-	#include "sysnum-undefined.h"
+	#include "syscall/sysnum-undefined.h"
 	else {
 		notice(WARNING, INTERNAL, "unknown ABI (%p)", tracee->uregs);
 		status = -ENOSYS;
@@ -335,7 +335,7 @@ static int is_execve(struct tracee_info *tracee)
 		return tracee->sysnum == PR_execve;
 	}
 #endif
-	#include "sysnum-undefined.h"
+	#include "syscall/sysnum-undefined.h"
 	else {
 		notice(WARNING, INTERNAL, "unknown ABI (%p)", tracee->uregs);
 		return 0;
@@ -401,15 +401,15 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 	/* Translate output arguments. */
 	if (tracee->uregs == uregs) {
 		#include SYSNUM_HEADER
-		#include "sysnum_exit.c"
+		#include "syscall/exit.c"
 	}
 #ifdef SYSNUM_HEADER2
 	else if (tracee->uregs == uregs2) {
 		#include SYSNUM_HEADER2
-		#include "sysnum_exit.c"
+		#include "syscall/exit.c"
 	}
 #endif
-	#include "sysnum-undefined.h"
+	#include "syscall/sysnum-undefined.h"
 	else {
 		notice(WARNING, INTERNAL, "unknown ABI (%p)", tracee->uregs);
 		status = -ENOSYS;

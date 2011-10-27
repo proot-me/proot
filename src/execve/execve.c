@@ -35,14 +35,14 @@
 #include <assert.h>       /* assert(3), */
 #include <stdbool.h>      /* bool, true, false */
 
-#include "execve.h"
+#include "execve/execve.h"
 #include "arch.h"
-#include "syscall.h"
-#include "path.h"
-#include "tracee_mem.h"
+#include "syscall/syscall.h"
+#include "path/path.h"
+#include "tracee/mem.h"
 #include "notice.h"
-#include "ureg.h"
-#include "interp.h"
+#include "tracee/ureg.h"
+#include "execve/interp.h"
 
 #include "compat.h"
 
