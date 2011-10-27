@@ -17,6 +17,8 @@ OBJECTS = main.o		\
 	execve/args.o		\
 	execve/execve.o		\
 	execve/interp.o		\
+	path/binding.o		\
+	path/canon.o		\
 	path/path.o		\
 	syscall/syscall.o	\
 	tracee/info.o		\

@@ -35,6 +35,7 @@
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 
 #include "path/path.h"
+#include "path/binding.h"
 #include "tracee/info.h"
 #include "syscall/syscall.h" /* translate_syscall(), */
 #include "execve/execve.h"

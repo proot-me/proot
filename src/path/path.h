@@ -38,12 +38,21 @@
 #define WEAK    0
 
 extern void init_module_path(const char *new_root, int use_runner);
-extern void bind_path(const char *path, const char *location);
 extern int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
 extern int detranslate_path(char path[PATH_MAX], int sanity_check);
 
+extern int join_paths(int number_paths, char result[PATH_MAX], ...);
+extern int next_component(char component[NAME_MAX], const char **cursor);
+
+#define FINAL_NORMAL    1
+#define FINAL_FORCE_DIR 2
+extern void pop_component(char *path);
+
 extern int check_fd(pid_t pid);
 extern int list_open_fd(pid_t pid);
+
+extern char root[PATH_MAX];
+extern size_t root_length;
 
 /* Check if path interpretable relatively to dirfd, see openat(2) for details. */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
