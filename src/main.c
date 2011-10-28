@@ -20,24 +20,17 @@
  * 02110-1301 USA.
  *
  * Author: Cedric VINCENT (cedric.vincent@st.com)
- * Inspired by: strace.
  */
 
-#include <unistd.h>     /* fork(2), chdir(2), exec*(3), readlink(2), */
 #include <stdlib.h>     /* exit(3), EXIT_*, */
 #include <stdio.h>      /* puts(3), */
-#include <sys/wait.h>   /* wait(2), */
-#include <sys/ptrace.h> /* ptrace(2), */
 #include <limits.h>     /* PATH_MAX, */
 #include <string.h>     /* strcmp(3), */
-#include <errno.h>      /* errno(3), */
-#include <libgen.h>     /* basename(3), */
-#include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 
+#include "trace.h"
 #include "path/path.h"
 #include "path/binding.h"
-#include "tracee/info.h"
-#include "syscall/syscall.h" /* translate_syscall(), */
+#include "syscall/syscall.h"
 #include "execve/execve.h"
 #include "notice.h"
 #include "config.h"
@@ -356,236 +349,17 @@ Possible causes:");
 	}
 }
 
-static void launch_process()
-{
-	char new_root[PATH_MAX];
-	char pwd[PATH_MAX];
-	long status;
-	pid_t pid;
-	int i;
-
-	pid = fork();
-	switch(pid) {
-	case -1:
-		notice(ERROR, SYSTEM, "fork()");
-
-	case 0: /* child */
-		/* Declare myself as ptraceable before executing the
-		 * requested program. */
-		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
-
-		if (realpath(opt_new_root, new_root) == NULL)
-			notice(ERROR, SYSTEM, "realpath(\"%s\")", opt_new_root);
-
-		/* Ensure the child starts in a valid cwd within the
-		 * new root. */
-		status = chdir(new_root);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "chdir(\"%s\")", new_root);
-
-		if (opt_pwd != NULL) {
-			status = translate_path(NULL, pwd, AT_FDCWD, opt_pwd, 1);
-			if (status < 0) {
-				if (errno == 0)
-					errno = -status;
-				notice(WARNING, SYSTEM, "translate_path(\"%s\")", opt_pwd);
-				goto default_pwd;
-			}
-
-			status = chdir(pwd);
-			if (status < 0) {
-				notice(WARNING, SYSTEM, "chdir(\"%s\")", pwd);
-				goto default_pwd;
-			}
-
-			status = detranslate_path(pwd, 1);
-			if (status < 0) {
-				notice(WARNING, SYSTEM, "detranslate_path(\"%s\")", pwd);
-				goto default_pwd;
-			}
-		}
-		else {
-		default_pwd:
-			strcpy(pwd, "/");
-		}
-
-		status = setenv("PWD", pwd, 1);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"PWD\", \"%s\")", pwd);
-
-		status = setenv("OLDPWD", pwd, 1);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\"), \"%s\"", pwd);
-
-		/* Warn about open file descriptors. They won't be
-		 * translated until they are closed. */
-		list_open_fd(getpid());
-
-		if (verbose_level >= 1) {
-			fprintf(stderr, "proot:");
-			for (i = 0; opt_args[i] != NULL; i++)
-				fprintf(stderr, " %s", opt_args[i]);
-			fprintf(stderr, "\n");
-		}
-
-		/* RHEL4 uses an ASLR mechanism that creates conflicts
-		 * between the layout of QEMU and the layout of the
-		 * target program. */
-		if (opt_disable_aslr != 0) {
-			status = personality(0xffffffff);
-			if (   status < 0
-			    || personality(status | ADDR_NO_RANDOMIZE) < 0)
-				notice(WARNING, INTERNAL, "can't disable ASLR");
-		}
-
-		/* Synchronize with the tracer's event loop.  Without
-		 * this trick the tracer only sees the "return" from
-		 * the next execve(2) so PRoot wouldn't handle the
-		 * interpreter/runner.  I also verified that strace
-		 * does the same thing. */
-		kill(getpid(), SIGSTOP);
-
-		execv(opt_args[0], opt_args);
-
-		print_execve_help(opt_args[0]);
-		exit(EXIT_FAILURE);
-
-	default: /* parent */
-		if (new_tracee(pid) == NULL)
-			exit(EXIT_FAILURE);
-		break;
-	}
-}
-
-static void attach_process(pid_t pid)
-{
-	long status;
-	struct tracee_info *tracee;
-
-	notice(WARNING, USER, "attaching a process on-the-fly is still experimental");
-
-	status = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-	if (status < 0)
-		notice(ERROR, SYSTEM, "ptrace(ATTACH, %d)", pid);
-
-	/* Warn about open file descriptors. They won't be translated
-	 * until they are closed. */
-	list_open_fd(pid);
-
-	tracee = new_tracee(pid);
-	if (tracee == NULL)
-		exit(EXIT_FAILURE);
-}
-
-static int event_loop()
-{
-	int last_exit_status = -1;
-	int tracee_status;
-	long status;
-	int signal;
-	pid_t pid;
-
-	signal = 0;
-	while (get_nb_tracees() > 0) {
-		/* Wait for the next tracee's stop. */
-		pid = waitpid(-1, &tracee_status, __WALL);
-		if (pid < 0)
-			notice(ERROR, SYSTEM, "waitpid()");
-
-		/* Check every tracee file descriptors. */
-		if (opt_check_fd != 0)
-			foreach_tracee(check_fd);
-
-		if (WIFEXITED(tracee_status)) {
-			VERBOSE(1, "pid %d: exited with status %d",
-			           pid, WEXITSTATUS(tracee_status));
-			last_exit_status = WEXITSTATUS(tracee_status);
-			delete_tracee(pid);
-			continue; /* Skip the call to ptrace(SYSCALL). */
-		}
-		else if (WIFSIGNALED(tracee_status)) {
-			VERBOSE(get_nb_tracees() != 1,
-				"pid %d: terminated with signal %d",
-				pid, WTERMSIG(tracee_status));
-			delete_tracee(pid);
-			continue; /* Skip the call to ptrace(SYSCALL). */
-		}
-		else if (WIFCONTINUED(tracee_status)) {
-			VERBOSE(1, "pid %d: continued", pid);
-			signal = SIGCONT;
-		}
-		else if (WIFSTOPPED(tracee_status)) {
-
-			/* Don't WSTOPSIG() to extract the signal
-			 * since it clears the PTRACE_EVENT_* bits. */
-			signal = (tracee_status & 0xfff00) >> 8;
-
-			switch (signal) {
-			case SIGTRAP:
-				/* Distinguish some events from others and
-				 * automatically trace each new process with
-				 * the same options.  Note: only the first
-				 * process should come here (because of
-				 * TRACE*FORK/CLONE/EXEC). */
-				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
-						PTRACE_O_TRACESYSGOOD |
-						PTRACE_O_TRACEFORK    |
-						PTRACE_O_TRACEVFORK   |
-						PTRACE_O_TRACEEXEC    |
-						PTRACE_O_TRACECLONE);
-				if (status < 0)
-					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
-				/* Fall through. */
-			case SIGTRAP | 0x80:
-				status = translate_syscall(pid);
-				if (status < 0) {
-					/* The process died in a syscall. */
-					delete_tracee(pid);
-					continue; /* Skip the call to ptrace(SYSCALL). */
-				}
-				signal = 0;
-				break;
-
-			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
-			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
-			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
-			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
-				/* Ignore these signals. */
-				signal = 0;
-				break;
-
-			default:
-				/* Propagate all other signals. */
-				break;
-			}
-		}
-		else {
-			notice(WARNING, INTERNAL, "unknown trace event");
-			signal = 0;
-		}
-
-		/* Restart the tracee and stop it at the next entry or
-		 * exit of a system call. */
-		status = ptrace(PTRACE_SYSCALL, pid, NULL, signal);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "ptrace(SYSCALL)");
-	}
-
-	return last_exit_status;
-}
-
 int main(int argc, char *argv[])
 {
 	pid_t pid;
+	bool status;
 
 	pid = parse_options(argc, argv);
+	status = pid ? attach_process(pid) : launch_process(opt_new_root, opt_pwd, opt_args, opt_disable_aslr);
+	if (!status) {
+		print_execve_help(opt_args[0]);
+		exit(EXIT_FAILURE);
+	}
 
-	if (pid != 0)
-		attach_process(pid);
-	else
-		launch_process();
-
-	return event_loop();
+	return event_loop(opt_check_fd);
 }

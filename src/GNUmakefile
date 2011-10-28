@@ -14,6 +14,7 @@ LDFLAGS  =
 
 OBJECTS = main.o		\
 	notice.o		\
+	trace.o			\
 	execve/args.o		\
 	execve/execve.o		\
 	execve/interp.o		\
