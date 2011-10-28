@@ -62,7 +62,7 @@ static int opt_check_syscall = 0;
 static void exit_usage(void)
 {
 	puts("");
-	puts("PRoot-" xstr(VERSION) ": isolate programs in a guest root file-system.");
+	puts("PRoot-" xstr(VERSION) ": chroot(1), mount(8) --bind, and binfmt_misc without any privilege!");
 	puts("");
 	puts("Usages:");
 	puts("  proot [options] /path/to/guest/rootfs");
