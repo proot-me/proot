@@ -15,6 +15,7 @@ LDFLAGS  =
 OBJECTS = main.o child_info.o child_mem.o syscall.o path.o execve.o notice.o ureg.o interp.o
 
 .DEFAULT_GOAL = proot
+all: proot
 
 ######################################################################
 # Beautified output
@@ -48,10 +49,10 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 .SILENT .IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o
 
 .check_readlinkat.o: .check_readlinkat.c
-	$(COMPILE:echo=false) $(silently)
+	$(COMPILE:echo=false) $(silently) || true
 
 .check_readlinkat: .check_readlinkat.o
-	$(LINK:echo=false) $(silently)
+	$(LINK:echo=false) $(silently) || true
 
 CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
 
