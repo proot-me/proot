@@ -42,6 +42,8 @@
 #include "path/path.h"
 #include "syscall/syscall.h"
 
+#include "compat.h"
+
 bool launch_process(const char *guest_root_, const char *pwd_, char *const args[], bool disable_aslr)
 {
 	char new_root[PATH_MAX];

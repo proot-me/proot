@@ -39,6 +39,8 @@
 #include "path/canon.h"
 #include "notice.h"
 
+#include "compat.h"
+
 static int initialized = 0;
 char root[PATH_MAX];
 size_t root_length;

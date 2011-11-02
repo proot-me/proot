@@ -9,6 +9,7 @@ Source    : proot-%{version}.tar.gz
 Buildroot : %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 
 # Special case for the STLinux distro.
+%define defined() %{expand:%%{?%{1}:1}%%{!?%{1}:0}}
 %if %{defined _stm_install_prefix}
     %define prefix %{_stm_install_prefix}
     %define bindir %{_stm_host_bin_dir}

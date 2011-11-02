@@ -36,6 +36,8 @@
 #include "notice.h"
 #include "path/path.h"
 
+#include "compat.h"
+
 static char runner[PATH_MAX] = { '\0', };
 static int skip_elf_interp = 0;
 static int runner_is_qemu = 0;
