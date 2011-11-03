@@ -162,6 +162,8 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 		/* Check if a path separator is needed. */
 		if (length > 0 && result[length - 1] != '/' && path[0] != '/')
 			need_separator = 1;
+		else if (length > 0 && result[length - 1] == '/' && path[0] == '/')
+			need_separator = -1;
 		else
 			need_separator = 0;
 
@@ -172,7 +174,10 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 			return -ENAMETOOLONG;
 		}
 
-		if (need_separator != 0) {
+		if (need_separator == -1) {
+			path++;
+		}
+		else if (need_separator == 1) {
 			strcat(result + old_length, "/");
 			old_length++;
 		}

@@ -4,20 +4,6 @@ Roadmap
 Release v0.6.3
 --------------
 
-* Fix support for "/" as path to the alternate root (reported by Christophe GUILLON).
-
-    How to reproduce::
-
-      $ proot -w $PWD / /bin/sh -c 'echo $PWD'
-
-    current output::
-
-      //home/guillon
-
-    expected output::
-
-      /home/guillon
-
 * Ensure the type of the guest binding head matches the type of the host one.
 
     The "find" tool complains about "`/guest/binding/head': Not a

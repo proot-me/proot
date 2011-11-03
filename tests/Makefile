@@ -1,11 +1,14 @@
 # I will write a better Makefile soon...
 
 NEW_ROOT=/tmp/proot/
-PROOT=../proot
+PROOT=../src/proot
 
 .PHONY: bug*
 
-check: bug-0001 bug-0002 bug-0003 bug-0004 bug-0005 bug-0006 bug-0007 bug-0008
+check: test-0001
+
+test-0001:
+	$(PROOT) -w /tmp / /bin/sh -c 'echo $$PWD' | grep '^/tmp$$'
 
 # Detranslate links pointing absolutely within the new root.
 bug-0001:
