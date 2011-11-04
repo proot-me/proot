@@ -6,7 +6,7 @@
 
 int main(void)
 {
-        struct stat stat;
+	struct stat stat;
 	int status;
 
 	status = syscall(SYS_lstat, "/proc/self/cwd/", &stat);
