@@ -31,11 +31,6 @@ Release v0.7
 
 * Allow the execution of native programs in QEMU mode
 
-* Search the program in $PATH in non-interactive mode, à la sh
-
-    For instance: ``proot $ROOTFS ls /tmp`` instead of ``proot
-    $ROOTFS /bin/ls /tmp``
-
 * Fix the support for symbolic links when asymmetric bindings are in use
 
     See the commit 2f1276b2 and commit c10e2073 for details.  For

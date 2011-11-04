@@ -47,6 +47,7 @@
 bool launch_process(const char *guest_root_, const char *pwd_, char *const args[], bool disable_aslr)
 {
 	char new_root[PATH_MAX];
+	char command[PATH_MAX];
 	char pwd[PATH_MAX];
 	long status;
 	pid_t pid;
@@ -135,7 +136,12 @@ bool launch_process(const char *guest_root_, const char *pwd_, char *const args[
 		 * does the same thing. */
 		kill(getpid(), SIGSTOP);
 
-		execv(args[0], args);
+		/* Here, process is ptraced, so the current rootfs is
+		 * already the guest rootfs. */
+		search_path(args[0], command);
+
+		execv(command, args);
+
 		return false;
 
 	default: /* parent */

@@ -334,8 +334,6 @@ static void print_execve_help(char *argv0)
 	notice(INFO, USER, "\
 Possible causes:");
 	notice(INFO, USER, "\
-  * <program> was not found ($PATH not yet supported);");
-	notice(INFO, USER, "\
   * <program> is a script but its interpreter (ex. /bin/sh) was not found;");
 	if (opt_runner || opt_qemu) {
 		notice(INFO, USER, "\
