@@ -47,9 +47,6 @@ static int runner_is_qemu = 0;
  */
 void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
 {
-	int status;
-	char *tmp, *tmp2, *tmp3;
-
 	skip_elf_interp = no_elf_interp;
 
 	if (opt_runner == NULL)
@@ -59,71 +56,7 @@ void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
 
 	init_runner_args(opt_runner);
 
-	/* Search for the runner in $PATH only if it is not a relative
-	 * not an absolute path. */
-	tmp = getenv("PATH");
-	tmp2 = tmp;
-	if (tmp != NULL
-	    && strncmp(opt_runner, "/", 1)   != 0
-	    && strncmp(opt_runner, "./", 2)  != 0
-	    && strncmp(opt_runner, "../", 3) != 0) {
-
-		/* Iterate over each entry of $PATH. */
-		do {
-			ptrdiff_t length;
-
-			tmp = index(tmp, ':');
-			if (tmp == NULL)
-				length = strlen(tmp2);
-			else {
-				length = tmp - tmp2;
-				tmp++;
-			}
-
-			/* Ensure there is enough room in runner[]. */
-			if (length + strlen(opt_runner) + 2 >= PATH_MAX) {
-				notice(WARNING, USER, "component \"%s\" from $PATH is too long", tmp2);
-				goto next;
-			}
-			strncpy(runner, tmp2, length);
-			runner[length] = '\0';
-			strcat(runner, "/");
-			strcat(runner, opt_runner);
-
-			/* Canonicalize the path to runner. */
-			tmp3 = realpath(runner, NULL);
-			if (tmp3 == NULL)
-				goto next;
-
-			/* Check if the runner is executable. */
-			status = access(tmp3, X_OK);
-			if (status >= 0) {
-				/* length(tmp3) < PATH_MAX according to realpath(3) */
-				strcpy(runner, tmp3);
-				VERBOSE(1, "runner is %s", runner);
-
-				free(tmp3);
-				tmp3 = NULL;
-				return;
-			}
-			free(tmp3);
-			tmp3 = NULL;
-
-		next:
-			tmp2 = tmp;
-		} while (tmp != NULL);
-
-		/* Otherwise check in the current directory. */
-	}
-
-	/* Canonicalize the path to the runner. */
-	if (realpath(opt_runner, runner) == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", opt_runner);
-
-	/* Ensure the runner is executable. */
-	status = access(runner, X_OK);
-	if (status < 0)
-		notice(ERROR, SYSTEM, "access(\"%s\", X_OK)", runner);
+	search_path(opt_runner, runner);
 }
 
 /**
