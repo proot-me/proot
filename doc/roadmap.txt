@@ -1,16 +1,6 @@
 Roadmap
 =======
 
-Release v0.6.3
---------------
-
-* Ensure the type of the guest binding head matches the type of the host one.
-
-    The "find" tool complains about "`/guest/binding/head': Not a
-    directory" if the /host/binding/head isn't a directory.  This is
-    due to the way this former are created by create_dummy().
-
-
 Release v0.7
 ------------
 

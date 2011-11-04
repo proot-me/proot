@@ -205,7 +205,7 @@ int substitute_binding(int which, char path[PATH_MAX])
  * Create a "dummy" path up to the canonicalized binding location
  * @c_path, it cheats programs that walk up to it.
  */
-static void create_dummy(char c_path[PATH_MAX])
+static void create_dummy(char c_path[PATH_MAX], const char * real_path)
 {
 	char t_current_path[PATH_MAX];
 	char t_path[PATH_MAX];
@@ -213,6 +213,17 @@ static void create_dummy(char c_path[PATH_MAX])
 	int status;
 	int is_final;
 	const char *cursor;
+	int type;
+
+	/* Determine the type of the element to be binded:
+	   1: file
+	   0: directory
+	*/
+	status = stat(real_path, &statl);
+	if (status != 0)
+		goto error;
+
+	type = (S_ISREG(statl.st_mode));
 
 	status = join_paths(2, t_path, root, c_path);
 	if (status < 0)
@@ -244,13 +255,28 @@ static void create_dummy(char c_path[PATH_MAX])
 		if (status < 0)
 			goto error;
 
-		/* Note that even the final component is a directory,
-		 * actually its type doesn't matter since only the
-		 * entry in the parent directory is important to cheat
-		 * "walkers". */
-		status = mkdir(t_current_path, 0777);
-		if (status < 0 && errno != EEXIST)
-			goto error;
+		/* Note that the final component can't always be a
+		 * directory, actually its type matters since not only
+		 * the entry in the parent directory is important for
+		 * some tools like 'find'.  */
+		if (is_final) {
+			if (type) {
+				status = open(t_current_path, O_CREAT, 0766);
+				if (status < 0)
+					goto error;
+				close(status);
+			}
+			else {
+				status = mkdir(t_current_path, 0777);
+				if (status < 0 && errno != EEXIST)
+					goto error;
+			}
+		}
+		else {
+			status = mkdir(t_current_path, 0777);
+			if (status < 0 && errno != EEXIST)
+				goto error;
+		}
 	}
 
 	notice(INFO, USER, "create the binding location \"%s\"", c_path);
@@ -304,7 +330,7 @@ void init_bindings()
 			binding->location.length--;
 		}
 
-		create_dummy(binding->location.path);
+		create_dummy(binding->location.path, binding->real.path);
 
 		binding->sanitized = 1;
 

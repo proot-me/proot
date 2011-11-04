@@ -1,14 +1,20 @@
 # I will write a better Makefile soon...
 
-NEW_ROOT=/tmp/proot/
+ROOTFS=./rootfs
 PROOT=../src/proot
 
-.PHONY: bug*
-
-check: test-0001
+check: test-0001 test-0002
 
 test-0001:
 	$(PROOT) -w /tmp / /bin/sh -c 'echo $$PWD' | grep '^/tmp$$'
+
+test-0002:
+	rm -fr $(ROOTFS)/test-0002
+	$(PROOT) -b /etc/fstab:/test-0002/fstab -b /tmp:/test-0002/tmp $(ROOTFS) /bin/false 2>/dev/null || true
+	cd  $(ROOTFS)/test-0002/fstab && false
+	cat $(ROOTFS)/test-0002/fstab
+	cd  $(ROOTFS)/test-0002/tmp
+	cat $(ROOTFS)/test-0002/tmp && false
 
 # Detranslate links pointing absolutely within the new root.
 bug-0001:
