@@ -1,5 +1,4 @@
-TMP=`mcookie`
-test ! -e ${TMP}
+TMP=/tmp/`mcookie`
 rm -fr ${ROOTFS}/${TMP}
 
 ${PROOT} -b /etc/fstab:/${TMP}/fstab -b /tmp:/${TMP}/tmp ${ROOTFS} /bin/true
