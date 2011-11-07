@@ -24,7 +24,7 @@
 # -----------------------------------------------------------------------------
 
 PRGNAM=proot
-VERSION=${VERSION:-v0.6.2}
+VERSION=${VERSION:-v0.6.3}
 BUILD=${BUILD:-1}
 TAG=${TAG:-ced}
 
@@ -66,6 +66,10 @@ make -C src install DESTDIR=$PKG/usr/bin
 # Strip binaries:
 find $PKG | xargs file | grep -e "executable" -e "shared object" \
   | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded 2> /dev/null
+
+# Add a documentation directory:
+mkdir -p $PKG/usr/doc/$PRGNAM-$VERSION
+cp -a COPYING doc/* $PKG/usr/doc/$PRGNAM-$VERSION
 
 # Add a package description and the post-install script if it exists:
 mkdir -p $PKG/install

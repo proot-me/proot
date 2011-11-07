@@ -1,4 +1,4 @@
-%define version v0.6.2
+%define version v0.6.3
 
 Summary   : chroot, mount --bind, and binfmt_misc without any privilege
 Version   : %{version}
@@ -7,20 +7,8 @@ License   : GPL2+
 Group     : Applications/System
 Source    : proot-%{version}.tar.gz
 Buildroot : %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
-
-# Special case for the STLinux distro.
-%define defined() %{expand:%%{?%{1}:1}%%{!?%{1}:0}}
-%if %{defined _stm_install_prefix}
-    %define prefix %{_stm_install_prefix}
-    %define bindir %{_stm_host_bin_dir}
-    %define name   %{_stm_pkg_prefix}-host-proot
-%else
-    %define prefix /usr/bin
-    %define bindir /usr/bin
-    %define name   proot
-%endif
-Prefix    : %{prefix}
-Name      : %{name}
+Prefix    : /usr/bin
+Name      : proot
 
 %description
 PRoot is a rewrite of chroot, mount --bind, and binfmt_misc in
@@ -37,13 +25,16 @@ rm  -rf  $RPM_BUILD_DIR/proot-%{version}
 tar -xzf $RPM_SOURCE_DIR/proot-%{version}.tar.gz
 
 %build
+rm -rf %{buildroot}
 make -C proot-%{version}/src
 
 %install
-make -C proot-%{version}/src install DESTDIR=%{buildroot}/%{bindir}
+make -C proot-%{version}/src install DESTDIR=%{buildroot}/bin
 
 %clean
 rm -rf %{buildroot}
 
 %files
-%{bindir}/proot
+/bin/proot
+%doc proot-%{version}/COPYING
+%doc proot-%{version}/doc/*
