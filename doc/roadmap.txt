@@ -4,6 +4,8 @@ Roadmap
 Release v0.7
 ------------
 
+* Ensure tracees' clone flags has CLONE_PTRACE & ~CLONE_UNTRACED.
+
 * Add command-line interface to set environment variables.
 
     Rename push_env() in change_env() and enhance it to support the
