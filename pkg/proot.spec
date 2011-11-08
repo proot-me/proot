@@ -2,12 +2,12 @@
 
 Summary   : chroot, mount --bind, and binfmt_misc without any privilege
 Version   : %{version}
-Release   : 1
+Release   : 2
 License   : GPL2+
 Group     : Applications/System
 Source    : proot-%{version}.tar.gz
 Buildroot : %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
-Prefix    : /usr/bin
+Prefix    : /usr
 Name      : proot
 
 %description
@@ -21,20 +21,18 @@ system-call available in every Linux kernels and also used by
 User-Mode Linux, strace, and GDB.
 
 %prep
-rm  -rf  $RPM_BUILD_DIR/proot-%{version}
-tar -xzf $RPM_SOURCE_DIR/proot-%{version}.tar.gz
+%setup -n proot-%{version}
 
 %build
-rm -rf %{buildroot}
-make -C proot-%{version}/src
+make -C src
 
 %install
-make -C proot-%{version}/src install DESTDIR=%{buildroot}/bin
+make -C src install PREFIX=%{buildroot}/%{prefix}
 
 %clean
 rm -rf %{buildroot}
 
 %files
-/bin/proot
-%doc proot-%{version}/COPYING
-%doc proot-%{version}/doc/*
+%{prefix}/bin/proot
+%doc COPYING
+%doc doc/*
