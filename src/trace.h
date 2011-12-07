@@ -1,6 +1,6 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file is part of PRoot: a PTrace based chroot alike.
+ * This file is part of PRoot.
  *
  * Copyright (C) 2010, 2011 STMicroelectronics
  *

@@ -1,6 +1,6 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file is part of PRoot: a PTrace based chroot alike.
+ * This file is part of PRoot.
  *
  * Copyright (C) 2010, 2011 STMicroelectronics
  *
@@ -35,6 +35,7 @@
 #include "tracee/mem.h"
 #include "notice.h"
 #include "syscall/syscall.h"
+#include "config.h"
 
 static char runner_args[ARG_MAX] = { '\0', };
 static int nb_runner_args;
