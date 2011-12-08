@@ -37,28 +37,6 @@
 #include "syscall/syscall.h"
 #include "config.h"
 
-static char runner_args[ARG_MAX] = { '\0', };
-static int nb_runner_args;
-
-void init_runner_args(const char *runner)
-{
-	char *tmp;
-
-	/* Split apart the name of the runner and its options, if any. */
-	tmp = index(runner, ',');
-	if (tmp != NULL) {
-		*tmp = '\0';
-		tmp++;
-
-		if (strlen(tmp) >= ARG_MAX)
-			notice(ERROR, USER, "the option \"-q %s\" is too long", runner);
-
-		strcpy(runner_args, tmp);
-		for (nb_runner_args = 1; (tmp = index(tmp, ',')) != NULL; nb_runner_args++)
-			tmp++;
-	}
-}
-
 /**
  * Push into the environment pointed to by *@envp the entry @env
  * (format is "variable=new_value"). If the variable is already
@@ -121,8 +99,10 @@ int push_env(char **envp[], const char *env, char old_env[ARG_MAX])
 /**
  * Add @nb_new_args new C strings to the argument list *@args.  If
  * @replace_argv0 is true then the previous args[0] is freed and
- * replaced with the first new entry. This function returns -errno if
- * an error occured, otherwise 0.
+ * replaced with the first new entry.  If @nb_new_args is less than
+ * zero, then the first variadic parameter is used as a table of
+ * pointers to the new arguments.  This function returns -errno if an
+ * error occured, otherwise 0.
  *
  *  Technically:
  *
@@ -139,12 +119,28 @@ int push_env(char **envp[], const char *env, char old_env[ARG_MAX])
 int push_args(bool replace_argv0, char **args[], int nb_new_args, ...)
 {
 	char **dest_old_args;
+	char **new_args;
 	va_list va_args;
 	void *tmp;
 
 	int nb_moved_old_args;
 	int nb_old_args;
 	int i;
+
+	if (nb_new_args < 0) {
+		/* Use the first variadic parameter as a table of
+		 * pointers to the new arguments. */
+		va_start(va_args, nb_new_args);
+		new_args = va_arg(va_args, char **);
+		va_end(va_args);
+
+		/* Compute nb_new_args.  */
+		for (i = 0; new_args[i] != NULL; i++)
+			;
+		nb_new_args = i;
+	}
+	else
+		new_args = NULL;
 
 	assert(nb_new_args > 0);
 
@@ -188,7 +184,12 @@ int push_args(bool replace_argv0, char **args[], int nb_new_args, ...)
 	va_start(va_args, nb_new_args);
 	for (i = 0; i < nb_new_args; i++) {
 		int dest_index = i;
-		char *new_arg = va_arg(va_args, char *);
+		char *new_arg;
+
+		if (new_args)
+			new_arg = new_args[i];
+		else
+			new_arg = va_arg(va_args, char *);
 
 		if (!replace_argv0)
 			dest_index++;
@@ -200,72 +201,6 @@ int push_args(bool replace_argv0, char **args[], int nb_new_args, ...)
 		}
 	}
 	va_end(va_args);
-
-	return 0;
-}
-
-/**
- * Insert each entry of runner_args[] in between the first entry of
- * *@args and its sucessor.  This function returns -errno if an error
- * occured, otherwise 0.
- *
- *  Technically:
- *
- *    | args[0] | args[1] | ... | args[n] |
- *
- *  becomes:
- *
- *    | args[0] | runner_args[0] | ... | runner_args[n] | args[m] |
- */
-int insert_runner_args(char **args[])
-{
-	char *tmp2;
-	char *tmp;
-	int i;
-
-	if (runner_args[0] == '\0')
-		return 0;
-
-	for (i = 0; (*args)[i] != NULL; i++)
-		;
-	i++; /* Don't miss the trailing NULL terminator. */
-
-	/* Don't kill *args if the reallocation failed, all entries
-	 * will be freed in translate_execve(). */
-	tmp = realloc(*args, (nb_runner_args + i) * sizeof(char *));
-	if (tmp == NULL)
-		return -ENOMEM;
-	*args = (void *)tmp;
-
-	/* Move the old entries to let space at the beginning for the
-	 * new ones. */
-	memmove(*args + 1 + nb_runner_args, *args + 1, (i - 1) * sizeof(char *));
-
-	/* Each new entries will be allocated into the heap since we
-	 * don't rely on the liveness of the input parameters. */
-	tmp = tmp2 = runner_args;
-	for (i = 1; i <= nb_runner_args; i++) {
-		assert(tmp != NULL);
-		ptrdiff_t size;
-
-		tmp = index(tmp, ',');
-		if (tmp == NULL)
-			size = strlen(tmp2) + 1;
-		else {
-			tmp++;
-			size = tmp - tmp2;
-		}
-
-		(*args)[i] = calloc(size, size * sizeof(char));
-		if ((*args)[i] == NULL)
-			return -ENOMEM;
-
-		strncpy((*args)[i], tmp2, size - 1);
-		(*args)[i][size] = '\0';
-
-		tmp2 = tmp;
-	}
-	assert(tmp == NULL);
 
 	return 0;
 }

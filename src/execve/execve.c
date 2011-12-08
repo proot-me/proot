@@ -238,7 +238,11 @@ int translate_execve(struct tracee_info *tracee)
 	/* I'd prefer the binfmt_misc approach instead of invoking
 	 * the runner/loader unconditionally. */
 	if (config.qemu) {
-		status = push_args(true, &argv, 2, config.qemu[0], u_interp);
+		status = push_args(false, &argv, 1, u_interp);
+		if (status < 0)
+			goto end;
+
+		status = push_args(true, &argv, -1, config.qemu);
 		if (status < 0)
 			goto end;
 
@@ -258,10 +262,6 @@ int translate_execve(struct tracee_info *tracee)
 			push_args(false, &argv, 2, "-0", u_interp);
 
 		modified_argv = 1;
-
-		status = insert_runner_args(&argv);
-		if (status < 0)
-			goto end;
 
 		/* Delay the translation of the newly instantiated
 		 * runner until it accesses the program to execute,

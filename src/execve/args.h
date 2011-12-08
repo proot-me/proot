@@ -32,10 +32,8 @@
 #define ARG_MAX 131072
 #endif
 
-extern void init_runner_args(const char *runner);
 extern int push_env(char **envp[], const char *env, char old_env[ARG_MAX]);
 extern int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...);
-extern int insert_runner_args(char **argv[]);
 extern int get_args(struct tracee_info *tracee, char **argv[], enum sysarg sysarg);
 extern int set_args(struct tracee_info *tracee, char *argv[], enum sysarg sysarg);
 extern void free_args(char *argv[]);
