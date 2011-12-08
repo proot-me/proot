@@ -35,29 +35,9 @@
 #include "execve/interp.h"
 #include "notice.h"
 #include "path/path.h"
+#include "config.h"
 
 #include "compat.h"
-
-static char runner[PATH_MAX] = { '\0', };
-static int skip_elf_interp = 0;
-static int runner_is_qemu = 0;
-
-/**
- * Initialize internal data of the execve module.
- */
-void init_module_execve(const char *opt_runner, int opt_qemu, int no_elf_interp)
-{
-	skip_elf_interp = no_elf_interp;
-
-	if (opt_runner == NULL)
-		return;
-
-	runner_is_qemu = opt_qemu;
-
-	init_runner_args(opt_runner);
-
-	search_path(opt_runner, runner);
-}
 
 /**
  * Translate @u_path into @t_path and check if this latter
@@ -123,7 +103,7 @@ static int expand_interp(struct tracee_info *tracee,
 	/* Skip the extraction of the ELF interpreter on demand, in
 	 * this case we execute the translation of u_path (t_interp)
 	 * directly. */
-	if (callback == extract_elf_interp && skip_elf_interp) {
+	if (callback == extract_elf_interp && config.ignore_elf_interpreter) {
 		strcpy(u_interp, u_path);
 		return 0;
 	}
@@ -241,7 +221,7 @@ int translate_execve(struct tracee_info *tracee)
 		goto end;
 	assert(argv != NULL);
 
-	if(runner_is_qemu)
+	if(config.qemu)
 		argv0 = strdup(argv[0]);
 
 	status = get_args(tracee, &envp, SYSARG_3);
@@ -257,27 +237,26 @@ int translate_execve(struct tracee_info *tracee)
 
 	/* I'd prefer the binfmt_misc approach instead of invoking
 	 * the runner/loader unconditionally. */
-	if (runner[0] != '\0') {
-		status = push_args(true, &argv, 2, runner, u_interp);
+	if (config.qemu) {
+		status = push_args(true, &argv, 2, config.qemu[0], u_interp);
 		if (status < 0)
 			goto end;
 
-		if (runner_is_qemu) {
-			/* Errors are ignored here since harmless. */
-			status = push_env(&envp, "LD_PRELOAD=libgcc_s.so.1", old_ldpreload);
-			if (status >= 0) {
-				modified_env = 1;
+		/* Errors are ignored here since harmless. */
+		status = push_env(&envp, "LD_PRELOAD=libgcc_s.so.1", old_ldpreload);
+		if (status >= 0) {
+			modified_env = 1;
 
-				if (old_ldpreload[0] != '\0')
-					push_args(false, &argv, 2, "-E", old_ldpreload);
-				else
-					push_args(false, &argv, 2, "-U", "LD_PRELOAD");
-			}
-			if (modified_argv == 0)
-				push_args(false, &argv, 2, "-0", argv0);
+			if (old_ldpreload[0] != '\0')
+				push_args(false, &argv, 2, "-E", old_ldpreload);
 			else
-				push_args(false, &argv, 2, "-0", u_interp);
+				push_args(false, &argv, 2, "-U", "LD_PRELOAD");
 		}
+		if (modified_argv == 0)
+			push_args(false, &argv, 2, "-0", argv0);
+		else
+			push_args(false, &argv, 2, "-0", u_interp);
+
 		modified_argv = 1;
 
 		status = insert_runner_args(&argv);
@@ -295,7 +274,7 @@ int translate_execve(struct tracee_info *tracee)
 		}
 
 		/* Launch the runner actually. */
-		strcpy(t_interp, runner);
+		strcpy(t_interp, config.qemu[0]);
 	}
 	else {
 		status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);

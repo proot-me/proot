@@ -12,7 +12,8 @@ CPPFLAGS = -I. -I$(VPATH)
 CFLAGS   = -Wall -O0 -g
 LDFLAGS  = 
 
-OBJECTS = main.o		\
+OBJECTS = cli.o			\
+	config.o		\
 	notice.o		\
 	trace.o			\
 	execve/args.o		\
@@ -53,9 +54,8 @@ endif
 
 DEFAULT_VERSION = v0.6.2
 CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>/dev/null); \
-		if [ -z "$${VERSION}" ];                         \
-		then echo "\#define VERSION $(DEFAULT_VERSION)"; \
-		else echo "\#define VERSION $${VERSION}";        \
+		if [ ! -z "$${VERSION}" ]; \
+		then echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
 		fi;
 
 .SILENT .IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o
@@ -68,14 +68,14 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 
 CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
 
-config.h: .check_readlinkat
+build.h: .check_readlinkat
 	$($(quiet)GEN)
 	$(Q)echo "/* This file is auto-generated, edit at your own risk.  */" > $@
-	$(Q)echo "#ifndef CONFIG_H"      >> $@
-	$(Q)echo "#define CONFIG_H"      >> $@
+	$(Q)echo "#ifndef BUILD_H"      >> $@
+	$(Q)echo "#define BUILD_H"      >> $@
 	$(Q)sh -c '$(CHECK_VERSION)'     >> $@
 	$(Q)sh -c '$(CHECK_READLINKAT)'  >> $@
-	$(Q)echo "#endif /* CONFIG_H */" >> $@
+	$(Q)echo "#endif /* BUILD_H */" >> $@
 
 ######################################################################
 # Build rules
@@ -88,9 +88,9 @@ proot: $(OBJECTS)
 	$(LINK)
 
 # Special case to compute which files depend on the auto-generated
-# file "config.h".
-NEED_CONFIG := $(notdir $(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"config.h"' $(SRC)*.c)))
-$(NEED_CONFIG): config.h
+# file "build.h".
+USE_BUILD_H := $(notdir $(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*.c)))
+$(USE_BUILD_H): build.h
 
 %.o: %.c
 	@mkdir -p $(dir $@)
@@ -100,7 +100,7 @@ $(NEED_CONFIG): config.h
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) config.h: $(firstword $(MAKEFILE_LIST))
+$(OBJECTS) build.h: $(firstword $(MAKEFILE_LIST))
 
 DEPS = $(OBJECTS:.o=.d) .check_readlinkat.d
 -include $(DEPS)
@@ -113,7 +113,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install uninstall
 clean distclean:
-	-$(RM) -f $(OBJECTS) proot $(DEPS) config.h
+	-$(RM) -f $(OBJECTS) proot $(DEPS) build.h
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<

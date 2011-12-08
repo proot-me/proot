@@ -38,13 +38,13 @@
 #include "path/binding.h"
 #include "path/canon.h"
 #include "notice.h"
+#include "config.h"
 
 #include "compat.h"
 
 static int initialized = 0;
 char root[PATH_MAX];
 size_t root_length;
-static int use_runner = 0;
 
 /**
  * Copy in @component the first path component pointed to by @cursor,
@@ -191,98 +191,18 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 /**
  * Initialize internal data of the path translator.
  */
-void init_module_path(const char *new_root, int opt_runner)
+void init_module_path()
 {
-	if (realpath(new_root, root) == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", new_root);
+	assert(strlen(config.guest_rootfs) < PATH_MAX);
+	strcpy(root, config.guest_rootfs);
 
 	if (strcmp(root, "/") == 0)
 		root_length = 0;
 	else
 		root_length = strlen(root);
-	use_runner = opt_runner;
 	initialized = 1;
 
 	init_bindings();
-}
-
-/**
- * Copy in @result the absolute path of command.
- * Command is looking for in environment variable PATH.
- * This function returns -errno if an error occured, otherwise
- * it returns 0.
- */
-void search_path(const char *command, char result[PATH_MAX])
-{
-	char *tmp, *tmp2, *tmp3;
-	int status;
-
-	/* Search for the command in $PATH only if it is
-	 * not an absolute path. */
-	tmp = getenv("PATH");
-	tmp2 = tmp;
-	if (tmp != NULL
-	    && strncmp(command, "/", 1)   != 0
-	    && strncmp(command, "./", 2)  != 0
-	    && strncmp(command, "../", 3) != 0) {
-
-		/* Iterate over each entry of $PATH. */
-		do {
-			ptrdiff_t length;
-
-			tmp = index(tmp, ':');
-			if (tmp == NULL)
-				length = strlen(tmp2);
-			else {
-				length = tmp - tmp2;
-				tmp++;
-			}
-
-			/* Ensure there is enough room in result[]. */
-			if (length + strlen(command) + 2 >= PATH_MAX) {
-				notice(WARNING, USER, "component \"%s\" from $PATH is too long", tmp2);
-				goto next;
-			}
-			strncpy(result, tmp2, length);
-			result[length] = '\0';
-			strcat(result, "/");
-			strcat(result, command);
-
-			/* Canonicalize the path to command. */
-			tmp3 = realpath(result, NULL);
-			if (tmp3 == NULL)
-				goto next;
-
-			/* Check if the command is executable. */
-			status = access(tmp3, X_OK);
-			if (status >= 0) {
-				/* length(tmp3) < PATH_MAX according to realpath(3) */
-				strcpy(result, tmp3);
-				VERBOSE(1, "command is %s", result);
-
-				free(tmp3);
-				tmp3 = NULL;
-				return;
-			}
-
-			free(tmp3);
-			tmp3 = NULL;
-
-		next:
-			tmp2 = tmp;
-		} while (tmp != NULL);
-
-		/* Otherwise check in the current directory. */
-	}
-
-	/* Canonicalize the path to the command. */
-	if (realpath(command, result) == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", command);
-
-	/* Ensure the command is executable. */
-	status = access(result, X_OK);
-	if (status < 0)
-		notice(ERROR, SYSTEM, "access(\"%s\", X_OK)", result);
 }
 
 /**
@@ -374,7 +294,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 
 	/* Don't use the result of the canonicalization if the
 	 * translation is delayed, use the origin input path instead. */
-	if (use_runner != 0 && tracee != NULL && is_delayed(tracee, fake_path)) {
+	if (config.qemu && tracee != NULL && is_delayed(tracee, fake_path)) {
 		if (strlen(fake_path) >= PATH_MAX)
 			return -ENAMETOOLONG;
 		strcpy(result, fake_path);

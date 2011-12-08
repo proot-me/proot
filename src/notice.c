@@ -30,8 +30,6 @@
 
 #include "notice.h"
 
-int verbose_level = 0;
-
 /**
  * XXX
  */
@@ -50,7 +48,7 @@ void notice(enum notice_severity severity, enum notice_origin origin, const char
 
 	case INFO:
 	default:
-		fprintf(stderr, "proot: ");
+		fprintf(stderr, "proot info: ");
 		break;
 	}
 
@@ -71,8 +69,10 @@ void notice(enum notice_severity severity, enum notice_origin origin, const char
 		break;
 	}
 
-	if (severity == ERROR)
+	if (severity == ERROR) {
+		fprintf(stderr, "proot error: see `proot --help` or `man proot`.\n");
 		exit(EXIT_FAILURE);
+	}
 
 	return;
 }

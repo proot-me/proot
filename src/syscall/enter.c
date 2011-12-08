@@ -364,7 +364,7 @@ case PR_restart_syscall:
 	break;
 
 case PR_ptrace:
-	if (!allow_ptrace)
+	if (!config.allow_ptrace)
 		status = -EPERM;
 	else
 		status = 0;
@@ -716,7 +716,7 @@ case PR_symlinkat:
 
 default:
 	notice(WARNING, INTERNAL, "unknown syscall %lu", tracee->sysnum);
-	if (!allow_unknown)
+	if (!config.allow_unknown_syscalls)
 		status = -ENOSYS;
 	else
 		status = 0;

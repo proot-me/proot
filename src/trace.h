@@ -27,8 +27,8 @@
 
 #include <stdbool.h>
 
-extern bool launch_process(const char *guest_root_, const char *pwd_, char *const args[], bool disable_aslr);
+extern bool launch_process();
 extern bool attach_process(pid_t pid);
-extern int event_loop(bool check_fd_);
+extern int event_loop();
 
 #endif /* TRACE_H */

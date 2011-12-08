@@ -35,6 +35,7 @@
 #include "path/path.h"
 #include "path/canon.h"
 #include "notice.h"
+#include "config.h"
 
 struct binding_path {
 	char path[PATH_MAX];
@@ -101,6 +102,22 @@ error:
 	free(binding);
 	binding = NULL;
 	return;
+}
+
+/**
+ * Print all bindings (verbose purpose).
+ */
+void print_bindings()
+{
+	struct binding *binding;
+
+	for (binding = bindings; binding != NULL; binding = binding->next) {
+		if (strcmp(binding->real.path, binding->location.path) == 0)
+			notice(INFO, USER, "binding = %s", binding->real.path);
+		else
+			notice(INFO, USER, "binding = %s:%s",
+				binding->real.path, binding->location.path);
+	}
 }
 
 /**
@@ -333,8 +350,6 @@ void init_bindings()
 		create_dummy(binding->location.path, binding->real.path);
 
 		binding->sanitized = 1;
-
-		VERBOSE(1, "binding \"%s\" in \"%s\"", binding->real.path, binding->location.path);
 		continue;
 
 	error:

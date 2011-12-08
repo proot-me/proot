@@ -22,17 +22,32 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef BINDING_H
-#define BINDING_H
+#ifndef CONFIG_H
+#define CONFIG_H
 
-#include <limits.h> /* PATH_MAX, */
+#include <stdbool.h> /* bool, */
 
-extern void bind_path(const char *path, const char *location);
-extern void print_bindings(void);
+struct config {
+	const char *guest_rootfs;
+	const char *initial_cwd;
+	const char *kernel_release;
 
-#define BINDING_LOCATION 1
-#define BINDING_REAL     2
-extern int substitute_binding(int which, char path[PATH_MAX]);
-extern void init_bindings(void);
+	char **qemu;
+	char **command;
 
-#endif /* BINDING_H */
+	bool ignore_elf_interpreter;
+	bool allow_unknown_syscalls;
+	bool allow_ptrace;
+	bool disable_aslr;
+	bool fake_id0;
+
+	bool check_fd;
+
+	int verbose_level;
+};
+
+extern struct config config;
+
+extern void print_config();
+
+#endif /* CONFIG_H */

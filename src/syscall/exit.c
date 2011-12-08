@@ -67,7 +67,7 @@ case PR_readlinkat:
 	break;
 
 case PR_uname:
-	if (kernel_release != NULL) {
+	if (config.kernel_release) {
 		struct utsname utsname;
 		word_t release_addr;
 		size_t release_size;
@@ -95,7 +95,7 @@ case PR_uname:
 		if (status < 0)
 			goto end;
 
-		strncpy(utsname.release, kernel_release, release_size);
+		strncpy(utsname.release, config.kernel_release, release_size);
 		utsname.release[release_size - 1] = '\0';
 
 		status = copy_to_tracee(tracee, release_addr, &(utsname.release), strlen(utsname.release) + 1);
@@ -114,7 +114,7 @@ case PR_getgid32:
 case PR_geteuid32:
 case PR_getegid32:
 	status = 0;
-	if (fake_id0)
+	if (config.fake_id0)
 		break;
 	goto end;
 

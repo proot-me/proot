@@ -30,10 +30,8 @@
 #include <sys/wait.h>   /* waitpid(2), */
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 #include <fcntl.h>      /* AT_FDCWD, */
-#include <stdlib.h>     /* getenv(3), realpath(3), */
 #include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
 #include <string.h>     /* strcpy(3), */
-#include <stdio.h>      /* fprintf(3), */
 #include <errno.h>      /* errno(3), */
 #include <stdbool.h>    /* bool, true, false, */
 
@@ -41,16 +39,14 @@
 #include "notice.h"
 #include "path/path.h"
 #include "syscall/syscall.h"
+#include "config.h"
 
 #include "compat.h"
 
-bool launch_process(const char *guest_root_, const char *pwd_, char *const args[], bool disable_aslr)
+bool launch_process()
 {
-	char new_root[PATH_MAX];
-	char pwd[PATH_MAX];
 	long status;
 	pid_t pid;
-	int i;
 
 	pid = fork();
 	switch(pid) {
@@ -64,64 +60,14 @@ bool launch_process(const char *guest_root_, const char *pwd_, char *const args[
 		if (status < 0)
 			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
 
-		if (realpath(guest_root_, new_root) == NULL)
-			notice(ERROR, SYSTEM, "realpath(\"%s\")", guest_root_);
-
-		/* Ensure the child starts in a valid cwd within the
-		 * new root. */
-		status = chdir(new_root);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "chdir(\"%s\")", new_root);
-
-		if (pwd_ != NULL) {
-			status = translate_path(NULL, pwd, AT_FDCWD, pwd_, 1);
-			if (status < 0) {
-				if (errno == 0)
-					errno = -status;
-				notice(WARNING, SYSTEM, "translate_path(\"%s\")", pwd_);
-				goto default_pwd;
-			}
-
-			status = chdir(pwd);
-			if (status < 0) {
-				notice(WARNING, SYSTEM, "chdir(\"%s\")", pwd);
-				goto default_pwd;
-			}
-
-			status = detranslate_path(pwd, 1);
-			if (status < 0) {
-				notice(WARNING, SYSTEM, "detranslate_path(\"%s\")", pwd);
-				goto default_pwd;
-			}
-		}
-		else {
-		default_pwd:
-			strcpy(pwd, "/");
-		}
-
-		status = setenv("PWD", pwd, 1);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"PWD\", \"%s\")", pwd);
-
-		status = setenv("OLDPWD", pwd, 1);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "setenv(\"OLDPWD\"), \"%s\"", pwd);
-
 		/* Warn about open file descriptors. They won't be
 		 * translated until they are closed. */
 		list_open_fd(getpid());
 
-		if (verbose_level >= 1) {
-			fprintf(stderr, "proot:");
-			for (i = 0; args[i] != NULL; i++)
-				fprintf(stderr, " %s", args[i]);
-			fprintf(stderr, "\n");
-		}
-
 		/* RHEL4 uses an ASLR mechanism that creates conflicts
 		 * between the layout of QEMU and the layout of the
 		 * target program. */
-		if (disable_aslr) {
+		if (config.disable_aslr) {
 			status = personality(0xffffffff);
 			if (   status < 0
 			    || personality(status | ADDR_NO_RANDOMIZE) < 0)
@@ -135,9 +81,20 @@ bool launch_process(const char *guest_root_, const char *pwd_, char *const args[
 		 * does the same thing. */
 		kill(getpid(), SIGSTOP);
 
-		/* Here, process is ptraced, so the current rootfs is
+		/* Now process is ptraced, so the current rootfs is
 		 * already the guest rootfs. */
-		execvp(args[0], args);
+
+		if (config.initial_cwd) {
+			status = chdir(config.initial_cwd);
+			if (status < 0) {
+				notice(WARNING, SYSTEM, "chdir('%s/)", config.initial_cwd);
+				chdir("/");
+			}
+		}
+		else
+			chdir("/");
+
+		execvp(config.command[0], config.command);
 
 		return false;
 
@@ -169,7 +126,7 @@ bool attach_process(pid_t pid)
 	return (tracee != NULL);
 }
 
-int event_loop(bool check_fd_)
+int event_loop()
 {
 	int last_exit_status = -1;
 	int tracee_status;
@@ -185,7 +142,7 @@ int event_loop(bool check_fd_)
 			notice(ERROR, SYSTEM, "waitpid()");
 
 		/* Check every tracee file descriptors. */
-		if (check_fd_)
+		if (config.check_fd)
 			foreach_tracee(check_fd);
 
 		if (WIFEXITED(tracee_status)) {

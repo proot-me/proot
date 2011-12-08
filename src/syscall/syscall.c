@@ -43,27 +43,9 @@
 #include "execve/execve.h"
 #include "notice.h"
 #include "tracee/ureg.h"
+#include "config.h"
 
 #include "compat.h"
-
-static bool allow_unknown = false;
-static bool allow_ptrace = false;
-static bool fake_id0 = false;
-static const char *kernel_release;
-
-/**
- * Initialize internal data of the syscall module.
- */
-void init_module_syscall(bool sanity_check, bool allow_unknown_, bool allow_ptrace_, bool fake_id0_, const char *kernel_release_)
-{
-	if (sanity_check != 0)
-		notice(WARNING, USER, "option -s not yet supported");
-
-	allow_unknown  = allow_unknown_;
-	allow_ptrace   = allow_ptrace_;
-	fake_id0       = fake_id0_;
-	kernel_release = kernel_release_;
-}
 
 /**
  * Copy in @path a C string (PATH_MAX bytes max.) from the @tracee's
@@ -266,7 +248,7 @@ static int translate_syscall_enter(struct tracee_info *tracee)
 		goto end;
 	}
 
-	if (verbose_level >= 3)
+	if (config.verbose_level >= 3)
 		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
 			tracee->pid, tracee->sysnum,
 			peek_ureg(tracee, SYSARG_1), peek_ureg(tracee, SYSARG_2),

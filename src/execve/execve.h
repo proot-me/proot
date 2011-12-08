@@ -27,7 +27,6 @@
 
 #include "tracee/info.h"
 
-extern void init_module_execve(const char *runner, int runner_is_qemu, int no_elf_interp);
 extern int translate_execve(struct tracee_info *tracee);
 
 #endif /* EXECVE_H */
