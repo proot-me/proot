@@ -95,7 +95,7 @@ int canonicalize(pid_t pid, const char *fake_path, int deref_final,
 			return status;
 		is_final = status;
 
-		if (strcmp(component, ".") == 0)
+		if (strcmp(component, ".") == 0 && !is_final)
 			continue;
 
 		if (strcmp(component, "..") == 0) {

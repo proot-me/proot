@@ -106,13 +106,6 @@ Release v0.8
     For instance ``ls /DOESNT_EXIST/../bin`` shouldn't succeed
     (reported by Yves JANIN).
 
-* Fix support for pathes ending with "/." (reported by Yves JANIN)
-
-    For instance:
-
-      proot: translate("/" + "/this/is/a/test/.")
-      proot:          -> "/usr/local/slack/install/slackware-13.1-d1/this/is/a/test"
-
 
 Release v0.9
 ------------

@@ -122,15 +122,17 @@ void pop_component(char *path)
 	}
 
 	/* Skip trailing path separators. */
-	while (offset > 1 && path[offset] == '/')
+	while (path[offset] == '/')
 		offset--;
 
 	/* Search for the previous path separator. */
-	while (offset > 1 && path[offset] != '/')
+	while (path[offset] != '/')
 		offset--;
 
-	/* Cut the end of the string before the last component. */
-	path[offset] = '\0';
+	/* Cut the end of the string before the last component.  Note
+	 * that the last path separator is kept (root or directory
+	 * sign).  */
+	path[offset+1] = '\0';
 	assert(path[0] == '/');
 }
 
