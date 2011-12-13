@@ -165,6 +165,7 @@ static struct option options[] = {
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-B", .separator = '\0', .value = NULL },
+		{ .name = "-M", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_B,
 	  .description = "Alias: \"-b path\" for each path of a recommended list.",
