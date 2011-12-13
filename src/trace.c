@@ -216,8 +216,11 @@ int event_loop()
 		/* Restart the tracee and stop it at the next entry or
 		 * exit of a system call. */
 		status = ptrace(PTRACE_SYSCALL, pid, NULL, signal);
-		if (status < 0)
-			notice(ERROR, SYSTEM, "ptrace(SYSCALL)");
+		if (status < 0) {
+			 /* The process died in a syscall.  */
+			notice(WARNING, SYSTEM, "ptrace(SYSCALL)");
+			delete_tracee(pid);
+		}
 	}
 
 	return last_exit_status;
