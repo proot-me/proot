@@ -98,8 +98,10 @@ static char *which(char *const command)
 		close(pipe_fd[1]); /* "write" end */
 
 		status = read(pipe_fd[0], path, PATH_MAX - 1);
-		if (status < 1)
+		if (status < 0)
 			notice(ERROR, SYSTEM, "read()");
+		if (status == 0)
+			notice(ERROR, USER, "%s: command not found", command);
 		assert(status < PATH_MAX);
 		path[status - 1] = '\0'; /* overwrite "\n" */
 
