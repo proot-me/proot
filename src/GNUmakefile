@@ -55,7 +55,7 @@ endif
 DEFAULT_VERSION = v0.6.2
 CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>/dev/null); \
 		if [ ! -z "$${VERSION}" ]; \
-		then echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
+		then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
 		fi;
 
 .SILENT .IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o
