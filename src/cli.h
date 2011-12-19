@@ -21,7 +21,7 @@ struct option {
 };
 
 #define VERSION "0.7.0"
-#define SUBTITLE "chroot(1), mount(8) --bind, and binfmt_misc with no privilege"
+#define SUBTITLE "chroot, mount --bind, and binfmt_misc with no privilege"
 #define SYNOPSIS "proot [option] ... /path/to/guest/rootfs [program [arg] ...]"
 
 static char *recommended_bindings[] = {
