@@ -1,3 +1,33 @@
+Release v0.7.0
+==============
+
+* Search the guest program in $PATH relatively to the guest rootfs,
+  for instance you can now just write::
+
+      proot /path/to/guest/rootfs/  perl
+
+  instead of::
+
+      proot /path/to/guest/rootfs/  /usr/bin/perl
+
+* The command-line interface was re-written from scratch, the only
+  incompatible change is that QEMU options are now separated by
+  spaces::
+
+     proot -Q "qemu-arm -g 1234" ...
+
+  instead of::
+
+     proot -Q qemu-arm,-g,1234 ...
+
+* New option "-0": force syscalls "get*id" to report identity 0, aka
+  "root".
+
+* Many fixes, code refactoring, new testing framework, ...
+
+Special thanks to Claire ROBINE for her contribution.
+
+
 Release v0.6.2
 ==============
 

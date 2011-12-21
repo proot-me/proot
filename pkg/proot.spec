@@ -1,4 +1,4 @@
-%define version v0.6.3
+%define version v0.7.0
 
 Summary   : chroot, mount --bind, and binfmt_misc without any privilege
 Version   : %{version}

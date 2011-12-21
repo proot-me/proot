@@ -1,8 +1,8 @@
 Roadmap
 =======
 
-Release v0.7
-------------
+Release v0.7.x
+--------------
 
 * Ensure tracees' clone flags has CLONE_PTRACE & ~CLONE_UNTRACED.
 
