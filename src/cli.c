@@ -37,6 +37,7 @@
 #include "trace.h"
 #include "path/path.h"
 #include "tracee/info.h"
+#include "execve/ldso.h"
 #include "build.h"
 
 struct config config;
@@ -423,6 +424,7 @@ int main(int argc, char *argv[])
 	/* TODO: remove the need for initialization.  */
 	init_module_path();
 	init_module_tracee_info();
+	init_module_ldso();
 
 	status = pid
 		? attach_process(pid)

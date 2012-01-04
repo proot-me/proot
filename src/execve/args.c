@@ -38,58 +38,72 @@
 #include "config.h"
 
 /**
- * Push into the environment pointed to by *@envp the entry @env
- * (format is "variable=new_value"). If the variable is already
- * defined in the environment then the old entry if copied into
- * @old_env (format is "variable=old_value").
+ * Replace the value of the environment @entry (format is
+ * "variable=value") with @value if this latter is not NULL,
+ * otherwise with "".
  */
-int push_env(char **envp[], const char *env, char old_env[ARG_MAX])
+int replace_env_entry(char **entry, const char *new_value)
 {
-	size_t new_size;
-	size_t length;
+	size_t name_length;
+	size_t new_value_length;
 	char *tmp;
-	int i;
 
-	old_env[0] = '\0';
+	assert(entry);
 
-	length = strcspn(env, "=");
-	if (length == strlen(env))
-		return -EINVAL;
-
-	/* Seach for the environment variable. */
-	for (i = 0; (*envp)[i] != NULL; i++) {
-		const char *value;
-
-		if (   strncmp(env, (*envp)[i], length) != 0
-		    || (*envp)[i][length] != '=')
-			continue;
-
-		if (strlen((*envp)[i]) < ARG_MAX)
-			strcpy(old_env, (*envp)[i]);
-
-		/* "value" includes the separator '='. */
-		value = env + length;
-
-		tmp = realloc((*envp)[i], (length + strlen(value) + 1) * sizeof(char));
-		if (tmp == NULL)
-			return  -ENOMEM;
-		(*envp)[i] = tmp;
-
-		strcpy((*envp)[i] + length, value);
+	if (!new_value) {
+		(*entry)[0] = '\0';
 		return 0;
 	}
 
-	/* Allocate a new entry + the terminating NULL pointer. */
+	name_length = strcspn(*entry, "=");
+	new_value_length = strlen(new_value);
+
+	tmp = realloc(*entry, (name_length + 1 + new_value_length + 1) * sizeof(char));
+	if (tmp == NULL)
+		return  -ENOMEM;
+	*entry = tmp;
+
+	strcpy(*entry + name_length + 1, new_value);
+	return 0;
+}
+
+/**
+ * Add the new environment variable @name into @envp[] with the given
+ * @value (do nothing if this latter is NULL).
+ */
+int new_env_entry(char **envp[], const char *name, const char *value)
+{
+	size_t new_size;
+	size_t length;
+	char **tmp;
+	int i;
+
+	assert(envp);
+	assert(name);
+
+	if (!value)
+		return 0;
+
+	/* Compute the number of entries in envp[].  */
+	for (i = 0; (*envp)[i] != NULL; i++)
+		;
+
+	/* Allocate a new entry + the terminating NULL pointer.  */
 	new_size = i + 2;
 
 	tmp = realloc(*envp, new_size * sizeof(char *));
 	if (tmp == NULL)
 		return -ENOMEM;
-	*envp = (char **)tmp;
+	*envp = tmp;
 
-	(*envp)[new_size - 2] = strdup(env);
+	length = strlen(name) + 1 /* = */ + strlen(value);
+	(*envp)[new_size - 2] = calloc(length + 1, sizeof(char));
 	if ((*envp)[new_size - 2] == NULL)
 		return -ENOMEM;
+
+	strcpy((*envp)[new_size - 2], name);
+	strcat((*envp)[new_size - 2], "=");
+	strcat((*envp)[new_size - 2], value);
 
 	(*envp)[new_size - 1] = NULL;
 

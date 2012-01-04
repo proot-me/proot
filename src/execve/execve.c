@@ -33,6 +33,7 @@
 #include "execve/execve.h"
 #include "execve/args.h"
 #include "execve/interp.h"
+#include "execve/ldso.h"
 #include "notice.h"
 #include "path/path.h"
 #include "config.h"
@@ -202,13 +203,12 @@ int translate_execve(struct tracee_info *tracee)
 	char t_interp[PATH_MAX];
 	char u_interp[PATH_MAX];
 
-	char old_ldpreload[ARG_MAX];
 	char **envp = NULL;
 	char **argv = NULL;
 	char *argv0 = NULL;
 
-	int modified_env  = 0;
-	int modified_argv = 0;
+	bool envp_has_changed = false;
+	bool argv_has_changed = false;
 	int size = 0;
 	int status;
 
@@ -232,8 +232,7 @@ int translate_execve(struct tracee_info *tracee)
 	status = expand_interp(tracee, u_path, t_interp, u_interp, &argv, extract_script_interp);
 	if (status < 0)
 		goto end;
-	if (status > 0)
-		modified_argv = 1;
+	argv_has_changed = (status > 0);
 
 	/* I'd prefer the binfmt_misc approach instead of invoking
 	 * the runner/loader unconditionally. */
@@ -246,22 +245,14 @@ int translate_execve(struct tracee_info *tracee)
 		if (status < 0)
 			goto end;
 
-		/* Errors are ignored here since harmless. */
-		status = push_env(&envp, "LD_PRELOAD=libgcc_s.so.1", old_ldpreload);
-		if (status >= 0) {
-			modified_env = 1;
+		envp_has_changed = ldso_env_passthru(&envp, &argv, "-E", "-U");
 
-			if (old_ldpreload[0] != '\0')
-				push_args(false, &argv, 2, "-E", old_ldpreload);
-			else
-				push_args(false, &argv, 2, "-U", "LD_PRELOAD");
-		}
-		if (modified_argv == 0)
+		if (!argv_has_changed)
 			push_args(false, &argv, 2, "-0", argv0);
 		else
 			push_args(false, &argv, 2, "-0", u_interp);
 
-		modified_argv = 1;
+		argv_has_changed = true;
 
 		/* Delay the translation of the newly instantiated
 		 * runner until it accesses the program to execute,
@@ -280,8 +271,7 @@ int translate_execve(struct tracee_info *tracee)
 		status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
 		if (status < 0)
 			goto end;
-		if (status > 0)
-			modified_argv = 1;
+		argv_has_changed = (status > 0);
 	}
 
 	VERBOSE(4, "execve: %s", t_interp);
@@ -291,7 +281,7 @@ int translate_execve(struct tracee_info *tracee)
 		goto end;
 
 	/* Rebuild argv[] only if something has changed. */
-	if (modified_argv != 0) {
+	if (argv_has_changed) {
 		size = set_args(tracee, argv, SYSARG_2);
 		if (size < 0) {
 			status = size;
@@ -300,7 +290,7 @@ int translate_execve(struct tracee_info *tracee)
 	}
 
 	/* Rebuild envp[] only if something has changed. */
-	if (modified_env != 0) {
+	if (envp_has_changed) {
 		size = set_args(tracee, envp, SYSARG_3);
 		if (size < 0) {
 			status = size;

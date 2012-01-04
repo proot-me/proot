@@ -1,6 +1,6 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file is part of PRoot.
+ * This file is part of PRoot: a PTrace based chroot alike.
  *
  * Copyright (C) 2010, 2011 STMicroelectronics
  *
@@ -22,21 +22,12 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-#ifndef ARGS_H
-#define ARGS_H
+#ifndef LDSO_H
+#define LDSO_H
 
 #include <stdbool.h>
-#include "syscall/syscall.h" /* enum sysarg */
 
-#ifndef ARG_MAX
-#define ARG_MAX 131072
-#endif
+extern void init_module_ldso(void);
+extern bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const char *undefine);
 
-extern int replace_env_entry(char **entry, const char *new_value);
-extern int new_env_entry(char **envp[], const char *name, const char *value);
-extern int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...);
-extern int get_args(struct tracee_info *tracee, char **argv[], enum sysarg sysarg);
-extern int set_args(struct tracee_info *tracee, char *argv[], enum sysarg sysarg);
-extern void free_args(char *argv[]);
-
-#endif /* ARGS_H */
+#endif /* LDSO_H */

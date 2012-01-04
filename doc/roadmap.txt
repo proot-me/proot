@@ -13,8 +13,6 @@ Release v0.7.x
 
 * Become compatible with the new version of ptrace.
 
-* Add specific support for LD_* environment variables when using QEMU.
-
 * Why QEMU does pthread cancellation when the target program cancels one of its thread?
 
     Is it due to the RT signal used in NTPL? (TLPI 693)
