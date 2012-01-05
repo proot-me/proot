@@ -33,12 +33,14 @@ typedef unsigned long word_t;
 #        define ARCH_X86_64 1
 #    elif defined(__ARM_EABI__)
 #        define ARCH_ARM_EABI 1
+#        warning "Untested architecture"
 #    elif defined(__arm__)
 #        error "Only EABI is currently supported for ARM"
 #    elif defined(__i386__)
 #        define ARCH_X86 1
 #    elif defined(__SH4__)
 #        define ARCH_SH4 1
+#        warning "Untested architecture"
 #    else
 #        error "Unsupported architecture"
 #    endif
@@ -49,20 +51,24 @@ typedef unsigned long word_t;
 
     #define SYSNUM_HEADER  "syscall/sysnum-x86_64.h"
     #define SYSNUM_HEADER2 "syscall/sysnum-i386.h"
+    #define HOST_ELF_MACHINE {62, 3, 6, 0}
 
 #elif defined(ARCH_ARM_EABI)
 
     #define user_regs_struct user_regs
     #define SYSNUM_HEADER "syscall/sysnum-arm.h"
+    #define HOST_ELF_MACHINE {40, 0};
 
 #elif defined(ARCH_X86)
 
     #define SYSNUM_HEADER "syscall/sysnum-i386.h"
+    #define HOST_ELF_MACHINE {3, 6, 0};
 
 #elif defined(ARCH_SH4)
 
     #define user_regs_struct pt_regs
     #define SYSNUM_HEADER "syscall/sysnum-sh4.h"
+    #define HOST_ELF_MACHINE {42, 0};
 
 #else
 

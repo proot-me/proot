@@ -1,6 +1,6 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file is part of PRoot: a PTrace based chroot alike.
+ * This file is part of PRoot.
  *
  * Copyright (C) 2010, 2011 STMicroelectronics
  *
@@ -28,10 +28,13 @@
 #include <stdlib.h>  /* getenv(3), calloc(3), */
 #include <assert.h>  /* assert(3), */
 #include <errno.h>   /* ENOMEM, */
+#include <limits.h>  /* PATH_MAX, */
+#include <unistd.h>  /* close(2), */
 
 #include "execve/ldso.h"
 #include "execve/execve.h"
 #include "execve/args.h"
+#include "execve/elf.h"
 #include "notice.h"
 #include "config.h"
 
@@ -39,21 +42,21 @@
  * ensure host programs (the runner for instance) will not be affected
  * by the future values of LD_LIBRARY_PATH as defined in the guest
  * environment.  */
-static char *host_ldso_path = NULL;
+static char *initial_ldso_paths = NULL;
+
+/* TODO: do the same for LD_PRELOAD?  */
 
 void init_module_ldso()
 {
-	host_ldso_path = getenv("LD_LIBRARY_PATH");
-	if (!host_ldso_path)
+	initial_ldso_paths = getenv("LD_LIBRARY_PATH");
+	if (!initial_ldso_paths)
 		return;
 
-	host_ldso_path = strdup(host_ldso_path);
-	if (!host_ldso_path)  {
+	initial_ldso_paths = strdup(initial_ldso_paths);
+	if (!initial_ldso_paths)  {
 		notice(WARNING, SYSTEM, "can't allocate memory");
 		return;
 	}
-
-	/* TODO: do the same for LD_PRELOAD?  */
 }
 
 /**
@@ -109,7 +112,7 @@ bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const c
 			return true;
 		}
 
-		has_seen_library_path |= passthru("LD_LIBRARY_PATH", host_ldso_path);
+		has_seen_library_path |= passthru("LD_LIBRARY_PATH", initial_ldso_paths);
 		has_seen_preload      |= passthru("LD_PRELOAD", "libgcc_s.so.1");
 
 		is_known |= passthru("LD_BIND_NOW", NULL);
@@ -139,7 +142,7 @@ bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const c
 
 	if (!has_seen_library_path) {
 		/* Errors are not fatal here.  */
-		new_env_entry(envp, "LD_LIBRARY_PATH", host_ldso_path);
+		new_env_entry(envp, "LD_LIBRARY_PATH", initial_ldso_paths);
 		push_args(false, argv, 2, undefine, "LD_LIBRARY_PATH");
 	}
 
@@ -152,4 +155,161 @@ bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const c
 	/* Return always true since LD_LIBRARY_PATH and LD_PRELOAD are
 	 * always changed.  */
 	return true;
+}
+
+/**
+ * Add to @host_ldso_paths the list of @paths prefixed with the path
+ * to the host rootfs.
+ */
+static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
+{
+	char *cursor1;
+	const char *cursor2;
+
+	cursor1 = host_ldso_paths + strlen(host_ldso_paths);
+	cursor2 = paths;
+
+	do {
+		bool is_absolute;
+		size_t length1;
+		size_t length2 = strcspn(cursor2, ":");
+
+		is_absolute = (*cursor2 == '/');
+
+		length1 = 1 + length2;
+		if (is_absolute)
+			length1 += strlen(config.host_rootfs);
+
+		/* Check there's enough room.  */
+		if (cursor1 + length1 >= host_ldso_paths + ARG_MAX)
+			return -ENOEXEC;
+
+		if (cursor1 != host_ldso_paths) {
+			strcpy(cursor1, ":");
+			cursor1++;
+		}
+
+		/* Since we are executing a host binary under a
+		 * QEMUlated environment, we have to access its
+		 * library paths through the "host-rootfs" binding.
+		 * Technically it means a path like "/lib" is accessed
+		 * as "${host_rootfs}/lib" to avoid conflict with the
+		 * guest "/lib".  */
+		if (is_absolute) {
+			strcpy(cursor1, config.host_rootfs);
+			cursor1 += strlen(config.host_rootfs);
+		}
+
+		strncpy(cursor1, cursor2, length2);
+		cursor1 += length2;
+
+		cursor2 += length2 + 1;
+	} while (*(cursor2 - 1) != '\0');
+
+	*(cursor1++) = '\0';
+
+	return 0;
+}
+
+/**
+ * Rebuild the variable LD_LIBRARY_PATH in @envp for @t_program
+ * according to its RPATH, RUNPATH, and the initial LD_LIBRARY_PATH.
+ * This function returns -errno if an error occured, 1 if
+ * RPATH/RUNPATH entries were found, 0 otherwise.
+ */
+int rebuild_host_ldso_paths(const char t_program[PATH_MAX], char **envp[])
+{
+	union elf_header elf_header;
+
+	char host_ldso_paths[ARG_MAX] = "";
+	bool inhibit_rpath = false;
+
+	char *rpaths   = NULL;
+	char *runpaths = NULL;
+
+	int status;
+	int fd;
+	int i;
+
+	fd = open_elf(t_program, &elf_header);
+	if (fd < 0)
+		return fd;
+
+	status = read_ldso_rpaths(fd, &elf_header, &rpaths, &runpaths);
+	if (status < 0)
+		goto end;
+
+	/* 1. DT_RPATH  */
+	if (rpaths && !runpaths) {
+		status = add_host_ldso_paths(host_ldso_paths, rpaths);
+		if (status < 0) {
+			status = 0; /* Not fatal.  */
+			goto end;
+		}
+		inhibit_rpath = true;
+	}
+
+
+	/* 2. LD_LIBRARY_PATH  */
+	if (initial_ldso_paths) {
+		status = add_host_ldso_paths(host_ldso_paths, initial_ldso_paths);
+		if (status < 0) {
+			status = 0; /* Not fatal.  */
+			goto end;
+		}
+	}
+
+	/* 3. DT_RUNPATH  */
+	if (runpaths) {
+		status = add_host_ldso_paths(host_ldso_paths, runpaths);
+		if (status < 0) {
+			status = 0; /* Not fatal.  */
+			goto end;
+		}
+		inhibit_rpath = true;
+	}
+
+	/* 4. /etc/ld.so.cache NYI.  */
+
+	/* 5. /lib[32|64], /usr/lib[32|64] + /usr/local/lib[32|64]  */
+	/* 6. /lib, /usr/lib + /usr/local/lib  */
+	if (IS_CLASS32(elf_header))
+		status = add_host_ldso_paths(host_ldso_paths,
+					"/lib32:/usr/lib32:/usr/local/lib32"
+					":/lib:/usr/lib:/usr/local/lib");
+	else
+		status = add_host_ldso_paths(host_ldso_paths,
+					"/lib64:/usr/lib64:/usr/local/lib64"
+					":/lib:/usr/lib:/usr/local/lib");
+	if (status < 0) {
+		status = 0; /* Not fatal.  */
+		goto end;
+	}
+
+	/* Search if there's a LD_LIBRARY_PATH variable. */
+	for (i = 0; (*envp)[i] != NULL; i++) {
+		if (strcmp("LD_LIBRARY_PATH", (*envp)[i]) == 0)
+			break;
+	}
+
+	/* Errors are not fatal here either.  */
+	if ((*envp)[i] != NULL)
+		replace_env_entry(&(*envp)[i], host_ldso_paths);
+	else
+		new_env_entry(envp, "LD_LIBRARY_PATH", host_ldso_paths);
+
+end:
+	close(fd);
+
+	if (rpaths)
+		free(rpaths);
+
+	if (runpaths)
+		free(runpaths);
+
+	/* Delayed error handling.  */
+	if (status < 0)
+		return status;
+
+	return (int) inhibit_rpath;
 }

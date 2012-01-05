@@ -29,6 +29,7 @@
 #define EI_NIDENT 16
 
 #include <stdint.h>
+#include <stdbool.h>
 
 struct elf_header32 {
 	unsigned char e_ident[EI_NIDENT];
@@ -96,6 +97,33 @@ union program_header {
 	struct program_header64 class64;
 };
 
+enum segment_type {
+	PT_LOAD    = 1,
+	PT_DYNAMIC = 2,
+	PT_INTERP  = 3
+};
+
+struct dynamic_entry32 {
+	int32_t d_tag;
+	uint32_t d_val;
+};
+
+struct dynamic_entry64 {
+	int64_t d_tag;
+	uint64_t d_val;
+};
+
+union dynamic_entry {
+	struct dynamic_entry32 class32;
+	struct dynamic_entry64 class64;
+};
+
+enum dynamic_type {
+	DT_STRTAB  = 5,
+	DT_RPATH   = 15,
+	DT_RUNPATH = 29
+};
+
 /* The following macros are also compatible with ELF 64-bit. */
 #define ELF_IDENT(header, index) (header).class32.e_ident[(index)]
 #define ELF_CLASS(header) ELF_IDENT(header, 4)
@@ -114,10 +142,26 @@ union program_header {
 	 ? (phdr).class64. p_ ## field		\
 	 : (phdr).class32. p_ ## field)
 
-#define IS_INTERP(ehdr, phdr) (PROGRAM_FIELD(ehdr, phdr, type) == 3)
+/* Helper to access a @field of the structure dynamic_entryXX */
+#define DYNAMIC_FIELD(ehdr, dynent, field)	\
+	(IS_CLASS64(ehdr)			\
+	 ? (dynent).class64. d_ ## field	\
+	 : (dynent).class32. d_ ## field)
 
 #define KNOWN_PHENTSIZE(header, size)					\
 	(   (IS_CLASS32(header) && (size) == sizeof(struct program_header32)) \
 	 || (IS_CLASS64(header) && (size) == sizeof(struct program_header64)))
+
+extern int open_elf(const char *t_path, union elf_header *elf_header);
+
+extern bool is_host_elf(const char *t_path);
+
+extern int find_program_header(int fd,
+			const union elf_header *elf_header,
+			union program_header *program_header,
+			enum segment_type type, uint64_t address);
+
+extern int read_ldso_rpaths(int fd, const union elf_header *elf_header,
+			char **rpath, char **runpath);
 
 #endif /* ELF_H */

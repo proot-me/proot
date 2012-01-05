@@ -87,3 +87,14 @@ void print_config()
 
 	print_bindings();
 }
+
+void sanitize_config()
+{
+	if (config.host_rootfs && !config.qemu) {
+		notice(WARNING, USER, "'-x' is meaningless without QEMU.");
+		config.host_rootfs = NULL;
+	}
+
+	if (config.host_rootfs && config.ignore_elf_interpreter)
+		notice(WARNING, USER, "'-e' might avoid the execution of host programs that relies on RPATH.");
+}

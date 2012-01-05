@@ -33,6 +33,7 @@
 #include "execve/execve.h"
 #include "execve/args.h"
 #include "execve/interp.h"
+#include "execve/elf.h"
 #include "execve/ldso.h"
 #include "notice.h"
 #include "path/path.h"
@@ -41,12 +42,9 @@
 #include "compat.h"
 
 /**
- * Translate @u_path into @t_path and check if this latter
- * exists, is executable and is a regular file.  Also, it
- * copies in @u_interp the ELF/script interpreter (and its
- * @argument) of @t_path.  This nested function returns -errno
- * if an error occured, 1 if there's an interpreter otherwise
- * 0.
+ * Translate @u_path into @t_path and check if this latter exists, is
+ * executable and is a regular file.  This function returns -errno if
+ * an error occured, 0 otherwise.
  */
 static int translate_n_check(struct tracee_info *tracee, char t_path[PATH_MAX], const char *u_path)
 {
@@ -234,9 +232,8 @@ int translate_execve(struct tracee_info *tracee)
 		goto end;
 	argv_has_changed = (status > 0);
 
-	/* I'd prefer the binfmt_misc approach instead of invoking
-	 * the runner/loader unconditionally. */
-	if (config.qemu) {
+	/* I'd prefer the binfmt_misc approach instead.  */
+	if (config.qemu && !is_host_elf(t_interp)) {
 		status = push_args(false, &argv, 1, u_interp);
 		if (status < 0)
 			goto end;
@@ -247,6 +244,7 @@ int translate_execve(struct tracee_info *tracee)
 
 		envp_has_changed = ldso_env_passthru(&envp, &argv, "-E", "-U");
 
+		/* Errors are not fatal here.  */
 		if (!argv_has_changed)
 			push_args(false, &argv, 2, "-0", argv0);
 		else
@@ -268,10 +266,33 @@ int translate_execve(struct tracee_info *tracee)
 		strcpy(t_interp, config.qemu[0]);
 	}
 	else {
+		bool inhibit_rpath = false;
+
+		/* Provide information to the host dynamic linker to
+		 * find host libraries (remember the guest root
+		 * file-system contains libraries for the guest
+		 * architecture only).  Errors are not fatal here.  */
+		if (config.qemu) {
+			status = rebuild_host_ldso_paths(t_interp, &envp);
+			if (status < 0)
+				goto end;
+			inhibit_rpath = (status > 0);
+			envp_has_changed = true;
+		}
+
 		status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
 		if (status < 0)
 			goto end;
-		argv_has_changed = (status > 0);
+		argv_has_changed = argv_has_changed || (status > 0);
+
+		if (inhibit_rpath && !config.ignore_elf_interpreter) {
+			/* Tell the dynamic linker to ignore RPATHs specified
+			 * in the *main* program.  To disable the RPATH
+			 * mechanism globally, we have to list all objects
+			 * here (NYI).  Errors are not fatal here.  */
+			status = push_args(false, &argv, 2, "--inhibit-rpath", "''");
+			argv_has_changed = argv_has_changed || (status > 0);
+		}
 	}
 
 	VERBOSE(4, "execve: %s", t_interp);

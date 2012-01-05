@@ -29,5 +29,6 @@
 
 extern void init_module_ldso(void);
 extern bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const char *undefine);
+extern int rebuild_host_ldso_paths(const char t_program[PATH_MAX], char **envp[]);
 
 #endif /* LDSO_H */

@@ -29,6 +29,7 @@
 
 struct config {
 	const char *guest_rootfs;
+	const char *host_rootfs;
 	const char *initial_cwd;
 	const char *kernel_release;
 
@@ -49,5 +50,6 @@ struct config {
 extern struct config config;
 
 extern void print_config();
+extern void sanitize_config();
 
 #endif /* CONFIG_H */

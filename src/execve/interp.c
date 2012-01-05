@@ -24,18 +24,14 @@
  */
 
 #include <fcntl.h>  /* open(2), */
-#include <unistd.h> /* access(2), read(2), close(2), */
-#include <string.h> /* strcpy(3), */
+#include <unistd.h> /* read(2), close(2), */
 #include <limits.h> /* PATH_MAX, ARG_MAX, */
 #include <errno.h>  /* ENAMETOOLONG, */
-#include <assert.h> /* assert(3), */
-#include <stdint.h> /* *int*_t */
+#include <string.h> /* strcpy(3), */
 
 #include "execve/interp.h"
-#include "path/path.h"
-#include "execve/execve.h"
-#include "notice.h"
 #include "execve/elf.h"
+#include "config.h"
 
 #include "compat.h"
 
@@ -199,13 +195,9 @@ int extract_elf_interp(struct tracee_info *tracee,
 	union elf_header elf_header;
 	union program_header program_header;
 
+	size_t extra_size;
 	int status;
 	int fd;
-	int i;
-
-	uint64_t elf_phoff;
-	uint16_t elf_phentsize;
-	uint16_t elf_phnum;
 
 	uint64_t segment_offset;
 	uint64_t segment_size;
@@ -213,106 +205,52 @@ int extract_elf_interp(struct tracee_info *tracee,
 	u_interp[0] = '\0';
 	argument[0] = '\0';
 
-	/* Read the ELF header. */
-	fd = open(t_path, O_RDONLY);
+	fd = open_elf(t_path, &elf_header);
 	if (fd < 0)
-		return -errno;
+		return fd;
 
-	status = read(fd, &elf_header, sizeof(elf_header));
-	if (status != sizeof(elf_header)) {
+	status = find_program_header(fd, &elf_header, &program_header,
+				PT_INTERP, (uint64_t) -1);
+	if (status < 0) {
 		status = -EACCES;
 		goto end;
 	}
-
-	/* Check if it is an ELF file. */
-	if (   ELF_IDENT(elf_header, 0) != 0x7f
-	    || ELF_IDENT(elf_header, 1) != 'E'
-	    || ELF_IDENT(elf_header, 2) != 'L'
-	    || ELF_IDENT(elf_header, 3) != 'F') {
-		status = -EACCES;
+	if (status == 0)
 		goto end;
-	}
 
-	/* Check if it is a known class (32-bit or 64-bit). */
-	if (   !IS_CLASS32(elf_header)
-	    && !IS_CLASS64(elf_header)) {
-		status = -EACCES;
-		goto end;
-	}
+	segment_offset = PROGRAM_FIELD(elf_header, program_header, offset);
+	segment_size   = PROGRAM_FIELD(elf_header, program_header, filesz);
 
-	/* Get class-specific fields. */
-	elf_phoff     = ELF_FIELD(elf_header, phoff);
-	elf_phentsize = ELF_FIELD(elf_header, phentsize);
-	elf_phnum     = ELF_FIELD(elf_header, phnum);
-
-	/*
-	 * Some sanity checks regarding the current
-	 * support of the ELF specification in PRoot.
-	 */
-
-	if (elf_phnum >= 0xffff) {
-		notice(WARNING, INTERNAL, "%s: big PH tables are not yet supported.", t_path);
-		status = -EACCES;
-		goto end;
-	}
-
-	if (!KNOWN_PHENTSIZE(elf_header, elf_phentsize)) {
-		notice(WARNING, INTERNAL, "%s: unsupported size of program header.", t_path);
-		status = -EACCES;
-		goto end;
-	}
-
-	/*
-	 * Search the INTERP entry into the program header table.
-	 */
-
-	status = (int) lseek(fd, elf_phoff, SEEK_SET);
+	status = (int) lseek(fd, segment_offset, SEEK_SET);
 	if (status < 0) {
 		status = -EACCES;
 		goto end;
 	}
 
-	for (i = 0; i < elf_phnum; i++) {
-		status = read(fd, &program_header, elf_phentsize);
-		if (status != elf_phentsize) {
-			status = -EACCES;
-			goto end;
-		}
+	/* If we are executing a host binary under a QEMUlated
+	 * environment, we have to access its ELF interpreter through
+	 * the "host-rootfs" binding.  Technically it means the host
+	 * ELF interpreter "/lib/ld-linux.so.2" is accessed as
+	 * "${host_rootfs}/lib/ld-linux.so.2" to avoid conflict with
+	 * the guest "/lib/ld-linux.so.2".  */
+	if (config.qemu) {
+		strcpy(u_interp, config.host_rootfs);
+		extra_size = strlen(config.host_rootfs);
+	}
+	else
+		extra_size = 0;
 
-		if (!IS_INTERP(elf_header, program_header))
-			continue;
-
-		/*
-		 * Found the INTERP entry.
-		 */
-
-		segment_offset = PROGRAM_FIELD(elf_header, program_header, offset);
-		segment_size   = PROGRAM_FIELD(elf_header, program_header, filesz);
-
-		if (segment_size >= PATH_MAX) {
-			status = -EACCES;
-			goto end;
-		}
-
-		status = (int) lseek(fd, segment_offset, SEEK_SET);
-		if (status < 0) {
-			status = -EACCES;
-			goto end;
-		}
-
-		status = read(fd, u_interp, segment_size);
-		if (status < 0) {
-			status = -EACCES;
-			goto end;
-		}
-		u_interp[segment_size] = '\0';
-
-		break;
+	if (segment_size + extra_size >= PATH_MAX) {
+		status = -EACCES;
+		goto end;
 	}
 
-	/* No INTERP entry was found. */
-	if (u_interp[0] == '\0')
-		status = 0;
+	status = read(fd, u_interp + extra_size, segment_size);
+	if (status < 0) {
+		status = -EACCES;
+		goto end;
+	}
+	u_interp[segment_size + extra_size] = '\0';
 
 end:
 	close(fd);

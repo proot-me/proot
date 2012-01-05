@@ -4,6 +4,8 @@ Roadmap
 Release v0.7.x
 --------------
 
+* Remove the call to init_module_...() functions, use sanitize_config instead.
+
 * Ensure tracees' clone flags has CLONE_PTRACE & ~CLONE_UNTRACED.
 
 * Add command-line interface to set environment variables.
@@ -103,6 +105,10 @@ Release v0.8
 
     For instance ``ls /DOESNT_EXIST/../bin`` shouldn't succeed
     (reported by Yves JANIN).
+
+* Support guest ELF endianness different from the host one.
+
+* Check if more than one RPATH/RUNPATH entry is allowed.
 
 
 Release v0.9
