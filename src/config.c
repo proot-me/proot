@@ -33,18 +33,25 @@
 static void print_argv(const char *prompt, char **argv)
 {
 	int i;
-	char string[ARG_MAX];
+	char string[ARG_MAX] = "";
 
 	if (!argv)
 		return;
 
-	strncpy(string, prompt, sizeof(string));
-	strncat(string, " =", sizeof(string));
-
-	for (i = 0; argv[i] != NULL; i++) {
-		strncat(string, " ", sizeof(string));
-		strncat(string, argv[i], sizeof(string));
+	void append(const char *post) {
+		ssize_t length = sizeof(string) - (strlen(string) + strlen(post));
+		if (length <= 0)
+			return;
+		strncat(string, post, length);
 	}
+
+	append(prompt);
+	append(" =");
+	for (i = 0; argv[i] != NULL; i++) {
+		append(" ");
+		append(argv[i]);
+	}
+	string[sizeof(string) - 1] = '\0';
 
 	notice(INFO, USER, "%s", string);
 }
