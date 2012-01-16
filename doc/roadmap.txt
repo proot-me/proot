@@ -1,27 +1,34 @@
-Roadmap
-=======
+=========
+ Roadmap
+=========
 
-Release v0.7.x
---------------
-
-* Remove the call to init_module_...() functions, use sanitize_config instead.
-
-* Ensure tracees' clone flags has CLONE_PTRACE & ~CLONE_UNTRACED.
-
-* Add command-line interface to set environment variables.
-
-    Rename push_env() in change_env() and enhance it to support the
-    "unset" feature.
-
-* Become compatible with the new version of ptrace.
-
-* Why QEMU does pthread cancellation when the target program cancels one of its thread?
-
-    Is it due to the RT signal used in NTPL? (TLPI 693)
-
-* Distinguish the runner mode ``-r/-R`` and QEMU specific modes ``-q/-Q``
+Next minor
+==========
 
 * Allow the execution of native programs in QEMU mode
+
+* Write a manual
+
+    * Explain why PRoot does not work with setuid programs
+
+
+Next major
+==========
+
+* Rewrite the way paths are handled in PRoot (branch "opath").
+
+    * Remove the use of PATH_MAX and ARG_MAX
+
+    * Remove most of string copy.
+
+
+Not yet scheduled
+=================
+
+Fixes
+-----
+
+* Fix support for /proc/self when /proc isn't binded (but /proc/self is)
 
 * Fix the support for symbolic links when asymmetric bindings are in use
 
@@ -43,6 +50,28 @@ Release v0.7.x
       /hostfs/etc$ ls -l /proc/self/cwd
       lrwxrwxrwx 1 1000 users 0 2011-04-28 17:06 /proc/self/cwd -> /hos
 
+* Fix canonicalization of pathes that are expected to exist but doesn't.
+
+    For instance ``ls /DOESNT_EXIST/../bin`` shouldn't succeed
+    (reported by Yves JANIN).
+
+* Fix the feature "attach on-the-fly"
+
+* Fix support for runners that do execve()
+
+
+Features
+--------
+
+* Add command-line interface to set environment variables.
+
+    Rename push_env() in change_env() and enhance it to support the
+    "unset" feature.
+
+* Check compatibility with the new version of ptrace (Linux 3.1+).
+
+* Distinguish the runner mode ``-r/-R`` and QEMU specific modes ``-q/-Q``
+
 * Add support for coalesced options, for instance ``proot -eM``
 
 * Make ``/proc/self/exe`` point to the original program name
@@ -50,69 +79,9 @@ Release v0.7.x
     That was the prupose of the field ``exe`` in the structure
     ``tracee_info``
 
-* Don't canonicalize if the path translation is delayed
-
-    In translate_path(): we don't use the result of the
-    canonicalization if the translation is delayed.  This point
-    depends actually on the input path, so why I don't detect sooner
-    that the canonicalization is useless?
-
-
-Release v0.8
-------------
-
-* Add a "multi-process" mode where there's one fork of PRoot per monitored process.
-
-    Each time a new_tracee structure is created, PRoot forks itself.
-    Be sure that the tracer of this new process really is the new
-    forked PRoot! (Thanks Yves for this comment)
-
 * Handle /proc/<pid>/(exe|cwd) where <pid> is a process traced by PRoot (i.e not only "self").
 
-* in event_loop(), replace::
-
-      while (get_nb_tracees() > 0) {
-          pid = waitpid(-1, &tracee_status, __WALL);
-          if (pid < 0)
-              notice(ERROR, SYSTEM, "waitpid()");
-          ...
-      }
-
-  with::
-
-      while (1) {
-          pid = waitpid(-1, &tracee_status, __WALL);
-          if (pid < 0)
-              if (errno != ECHILD)
-                  notice(ERROR, SYSTEM, "waitpid()");
-              else
-                  break;
-          ...
-      }
-      assert(get_nb_tracees() == 0)
-
-* Raise a warning when ptrace(P*K*USER) fails during translate_syscall()
-
-   Instead of silently ignoring this unexpected error.
-
-* Don't accept signal from tracees.
-
-* Add a stealth mode where over-the-stack content is restored.
-
-* Kill all tracees when exiting (on_exit/atexit).
-
-* Fix canonicalization of pathes that are expected to exist but doesn't.
-
-    For instance ``ls /DOESNT_EXIST/../bin`` shouldn't succeed
-    (reported by Yves JANIN).
-
 * Support guest ELF endianness different from the host one.
-
-* Check if more than one RPATH/RUNPATH entry is allowed.
-
-
-Release v0.9
-------------
 
 * Emulate brk for programs that assume it's after the data segment.
 
@@ -137,77 +106,123 @@ Release v0.9
 
 * Be more accurate on reported errno (TLPI 564-565, 572).
 
-* Why doesn't "slackpkg upgrade" work under PRoot v0.3
-
 * Emulate ptrace() so as to allow a ptraced GDB on another ptraced process.
 
+* Write an real ELF loader instead of using the ELF interpreter as a launcher
 
-Release v1.0
-------------
+* Add two new options: --user-id & --group-id, and make -0 an alias to these options
 
-* Don't exit() on error
+* Allow a per-module verbose level
 
-* Explain why PRoot does not work with setuid programs
 
-* Fix the feature "attach on-the-fly"
+Clean-up
+--------
+
+* Remove the call to init_module_...() functions, use sanitize_config instead.
+
+* in event_loop(), replace::
+
+      while (get_nb_tracees() > 0) {
+          pid = waitpid(-1, &tracee_status, __WALL);
+          if (pid < 0)
+              notice(ERROR, SYSTEM, "waitpid()");
+          ...
+      }
+
+  with::
+
+      while (1) {
+          pid = waitpid(-1, &tracee_status, __WALL);
+          if (pid < 0)
+              if (errno != ECHILD)
+                  notice(ERROR, SYSTEM, "waitpid()");
+              else
+                  break;
+          ...
+      }
+      assert(get_nb_tracees() == 0)
+
+* Replace "readlink(XXX, path, PATH_MAX)" with "readlink(XXX, path, PATH_MAX - 1)"
+
+* get_tracee_string should return -ENAMETOOLONG when length(XXX) >= max_size
+
+* Add a %check section in PRoot's specfile
+
+* Add a testcase for each command-line options
+
+* Add a test for bindinds that are prefixes of each other
+
+    HOST$ proot -b /usr/local:/tmp/local -b /usr:/tmp/usr
+
+    GUEST$ cd /tmp/usr/local/doc
+    GUEST$ /usr/bin/pwd -P
+    /tmp/usr/local/doc
+
+    GUEST$ cd ..
+    GUEST$ /usr/bin/pwd -P
+    /tmp/usr/local/doc
+
+    GUEST$ cd /tmp/local/doc
+    GUEST$ /usr/bin/pwd -P
+    /tmp/local/doc
+
+    GUEST$ cd ..
+    GUEST$ /usr/bin/pwd -P
+    /tmp/local
+
+
+Misc.
+-----
+
+* Check (in ld.so sources) if more than one RPATH/RUNPATH entry is allowed.
+
+* Why doesn't "slackpkg upgrade" work under PRoot v0.3
 
 * Check the code coverage of PRoot
+
+
+Security
+--------
+
+* Ensure tracees' clone flags has CLONE_PTRACE & ~CLONE_UNTRACED.
+
+* Don't accept signal from tracees.
+
+* Add a stealth mode where over-the-stack content is restored.
+
+* Kill all tracees when exiting (on_exit/atexit).
+
+* Don't exit() on error
 
 * Use Valgrind & Coverity Prevent
 
 * Try Scrashme (syscall fuzzer) against PRoot
 
 
-Release v1.1
-------------
-
-* Add support to fake user/group id, à la "fakeroot".
-
-* Add support to fake the result of the "uname" syscall
-
-* Add support for binfmt_misc-like configuration for runners
-  
-* Fix support for runners that do execve()
-
-* Write an real ELF loader instead of using the ELF interpreter as a launcher
-
-
-Release v1.2
-------------
-
-* Remove most of string copy.
-
-* Use /proc/<pid>/mem instead of PTRACE_POKEDATA.
+Performance
+-----------
 
 * Use one PTRACE_[GS]ETREGS instead of several PTRACE_P*K*USER.
 
+* Use process_vm_read/write instead of /proc/<pid>/mem or PTRACE_P*K*DATA.
+
+    * Fallback to /proc/<pid>/mem if these two syscalls aren't available.
+
 * Don't move the stack pointer, use a pointer in the struct tracee_info
 
-* Use a share memory mapping instead of /proc/<pid>/mem or PTRACE_P*K*DATA.
+* Don't canonicalize if the path translation is delayed
 
+    In translate_path(): we don't use the result of the
+    canonicalization if the translation is delayed.  This point
+    depends actually on the input path, so why I don't detect sooner
+    that the canonicalization is useless?
 
-Release v1.3
-------------
+* Add a "multi-process" mode where there's one fork of PRoot per monitored process.
+
+    Each time a new_tracee structure is created, PRoot forks itself.
+    Be sure that the tracer of this new process really is the new
+    forked PRoot! (Thanks Yves for this comment)
 
 * Use a cache for translation results
 
 * Use a hash table to retrieve cached results + tracee's info
-
-
-Release v2.0
-------------
-
-* Make PRoot a multi-job program to avoid sequential syscall handling
-
-* Remove the use of PATH_MAX and ARG_MAX
-
-
-Not yet scheduled
------------------
-
-* Replace "readlink(XXX, path, PATH_MAX)" with "readlink(XXX, path, PATH_MAX - 1)"
-
-* get_tracee_string should return -ENAMETOOLONG when length(XXX) >= max_size
-
-* Replace if (XXX != 0) with if (XXX) except when XXX is a function call. 
-
