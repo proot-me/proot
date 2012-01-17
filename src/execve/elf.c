@@ -31,6 +31,7 @@
 #include <string.h> /* strnlen(3), strcat(3), strcpy(3), */
 #include <assert.h> /* assert(3), */
 #include <stdlib.h> /* realloc(3), */
+#include <string.h> /* strnlen(3), */
 
 #include "execve/elf.h"
 #include "notice.h"

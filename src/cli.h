@@ -193,7 +193,7 @@ static struct option options[] = {
 		{ .name = "--mixed-qemu", .separator = '=', .value = "command" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_X,
-	  .description = "Alias: -Q *command* -x /host-rootfs.",
+	  .description = "Alias: \"-Q *command* -x /host-rootfs\".",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
