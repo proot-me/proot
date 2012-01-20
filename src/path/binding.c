@@ -55,6 +55,28 @@ struct binding {
 static struct binding *bindings = NULL;
 
 /**
+ * Insert @binding into the list of @bindings, in a reversely sorted
+ * manner.
+ */
+static void insort_binding(struct binding *binding)
+{
+	struct binding *previous = NULL;
+	struct binding *next = NULL;
+
+	for (next = bindings; next != NULL; previous = next, next = next->next) {
+		if (strcmp(binding->real.path, next->real.path) > 0)
+			break;
+	}
+
+	if (previous)
+		previous->next = binding;
+	else
+		bindings = binding;
+
+	binding->next = next;
+}
+
+/**
  * Save @path in the list of paths that are bound for the
  * translation mechanism.
  */
@@ -93,8 +115,7 @@ void bind_path(const char *path, const char *location)
 	binding->location.length = 0;
 	binding->sanitized = 0;
 
-	binding->next = bindings;
-	bindings = binding;
+	insort_binding(binding);
 
 	return;
 
