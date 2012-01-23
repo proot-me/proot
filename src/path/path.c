@@ -328,10 +328,11 @@ end:
 }
 
 /**
- * Remove the leading "root" part of a previously translated @path. It
- * returns 0 if the leading part was not the "root", otherwise it
- * returns the size in bytes of the updated @path, including the
- * end-of-string terminator. On error it returns -errno.
+ * Remove/substitute the leading part of a "translated" @path.  It
+ * returns 0 if no transformation is required (ie. symmetric binding),
+ * otherwise it returns the size in bytes of the updated @path,
+ * including the end-of-string terminator.  On error it returns
+ * -errno.
  */
 int detranslate_path(char path[PATH_MAX], int sanity_check)
 {
@@ -348,16 +349,13 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 	if (path[0] != '/')
 		return 0;
 
-	/* Check if it is a translatable path. */
-	if (sanity_check) {
-		switch (substitute_binding(BINDING_REAL, path)) {
-		case 0:
-			return 0;
-		case 1:
-			return strlen(path) + 1;
-		default:
-			break;
-		}
+	switch (substitute_binding(BINDING_REAL, path)) {
+	case 0:
+		return 0;
+	case 1:
+		return strlen(path) + 1;
+	default:
+		break;
 	}
 
 	/* Ensure the path is within the new root. */

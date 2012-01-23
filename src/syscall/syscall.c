@@ -158,66 +158,6 @@ static int translate_sysarg(struct tracee_info *tracee, enum sysarg sysarg, int 
 }
 
 /**
- * Detranslate the path pointed to by @addr in the @tracee's memory
- * space (@size bytes max). It returns the number of bytes used by the
- * new path pointed to by @addr, including the string terminator.
- *
- * Keep in sync' with sysnum_exit.c
- */
-#define GETCWD   1
-#define READLINK 2
-static int detranslate_addr(struct tracee_info *tracee, word_t addr, int size, int mode)
-{
-	char path[PATH_MAX];
-	int new_size;
-	int status;
-
-	assert(size >= 0);
-
-	/* Extract the original path, be careful since some syscalls
-	 * like readlink*(2) do not put a C string terminator. */
-	if (size >= PATH_MAX)
-		return -ENAMETOOLONG;
-
-	status = copy_from_tracee(tracee, path, addr, size);
-	if (status < 0)
-		return status;
-	path[size] = '\0';
-
-	/* Removes the leading "root" part. */
-	status = detranslate_path(path, mode == GETCWD);
-	if (status < 0)
-		return status;
-	new_size = status;
-
-	/* The original path doesn't need detranslation, i.e it is a
-	 * symetric binding. */
-	if (new_size == 0) {
-		new_size = size;
-		goto skip_overwrite;
-	}
-
-	if (mode == GETCWD) {
-		if (new_size > size)
-			return -ERANGE;
-	}
-	else { /* READLINK */
-		/* Don't include the terminating '\0'. */
-		new_size--;
-		if (new_size > size)
-			new_size = size;
-	}
-
-	/* Overwrite the path. */
-	status = copy_to_tracee(tracee, addr, path, new_size);
-	if (status < 0)
-		return status;
-
-skip_overwrite:
-	return new_size;
-}
-
-/**
  * Translate the input arguments of the syscall @tracee->sysnum in the
  * @tracee->pid process area. This function optionnaly sets
  * @tracee->output to the address of the output argument in the tracee's
@@ -397,7 +337,7 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 		status = -ENOSYS;
 	}
 
-	/* "status" was updated in sysnum_exit.c.  */
+	/* "status" was updated in syscall/exit.c.  */
 	status = poke_ureg(tracee, SYSARG_RESULT, (word_t) status);
 end:
 	if (status > 0)

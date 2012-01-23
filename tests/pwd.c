@@ -18,5 +18,5 @@ int main(void)
 
 	puts(path);
 
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }

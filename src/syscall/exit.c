@@ -22,48 +22,142 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
-/* Keep in sync' with detranslate_addr(). */
 switch (tracee->sysnum) {
-case PR_getcwd:
+case PR_getcwd: {
+	char path[PATH_MAX];
+	size_t new_size;
+	size_t size;
+
 	result = peek_ureg(tracee, SYSARG_RESULT);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
 	}
+
+	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
 		status = 0;
 		goto end;
 	}
 
-	status = detranslate_addr(tracee, tracee->output, result, GETCWD);
+	size = (size_t) peek_ureg(tracee, SYSARG_2);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	if (size > PATH_MAX) {
+		status = -ENAMETOOLONG;
+		break;
+	}
+
+	if (size == 0) {
+		status = -EINVAL;
+		break;
+	}
+
+	/* The kernel does put the terminating NULL byte for
+	 * getcwd(2).  */
+	status = get_tracee_string(tracee, path, tracee->output, size);
+	if (status < 0)
+		goto end;
+
+	/* No '\0' were found, that shouldn't happen...  */
+	if (status >= size) {
+		status = -ERANGE;
+		break;
+	}
+
+	status = detranslate_path(path, 1);
+	if (status < 0)
+		break;
+
+	/* The original path doesn't require any transformation, i.e
+	 * it is a symetric binding.  */
+	if (status == 0)
+		goto end;
+
+	new_size = status;
+	if (new_size > size) {
+		status = -ERANGE;
+		break;
+	}
+
+	/* Overwrite the path.  */
+	status = copy_to_tracee(tracee, tracee->output, path, new_size);
+	if (status < 0)
+		goto end;
+
+	/* The value of "status" is used to update the returned value
+	 * in translate_syscall_exit().  */
+	status = new_size;
+}
 	break;
 
 case PR_readlink:
-case PR_readlinkat:
+case PR_readlinkat: {
+	char path[PATH_MAX];
+	size_t old_size;
+	size_t new_size;
+	size_t max_size;
+
 	result = peek_ureg(tracee, SYSARG_RESULT);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
 	}
+
+	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
 		status = 0;
 		goto end;
 	}
 
-	/* Avoid the detranslation of partial result. */
-	status = (int) peek_ureg(tracee, tracee->sysnum == PR_readlink ? SYSARG_3 : SYSARG_4);
+	old_size = result;
+
+	max_size = (size_t) peek_ureg(tracee, tracee->sysnum == PR_readlink ? SYSARG_3 : SYSARG_4);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
 	}
-	if ((int) result == status) {
-		status = 0;
-		goto end;
+
+	if (max_size > PATH_MAX) {
+		status = -ENAMETOOLONG;
+		break;
 	}
 
-	assert((int) result <= status);
+	if (max_size == 0) {
+		status = -EINVAL;
+		break;
+	}
 
-	status = detranslate_addr(tracee, tracee->output, result, READLINK);
+	/* The kernel does NOT put the terminating NULL byte for
+	 * getcwd(2).  */
+	status = copy_from_tracee(tracee, path, tracee->output, old_size);
+	if (status < 0)
+		goto end;
+	path[old_size] = '\0';
+
+	status = detranslate_path(path, 1);
+	if (status < 0)
+		break;
+
+	/* The original path doesn't require any transformation, i.e
+	 * it is a symetric binding.  */
+	if (status == 0)
+		goto end;
+
+	new_size = (status - 1 < max_size ? status - 1 : max_size);
+
+	/* Overwrite the path.  */
+	status = copy_to_tracee(tracee, tracee->output, path, new_size);
+	if (status < 0)
+		goto end;
+
+	/* The value of "status" is used to update the returned value
+	 * in translate_syscall_exit().  */
+	status = new_size;
+}
 	break;
 
 case PR_uname:
