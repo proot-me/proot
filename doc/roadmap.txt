@@ -5,11 +5,14 @@
 Next minor
 ==========
 
-* Allow the execution of native programs in QEMU mode
-
 * Write a manual
 
     * Explain why PRoot does not work with setuid programs
+
+* Fix detranslation of asymmetric bindings when guest rootfs is "/"::
+
+    $ proot -w /tmp/a -m /etc:/tmp/a / /bin/pwd
+    /etc
 
 
 Next major
@@ -28,27 +31,29 @@ Not yet scheduled
 Fixes
 -----
 
+* Emulate stat/getdents-like syscalls for "dummy" path that can't be created.
+
+  It should fix this kind of scenario::
+
+      host$ proot -m /etc:/does_not_exist/etc /
+      proot warning: can't create the binding location "/does_not_exist/etc": [...]
+
+      guest$ cd /does_not_exist/etc
+      sh: cd: /does_not_exist/etc: No such file or directory
+
+* Fix the detranslation of "conflicting" host-side bindings.
+
+  The detranslation isn't a state machine yet, hence it doesn't know
+  how to detranslate correctly when there are several bindings with
+  the same host-side::
+
+      $ proot -w /a -m /tmp:/a -m /tmp:/b ../tests/rootfs /bin/pwd
+      /b
+
+      $ proot -w /a -m /tmp:/b -m /tmp:/a ../tests/rootfs /bin/pwd
+      /a
+
 * Fix support for /proc/self when /proc isn't binded (but /proc/self is)
-
-* Fix the support for symbolic links when asymmetric bindings are in use
-
-    See the commit 2f1276b2 and commit c10e2073 for details.  For
-    instance::
-
-      ~$ ./proot -m /:/hostfs /usr/local/slack/slackware-13.1/
-      ~$ cd /hostfs/sw # -> /usr/local/sw
-      /hostfs/sw$ pwd -L
-      /hostfs/sw
-      /hostfs/sw$ pwd -P
-      bash: ../sysdeps/unix/sysv/linux/getcwd.c:132: __getcwd: Assertion `...' failed.
-      proot: pid 19766: terminated with signal 6
-
-    another example::
-
-      $ ./proot -m /proc -m /:/hostfs /usr/local/slack/slackware-13.1/
-      /$ cd /hostfs/etc
-      /hostfs/etc$ ls -l /proc/self/cwd
-      lrwxrwxrwx 1 1000 users 0 2011-04-28 17:06 /proc/self/cwd -> /hos
 
 * Fix canonicalization of pathes that are expected to exist but doesn't.
 
