@@ -257,8 +257,8 @@ static void handle_option_Q(char *value)
 
 static void handle_option_X(char *value)
 {
-	handle_option_x("/host-rootfs");
 	handle_option_Q(value);
+	handle_option_x("/host-rootfs");
 }
 
 static void handle_option_W(char *value)

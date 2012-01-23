@@ -7,14 +7,6 @@ Next minor
 
 * Allow the execution of native programs in QEMU mode
 
-* Fix support for bindinds that are prefixes of each other::
-
-    $ proot -w /tmp -m /:/host-rootfs -m /tmp $GUEST_ROOTFS /bin/pwd
-    /tmp
-
-    $ proot -w /tmp -m /tmp -m /:/host-rootfs $GUEST_ROOTFS /bin/pwd
-    pwd: ../sysdeps/unix/sysv/linux/getcwd.c:132: __getcwd: Assertion `...
-
 * Write a manual
 
     * Explain why PRoot does not work with setuid programs
