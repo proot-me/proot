@@ -9,11 +9,6 @@ Next minor
 
     * Explain why PRoot does not work with setuid programs
 
-* Fix detranslation of asymmetric bindings when guest rootfs is "/"::
-
-    $ proot -w /tmp/a -m /etc:/tmp/a / /bin/pwd
-    /etc
-
 
 Next major
 ==========

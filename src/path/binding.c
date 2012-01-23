@@ -174,7 +174,8 @@ int substitute_binding(int which, char path[PATH_MAX])
 			 *
 			 *     proot -m /usr:/location /usr/local/slackware
 			 */
-			if (strncmp(path, root, root_length) == 0)
+			if (root_length != 0 /* rootfs != "/" */
+			    && strncmp(path, root, root_length) == 0)
 				continue;
 
 			/* Avoid an extra trailing '/' when in the
