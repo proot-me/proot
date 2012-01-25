@@ -1,0 +1,11 @@
+.. raw:: html
+
+   <style>
+   body {
+       max-width: 45em;
+       min-width: 25em;
+       margin-left: auto;
+       margin-right: auto;
+       text-align: justify;
+   }
+   </style>

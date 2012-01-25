@@ -1,3 +1,6 @@
+.. include:: stylesheets/article-html.txt
+
+========================================
 PRoot: a Step Forward for QEMU User-Mode
 ========================================
 
@@ -14,13 +17,13 @@ PRoot: a Step Forward for QEMU User-Mode
     other similar solutions and give first results.
 
 Extending QEMU User-Mode
-------------------------
+========================
 
 QEMU [C1]_ is an open-source hardware emulator with two main usages:
-in *system-mode* a whole target machine is emulated to run a full
+in *system-mode* a whole guest machine is emulated to run a full
 operating system.  It can benefit from virtualization support like KVM
 to avoid the emulation of most CPU operations.  By contrast, QEMU
-*user-mode* only emulates the CPU to run one target process at a time,
+*user-mode* only emulates the CPU to run one guest process at a time,
 and communications with the host kernel are converted by a thin layer.
 
 Our initial motivation was to use QEMU to ease the development of
@@ -28,7 +31,7 @@ embedded Linux applications by emulating their build system and
 test-suites directly on developers' workstations.  During our
 experiments we found out that the system-mode was not fast enough and
 we decided to focus on the user-mode.  Unfortunately this latter
-cannot execute a tree of target processes within a target Linux
+cannot execute a tree of guest processes within a guest Linux
 distribution for reasons we detail in the next section.  To get the
 best of these two modes we developed PRoot, a tool fully compatible
 with QEMU that can be seen as an *extension* of the user-mode.
@@ -37,17 +40,17 @@ with QEMU that can be seen as an *extension* of the user-mode.
 Overcoming QEMU user-mode limitations with PRoot
 ------------------------------------------------
 
-As illustrated by the figure below (a) and (b), QEMU should run faster
-for a given process in user-mode than in system-mode since it does not
-emulate the peripherals nor the target kernel.  However the boundary
-between the target environment and the host becomes *thinner*, and the
+As illustrated by Figure 1 (a) and (b), QEMU should run faster for a
+given process in user-mode than in system-mode since it does not
+emulate the peripherals nor the guest kernel.  However the boundary
+between the guest environment and the host becomes *thinner*, and the
 host kernel now has to support some of the operations that were
-devoted to the target kernel.  We can define three requirements that
+devoted to the guest kernel.  We can define three requirements that
 will guide us throughout the rest of this paper:
 
 R1
     an efficient and correct path translation mechanism between the
-    target and the host.  This feature is typically required to
+    guest and the host.  This feature is typically required to
     emulate programs that perform absolute accesses to architecture
     specific files such as the dynamic linker ``/lib/ld-linux.so``.
     Note that a correct translation scheme must support relative paths
@@ -65,8 +68,8 @@ R3
 
 QEMU user-mode status for R1 and R2 is currently not satisfying.  For
 R1, QEMU user-mode has the ability to redirect file operations made by
-the target process but it can take several minutes at each process
-creation to scan the Linux target distribution.  Moreover there is no
+the guest process but it can take several minutes at each process
+creation to scan the guest Linux distribution.  Moreover there is no
 support for relative paths and symbolic links.
 
 Let us now consider R2.  From the point-of-view of the host kernel, an
@@ -78,7 +81,7 @@ of the control of QEMU.  As a conclusion R2 is not supported either.
 
 .. figure:: article-proot+qemu-fig1.svg
 
-   Target process[es] running under QEMU, arrows are system calls flow
+   Figure 1: Guest process[es] running under QEMU, arrows are system calls flow
 
 The ambition of PRoot is to fulfill R1, R2 and later on R3, while
 keeping design, implementation and use as simple as possible.  Since
@@ -93,33 +96,33 @@ monitor and control processes, it can also be applied to a much wider
 range of applications bringing kernel-like features in user-space
 [C3]_ [C4]_.  With ``ptrace``, PRoot is able to catch every system
 call emitted by a QEMUlated process and dynamically redirect them as
-shown in the figure below.  One of the main task in PRoot is the path
-canonicalization that translates paths from the target world to the
+shown in Figure 2.  One of the main task in PRoot is the path
+canonicalization that translates paths from the guest world to the
 host world and vice versa (R1).  Additionally, when PRoot detects a
 new process about to be created, it can change the initial request and
 get a new instance of QEMU running the new process (R2) as shown in
-the figure above (c).
+Figure 1 (c).
 
 .. figure:: article-proot+qemu-fig2.svg
 
-   Control flow of a syscall done by a target process under QEMU+PRoot
+   Figure 2: Control flow of a syscall done by a guest process under QEMU+PRoot
 
 
 Results
--------
+=======
 
 Experiments presented in this section were performed on a Pentium-4
 2.4GHz workstation with 1GiB of RAM running Slackware-13.1.
-Concerning the target system, we used ARMedSlack-12.2 with QEMU-0.12.5
+Concerning the guest system, we used ARMedSlack-12.2 with QEMU-0.12.5
 configured to provide 256MiB of RAM when used in system-mode.
 
 
 Functional Comparison With Similar Tools
 ----------------------------------------
 
-The table below exemplifies two Linux packages that are representative
-of the complexity of an embedded Linux distribution; Perl-5 requires a
-target environment for its bootstrap whereas the Coreutils test-suite
+Table 1 exemplifies two Linux packages that are representative of the
+complexity of an embedded Linux distribution; Perl-5 requires a guest
+environment for its bootstrap whereas the Coreutils test-suite
 exhibits numerous limit configurations that can help to find
 unexpected behaviors or bugs.
 
@@ -131,11 +134,11 @@ privileges.  Generally speaking, all these tools were not designed to
 support the execution of processes through an emulator (R2).
 
 Only PRoot and ScratchBox2 [C5]_ proved complete enough to configure,
-build and validate the two complex Linux packages.  The table below
-gives the results of their test-suites run with PRoot and ScratchBox2,
-it also gives system-mode results as a reference.
+build and validate the two complex Linux packages.  Table 1 gives the
+results of their test-suites run with PRoot and ScratchBox2, it also
+gives system-mode results as a reference.
 
-.. table:: Results of the packages' test-suites
+.. table:: Table 1: Results of the packages' test-suites
 
     ====================  ===============  ==========  ===========
     Package                ScratchBox-2.2   PRoot-0.5  system-mode
@@ -147,7 +150,7 @@ it also gives system-mode results as a reference.
 ScratchBox2 and PRoot have similar path canonicalization algorithms
 but differ in their design [#]_ and usage.  Unlike ScratchBox2, PRoot
 does not need any configuration and does not assume anything about the
-target and host environments.  By contrast, ScratchBox2 is a highly
+guest and host environments.  By contrast, ScratchBox2 is a highly
 flexible tool with scripting facility.  A complete technical
 comparison between ScratchBox2 and PRoot is beyond the scope of this
 paper, but we can safely conclude that both are functional enough to
@@ -162,12 +165,12 @@ powerful customization with ScratchBox2.
 Performance Comparison With QEMU System-Mode
 --------------------------------------------
 
-The table below compares performance of QEMU-0.12.5, first in
-user-mode with PRoot-0.5 and then in system-mode.  Timings were
-measured with the command ``time`` and we checked that the system-mode
-results were coherent with the host clock.
+Table 2 compares performance of QEMU-0.12.5, first in user-mode with
+PRoot-0.5 and then in system-mode.  Timings were measured with the
+command ``time`` and we checked that the system-mode results were
+coherent with the host clock.
 
-.. table:: Performance of PRoot+QEMU user-mode vs QEMU system-mode
+.. table:: Table 2: Performance of PRoot+QEMU user-mode vs QEMU system-mode
 
     ==================  ===============  ===============
     stage                   Perl-5.10.0   Coreutils-6.12
@@ -179,14 +182,14 @@ results were coherent with the host clock.
     ==================  ===============  ===============
 
 The speed-up with QEMU user-mode is quite impressive and comes from
-the fact that the target kernel and the hardware are not emulated.  We
+the fact that the guest kernel and the hardware are not emulated.  We
 think that all these results will be further improved when PRoot
 handles *un-emulated* cross-compilers and interpreters (R3).  This
 feature is still under development and looks promising.
 
 
 Conclusion
-----------
+==========
 
 The simple fact that PRoot requires no privilege or setup is a great
 advantage that should ease the usage of this *extended* user-mode.  It
@@ -197,7 +200,7 @@ already used in an industrial environment.
 
 
 References
-----------
+==========
 
 .. [C1] Bellard, F.: QEMU, a Fast and Portable Dynamic Translator.
         USENIX Annual Technical Conference, FREENIX Track (2005)
