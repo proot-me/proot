@@ -68,8 +68,6 @@ Features
     Rename push_env() in change_env() and enhance it to support the
     "unset" feature.
 
-* Check compatibility with the new version of ptrace (Linux 3.1+).
-
 * Distinguish the runner mode ``-r/-R`` and QEMU specific modes ``-q/-Q``
 
 * Add support for coalesced options, for instance ``proot -eM``

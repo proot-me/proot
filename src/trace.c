@@ -204,7 +204,9 @@ int event_loop()
 				break;
 
 			default:
-				/* Propagate all other signals. */
+				/* Propagate all signals but SIGSTOP. */
+				if (signal == SIGSTOP)
+					signal = 0;
 				break;
 			}
 		}
