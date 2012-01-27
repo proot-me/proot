@@ -42,7 +42,7 @@
 
 struct config config;
 
-static void handle_option_b(char *value)
+static void new_binding(char *value, bool must_exist)
 {
 	char *ptr = strchr(value, ':');
 	if (ptr != NULL) {
@@ -54,7 +54,12 @@ static void handle_option_b(char *value)
 	if (value[0] == '$' && getenv(&value[1]))
 		value = getenv(&value[1]);
 
-	bind_path(value, ptr);
+	bind_path(value, ptr, must_exist);
+}
+
+static void handle_option_b(char *value)
+{
+	new_binding(value, true);
 }
 
 /**
@@ -183,7 +188,7 @@ static void handle_option_q(char *value)
 static void handle_option_x(char *value)
 {
 	config.host_rootfs = value;
-	bind_path("/", config.host_rootfs);
+	bind_path("/", config.host_rootfs, true);
 }
 
 static void handle_option_w(char *value)
@@ -244,7 +249,7 @@ static void handle_option_B(char *value)
 {
 	int i;
 	for (i = 0; recommended_bindings[i] != NULL; i++)
-		handle_option_b(recommended_bindings[i]);
+		new_binding(recommended_bindings[i], false);
 }
 
 static void handle_option_Q(char *value)

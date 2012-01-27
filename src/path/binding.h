@@ -26,8 +26,9 @@
 #define BINDING_H
 
 #include <limits.h> /* PATH_MAX, */
+#include <stdbool.h>
 
-extern void bind_path(const char *path, const char *location);
+extern void bind_path(const char *path, const char *location, bool must_exist);
 extern void print_bindings(void);
 
 #define BINDING_LOCATION 1

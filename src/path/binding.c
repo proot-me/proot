@@ -80,7 +80,7 @@ static void insort_binding(struct binding *binding)
  * Save @path in the list of paths that are bound for the
  * translation mechanism.
  */
-void bind_path(const char *path, const char *location)
+void bind_path(const char *path, const char *location, bool must_exist)
 {
 	struct binding *binding;
 	const char *tmp;
@@ -92,7 +92,8 @@ void bind_path(const char *path, const char *location)
 	}
 
 	if (realpath(path, binding->real.path) == NULL) {
-		notice(WARNING, SYSTEM, "realpath(\"%s\")", path);
+		if (must_exist)
+			notice(WARNING, SYSTEM, "realpath(\"%s\")", path);
 		goto error;
 	}
 
@@ -322,8 +323,8 @@ static void create_dummy(char c_path[PATH_MAX], const char * real_path)
 	return;
 
 error:
-	notice(WARNING, USER, "can't create the binding location \"%s\": "
-	       "expect some troubles with programs that walk up to it", c_path);
+	if (config.verbose_level > 0)
+		notice(WARNING, USER, "can't create parent directories for \"%s\"", c_path);
 }
 
 /**
