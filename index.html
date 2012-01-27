@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot</title><link rel="stylesheet" href="website.css" type="text/css"/></head><body><h1>PRoot</h1><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#example">Example</a></li><li><a href="#download">Download</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is an user-mode implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot</title><link rel="stylesheet" href="website.css" type="text/css"/></head><body><h1>PRoot</h1><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#example">Example</a></li><li><a href="#download">Download</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-mode implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
 and <tt>binfmt_misc</tt>, that means users don't need any privilege or
 setup to use an arbitrary directory as the new root file-system, to
 make files accessible somewhere else in the file-system hierarchy, and
@@ -19,33 +19,62 @@ way all of the cross-compilation issues are avoided.</p><p>PRoot can also <em>mi
 of guest programs emulated by QEMU.  This is useful to use programs
 that aren't available initially in the guest environment and to speed
 up build-time by using cross-compilation tools or any CPU independent
-program, like interpreters.</p></div><div xmlns="" class="section" id="example"><h2>Example</h2><p>In the following examples the directories <tt>/mnt/slackware-7.0</tt> and
+program, like interpreters.</p></div><div xmlns="" class="section" id="example"><h2>Example</h2><p>In the following examples the directories <tt>/mnt/slackware-13.1</tt> and
 <tt>/mnt/armslack-12.2/</tt> contain a Linux distribution respectively made
 for x86 CPUs and ARM CPUs.</p><div class="section" id="chroot"><h3><tt>chroot</tt></h3><p>To execute a program inside a given Linux distribution, users just
 have to specify the path to the guest rootfs followed by the desired
 command.  The example below executes the program <tt>cat</tt> to print the
-content of a file, both are from the guest distro:</p><pre>proot /mnt/slackware-7.0/ cat /etc/motd</pre><p>The default command is <tt>/bin/sh</tt> if none were specified, thus the
+content of a file, both are from the guest distro:</p><pre>proot /mnt/slackware-13.1/ cat /etc/motd
+
+Welcome to Slackware Linux 13.1</pre><p>The default command is <tt>/bin/sh</tt> if none were specified, thus the
 shortest way to confine an interactive shell and all its sub-processes
-is:</p><pre>proot /mnt/slackware-7.0/</pre></div><div class="section" id="mount\ --bind"><h3><tt>mount --bind</tt></h3><p>The option <tt>-b</tt>, short for <tt>--bind</tt>, makes files from the host
+is:</p><pre>proot /mnt/slackware-13.1/
+
+$ cat /etc/motd
+Welcome to Slackware Linux 13.1</pre></div><div class="section" id="mount\ --bind"><h3><tt>mount --bind</tt></h3><p>The option <tt>-b</tt>, short for <tt>--bind</tt>, makes files from the host
 rootfs accessible in the confined environment just as if they were
 initially part of the guest rootfs.  It is sometimes required to run
-programs that rely on some specific files:</p><pre>proot -b /proc /mnt/slackware-7.0/ ps</pre><p>Actually there's a bunch of such specific files, that's why PRoot
+programs that rely on some specific files:</p><pre>proot -b /proc /mnt/slackware-13.1/
+
+$ ps -o tty,command
+Error, do this: mount -t proc none /proc</pre><pre>proot -b /proc /mnt/slackware-13.1/
+
+$ ps -o tty,command
+TT       COMMAND
+?        -bash
+?        proot -b /proc /mnt/slackware-13.1/
+?        /lib/ld-linux.so.2 /bin/sh
+?        /lib/ld-linux.so.2 /usr/bin/ps -o tty,command</pre><p>Actually there's a bunch of such specific files, that's why PRoot
 provides the option <tt>-B</tt> to bind automatically a pre-defined list of
-recommended paths:</p><pre>proot -B /mnt/slackware-7.0/ ps</pre><p>The bind mechanism can also be used to relocate files and directories
+recommended paths:</p><pre>proot -B /mnt/slackware-13.1/
+
+$ ps -o tty,command
+TT       COMMAND
+pts/6    -bash
+pts/6    proot -B /mnt/slackware-13.1/
+pts/6    /lib/ld-linux.so.2 /bin/sh
+pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command</pre><p>The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using <tt>/</tt> as the path to the guest rootfs.  It
 is quite handy to cheat programs that perform access to hard-coded
-locations, like not well written installation scripts:</p><pre>proot -b /tmp/alternate_usr:/usr / make install</pre><p>or to substitute system configuration files, for example the DNS
+locations, like not well written installation scripts:</p><pre>proot -b /tmp/alternate_usr:/usr / make install
+
+[...]
+install -m 755 prog "/usr/bin"
+[...] # prog was installed in "/tmp/alternate_usr/bin" actually</pre><p>or to substitute system configuration files, for example the DNS
 setting:</p><pre>proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com</pre></div><div class="section" id="binfmt_misc"><h3><tt>binfmt_misc</tt></h3><p>PRoot uses QEMU to execute programs built for a CPU architecture
 incompatible with the host one.  From users' point-of-view, emulated
 guest programs are executed transparently, that is, just like host
 programs.  To enable this feature users just have to specify which
 instance of QEMU they want to use with the option <tt>-q</tt> or <tt>-Q</tt>
-(this latter implies <tt>-B</tt>):</p><pre>proot -Q qemu-arm /mnt/armslack-12.2/</pre><p>The parameter of the <tt>-q/-Q</tt> option is actually a whole QEMU
+(this latter implies <tt>-B</tt>):</p><pre>proot -Q qemu-arm /mnt/armslack-12.2/
+
+$ cat /etc/motd
+Welcome to ARMedSlack Linux 12.2</pre><p>The parameter of the <tt>-q/-Q</tt> option is actually a whole QEMU
 command, for instance to enable its GDB server on port 1234:</p><pre>proot -Q "qemu-arm -g 1234" /mnt/armslack-12.2/ emacs</pre><p>PRoot has a mode to allow the execution of host programs alongside
 emulated guest programs, that is, they share the same file-system
 namespace.  It's typically useful to extend the list of available
 programs and to speed up build-time significantly.  This mixed-mode is
-enable by substituting the <tt>-Q</tt> option with <tt>-X</tt>, then the content
+enabled by substituting the <tt>-Q</tt> option with <tt>-X</tt>, then the content
 of the host rootfs is accessible through <tt>/host-rootfs</tt>:</p><pre>proot -X qemu-arm /mnt/armslack-12.2/
 
 $ file /bin/echo
@@ -61,15 +90,21 @@ to cross-compile to the ARM target:</p><pre>proot -X qemu-arm /mnt/armslack-12.2
 $ export CC=/host-rootfs/opt/cross-tools/arm-linux/bin/gcc
 $ export CFLAGS="--sysroot=/"   # could be optional indeed
 $ ./configure; make</pre><p>As with regular files, a host instance of a program can be bound over
-its guest instance.  Here is an example where the guest <tt>sh</tt> and
-<tt>make</tt> binaries are overlaid by the host ones:</p><pre>proot -Q qemu-arm -b /bin/sh -b /usr/bin/make /mnt/armslack-12.2/</pre><p>It's worth mentioning that even when mixing the execution of host
+its guest instance.  Here is an example where the guest binary of
+<tt>make</tt> is overlaid by the host one:</p><pre>proot -Q qemu-arm -b /bin/sh -b /usr/bin/make /mnt/armslack-12.2/
+
+$ which make
+/usr/bin/make
+$ make --version # overlaid
+GNU Make 3.82
+Built for x86_64-slackware-linux-gnu</pre><p>It's worth mentioning that even when mixing the execution of host
 programs and the execution of emulated guest programs, they still
 believe they are running in a native guest environment.  As a
 demonstration, here is a partial output of a typical <tt>./configure</tt>
 script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div class="section" id="download"><h2>Download</h2><p>
 	      The latest version is available here:
-	      <a href="https://github.com/downloads/cedric-vincent/PRoot/proot-v0.7.1.tar.gz">proot-v0.7.1.tar.gz</a></p></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions to <a href="mailto:proot_me@googlegroups.com">proot_me@googlegroups.com
-	    </a> if you didn't find answers by reading the <a href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
+	      <a href="https://github.com/downloads/cedric-vincent/PRoot/proot-v0.7.1.tar.gz">proot-v0.7.1.tar.gz</a></p></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions to <a href="mailto:proot_me@googlegroups.com">proot_me@googlegroups.com</a>
+	    if you didn't find answers by reading the <a href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
 	    manual</a>.
 	    </p></div><script type="text/javascript">
 	      var _gaq = _gaq || [];
