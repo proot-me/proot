@@ -1,3 +1,5 @@
+/* TODO: pre can wrap */
+
 * {
     padding: 0;
     margin: 0;
@@ -7,7 +9,7 @@
 }
 
 html {
-    background-color: gray;
+    background-color: #dddddd;
 }
 
 body {
@@ -22,14 +24,18 @@ body {
 
     margin-left: auto;
     margin-right: auto;
-    margin-top: 1em;
-    margin-bottom: 1em;
+    margin-top: 1.5em;
+    margin-bottom: 1.5em;
+
+    -moz-box-shadow: 0 0 5px 5px #333333;
+    -webkit-box-shadow: 0 0 5px 5px #333333;
+    box-shadow: 0 0 1em 0.5em #333333;
 }
 
 h1 {
     color: orange;
     text-align: center;
-    text-shadow: 2px 2px #333333;
+    text-shadow: 2px 3px 3px #333333;
     font-size: 3em;
 }
 
@@ -40,10 +46,15 @@ h2 {
     border-bottom: 1px dotted gray;
 }
 
+h3 {
+    margin-left: 1em;
+    font-style: italic;
+}
+
 #contents {
     text-align: center;
 
-    background-color: gray;
+    background-color: grey;
     border-top: 1px solid #dddddd;
     border-bottom: 1px solid #dddddd;
 
@@ -60,8 +71,8 @@ h2 {
 #contents li {
     display: inline;
 
-    margin-left: 1em;
-    margin-right: 1em;
+    margin-left: 3%;
+    margin-right: 3%;
 }
 
 #contents a {
@@ -109,7 +120,7 @@ table {
     font-size: smaller;
 }
 
-pre.literal-block {
+pre {
     margin: 2em ;
     margin-top: 0.5em ;
     margin-bottom: 1em ;
