@@ -20,7 +20,7 @@ Synopsis
 Description
 ===========
 
-PRoot is an user-mode implementation of ``chroot``, ``mount --bind``,
+PRoot is a user-mode implementation of ``chroot``, ``mount --bind``,
 and ``binfmt_misc``, that means users don't need any privilege or
 setup to use an arbitrary directory as the new root file-system, to
 make files accessible somewhere else in the file-system hierarchy, and
@@ -155,7 +155,7 @@ syscalls made by the guest programs.
 Example
 =======
 
-In the following examples the directories ``/mnt/slackware-7.0`` and
+In the following examples the directories ``/mnt/slackware-13.1`` and
 ``/mnt/armslack-12.2/`` contain a Linux distribution respectively made
 for x86 CPUs and ARM CPUs.
 
@@ -168,13 +168,18 @@ have to specify the path to the guest rootfs followed by the desired
 command.  The example below executes the program ``cat`` to print the
 content of a file, both are from the guest distro::
 
-    proot /mnt/slackware-7.0/ cat /etc/motd
+    proot /mnt/slackware-13.1/ cat /etc/motd
+    
+    Welcome to Slackware Linux 13.1
 
 The default command is ``/bin/sh`` if none were specified, thus the
 shortest way to confine an interactive shell and all its sub-processes
 is::
 
-    proot /mnt/slackware-7.0/
+    proot /mnt/slackware-13.1/
+    
+    $ cat /etc/motd
+    Welcome to Slackware Linux 13.1
 
 
 ``mount --bind``
@@ -185,13 +190,34 @@ rootfs accessible in the confined environment just as if they were
 initially part of the guest rootfs.  It is sometimes required to run
 programs that rely on some specific files::
 
-    proot -b /proc /mnt/slackware-7.0/ ps
+    proot -b /proc /mnt/slackware-13.1/
+    
+    $ ps -o tty,command
+    Error, do this: mount -t proc none /proc
+
+::
+
+    proot -b /proc /mnt/slackware-13.1/
+    
+    $ ps -o tty,command
+    TT       COMMAND
+    ?        -bash
+    ?        proot -b /proc /mnt/slackware-13.1/
+    ?        /lib/ld-linux.so.2 /bin/sh
+    ?        /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
 
 Actually there's a bunch of such specific files, that's why PRoot
 provides the option ``-B`` to bind automatically a pre-defined list of
 recommended paths::
 
-    proot -B /mnt/slackware-7.0/ ps
+    proot -B /mnt/slackware-13.1/
+    
+    $ ps -o tty,command
+    TT       COMMAND
+    pts/6    -bash
+    pts/6    proot -B /mnt/slackware-13.1/
+    pts/6    /lib/ld-linux.so.2 /bin/sh
+    pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
 
 The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using ``/`` as the path to the guest rootfs.  It
@@ -199,6 +225,10 @@ is quite handy to cheat programs that perform access to hard-coded
 locations, like not well written installation scripts::
 
     proot -b /tmp/alternate_usr:/usr / make install
+    
+    [...]
+    install -m 755 prog "/usr/bin"
+    [...] # prog was installed in "/tmp/alternate_usr/bin" actually
 
 or to substitute system configuration files, for example the DNS
 setting::
@@ -217,6 +247,9 @@ instance of QEMU they want to use with the option ``-q`` or ``-Q``
 (this latter implies ``-B``)::
 
     proot -Q qemu-arm /mnt/armslack-12.2/
+    
+    $ cat /etc/motd
+    Welcome to ARMedSlack Linux 12.2
 
 The parameter of the ``-q/-Q`` option is actually a whole QEMU
 command, for instance to enable its GDB server on port 1234::
@@ -227,7 +260,7 @@ PRoot has a mode to allow the execution of host programs alongside
 emulated guest programs, that is, they share the same file-system
 namespace.  It's typically useful to extend the list of available
 programs and to speed up build-time significantly.  This mixed-mode is
-enable by substituting the ``-Q`` option with ``-X``, then the content
+enabled by substituting the ``-Q`` option with ``-X``, then the content
 of the host rootfs is accessible through ``/host-rootfs``::
 
     proot -X qemu-arm /mnt/armslack-12.2/
@@ -251,10 +284,16 @@ to cross-compile to the ARM target::
     $ ./configure; make
 
 As with regular files, a host instance of a program can be bound over
-its guest instance.  Here is an example where the guest ``sh`` and
-``make`` binaries are overlaid by the host ones::
+its guest instance.  Here is an example where the guest binary of
+``make`` is overlaid by the host one::
 
    proot -Q qemu-arm -b /bin/sh -b /usr/bin/make /mnt/armslack-12.2/
+   
+   $ which make
+   /usr/bin/make
+   $ make --version # overlaid
+   GNU Make 3.82
+   Built for x86_64-slackware-linux-gnu
 
 It's worth mentioning that even when mixing the execution of host
 programs and the execution of emulated guest programs, they still
