@@ -6,6 +6,8 @@
 
     color: #333333;
     line-height: 1.5em;
+
+    font-family: sans;
 }
 
 html {
@@ -129,6 +131,12 @@ pre {
 
     background-color: #dddddd;
     color: black;
+
+    font-family: monospace;
+}
+
+tt {
+    font-family: monospace;
 }
 
 @media print {
