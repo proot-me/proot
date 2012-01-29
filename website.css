@@ -34,11 +34,18 @@ body {
     box-shadow: 0 0 1em 0.5em #333333;
 }
 
+#title {
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
 h1 {
     color: orange;
     text-align: center;
     text-shadow: 2px 3px 3px #333333;
     font-size: 3em;
+    display: inline;
 }
 
 h2 {
