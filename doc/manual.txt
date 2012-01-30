@@ -269,6 +269,9 @@ of the host rootfs is accessible through ``/host-rootfs``::
     
     $ file /bin/echo
     [...] ELF 32-bit LSB executable, ARM [...]
+    $ /bin/echo 'Hello world!'
+    Hello world!
+
     $ file /host-rootfs/bin/echo
     [...] ELF 64-bit LSB executable, x86-64 [...]
     $ /host-rootfs/bin/echo 'Hello mixed world!'
