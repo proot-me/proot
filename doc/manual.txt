@@ -155,7 +155,7 @@ syscalls made by the guest programs.
 Example
 =======
 
-In the following examples the directories ``/mnt/slackware-13.1`` and
+In the following examples the directories ``/mnt/slackware-8.0`` and
 ``/mnt/armslack-12.2/`` contain a Linux distribution respectively made
 for x86 CPUs and ARM CPUs.
 
@@ -168,18 +168,18 @@ have to specify the path to the guest rootfs followed by the desired
 command.  The example below executes the program ``cat`` to print the
 content of a file, both are from the guest distro::
 
-    proot /mnt/slackware-13.1/ cat /etc/motd
+    proot /mnt/slackware-8.0/ cat /etc/motd
     
-    Welcome to Slackware Linux 13.1
+    Welcome to Slackware Linux 8.0
 
 The default command is ``/bin/sh`` if none were specified, thus the
 shortest way to confine an interactive shell and all its sub-processes
 is::
 
-    proot /mnt/slackware-13.1/
+    proot /mnt/slackware-8.0/
     
     $ cat /etc/motd
-    Welcome to Slackware Linux 13.1
+    Welcome to Slackware Linux 8.0
 
 
 ``mount --bind``
@@ -190,19 +190,19 @@ rootfs accessible in the confined environment just as if they were
 initially part of the guest rootfs.  It is sometimes required to run
 programs that rely on some specific files::
 
-    proot -b /proc /mnt/slackware-13.1/
+    proot /mnt/slackware-8.0/
     
     $ ps -o tty,command
     Error, do this: mount -t proc none /proc
 
 ::
 
-    proot -b /proc /mnt/slackware-13.1/
+    proot -b /proc /mnt/slackware-8.0/
     
     $ ps -o tty,command
     TT       COMMAND
     ?        -bash
-    ?        proot -b /proc /mnt/slackware-13.1/
+    ?        proot -b /proc /mnt/slackware-8.0/
     ?        /lib/ld-linux.so.2 /bin/sh
     ?        /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
 
@@ -210,12 +210,12 @@ Actually there's a bunch of such specific files, that's why PRoot
 provides the option ``-B`` to bind automatically a pre-defined list of
 recommended paths::
 
-    proot -B /mnt/slackware-13.1/
+    proot -B /mnt/slackware-8.0/
     
     $ ps -o tty,command
     TT       COMMAND
     pts/6    -bash
-    pts/6    proot -B /mnt/slackware-13.1/
+    pts/6    proot -B /mnt/slackware-8.0/
     pts/6    /lib/ld-linux.so.2 /bin/sh
     pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
 
@@ -224,8 +224,10 @@ in the host rootfs by using ``/`` as the path to the guest rootfs.  It
 is quite handy to cheat programs that perform access to hard-coded
 locations, like not well written installation scripts::
 
-    proot -b /tmp/alternate_usr:/usr / make install
+    proot -b /tmp/alternate_usr:/usr /
     
+    $ cd to/sources
+    $ make install
     [...]
     install -m 755 prog "/usr/bin"
     [...] # prog was installed in "/tmp/alternate_usr/bin" actually
@@ -287,7 +289,7 @@ As with regular files, a host instance of a program can be bound over
 its guest instance.  Here is an example where the guest binary of
 ``make`` is overlaid by the host one::
 
-   proot -Q qemu-arm -b /bin/sh -b /usr/bin/make /mnt/armslack-12.2/
+   proot -Q qemu-arm -b /usr/bin/make /mnt/armslack-12.2/
    
    $ which make
    /usr/bin/make

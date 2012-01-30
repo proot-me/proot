@@ -1,5 +1,3 @@
-/* TODO: pre can wrap */
-
 * {
     padding: 0;
     margin: 0;
@@ -139,6 +137,8 @@ pre {
     color: black;
 
     font-family: monospace;
+
+    white-space: pre-wrap;
 }
 
 tt {
