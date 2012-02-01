@@ -48,6 +48,13 @@ that aren't available initially in the guest environment and to speed
 up build-time by using cross-compilation tools or any CPU independent
 program, like interpreters.
 
+It is worth noting that the guest kernel is never involved, regardless
+of whether QEMU is used.  Technically, when guest programs perform
+access to system resources, PRoot translates their requests before
+sending them to the host kernel.  This implies guest programs can use
+host resources (devices, network, ...) just as if they were "normal"
+host programs.
+
 
 Options
 =======

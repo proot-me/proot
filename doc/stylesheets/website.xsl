@@ -57,6 +57,7 @@
 		</xsl:attribute>
 		<xsl:copy-of select="$targz"/>
 	      </a>
+	      (broken link: not publicly published yet)
 	    </p>
 	  </div>
 
@@ -66,7 +67,7 @@
 	    href="mailto:proot_me@googlegroups.com">proot_me@googlegroups.com</a>
 	    if you didn't find answers by reading the <a
 	    href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
-	    manual</a>.
+	    manual</a> (broken link: not publicly published yet).
 	    </p>
 	  </div>
 
