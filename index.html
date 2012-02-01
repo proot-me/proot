@@ -20,7 +20,12 @@ way all of the cross-compilation issues are avoided.</p><p>PRoot can also <em>mi
 of guest programs emulated by QEMU.  This is useful to use programs
 that aren't available initially in the guest environment and to speed
 up build-time by using cross-compilation tools or any CPU independent
-program, like interpreters.</p></div><div xmlns="" class="section" id="example"><h2>Example</h2><p>In the following examples the directories <tt>/mnt/slackware-8.0</tt> and
+program, like interpreters.</p><p>It is worth noting that the guest kernel is never involved, regardless
+of whether QEMU is used.  Technically, when guest programs perform
+access to system resources, PRoot translates their requests before
+sending them to the host kernel.  This implies guest programs can use
+host resources (devices, network, ...) just as if they were "normal"
+host programs.</p></div><div xmlns="" class="section" id="example"><h2>Example</h2><p>In the following examples the directories <tt>/mnt/slackware-8.0</tt> and
 <tt>/mnt/armslack-12.2/</tt> contain a Linux distribution respectively made
 for x86 CPUs and ARM CPUs.</p><div class="section" id="chroot"><h3><tt>chroot</tt></h3><p>To execute a program inside a given Linux distribution, users just
 have to specify the path to the guest rootfs followed by the desired
@@ -109,9 +114,11 @@ believe they are running in a native guest environment.  As a
 demonstration, here is a partial output of a typical <tt>./configure</tt>
 script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div class="section" id="download"><h2>Download</h2><p>
 	      The latest version is available here:
-	      <a href="https://github.com/downloads/cedric-vincent/PRoot/proot-v0.7.1.tar.gz">proot-v0.7.1.tar.gz</a></p></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions to <a href="mailto:proot_me@googlegroups.com">proot_me@googlegroups.com</a>
+	      <a href="https://github.com/downloads/cedric-vincent/PRoot/proot-v0.7.1.tar.gz">proot-v0.7.1.tar.gz</a>
+	      (broken link: not publicly published yet)
+	    </p></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions to <a href="mailto:proot_me@googlegroups.com">proot_me@googlegroups.com</a>
 	    if you didn't find answers by reading the <a href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
-	    manual</a>.
+	    manual</a> (broken link: not publicly published yet).
 	    </p></div><script type="text/javascript">
 	      var _gaq = _gaq || [];
 	      _gaq.push(['_setAccount', 'UA-20176046-1']);
