@@ -48,7 +48,6 @@ static char *recommended_bindings[] = {
 
 static void handle_option_b(char *value);
 static void handle_option_q(char *value);
-static void handle_option_x(char *value);
 static void handle_option_w(char *value);
 static void handle_option_e(char *value);
 static void handle_option_u(char *value);
@@ -61,7 +60,6 @@ static void handle_option_V(char *value);
 static void handle_option_h(char *value);
 static void handle_option_B(char *value);
 static void handle_option_Q(char *value);
-static void handle_option_X(char *value);
 static void handle_option_W(char *value);
 
 static struct option options[] = {
@@ -82,14 +80,6 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_q,
 	  .description = "Execute guest programs through QEMU as specified by *command*.",
-	},
-	{ .class = "Regular options",
-	  .arguments = {
-		{ .name = "-x", .separator = ' ', .value = "path" },
-		{ .name = "--allow-host-execution", .separator = '=', .value = "path" },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_x,
-	  .description = "Bind / to *path* and allow the execution of host programs.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -189,14 +179,6 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_Q,
 	  .description = "Alias: -q *command* -a -B.",
-	},
-	{ .class = "Alias options",
-	  .arguments = {
-		{ .name = "-X", .separator = ' ', .value = "command" },
-		{ .name = "--mixed-qemu", .separator = '=', .value = "command" },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_X,
-	  .description = "Alias: -Q *command* -x /host-rootfs.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {

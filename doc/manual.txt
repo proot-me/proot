@@ -71,9 +71,6 @@ Regular options
 -q command, --qemu=command
     Execute guest programs through QEMU as specified by *command*.
 
--x path, --allow-host-execution=path
-    Bind ``/`` to *path* and allow the execution of host programs.
-
 -w path, --pwd=path, --cwd=path
     Set the initial working directory to *path*, default is ``/``.
 
@@ -110,7 +107,7 @@ Alias options
 
 This section is a work-in-progress.
 
--B, -M, --use-recommended-bindings
+-B, -M
     Alias: ``-b`` for each path of a recommended list.
 
     Here is the list of recommended paths:
@@ -135,10 +132,7 @@ This section is a work-in-progress.
 -Q command
     Alias: ``-q *command* -a -B``.
 
--X command, --mixed-qemu=command
-    Alias: ``-Q *command* -x /host-rootfs``.
-
--W, --in-place
+-W
     Alias: ``-b $PWD -w $PWD``.
 
 
@@ -265,14 +259,15 @@ command, for instance to enable its GDB server on port 1234::
 
     proot -Q "qemu-arm -g 1234" /mnt/armslack-12.2/ emacs
 
-PRoot has a mode to allow the execution of host programs alongside
-emulated guest programs, that is, they share the same file-system
-namespace.  It's typically useful to extend the list of available
-programs and to speed up build-time significantly.  This mixed-mode is
-enabled by substituting the ``-Q`` option with ``-X``, then the content
-of the host rootfs is accessible through ``/host-rootfs``::
+PRoot allows to mix transparently the execution of emulated guest
+programs and the execution of native host programs in the same
+file-system namespace.  It's typically useful to extend the list of
+available programs and to speed up build-time significantly.  This
+mixed-execution feature is enabled by default when using QEMU, and the
+content of the host rootfs is made accessible through
+``/host-rootfs``::
 
-    proot -X qemu-arm /mnt/armslack-12.2/
+    proot -Q qemu-arm /mnt/armslack-12.2/
     
     $ file /bin/echo
     [...] ELF 32-bit LSB executable, ARM [...]
@@ -289,7 +284,7 @@ users may want to deactivate explicitly cross-filesystem support found
 in most GNU cross-compilation tools.  For example with GCC configured
 to cross-compile to the ARM target::
 
-    proot -X qemu-arm /mnt/armslack-12.2/
+    proot -Q qemu-arm /mnt/armslack-12.2/
     
     $ export CC=/host-rootfs/opt/cross-tools/arm-linux/bin/gcc
     $ export CFLAGS="--sysroot=/"   # could be optional indeed

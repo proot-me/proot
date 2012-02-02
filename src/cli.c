@@ -183,11 +183,9 @@ static void handle_option_q(char *value)
 
 	config.qemu[0] = which(config.qemu[0]);
 	config.qemu[nb_args] = NULL;
-}
 
-static void handle_option_x(char *value)
-{
-	config.host_rootfs = value;
+	/* XXX */
+	config.host_rootfs = "/host-rootfs";
 	bind_path("/", config.host_rootfs, true);
 }
 
@@ -257,12 +255,6 @@ static void handle_option_Q(char *value)
 	handle_option_q(value);
 	handle_option_a(NULL);
 	handle_option_B(NULL);
-}
-
-static void handle_option_X(char *value)
-{
-	handle_option_Q(value);
-	handle_option_x("/host-rootfs");
 }
 
 static void handle_option_W(char *value)
