@@ -204,6 +204,7 @@ case PR_prlimit64:
 case PR_prof:
 case PR_profil:
 case PR_pselect6:
+case PR_ptrace:
 case PR_putpmsg:
 case PR_pwrite64:
 case PR_pwritev:
@@ -361,13 +362,6 @@ case PR_restart_syscall:
 	 * entry or the exit stage, and actually we just don't care™. */
 	tracee->sysnum = (word_t)-1;
 	status = 0;
-	break;
-
-case PR_ptrace:
-	if (!config.allow_ptrace)
-		status = -EPERM;
-	else
-		status = 0;
 	break;
 
 case PR_getcwd:

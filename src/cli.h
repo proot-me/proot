@@ -51,7 +51,6 @@ static void handle_option_q(char *value);
 static void handle_option_w(char *value);
 static void handle_option_e(char *value);
 static void handle_option_u(char *value);
-static void handle_option_p(char *value);
 static void handle_option_a(char *value);
 static void handle_option_k(char *value);
 static void handle_option_0(char *value);
@@ -105,14 +104,6 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_u,
 	  .description = "Allow the execution of unknown syscalls.",
-	},
-	{ .class = "Regular options",
-	  .arguments = {
-		{ .name = "-p", .separator = '\0', .value = NULL },
-		{ .name = "--allow-ptrace-syscall", .separator = '\0', .value = NULL },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_p,
-	  .description = "Allow the execution of the syscall ptrace.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {

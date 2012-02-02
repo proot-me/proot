@@ -204,11 +204,6 @@ static void handle_option_u(char *value)
 	config.allow_unknown_syscalls = true;
 }
 
-static void handle_option_p(char *value)
-{
-	config.allow_ptrace = true;
-}
-
 static void handle_option_a(char *value)
 {
 	config.disable_aslr = true;

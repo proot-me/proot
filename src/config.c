@@ -77,7 +77,6 @@ void print_config()
 
 	print_bool("ignore ELF interpreter", config.ignore_elf_interpreter);
 	print_bool("allow_unknown_syscalls", config.allow_unknown_syscalls);
-	print_bool("allow_ptrace", config.allow_ptrace);
 	print_bool("disable_aslr", config.disable_aslr);
 	print_bool("fake_id0", config.fake_id0);
 	print_bool("check_fd", config.check_fd);

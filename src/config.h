@@ -38,7 +38,6 @@ struct config {
 
 	bool ignore_elf_interpreter;
 	bool allow_unknown_syscalls;
-	bool allow_ptrace;
 	bool disable_aslr;
 	bool fake_id0;
 

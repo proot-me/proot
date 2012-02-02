@@ -80,9 +80,6 @@ Regular options
 -u, --allow-unkonwn-syscalls
     Allow the execution of unknown syscalls.
 
--p, --allow-ptrace-syscall
-    Allow the execution of the syscall ``ptrace``.
-
 -a, --disable-aslr
     Disable randomization of the virtual address space (ASLR).
 
