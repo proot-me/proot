@@ -282,7 +282,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
-		status = detranslate_path(result, 1);
+		status = detranslate_path(result, true);
 		if (status < 0)
 			return status;
 	}
@@ -334,7 +334,7 @@ end:
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(char path[PATH_MAX], int sanity_check)
+int detranslate_path(char path[PATH_MAX], bool sanity_check)
 {
 	size_t new_length;
 
@@ -360,7 +360,7 @@ int detranslate_path(char path[PATH_MAX], int sanity_check)
 
 	/* Ensure the path is within the new root. */
 	if (strncmp(path, root, root_length) != 0) {
-		if (sanity_check != 0)
+		if (sanity_check)
 			return -EPERM;
 		else
 			return 0;

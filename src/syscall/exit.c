@@ -68,7 +68,7 @@ case PR_getcwd: {
 		break;
 	}
 
-	status = detranslate_path(path, 1);
+	status = detranslate_path(path, true);
 	if (status < 0)
 		break;
 
@@ -138,7 +138,7 @@ case PR_readlinkat: {
 		goto end;
 	path[old_size] = '\0';
 
-	status = detranslate_path(path, 1);
+	status = detranslate_path(path, false);
 	if (status < 0)
 		break;
 

@@ -23,7 +23,14 @@ test-%.c: setup $(ROOTFS)/bin/test-%
 # Build a clean rootfs
 
 setup: $(ROOTFS)/bin/true $(ROOTFS)/bin/false    \
-       $(ROOTFS)/bin/pwd  $(ROOTFS)/bin/readlink
+       $(ROOTFS)/bin/pwd  $(ROOTFS)/bin/readlink \
+       $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true
+
+$(ROOTFS)/bin/abs-true:
+	ln -s /bin/true $@
+
+$(ROOTFS)/bin/rel-true:
+	ln -s ./true $@
 
 $(ROOTFS)/bin/%: # %.c
 	@test -e $(dir $@) || mkdir -p $(dir $@)
