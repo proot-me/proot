@@ -24,7 +24,8 @@ static const char *version = "0.7.1";
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
 static const char *synopsis = "proot [option] ... /path/to/guest/rootfs [program [arg] ...]";
 static const char *colophon = "Contact cedric.vincent@gmail.com for bug reports, suggestions, ...\n\
-Copyright (C) 2010, 2011 STMicroelectronics, licensed under GPL v2 or later.";
+Copyright (C) 2010, 2011, 2012 STMicroelectronics, licensed under GPL\n\
+v2 or later.";
 
 static char *recommended_bindings[] = {
 	"/etc/host.conf",
@@ -38,10 +39,10 @@ static char *recommended_bindings[] = {
 	"/etc/nsswitch.conf",
 	"/etc/resolv.conf",
 	"/etc/localtime",
-	"/dev",
-	"/sys",
-	"/proc",
-	"/tmp",
+	"/dev/",
+	"/sys/",
+	"/proc/",
+	"/tmp/",
 	"$HOME",
 	NULL,
 };
@@ -100,7 +101,7 @@ static struct option options[] = {
 	{ .class = "Regular options",
 	  .arguments = {
 		{ .name = "-u", .separator = '\0', .value = NULL },
-		{ .name = "--allow-unkonwn-syscalls", .separator = '\0', .value = NULL },
+		{ .name = "--allow-unknown-syscalls", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_u,
 	  .description = "Allow the execution of unknown syscalls.",
@@ -159,7 +160,6 @@ static struct option options[] = {
 	  .arguments = {
 		{ .name = "-B", .separator = '\0', .value = NULL },
 		{ .name = "-M", .separator = '\0', .value = NULL },
-		{ .name = "--use-recommended-bindings", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_B,
 	  .description = "Alias: -b for each path of a recommended list.",
@@ -174,7 +174,6 @@ static struct option options[] = {
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-W", .separator = '\0', .value = NULL },
-		{ .name = "--in-place", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_W,
 	  .description = "Alias: -b $PWD -w $PWD.",

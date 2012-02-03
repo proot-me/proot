@@ -9,6 +9,7 @@ PRoot: a Step Forward for QEMU User-Mode
 :Address:      12 Rue Jules Horowitz, Grenoble, FRANCE
 :Contact:      *firstname.lastname*\ @st.com
 :Workshop:     1st International QEMU Users' Forum
+:Version:      1.1
 
 :Abstract:
 
