@@ -68,7 +68,7 @@ case PR_getcwd: {
 		break;
 	}
 
-	status = detranslate_path(path, true);
+	status = detranslate_path(path, true, true);
 	if (status < 0)
 		break;
 
@@ -96,7 +96,8 @@ case PR_getcwd: {
 
 case PR_readlink:
 case PR_readlinkat: {
-	char path[PATH_MAX];
+	char pointee[PATH_MAX];
+	char pointer[PATH_MAX];
 	size_t old_size;
 	size_t new_size;
 	size_t max_size;
@@ -133,12 +134,17 @@ case PR_readlinkat: {
 
 	/* The kernel does NOT put the terminating NULL byte for
 	 * getcwd(2).  */
-	status = copy_from_tracee(tracee, path, tracee->output, old_size);
+	status = copy_from_tracee(tracee, pointee, tracee->output, old_size);
 	if (status < 0)
 		goto end;
-	path[old_size] = '\0';
+	pointee[old_size] = '\0';
 
-	status = detranslate_path(path, false);
+	/* Not optimal but safe (path is fully translated).  */
+	status = get_sysarg_path(tracee, pointer, PR_readlink ? SYSARG_1 : SYSARG_2);
+	if (status < 0)
+		break;
+
+	status = detranslate_path(pointee, false, !belongs_to_guestfs(pointer));
 	if (status < 0)
 		break;
 
@@ -150,7 +156,7 @@ case PR_readlinkat: {
 	new_size = (status - 1 < max_size ? status - 1 : max_size);
 
 	/* Overwrite the path.  */
-	status = copy_to_tracee(tracee, tracee->output, path, new_size);
+	status = copy_to_tracee(tracee, tracee->output, pointee, new_size);
 	if (status < 0)
 		goto end;
 

@@ -503,6 +503,9 @@ case PR_oldlstat:
 case PR_unlink:
 case PR_readlink:
 	status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
+	if (status < 0)
+		break;
+
 	if (tracee->sysnum == PR_readlink) {
 		tracee->output = peek_ureg(tracee, SYSARG_2);
 		if (errno != 0) {
@@ -510,6 +513,7 @@ case PR_readlink:
 			break;
 		}
 	}
+
 	break;
 
 case PR_link:
@@ -621,6 +625,14 @@ case PR_readlinkat:
 		break;
 	}
 
+	status = get_sysarg_path(tracee, path, SYSARG_2);
+	if (status < 0)
+		break;
+
+	status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
+	if (status < 0)
+		break;
+
 	if (tracee->sysnum == PR_readlinkat) {
 		tracee->output = peek_ureg(tracee, SYSARG_3);
 		if (errno != 0) {
@@ -629,11 +641,6 @@ case PR_readlinkat:
 		}
 	}
 
-	status = get_sysarg_path(tracee, path, SYSARG_2);
-	if (status < 0)
-		break;
-
-	status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
 	break;
 
 case PR_rename:

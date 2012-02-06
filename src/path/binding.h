@@ -30,7 +30,6 @@
 
 extern void bind_path(const char *path, const char *location, bool must_exist);
 extern void print_bindings(void);
-
 #define BINDING_LOCATION 1
 #define BINDING_REAL     2
 extern int substitute_binding(int which, char path[PATH_MAX]);

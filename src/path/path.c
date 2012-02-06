@@ -282,7 +282,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
-		status = detranslate_path(result, true);
+		status = detranslate_path(result, true, true);
 		if (status < 0)
 			return status;
 	}
@@ -315,11 +315,11 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 		return status;
 
 	/* Small sanity check. */
-	if (deref_final != 0 && realpath(result, tmp) != NULL) {
-		if (strncmp(tmp, root, root_length) != 0) {
-			notice(WARNING, INTERNAL, "tracee %d is out of my control (2)", pid);
-			return -EPERM;
-		}
+	if (deref_final != 0
+	    && realpath(result, tmp) != NULL
+	    && !belongs_to_guestfs(tmp)) {
+		notice(WARNING, INTERNAL, "tracee %d is out of my control (2)", pid);
+		return -EPERM;
 	}
 
 end:
@@ -334,7 +334,7 @@ end:
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(char path[PATH_MAX], bool sanity_check)
+int detranslate_path(char path[PATH_MAX], bool sanity_check, bool follow_binding)
 {
 	size_t new_length;
 
@@ -349,17 +349,19 @@ int detranslate_path(char path[PATH_MAX], bool sanity_check)
 	if (path[0] != '/')
 		return 0;
 
-	switch (substitute_binding(BINDING_REAL, path)) {
-	case 0:
-		return 0;
-	case 1:
-		return strlen(path) + 1;
-	default:
-		break;
+	if (follow_binding) {
+		switch (substitute_binding(BINDING_REAL, path)) {
+		case 0:
+			return 0;
+		case 1:
+			return strlen(path) + 1;
+		default:
+			break;
+		}
 	}
 
 	/* Ensure the path is within the new root. */
-	if (strncmp(path, root, root_length) != 0) {
+	if (!belongs_to_guestfs(path)) {
 		if (sanity_check)
 			return -EPERM;
 		else
@@ -380,6 +382,17 @@ int detranslate_path(char path[PATH_MAX], bool sanity_check)
 	}
 
 	return new_length + 1;
+}
+
+/**
+ * Check if the translated @t_path belongs to the guest rootfs, that
+ * is, isn't from a binding.
+ */
+bool belongs_to_guestfs(char *t_path)
+{
+	/* Works only with translated paths!  */
+	return (strncmp(root, t_path, root_length) == 0
+		&& (t_path[root_length] == '\0' || t_path[root_length] == '/'));
 }
 
 typedef int (*foreach_fd_t)(pid_t pid, int fd, char path[PATH_MAX]);
@@ -445,7 +458,7 @@ end:
 static int check_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
 {
 	/* XXX TODO: don't warn for files that were open before the attach. */
-	if (strncmp(root, path, root_length) != 0) {
+	if (!belongs_to_guestfs(path)) {
 		notice(WARNING, INTERNAL, "tracee %d is out of my control (3)", pid);
 		notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, root);
 		return -pid;

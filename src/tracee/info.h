@@ -26,6 +26,7 @@
 #define TRACEE_INFO_H
 
 #include <sys/types.h> /* pid_t, size_t, */
+#include <stdbool.h>
 
 #include "arch.h" /* word_t, */
 

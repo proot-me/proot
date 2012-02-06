@@ -197,7 +197,7 @@ int substitute_binding(int which, char path[PATH_MAX])
 			 *     proot -m /usr:/location /usr/local/slackware
 			 */
 			if (root_length != 0 /* rootfs != "/" */
-			    && strncmp(path, root, root_length) == 0)
+			    && belongs_to_guestfs(path))
 				continue;
 
 			/* Avoid an extra trailing '/' when in the
