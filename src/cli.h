@@ -50,7 +50,6 @@ static char *recommended_bindings[] = {
 static void handle_option_b(char *value);
 static void handle_option_q(char *value);
 static void handle_option_w(char *value);
-static void handle_option_e(char *value);
 static void handle_option_u(char *value);
 static void handle_option_a(char *value);
 static void handle_option_k(char *value);
@@ -89,14 +88,6 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_w,
 	  .description = "Set the initial working directory to *path*, default is /.",
-	},
-	{ .class = "Regular options",
-	  .arguments = {
-		{ .name = "-e", .separator = '\0', .value = NULL },
-		{ .name = "--ignore-elf-interpreter", .separator = '\0', .value = NULL },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_e,
-	  .description = "Don't use the ELF interpreter to load native programs.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {

@@ -1,5 +1,1 @@
-TMP=/tmp/`mcookie`
-rm -f ${ROOTFS}/${TMP}
-mkdir -p ${ROOTFS}/tmp
-cp ${ROOTFS}/bin/true ${ROOTFS}/${TMP}
-${PROOT} -e ${ROOTFS} ${TMP}
+${PROOT} / make -f ${PWD}/test-c6b77b77.mk

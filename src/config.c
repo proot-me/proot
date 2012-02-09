@@ -75,7 +75,6 @@ void print_config()
 	if (config.kernel_release)
 		notice(INFO, USER, "kernel release = %s", config.kernel_release);
 
-	print_bool("ignore ELF interpreter", config.ignore_elf_interpreter);
 	print_bool("allow_unknown_syscalls", config.allow_unknown_syscalls);
 	print_bool("disable_aslr", config.disable_aslr);
 	print_bool("fake_id0", config.fake_id0);
@@ -85,15 +84,4 @@ void print_config()
 		notice(INFO, USER, "verbose level = %d", config.verbose_level);
 
 	print_bindings();
-}
-
-void sanitize_config()
-{
-	if (config.host_rootfs && !config.qemu) {
-		notice(WARNING, USER, "'-x' is meaningless without QEMU.");
-		config.host_rootfs = NULL;
-	}
-
-	if (config.host_rootfs && config.ignore_elf_interpreter)
-		notice(WARNING, USER, "'-e' might avoid the execution of host programs that rely on RPATH.");
 }

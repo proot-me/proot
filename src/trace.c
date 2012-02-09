@@ -29,6 +29,8 @@
 #include <sys/types.h>  /* waitpid(2), */
 #include <sys/wait.h>   /* waitpid(2), */
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
+#include <sys/time.h>   /* *rlimit(2), */
+#include <sys/resource.h> /* *rlimit(2), */
 #include <fcntl.h>      /* AT_FDCWD, */
 #include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
 #include <string.h>     /* strcpy(3), */
@@ -45,6 +47,7 @@
 
 bool launch_process()
 {
+	struct rlimit rlimit;
 	long status;
 	pid_t pid;
 
@@ -73,6 +76,23 @@ bool launch_process()
 			    || personality(status | ADDR_NO_RANDOMIZE) < 0)
 				notice(WARNING, INTERNAL, "can't disable ASLR");
 		}
+
+		/* The setting of the hard limit of maximum stack size
+		 * is a workaround for an odd bug (from the Linux
+		 * kernel?): when the *current* limit of the maximum
+		 * stack size is set to infinity, a DSO can be mmaped
+		 * at the same address as the start of the heap
+		 * because no room was allocated.  */
+		status = getrlimit(RLIMIT_STACK, &rlimit);
+		if (status < 0)
+			notice(WARNING, SYSTEM, "can't get the maximum stack size");
+
+		if (rlimit.rlim_max == RLIM_INFINITY)
+			rlimit.rlim_max = RLIM_INFINITY - 1;
+
+		status = setrlimit(RLIMIT_STACK, &rlimit);
+		if (status < 0)
+			notice(WARNING, SYSTEM, "can't set the maximum stack size");
 
 		/* Synchronize with the tracer's event loop.  Without
 		 * this trick the tracer only sees the "return" from

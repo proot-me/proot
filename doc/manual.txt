@@ -105,22 +105,6 @@ Regular options
 
     This option is automatically enabled by the option ``-W``.
 
--e, --ignore-elf-interpreter
-    Don't use the ELF interpreter to load native programs.
-
-    Some versions of Bash and Emacs assume that their heap is right
-    after their data segment, however this assumption is invalidated
-    when an explicit loader is used.  In the current version of PRoot,
-    the guest ELF interpreter has to be used explicitely as a loader,
-    thus Bash and Emacs may report false alarm about memory
-    exhaustion.  This option disables this explicit loading mechanism,
-    it can work only if the host ELF interpreter is compatible with
-    the guest programs.
-
-    This option is automatically enabled when the guest rootfs is
-    ``/``.  This option has not effect on guest programs handled by
-    QEMU.
-
 -u, --allow-unknown-syscalls
     Allow the execution of unknown syscalls.
 

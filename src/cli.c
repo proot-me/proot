@@ -194,11 +194,6 @@ static void handle_option_w(char *value)
 	config.initial_cwd = value;
 }
 
-static void handle_option_e(char *value)
-{
-	config.ignore_elf_interpreter = true;
-}
-
 static void handle_option_u(char *value)
 {
 	config.allow_unknown_syscalls = true;
@@ -416,15 +411,10 @@ int main(int argc, char *argv[])
 	if (config.guest_rootfs == NULL)
 		notice(SYSTEM, ERROR, "realpath(\"%s\")", argv[i - 1]);
 
-	if (strcmp(config.guest_rootfs, "/") == 0)
-		config.ignore_elf_interpreter = true;
-
 	if (i < argc)
 		config.command = &argv[i];
 	else
 		config.command = default_command;
-
-	sanitize_config();
 
 	if (config.verbose_level)
 		print_config();

@@ -81,32 +81,9 @@ Features
 
 * Support guest ELF endianness different from the host one.
 
-* Emulate brk for programs that assume it's after the data segment.
-
-    Some heap managers (as found in Bash and Emacs) assume the program
-    break is right after *their* data segment but it's not the case
-    when the GNU dynamic loader is invoked directly, as in PRoot
-    without the -e option::
-
-      +---------------+
-      | program code  |
-      +---------------+ <- code end [static]
-      | program data  |
-      +---------------+ <- data end [static]
-      :               :
-      +---------------+
-      | loader code   |
-      +---------------+
-      | loader data   |
-      +---------------+
-      | loader heap   |
-      +---------------+ <- break [dynamic]
-
 * Be more accurate on reported errno (TLPI 564-565, 572).
 
 * Emulate ptrace() so as to allow a ptraced GDB on another ptraced process.
-
-* Write an real ELF loader instead of using the ELF interpreter as a launcher
 
 * Add two new options: --user-id & --group-id, and make -0 an alias to these options
 
@@ -115,8 +92,6 @@ Features
 
 Clean-up
 --------
-
-* Remove the call to init_module_...() functions, use sanitize_config instead.
 
 * in event_loop(), replace::
 

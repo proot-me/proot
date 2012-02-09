@@ -36,7 +36,6 @@ struct config {
 	char **qemu;
 	char **command;
 
-	bool ignore_elf_interpreter;
 	bool allow_unknown_syscalls;
 	bool disable_aslr;
 	bool fake_id0;
@@ -49,6 +48,5 @@ struct config {
 extern struct config config;
 
 extern void print_config();
-extern void sanitize_config();
 
 #endif /* CONFIG_H */
