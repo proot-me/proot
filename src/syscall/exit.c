@@ -27,6 +27,7 @@ case PR_getcwd: {
 	char path[PATH_MAX];
 	size_t new_size;
 	size_t size;
+	word_t output;
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
 	if (errno != 0) {
@@ -37,6 +38,12 @@ case PR_getcwd: {
 	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
 		status = 0;
+		goto end;
+	}
+
+	output = peek_ureg(tracee, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
 		goto end;
 	}
 
@@ -58,7 +65,7 @@ case PR_getcwd: {
 
 	/* The kernel does put the terminating NULL byte for
 	 * getcwd(2).  */
-	status = get_tracee_string(tracee, path, tracee->output, size);
+	status = get_tracee_string(tracee, path, output, size);
 	if (status < 0)
 		goto end;
 
@@ -84,7 +91,7 @@ case PR_getcwd: {
 	}
 
 	/* Overwrite the path.  */
-	status = copy_to_tracee(tracee, tracee->output, path, new_size);
+	status = copy_to_tracee(tracee, output, path, new_size);
 	if (status < 0)
 		goto end;
 
@@ -101,6 +108,7 @@ case PR_readlinkat: {
 	size_t old_size;
 	size_t new_size;
 	size_t max_size;
+	word_t output;
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
 	if (errno != 0) {
@@ -116,7 +124,15 @@ case PR_readlinkat: {
 
 	old_size = result;
 
-	max_size = (size_t) peek_ureg(tracee, tracee->sysnum == PR_readlink ? SYSARG_3 : SYSARG_4);
+	output = peek_ureg(tracee, tracee->sysnum == PR_readlink
+				   ? SYSARG_2 : SYSARG_3);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	max_size = (size_t) peek_ureg(tracee, tracee->sysnum == PR_readlink
+					      ? SYSARG_3 : SYSARG_4);
 	if (errno != 0) {
 		status = -errno;
 		goto end;
@@ -134,13 +150,14 @@ case PR_readlinkat: {
 
 	/* The kernel does NOT put the terminating NULL byte for
 	 * getcwd(2).  */
-	status = copy_from_tracee(tracee, pointee, tracee->output, old_size);
+	status = copy_from_tracee(tracee, pointee, output, old_size);
 	if (status < 0)
 		goto end;
 	pointee[old_size] = '\0';
 
 	/* Not optimal but safe (path is fully translated).  */
-	status = get_sysarg_path(tracee, pointer, PR_readlink ? SYSARG_1 : SYSARG_2);
+	status = get_sysarg_path(tracee, pointer, tracee->sysnum == PR_readlink
+						  ? SYSARG_1 : SYSARG_2);
 	if (status < 0)
 		break;
 
@@ -156,7 +173,7 @@ case PR_readlinkat: {
 	new_size = (status - 1 < max_size ? status - 1 : max_size);
 
 	/* Overwrite the path.  */
-	status = copy_to_tracee(tracee, tracee->output, pointee, new_size);
+	status = copy_to_tracee(tracee, output, pointee, new_size);
 	if (status < 0)
 		goto end;
 

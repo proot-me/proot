@@ -96,6 +96,7 @@ case PR_get_mempolicy:
 case PR_get_robust_list:
 case PR_get_thread_area:
 case PR_getcpu:
+case PR_getcwd:
 case PR_getdents:
 case PR_getdents64:
 case PR_getegid:
@@ -364,16 +365,6 @@ case PR_restart_syscall:
 	status = 0;
 	break;
 
-case PR_getcwd:
-	tracee->output = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
-	status = 0;
-	break;
-
 case PR_execve:
 	status = translate_execve(tracee);
 
@@ -503,17 +494,6 @@ case PR_oldlstat:
 case PR_unlink:
 case PR_readlink:
 	status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
-	if (status < 0)
-		break;
-
-	if (tracee->sysnum == PR_readlink) {
-		tracee->output = peek_ureg(tracee, SYSARG_2);
-		if (errno != 0) {
-			status = -errno;
-			break;
-		}
-	}
-
 	break;
 
 case PR_link:
@@ -630,17 +610,6 @@ case PR_readlinkat:
 		break;
 
 	status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
-	if (status < 0)
-		break;
-
-	if (tracee->sysnum == PR_readlinkat) {
-		tracee->output = peek_ureg(tracee, SYSARG_3);
-		if (errno != 0) {
-			status = -errno;
-			break;
-		}
-	}
-
 	break;
 
 case PR_rename:

@@ -159,13 +159,12 @@ static int translate_sysarg(struct tracee_info *tracee, enum sysarg sysarg, int 
 
 /**
  * Translate the input arguments of the syscall @tracee->sysnum in the
- * @tracee->pid process area. This function optionnaly sets
- * @tracee->output to the address of the output argument in the tracee's
- * memory space, it also sets @tracee->status to -errno if an error
- * occured from the tracee's perspective (EFAULT for instance),
- * otherwise to the amount of bytes "allocated" in the tracee's stack
- * for storing the newly translated paths. This function returns
- * -errno if an error occured from PRoot's perspective, otherwise 0.
+ * @tracee->pid process area. This function sets @tracee->status to
+ * -errno if an error occured from the tracee's perspective (EFAULT
+ * for instance), otherwise to the amount of bytes "allocated" in the
+ * tracee's stack for storing the newly translated paths. This
+ * function returns -errno if an error occured from PRoot's
+ * perspective, otherwise 0.
  */
 static int translate_syscall_enter(struct tracee_info *tracee)
 {
@@ -265,14 +264,13 @@ static int is_execve(struct tracee_info *tracee)
 }
 
 /**
- * Translate the output arguments of the syscall @tracee->sysnum in the
- * @tracee->pid process area. This function optionally detranslates the
- * path stored at @tracee->output in the tracee's memory space, it also
- * sets the result of this syscall to @tracee->status if an error
- * occured previously during the translation, that is, if
- * @tracee->status is less than 0, otherwise @tracee->status bytes of
- * the tracee's stack are "deallocated" to free the space used to store
- * the previously translated paths.
+ * Translate the output arguments of the syscall @tracee->sysnum in
+ * the @tracee->pid process area. This function sets the result of
+ * this syscall to @tracee->status if an error occured previously
+ * during the translation, that is, if @tracee->status is less than 0,
+ * otherwise @tracee->status bytes of the tracee's stack are
+ * "deallocated" to free the space used to store the previously
+ * translated paths.
  */
 static int translate_syscall_exit(struct tracee_info *tracee)
 {

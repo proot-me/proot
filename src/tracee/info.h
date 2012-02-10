@@ -35,7 +35,6 @@ struct tracee_info {
 	pid_t  pid;    /* Process identifier. */
 	word_t sysnum; /* Current syscall (-1 if none). */
 	int    status; /* -errno if < 0, otherwise amount of bytes used in the tracee's stack. */
-	word_t output; /* Address in the tracee's memory space of the output argument. */
 	char *trigger; /* Name of the file/directory used to start the path translation. */
 	off_t *uregs;  /* Current register bank, also used to know the current ABI. */
 	char *exe;     /* Path to the executable, à la /proc/self/exe. */
