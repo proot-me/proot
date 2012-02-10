@@ -70,12 +70,10 @@ bool launch_process()
 		/* RHEL4 uses an ASLR mechanism that creates conflicts
 		 * between the layout of QEMU and the layout of the
 		 * target program. */
-		if (config.disable_aslr) {
-			status = personality(0xffffffff);
-			if (   status < 0
-			    || personality(status | ADDR_NO_RANDOMIZE) < 0)
-				notice(WARNING, INTERNAL, "can't disable ASLR");
-		}
+		status = personality(0xffffffff);
+		if (   status < 0
+		    || personality(status | ADDR_NO_RANDOMIZE) < 0)
+			notice(WARNING, INTERNAL, "can't disable ASLR");
 
 		/* The setting of the hard limit of maximum stack size
 		 * is a workaround for an odd bug (from the Linux

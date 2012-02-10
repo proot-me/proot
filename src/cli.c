@@ -199,11 +199,6 @@ static void handle_option_u(char *value)
 	config.allow_unknown_syscalls = true;
 }
 
-static void handle_option_a(char *value)
-{
-	config.disable_aslr = true;
-}
-
 static void handle_option_k(char *value)
 {
 	config.kernel_release = value;
@@ -243,7 +238,6 @@ static void handle_option_B(char *value)
 static void handle_option_Q(char *value)
 {
 	handle_option_q(value);
-	handle_option_a(NULL);
 	handle_option_B(NULL);
 }
 

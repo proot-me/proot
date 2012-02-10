@@ -112,16 +112,6 @@ Regular options
     arguments, that's why any syscall PRoot isn't aware of is blocked.
     This option disable this default behavior.
 
--a, --disable-aslr
-    Disable randomization of the virtual address space (ASLR).
-
-    QEMU or some guest programs may make assumptions about the address
-    space layout that could be invalidated by the randomization
-    mechanism used on a couple of host Linux distributions.  This
-    option deactivate this randomization on the host side.
-
-    This option is automatically enabled by the option ``-Q``.
-
 -k string, --kernel-release=string
     Force syscall ``uname`` to report *string* as kernel release.
 
@@ -189,11 +179,10 @@ The following options are aliases for handy sets of options.
     * $HOME
 
 -Q command
-    Alias: ``-q *command* -a -B``.
+    Alias: ``-q *command* -B``.
 
     This option is highly recommended when using QEMU; it enables all
-    the recommended bindings and it ensures that no ASLR mechanism can
-    disturb QEMU.
+    the recommended bindings.
 
 -W
     Alias: ``-b $PWD -w $PWD``.

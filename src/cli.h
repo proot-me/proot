@@ -51,7 +51,6 @@ static void handle_option_b(char *value);
 static void handle_option_q(char *value);
 static void handle_option_w(char *value);
 static void handle_option_u(char *value);
-static void handle_option_a(char *value);
 static void handle_option_k(char *value);
 static void handle_option_0(char *value);
 static void handle_option_v(char *value);
@@ -96,14 +95,6 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_u,
 	  .description = "Allow the execution of unknown syscalls.",
-	},
-	{ .class = "Regular options",
-	  .arguments = {
-		{ .name = "-a", .separator = '\0', .value = NULL },
-		{ .name = "--disable-aslr", .separator = '\0', .value = NULL },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_a,
-	  .description = "Disable randomization of the virtual address space (ASLR).",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -160,7 +151,7 @@ static struct option options[] = {
 		{ .name = "-Q", .separator = ' ', .value = "command" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_Q,
-	  .description = "Alias: -q *command* -a -B.",
+	  .description = "Alias: -q *command* -B.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
