@@ -119,8 +119,6 @@ Clean-up
 
 * get_tracee_string should return -ENAMETOOLONG when length(XXX) >= max_size
 
-* Add a %check section in PRoot's specfile
-
 * Add a testcase for each command-line options
 
 * Add a test for bindinds that are prefixes of each other

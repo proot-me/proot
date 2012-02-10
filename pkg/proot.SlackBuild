@@ -24,7 +24,7 @@
 # -----------------------------------------------------------------------------
 
 PRGNAM=proot
-VERSION=${VERSION:-v0.7.0}
+VERSION=${VERSION:-v0.7.1}
 BUILD=${BUILD:-1}
 TAG=${TAG:-ced}
 
@@ -59,8 +59,9 @@ find . \
   \( -perm 666 -o -perm 664 -o -perm 600 -o -perm 444 -o -perm 440 -o -perm 400 \) \
   -exec chmod 644 {} \;
 
-# Build and install:
-make -C src $NUMJOBS || make -C src || exit 1
+# Build, check, and install:
+make -C src $NUMJOBS || exit 1
+make -C tests $NUMJOBS
 make -C src install DESTDIR=$PKG/usr/bin
 
 # Strip binaries:

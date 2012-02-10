@@ -4,11 +4,11 @@
   <xsl:output method="text"/>
 
   <xsl:template match="/">
-%define version <xsl:value-of select="/document/docinfo/version"/>
+%define version v<xsl:value-of select="/document/docinfo/version"/>
 
 Summary   : <xsl:value-of select="/document/subtitle"/>
 Version   : %{version}
-Release   : 2
+Release   : 1
 License   : GPL2+
 Group     : Applications/System
 Source    : proot-%{version}.tar.gz
@@ -27,6 +27,9 @@ make -C src
 
 %install
 make -C src install PREFIX=%{buildroot}/%{prefix}
+
+%check
+make -C tests
 
 %clean
 rm -rf %{buildroot}

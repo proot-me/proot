@@ -1,9 +1,9 @@
 
-%define version 0.7.1
+%define version v0.7.1
 
 Summary   : chroot, mount --bind, and binfmt_misc without privilege/setup
 Version   : %{version}
-Release   : 2
+Release   : 1
 License   : GPL2+
 Group     : Applications/System
 Source    : proot-%{version}.tar.gz
@@ -28,6 +28,9 @@ make -C src
 
 %install
 make -C src install PREFIX=%{buildroot}/%{prefix}
+
+%check
+make -C tests
 
 %clean
 rm -rf %{buildroot}
