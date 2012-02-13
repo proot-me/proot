@@ -4,6 +4,7 @@
 #define CLI_H
 
 #include <stddef.h>
+#include "build.h"
 
 struct argument {
 	const char *name;
@@ -20,7 +21,10 @@ struct option {
 	struct argument arguments[5];
 };
 
-static const char *version = "0.7.1";
+#ifndef VERSION
+#define VERSION "0.7.1"
+#endif
+static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
 static const char *synopsis = "proot [option] ... /path/to/guest/rootfs [program [arg] ...]";
 static const char *colophon = "Contact cedric.vincent@gmail.com for bug reports, suggestions, ...\n\

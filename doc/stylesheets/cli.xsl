@@ -10,6 +10,7 @@
 #define CLI_H
 
 #include &lt;stddef.h&gt;
+#include "build.h"
 
 struct argument {
 	const char *name;
@@ -26,9 +27,12 @@ struct option {
 	struct argument arguments[5];
 };
 
+#ifndef VERSION
+#define VERSION "</xsl:text><xsl:value-of select="//version" /><xsl:text>"
+#endif
+static const char *version = VERSION;
 </xsl:text>
 
-    <xsl:apply-templates select="//version"/>
     <xsl:apply-templates select="//subtitle"/>
     <xsl:apply-templates select="//section[@names='synopsis']" />
     <xsl:apply-templates select="//section[@names='colophon']" />
@@ -50,7 +54,7 @@ static struct option options[] = {
 
   <!-- Constant string definitions -->
 
-  <xsl:template match="version|subtitle">
+  <xsl:template match="subtitle">
     <xsl:text>static const char *</xsl:text>
     <xsl:value-of select="local-name(current())" />
     <xsl:text> = "</xsl:text>
