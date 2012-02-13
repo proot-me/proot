@@ -18,7 +18,7 @@ int main(void)
 	path[status] = '\0';
 
 	if (status != strlen(path)) {
-		fprintf(stderr, "readlink() returned the wrong size %d != %d.\n", status, strlen(path));
+		fprintf(stderr, "readlink() returned the wrong size %d != %z.\n", status, strlen(path));
 		exit(EXIT_FAILURE);
 	}
 
@@ -29,7 +29,7 @@ int main(void)
 	}
 
 	if (status != strlen(path) + 1) {
-		fprintf(stderr, "getcwd() returned the wrong size %d != %d.\n", status, strlen(path));
+		fprintf(stderr, "getcwd() returned the wrong size %d != %z.\n", status, strlen(path));
 		exit(EXIT_FAILURE);
 	}
 

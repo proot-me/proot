@@ -36,6 +36,7 @@ make -C tests
 rm -rf %{buildroot}
 
 %files
+%defattr(-,root,root)
 %{prefix}/bin/proot
 %doc COPYING
 %doc doc/*

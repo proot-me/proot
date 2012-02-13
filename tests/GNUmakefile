@@ -17,7 +17,9 @@ test-%.sh: setup
 .SECONDARY: $(patsubst %.c,,$(TESTS_C))
 test-%.c: setup $(ROOTFS)/bin/test-%
 	$($(quiet)TEST)
-	$(Q)$(PROOT) -b /proc $(ROOTFS) /bin/test-$* $(silently)
+	$(Q)if [ -e $(ROOTFS)/bin/test-$* ]; then	\
+		$(PROOT) -b /proc $(ROOTFS) /bin/test-$* $(silently); \
+	fi
 
 ######################################################################
 # Build a clean rootfs
@@ -27,14 +29,14 @@ setup: $(ROOTFS)/bin/true $(ROOTFS)/bin/false    \
        $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true
 
 $(ROOTFS)/bin/abs-true:
-	ln -s /bin/true $@
+	@ln -s /bin/true $@
 
 $(ROOTFS)/bin/rel-true:
-	ln -s ./true $@
+	@ln -s ./true $@
 
 $(ROOTFS)/bin/%: # %.c
 	@test -e $(dir $@) || mkdir -p $(dir $@)
-	$(Q)$(CC) -static $*.c -o $@
+	$(Q)$(CC) -static $*.c -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

@@ -82,13 +82,10 @@ bool launch_process()
 		 * at the same address as the start of the heap
 		 * because no room was allocated.  */
 		status = getrlimit(RLIMIT_STACK, &rlimit);
-		if (status < 0)
-			notice(WARNING, SYSTEM, "can't get the maximum stack size");
-
-		if (rlimit.rlim_max == RLIM_INFINITY)
+		if (status >= 0 && rlimit.rlim_max == RLIM_INFINITY) {
 			rlimit.rlim_max = RLIM_INFINITY - 1;
-
-		status = setrlimit(RLIMIT_STACK, &rlimit);
+			status = setrlimit(RLIMIT_STACK, &rlimit);
+		}
 		if (status < 0)
 			notice(WARNING, SYSTEM, "can't set the maximum stack size");
 

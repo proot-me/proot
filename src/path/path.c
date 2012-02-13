@@ -39,6 +39,7 @@
 #include "path/canon.h"
 #include "notice.h"
 #include "config.h"
+#include "build.h"
 
 #include "compat.h"
 
