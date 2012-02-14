@@ -90,7 +90,7 @@ proot: $(OBJECTS)
 
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
-USE_BUILD_H := $(notdir $(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*.c)))
+USE_BUILD_H := $(patsubst $(SRC)%,%,$(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*.c $(SRC)*/*.c)))
 $(USE_BUILD_H): build.h
 
 %.o: %.c
