@@ -1,4 +1,4 @@
-SHELL=/lib64/ld-linux-x86-64.so.2 /bin/sh
+SHELL=/bin/bash
 FOO:=$(shell test -e /dev/null && echo OK)
 
 all:

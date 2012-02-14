@@ -11,15 +11,21 @@ test check: $(TESTS_ALL)
 .PHONY: setup test-%.sh test-%.c
 
 test-%.sh: setup
-	$($(quiet)TEST)
-	$(Q)env PROOT=$(PROOT) ROOTFS=$(ROOTFS) sh -e $@ $(silently)
+	$(Q)env PROOT=$(PROOT) ROOTFS=$(ROOTFS) sh -e $@ $(silently); $(CHECK)
 
 .SECONDARY: $(patsubst %.c,,$(TESTS_C))
 test-%.c: setup $(ROOTFS)/bin/test-%
-	$($(quiet)TEST)
 	$(Q)if [ -e $(ROOTFS)/bin/test-$* ]; then	\
-		$(PROOT) -b /proc $(ROOTFS) /bin/test-$* $(silently); \
+		$(PROOT) -b /proc $(ROOTFS) /bin/test-$* $(silently); $(CHECK) \
+	else						\
+		echo "  TEST	$* skipped";		\
 	fi
+
+CHECK = case "$$?" in					\
+		0)   echo "  TEST	$* ok";;	\
+		125) echo "  TEST	$* skipped";;	\
+		*)   echo "  TEST	$* FAILED";;	\
+	esac
 
 ######################################################################
 # Build a clean rootfs
@@ -40,8 +46,6 @@ $(ROOTFS)/bin/%: # %.c
 
 ######################################################################
 # Beautified output
-
-quiet_TEST = @echo "  TEST	$*"; $(TEST)
 
 V = 0
 ifeq ($(V), 0)
