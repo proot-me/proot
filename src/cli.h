@@ -22,7 +22,7 @@ struct option {
 };
 
 #ifndef VERSION
-#define VERSION "0.7.1"
+#define VERSION "0.7.2"
 #endif
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";

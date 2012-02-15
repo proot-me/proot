@@ -1,3 +1,43 @@
+Release v0.7.2
+==============
+
+* Note: v0.7.1 was an experimental release.
+
+* User manual finally published.
+
+* PRoot can now *mix* the execution of host programs and the execution
+  of guest programs emulated by QEMU.  This is useful to use programs
+  that aren't available initially in the guest environment and to
+  speed up build-time by using cross-compilation tools or any CPU
+  independent program, like interpreters.
+
+* Absolute symlinks from bound directories that point to any bound
+  directory are kept consistent: for example, given the host symlink
+  ``/bin/sh -> /bin/bash``, and given the command-line option ``-b
+  /bin:/foo``, the symlink will appeared as ``/foo/sh -> /foo/bash``.
+
+* Three command-line options are gone:
+
+  * ``-p`` (don't block the ptrace syscall) wasn't really useful.
+
+  * ``-e`` (don't use the ELF interpreter) isn't required anymore.
+
+  * ``-a`` (disable the ASLR mechanism) is now the default.
+
+* Don't complain anymore when parent directories of a *recommended
+  binding* (as enabled by ``-B``, ``-M`` and ``-Q`` options) can't be
+  created.
+
+* Support job control under ptrace as introduced in Linux 3.0+.
+
+* ``LD_`` environment variables are now passed to the QEMUlated
+  program, not to QEMU itself.  It means ``ldd`` works (there's a bug
+  in QEMU/ARM though).
+
+* Many fixes and improved compatibility thanks to the Open Build
+  Service instantiated at http://build.opensuse.com
+
+
 Release v0.7.0
 ==============
 

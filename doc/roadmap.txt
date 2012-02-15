@@ -5,9 +5,24 @@
 Next minor
 ==========
 
-* Write a manual
+* Fix the detranslation of "conflicting" host-side bindings.
 
-    * Explain why PRoot does not work with setuid programs
+  The detranslation isn't a state machine yet, hence it doesn't know
+  how to detranslate correctly when there are several bindings with
+  the same host-side::
+
+      $ proot -w /a -m /tmp:/a -m /tmp:/b ../tests/rootfs /bin/pwd
+      /b
+
+      $ proot -w /a -m /tmp:/b -m /tmp:/a ../tests/rootfs /bin/pwd
+      /a
+
+* Make ``/proc/self/exe`` point to the original program name
+
+    That was the prupose of the field ``exe`` in the structure
+    ``tracee_info``
+
+* Handle /proc/<pid>/(exe|cwd) where <pid> is a process traced by PRoot (i.e not only "self").
 
 
 Next major
@@ -18,6 +33,8 @@ Next major
     * Remove the use of PATH_MAX and ARG_MAX
 
     * Remove most of string copy.
+
+* Use the mixed-mode mechanism to run QEMU (instead of trigger/LD_PRELOAD)
 
 
 Not yet scheduled
@@ -35,18 +52,6 @@ Fixes
 
       guest$ cd /does_not_exist/etc
       sh: cd: /does_not_exist/etc: No such file or directory
-
-* Fix the detranslation of "conflicting" host-side bindings.
-
-  The detranslation isn't a state machine yet, hence it doesn't know
-  how to detranslate correctly when there are several bindings with
-  the same host-side::
-
-      $ proot -w /a -m /tmp:/a -m /tmp:/b ../tests/rootfs /bin/pwd
-      /b
-
-      $ proot -w /a -m /tmp:/b -m /tmp:/a ../tests/rootfs /bin/pwd
-      /a
 
 * Fix support for /proc/self when /proc isn't binded (but /proc/self is)
 
@@ -71,13 +76,6 @@ Features
 * Distinguish the runner mode ``-r/-R`` and QEMU specific modes ``-q/-Q``
 
 * Add support for coalesced options, for instance ``proot -eM``
-
-* Make ``/proc/self/exe`` point to the original program name
-
-    That was the prupose of the field ``exe`` in the structure
-    ``tracee_info``
-
-* Handle /proc/<pid>/(exe|cwd) where <pid> is a process traced by PRoot (i.e not only "self").
 
 * Support guest ELF endianness different from the host one.
 
@@ -144,6 +142,8 @@ Clean-up
 
 Misc.
 -----
+
+* Explain why PRoot does not work with setuid programs
 
 * Check (in ld.so sources) if more than one RPATH/RUNPATH entry is allowed.
 
