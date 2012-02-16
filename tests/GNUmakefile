@@ -6,9 +6,15 @@ TESTS_SH  = $(wildcard test-*.sh)
 TESTS_C   = $(wildcard test-*.c)
 TESTS_ALL = $(TESTS_SH) $(TESTS_C)
 
-test check: $(TESTS_ALL)
+test check: | clean_failure check_failure
 
-.PHONY: setup test-%.sh test-%.c
+clean_failure:
+	@rm -f failure
+
+check_failure: $(TESTS_ALL)
+	@! test -e failure
+
+.PHONY: test check clean_failure check_failure setup test-%.sh test-%.c
 
 test-%.sh: setup
 	$(Q)env PROOT=$(PROOT) ROOTFS=$(ROOTFS) sh -e $@ $(silently); $(CHECK)
@@ -24,7 +30,8 @@ test-%.c: setup $(ROOTFS)/bin/test-%
 CHECK = case "$$?" in					\
 		0)   echo "  TEST	$* ok";;	\
 		125) echo "  TEST	$* skipped";;	\
-		*)   echo "  TEST	$* FAILED";;	\
+		*)   echo "  TEST	$* FAILED";	\
+		     touch failure ;;			\
 	esac
 
 ######################################################################
