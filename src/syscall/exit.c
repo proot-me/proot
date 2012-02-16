@@ -22,6 +22,14 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
+/* This file is included by syscall.c, it can return two kinds of
+ * status code:
+ *
+ * - break: update the syscall result register with "status"
+ *
+ * - goto end: "status < 0" means the tracee is dead, otherwise do
+ *             nothing.
+ */
 switch (tracee->sysnum) {
 case PR_getcwd: {
 	char path[PATH_MAX];
@@ -108,6 +116,7 @@ case PR_readlinkat: {
 	size_t old_size;
 	size_t new_size;
 	size_t max_size;
+	word_t input;
 	word_t output;
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
@@ -155,11 +164,22 @@ case PR_readlinkat: {
 		goto end;
 	pointee[old_size] = '\0';
 
+	input = peek_ureg(tracee, tracee->sysnum == PR_readlink
+			        ? SYSARG_1 : SYSARG_2);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
 	/* Not optimal but safe (path is fully translated).  */
-	status = get_sysarg_path(tracee, pointer, tracee->sysnum == PR_readlink
-						  ? SYSARG_1 : SYSARG_2);
+	status = get_tracee_string(tracee, pointer, input, PATH_MAX);
 	if (status < 0)
+		goto end;
+
+	if (status >= PATH_MAX) {
+		status = -ENAMETOOLONG;
 		break;
+	}
 
 	status = detranslate_path(pointee, false, !belongs_to_guestfs(pointer));
 	if (status < 0)
