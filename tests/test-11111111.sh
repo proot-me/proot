@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -z `which cat` ] || [ -z `which readlink` ] || [ -z `which mcookie` ] || [ -z `which touch` ] || [ -z `which mkdir` ] || [ -z `which ln` ] || [ -z `which grep` ] || [ -z `which rm` ]; then
+    exit 125;
+fi
+
 set +e
 
 x1="r1 d1 rl1 dl1" # root of the test tree.
@@ -14,9 +18,9 @@ generate () {
     {
 	for c in ${x4} ""; do
 	    x="${1}${c}"
-	    $(cd ${x}           2>/dev/null);      cd_result=$?
-	    /bin/cat ${x}       2>/dev/null;       cat_result=$?
-	    /bin/readlink ${x}  2>/dev/null 1>&2;  readlink_result=$?
+	    $(cd ${x}      2>/dev/null);      cd_result=$?
+	    cat ${x}       2>/dev/null;       cat_result=$?
+	    readlink ${x}  2>/dev/null 1>&2;  readlink_result=$?
 	    echo "${x}, $cd_result, $cat_result, $readlink_result" >> $output
 	done
     }

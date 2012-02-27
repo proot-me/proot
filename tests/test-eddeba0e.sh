@@ -1,5 +1,5 @@
-if ! /bin/pwd -P > /dev/null 2>&1; then
+if ! /usr/bin/pwd -P || [ -z `which grep` ]; then
     exit 125;
 fi
 
-${PROOT} / /bin/pwd -P | grep '^/$'
+${PROOT} / /usr/bin/pwd -P | grep '^/$'

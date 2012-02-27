@@ -1,5 +1,5 @@
-if [ -z `which timeout` ] || [ ! -x /usr/bin/msgmerge ]; then
+if [ -z `which timeout` ] || [ -z `which msgmerge` ] || [ ! -e /dev/null ]; then
     exit 125;
 fi
 
-timeout 5s ${PROOT} / /usr/bin/msgmerge -q /dev/null /dev/null
+timeout 5s ${PROOT} / msgmerge -q /dev/null /dev/null

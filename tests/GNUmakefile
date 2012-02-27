@@ -12,7 +12,7 @@ clean_failure:
 	@rm -f failure
 
 check_failure: $(TESTS_ALL)
-	@! test -e failure
+	@bash -c '! test -e failure'
 
 .PHONY: test check clean_failure check_failure setup test-%.sh test-%.c
 
@@ -42,10 +42,10 @@ setup: $(ROOTFS)/bin/true $(ROOTFS)/bin/false    \
        $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true
 
 $(ROOTFS)/bin/abs-true:
-	@ln -s /bin/true $@
+	@ln -fs /bin/true $@
 
 $(ROOTFS)/bin/rel-true:
-	@ln -s ./true $@
+	@ln -fs ./true $@
 
 $(ROOTFS)/bin/%: # %.c
 	@test -e $(dir $@) || mkdir -p $(dir $@)
