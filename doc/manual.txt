@@ -185,7 +185,7 @@ The following options are aliases for handy sets of options.
     the recommended bindings.
 
 -W
-    Alias: ``-b $PWD -w $PWD``.
+    Alias: ``-b `pwd` -w `pwd```.
 
     Make the current working directory accessible in the guest rootfs
     and then use it as the initial working directory.  This option is

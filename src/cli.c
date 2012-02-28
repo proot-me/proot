@@ -22,6 +22,7 @@
  * Author: Cedric VINCENT (cedric.vincent@st.com)
  */
 
+#define _GNU_SOURCE    /* get_current_dir_name(3), */
 #include <stdio.h>     /* printf(3), */
 #include <string.h>    /* string(3), */
 #include <stdlib.h>    /* exit(3), */
@@ -243,11 +244,17 @@ static void handle_option_Q(char *value)
 
 static void handle_option_W(char *value)
 {
-	value = getenv("PWD");
+	const char *default_value = ".";
+
+	value = get_current_dir_name();
 	if (!value)
-		value = ".";
+		value = (char *) default_value;
+
 	handle_option_b(value);
 	handle_option_w(value);
+
+	if (value != default_value)
+		free(value);
 }
 
 #define NB_OPTIONS (sizeof(options) / sizeof(struct option))

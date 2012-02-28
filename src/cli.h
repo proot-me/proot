@@ -162,7 +162,7 @@ static struct option options[] = {
 		{ .name = "-W", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_W,
-	  .description = "Alias: -b $PWD -w $PWD.",
+	  .description = "Alias: -b `pwd` -w `pwd`.",
 	},
 };
 
