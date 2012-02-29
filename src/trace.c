@@ -83,7 +83,8 @@ bool launch_process()
 		 * because no room was allocated.  */
 		status = getrlimit(RLIMIT_STACK, &rlimit);
 		if (status >= 0 && rlimit.rlim_max == RLIM_INFINITY) {
-			rlimit.rlim_max = 3221225471; /* 3GB - 1 */
+			/* "No one will need more than 768MB of stack memory" (tm).  */
+			rlimit.rlim_max = 805306368;
 			if (rlimit.rlim_cur > rlimit.rlim_max)
 				rlimit.rlim_cur = rlimit.rlim_max;
 			status = setrlimit(RLIMIT_STACK, &rlimit);
