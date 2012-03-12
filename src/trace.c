@@ -75,16 +75,48 @@ bool launch_process()
 		    || personality(status | ADDR_NO_RANDOMIZE) < 0)
 			notice(WARNING, INTERNAL, "can't disable ASLR");
 
-		/* The setting of the hard limit of maximum stack size
-		 * is a workaround for an odd bug (from the Linux
-		 * kernel?): when the *current* limit of the maximum
-		 * stack size is set to infinity, a DSO can be mmaped
-		 * at the same address as the start of the heap
-		 * because no room was allocated.  */
+		/* 1. The ELF interpreter is explicitly used as a
+		 *    loader by PRoot, it means the Linux kernel
+		 *    allocates the heap segment for this loader, not
+		 *    for the application.  It isn't really a problem
+		 *    since the application re-uses the loader's heap
+		 *    transparently, i.e. its own brk points there.
+		 *
+		 * 2. When the current stack limit is set to a "high"
+		 *    value, the ELF interpreter is loaded to a "low"
+		 *    address, I guess it is the way the Linux kernel
+		 *    deals with this constraint.
+		 *
+		 * This two behaviors can be observed by running the
+		 * command "/usr/bin/cat /proc/self/maps", with/out
+		 * the ELF interpreter and with/out a high current
+		 * stack limit.
+		 *
+		 * When this two behaviors are combined, the dynamic
+		 * ELF linker might mmap a shared libraries to the
+		 * same address as the start of its heap if no heap
+		 * allocation was made prior this mmap.  This problem
+		 * was first observed with something similar to the
+		 * example below (because GNU make sets the current
+		 * limit to the maximum):
+		 *
+		 *     #!/usr/bin/make -f
+		 *
+		 *     SHELL=/lib64/ld-linux-x86-64.so.2 /usr/bin/bash
+		 *     FOO:=$(shell test -e /dev/null && echo OK)
+		 *
+		 *     all:
+		 *            @/usr/bin/test -n "$(FOO)"
+		 *
+		 * The code below is a workaround to this wrong
+		 * combination of behaviors, however it might create
+		 * conflict with tools that assume a "standard" stack
+		 * layout, like libgomp and QEMU.
+		 */
 		status = getrlimit(RLIMIT_STACK, &rlimit);
 		if (status >= 0 && rlimit.rlim_max == RLIM_INFINITY) {
-			/* "No one will need more than 768MB of stack memory" (tm).  */
-			rlimit.rlim_max = 805306368;
+			/* "No one will need more than 256MB of stack memory" (tm).  */
+			rlimit.rlim_max = 256 * 1024 * 1024;
 			if (rlimit.rlim_cur > rlimit.rlim_max)
 				rlimit.rlim_cur = rlimit.rlim_max;
 			status = setrlimit(RLIMIT_STACK, &rlimit);

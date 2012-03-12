@@ -27,6 +27,17 @@ test-%.c: setup $(ROOTFS)/bin/test-%
 		echo "  TEST	$* skipped";		\
 	fi
 
+# Very special test.
+test-bdc90417:
+	$(Q)$(CC) $@.c -o $@ $(silently) || true
+
+test-bdc90417.c: test-bdc90417
+	$(Q)if [ -e $< ]; then			\
+		$(PROOT) / $< ; $(CHECK)	\
+	else					\
+		echo "  TEST	$* skipped";	\
+	fi
+
 CHECK = case "$$?" in					\
 		0)   echo "  TEST	$* ok";;	\
 		125) echo "  TEST	$* skipped";;	\
