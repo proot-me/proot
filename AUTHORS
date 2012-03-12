@@ -1,0 +1,26 @@
+The copyright holder for PRoot is STMicroelectronics, this tool is
+developed in the Compiler Expertise Center by:
+
+Cédric VINCENT <cedric.vincent@st.com>
+        Original author, maintainer.
+
+Yves JANIN <yves.janin@st.com>
+        Support for the i386 architecture, many experiments and bug reports.
+
+Claire ROBINE <claire.robine@st.com>
+        Many bug fixes.
+
+Clément BAZIN <clement@bazin-fr.org>
+        Plugins interface, dependency tracker plugin, and bug reports.
+
+Christophe GUILLON <christophe.guillon@st.com>
+        Relocatable build directory, plugin experiments, and bug reports.
+
+Rémi DURAFFORT <remi.duraffort@st.com>
+        Bug reports.
+
+Christian BERTIN <christian.bertin@st.com>
+        Valuable support.
+
+Denis FERRANTI <denis.ferranti@st.com>
+        Valuable support.

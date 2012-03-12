@@ -18,9 +18,6 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
  * 02110-1301 USA.
- *
- * Author: Cedric VINCENT (cedric.vincent@st.com)
- * Inspired by: ld.so(8) from the GNU C Library.
  */
 
 #include <stdbool.h> /* bool, true, false, */

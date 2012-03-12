@@ -22,12 +22,12 @@ struct option {
 };
 
 #ifndef VERSION
-#define VERSION "0.7.2"
+#define VERSION "1.8.2"
 #endif
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
 static const char *synopsis = "proot [option] ... /path/to/guest/rootfs [program [arg] ...]";
-static const char *colophon = "Contact cedric.vincent@gmail.com for bug reports, suggestions, ...\n\
+static const char *colophon = "Visit http://proot.me for help, bug reports, suggestions, patchs, ...\n\
 Copyright (C) 2010, 2011, 2012 STMicroelectronics, licensed under GPL\n\
 v2 or later.";
 
@@ -148,21 +148,21 @@ static struct option options[] = {
 		{ .name = "-M", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_B,
-	  .description = "Alias: -b for each path of a recommended list.",
+	  .description = "Alias: -b for each path of a recommended list",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-Q", .separator = ' ', .value = "command" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_Q,
-	  .description = "Alias: -q *command* -B.",
+	  .description = "Alias: -q *command* -B",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-W", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_W,
-	  .description = "Alias: -b `pwd` -w `pwd`.",
+	  .description = "Alias: -b . -w .",
 	},
 };
 

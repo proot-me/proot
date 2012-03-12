@@ -24,7 +24,7 @@
 # -----------------------------------------------------------------------------
 
 PRGNAM=proot
-VERSION=${VERSION:-v0.7.2}
+VERSION=${VERSION:-v1.8.2}
 BUILD=${BUILD:-1}
 TAG=${TAG:-ced}
 

@@ -1,7 +1,8 @@
-Release v0.7.2
+Release v1.8.2
 ==============
 
-* Note: v0.7.1 was an experimental release.
+* This is the first public release of PRoot, it's time to increase its
+  maturity artificially ...  Actually it's an homage to Blink 182 ;)
 
 * User manual finally published.
 
@@ -36,6 +37,8 @@ Release v0.7.2
 
 * Many fixes and improved compatibility thanks to the Open Build
   Service instantiated at http://build.opensuse.com
+
+* Note: v0.7.1 was an experimental release.
 
 
 Release v0.7.0

@@ -6,8 +6,8 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2012-03-05
-:Version: 0.7.2
+:Date: 2012-03-18
+:Version: 1.8.2
 :Manual section: 1
 
 
@@ -152,7 +152,7 @@ Alias options
 The following options are aliases for handy sets of options.
 
 -B, -M
-    Alias: ``-b`` for each path of a recommended list.
+    Alias: ``-b`` for each path of a recommended list
 
     There are a couple of bindings that are needed by most guest
     programs to behave correctly regarding the configuration part of
@@ -179,13 +179,13 @@ The following options are aliases for handy sets of options.
     * $HOME
 
 -Q command
-    Alias: ``-q *command* -B``.
+    Alias: ``-q *command* -B``
 
     This option is highly recommended when using QEMU; it enables all
     the recommended bindings.
 
 -W
-    Alias: ``-b . -w .``.
+    Alias: ``-b . -w .``
 
     Make the current working directory accessible in the guest rootfs
     and then use it as the initial working directory.  This option is
@@ -378,6 +378,6 @@ chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1), bindfs(1)
 Colophon
 ========
 
-Contact cedric.vincent@gmail.com for bug reports, suggestions, ...
+Visit http://proot.me for help, bug reports, suggestions, patchs, ...
 Copyright (C) 2010, 2011, 2012 STMicroelectronics, licensed under GPL
 v2 or later.
