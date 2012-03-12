@@ -64,6 +64,17 @@ Fixes
 
 * Fix support for runners that do execve()
 
+* Fix the termination of the canonicalized path in the following case:
+
+    $ cd /foo/bar
+    $ proot -v -b . [...]
+    [...]
+    proot info: binding = /foo/bar:/foo/bar/.
+
+    $ proot -v -b .. [...]
+    [...]
+    proot info: binding = /foo
+
 
 Features
 --------

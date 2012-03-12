@@ -343,7 +343,12 @@ void init_bindings()
 		assert(!binding->sanitized);
 
 		strcpy(tmp, binding->location.path);
-		binding->location.path[0] = '\0';
+
+		/* In case binding->location.path is relative.  */
+		if (!getcwd(binding->location.path, PATH_MAX)) {
+			notice(WARNING, SYSTEM, "can't sanitize binding \"%s\"");
+			goto error;
+		}
 
 		/* Sanitize the location of the binding within the
 		   alternate rootfs since it is assumed by
@@ -361,6 +366,8 @@ void init_bindings()
 			goto error;
 		}
 
+		/* TODO: use a real path comparison function, for instance
+		 * strcmp(3) reports a wrong result with "/foo" and "/foo/."  */
 		binding->need_substitution = strcmp(binding->real.path, binding->location.path);
 		binding->location.length = strlen(binding->location.path);
 
@@ -376,7 +383,7 @@ void init_bindings()
 		continue;
 
 	error:
-		/* XXX TODO: remove this element from the list instead. */
+		/* TODO: remove this element from the list instead. */
 		binding->sanitized = 0;
 	}
 }

@@ -244,17 +244,8 @@ static void handle_option_Q(char *value)
 
 static void handle_option_W(char *value)
 {
-	const char *default_value = ".";
-
-	value = get_current_dir_name();
-	if (!value)
-		value = (char *) default_value;
-
-	handle_option_b(value);
-	handle_option_w(value);
-
-	if (value != default_value)
-		free(value);
+	handle_option_w(".");
+	handle_option_b(".");
 }
 
 #define NB_OPTIONS (sizeof(options) / sizeof(struct option))
@@ -417,13 +408,13 @@ int main(int argc, char *argv[])
 	else
 		config.command = default_command;
 
-	if (config.verbose_level)
-		print_config();
-
 	/* TODO: remove the need for initialization.  */
 	init_module_path();
 	init_module_tracee_info();
 	init_module_ldso();
+
+	if (config.verbose_level)
+		print_config();
 
 	status = pid
 		? attach_process(pid)
