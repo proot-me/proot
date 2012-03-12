@@ -59,5 +59,6 @@ enum sysarg {
 extern int translate_syscall(pid_t pid);
 extern int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg);
 extern int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg);
+extern int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum sysarg sysarg);
 
 #endif /* SYSCALL_H */

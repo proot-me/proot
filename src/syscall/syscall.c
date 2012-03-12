@@ -82,31 +82,30 @@ int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg
 }
 
 /**
- * Copy @path in the @tracee's memory address space pointed to by
- * the @sysarg argument of the current syscall.  This function returns
- * -errno if an error occured, otherwise it returns the size in bytes
- * "allocated" into the stack.
+ * Copy @size bytes of the data pointed to by @tracer_ptr to a
+ * @tracee's memory block allocated below its stack and make the
+ * @sysarg argument of the current syscall points to this new block.
+ * This function returns -errno if an error occured, otherwise it
+ * returns the size in bytes "allocated" into the stack.
  */
-int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg)
+int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum sysarg sysarg)
 {
 	word_t tracee_ptr;
 	int status;
-	int size;
 
-	/* Allocate space into the tracee's stack to host the new path. */
-	size = strlen(path) + 1;
+	/* Allocate space into the tracee's stack to host the new data. */
 	tracee_ptr = resize_tracee_stack(tracee, size);
 	if (tracee_ptr == 0)
 		return -EFAULT;
 
-	/* Copy the new path into the previously allocated space. */
-	status = copy_to_tracee(tracee, tracee_ptr, path, size);
+	/* Copy the new data into the previously allocated space. */
+	status = copy_to_tracee(tracee, tracee_ptr, tracer_ptr, size);
 	if (status < 0) {
 		(void) resize_tracee_stack(tracee, -size);
 		return status;
 	}
 
-	/* Make this argument point to the new path. */
+	/* Make this argument point to the new data. */
 	status = poke_ureg(tracee, sysarg, tracee_ptr);
 	if (status < 0) {
 		(void) resize_tracee_stack(tracee, -size);
@@ -114,6 +113,17 @@ int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg
 	}
 
 	return size;
+}
+
+/**
+ * Copy @path to a @tracee's memory block allocated below its stack
+ * and make the @sysarg argument of the current syscall points to this
+ * new block.  This function returns -errno if an error occured,
+ * otherwise it returns the size in bytes "allocated" into the stack.
+ */
+int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg)
+{
+	return set_sysarg_data(tracee, path, strlen(path) + 1, sysarg);
 }
 
 /**
