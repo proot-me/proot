@@ -49,25 +49,23 @@
 
 	  <div class="section" id="download">
 	    <h2>Download</h2>
-	    <xsl:variable name="targz">proot-v<xsl:value-of select="/document/docinfo/version"/>.tar.gz</xsl:variable>
 	    <p>
-	      The latest version is available here:
-	      <a>
-		<xsl:attribute name="href">https://github.com/downloads/cedric-vincent/PRoot/<xsl:copy-of select="$targz"/>
-		</xsl:attribute>
-		<xsl:copy-of select="$targz"/>
-	      </a>
-	      (broken link: not publicly published yet)
+	      PRoot sources are hosted on <a
+	      href="https://github.com/cedric-vincent/PRoot">GitHub</a>
+	      and the latest release is <a
+	      href="http://software.opensuse.org/download.html?project=home:cedric-vincent&#38;package=PRoot">packaged
+	      for most PC Linux distributions</a>, choose wisely ;)
 	    </p>
 	  </div>
 
 	  <div class="section" id="help">
 	    <h2>Help</h2>
-	    <p>Feel free to send your questions to <a
-	    href="mailto:proot_me@googlegroups.com">proot_me@googlegroups.com</a>
-	    if you didn't find answers by reading the <a
+	    <p>Feel free to send your questions, bug reports,
+	    suggestions, and patchs to <a
+	    href="mailto:proot_me@googlegroups.com">proot_me@googlegroups.com</a>,
+	    but please be sure that your answer isn't in the <a
 	    href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
-	    manual</a> (broken link: not publicly published yet).
+	    manual</a> first.
 	    </p>
 	  </div>
 
