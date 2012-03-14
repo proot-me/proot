@@ -21,19 +21,21 @@ Description
 ===========
 
 PRoot is a user-mode implementation of ``chroot``, ``mount --bind``,
-and ``binfmt_misc``, that means users don't need any privilege or
-setup to use an arbitrary directory as the new root file-system, to
-make files accessible somewhere else in the file-system hierarchy, and
-to execute programs built for another CPU architecture transparently
-through QEMU.  PRoot relies on ``ptrace``, an unprivileged system-call
-available in every Linux kernels.
+and ``binfmt_misc``. This means that users don't need any privilege or
+setup to do things like: using an arbitrary directory as the new root
+file-system or making files accessible somewhere else in the
+file-system hierarchy or executing programs built for another CPU
+architecture transparently through QEMU.
+
+PRoot relies on ``ptrace``, an unprivileged system-call, available in
+every Linux kernel.
 
 The new root file-system, a.k.a *guest rootfs*, typically contains a
 Linux distribution.  By default PRoot confines the execution of
 programs to the guest rootfs only, however users can use the built-in
 *mount/bind* mechanism to access files and directories from the actual
-root file-system, a.k.a *host rootfs*, as if they were part of the
-guest rootfs.
+root file-system, a.k.a *host rootfs*, just as if they were part of
+the guest rootfs.
 
 When the guest Linux distribution is made for a CPU architecture
 incompatible with the host one, PRoot uses the CPU emulator QEMU to
@@ -44,17 +46,17 @@ environment.  That way all of the cross-compilation issues are
 avoided.
 
 PRoot can also *mix* the execution of host programs and the execution
-of guest programs emulated by QEMU.  This is useful to use programs
-that aren't available initially in the guest environment and to speed
-up build-time by using cross-compilation tools or any CPU independent
-program, like interpreters.
+of guest programs emulated by QEMU.  This is useful for programs that
+aren't available initially in the guest environment and to speed up
+build-time by using cross-compilation tools or CPU-independent
+programs, like interpreters.
 
 It is worth noting that the guest kernel is never involved, regardless
-of whether QEMU is used.  Technically, when guest programs perform
-access to system resources, PRoot translates their requests before
-sending them to the host kernel.  This implies guest programs can use
-host resources (devices, network, ...) just as if they were "normal"
-host programs.
+of whether QEMU is used or not.  Technically, when guest programs
+perform access to system resources, PRoot translates their requests
+before sending them to the host kernel.  This means that guest
+programs can use host resources (devices, network, ...) just as if
+they were "normal" host programs.
 
 
 Options
@@ -62,9 +64,10 @@ Options
 
 The command-line interface is composed of three *ordered* parts:
 PRoot's options (optional), path to the guest rootfs (mandatory), and
-the command to launch (``/bin/sh`` if none were specified).  This
-section describes the options supported by PRoot, that is, the first
-part of its command-line interface.
+the command to launch (``/bin/sh`` by default).
+
+This section describes the options supported by PRoot, that is, the
+first part of its command-line interface.
 
 
 Regular options
@@ -73,15 +76,12 @@ Regular options
 -b path, --bind=path, -m path, --mount=path
     Make the content of *path* accessible in the guest rootfs.
 
-    This option makes any file from the host rootfs accessible in the
-    confined environment just as if it were initially part of the
-    guest rootfs.  By default the host path is bound to the same path
-    in the guest rootfs but users can specify any other location by
-    using the syntax ``-b *host_path*:*guest_location*``, such
+    This option makes any file or directory of the host rootfs
+    accessible in the confined environment just as if it were part of
+    the guest rootfs.  By default the host path is bound to the same
+    path in the guest rootfs but users can specify any other location
+    with the syntax: ``-b *host_path*:*guest_location*``. Such
     bindings are said "asymmetric".
-
-    This option is automatically enabled by the options ``-B``
-    (recommended!), ``-M``, ``-Q``, and ``-W``.
 
 -q command, --qemu=command
     Execute guest programs through QEMU as specified by *command*.
@@ -103,14 +103,14 @@ Regular options
     is ``./configure`` scripts.  This option avoids the need for
     running a shell and then entering the directory manually.
 
-    This option is automatically enabled by the option ``-W``.
+    See option ``-W``.
 
 -u, --allow-unknown-syscalls
     Allow the execution of unknown syscalls.
 
-    PRoot has to know the semantic of a syscall to translate its
-    arguments, that's why any syscall PRoot isn't aware of is blocked.
-    This option disable this default behavior.
+    PRoot has to know the semantics of a syscall to translate its
+    arguments. This is why any syscall that PRoot isn't aware of is
+    blocked.  This option disables this default behavior.
 
 -k string, --kernel-release=string
     Force syscall ``uname`` to report *string* as kernel release.
@@ -122,15 +122,14 @@ Regular options
     kernel more recent than the one used on their computers, they will
     get the error "FATAL: kernel too old".  This option allows users
     to cheat this sanity check by faking the release number of the
-    current kernel.  This option has to be used with care since it
-    does not improve the compatibility, it just allow to by-pass the
-    sanity check.
+    current kernel.  This option should be used with care since it
+    does not improve the compatibility.
 
 -0, --root-id
     Force syscalls ``get*id`` to report identity 0, aka "root".
 
-    Some programs explicitly refuse to work if they are not run with
-    "root" privileges, even if there is no technical reason.  This
+    Some programs will refuse to work if they are not run with "root"
+    privileges, even if there is no technical reason for that. This
     option allows users to cheat this kind of check by faking the user
     and group identity.
 
@@ -140,7 +139,7 @@ Regular options
     Increase the level of debug information.
 
 -V, --version, --about
-    Print version, copyright, license, and contact, then exit.
+    Print version, copyright, license and contact, then exit.
 
 -h, --help, --usage
     Print the version and the command-line usage, then exit.
@@ -152,14 +151,14 @@ Alias options
 The following options are aliases for handy sets of options.
 
 -B, -M
-    Alias: ``-b`` for each path of a recommended list
+    Alias: ``-b`` for each path of the list below
 
-    There are a couple of bindings that are needed by most guest
+    There are a couple of bindings that are needed for most guest
     programs to behave correctly regarding the configuration part of
     the host computer which is not specific to the host Linux
     distribution, such as: user/group information, network setup,
-    run-time information, users' files, ...  This option -- which is
-    highly recommended -- enables such bindings:
+    run-time information, users' files, ... This highly recommended
+    option enables the following bindings:
 
     * /etc/host.conf
     * /etc/hosts
@@ -196,11 +195,11 @@ The following options are aliases for handy sets of options.
 Exit Status
 ===========
 
-If an internal error occurred, ``proot`` returns a non-zero exit
-status, otherwise it returns the exit status of the last terminated
-program.  When an error occurred, the only way to know if it comes
-comes from the program or from ``proot`` is to have a look at the
-error message.
+If an internal error occurs, ``proot`` returns a non-zero exit status,
+otherwise it returns the exit status of the last terminated
+program. When an error has occurred, the only way to know if it comes
+from the last terminated program or from ``proot`` itself is to have a
+look at the error message.
 
 
 Files
@@ -210,27 +209,27 @@ PRoot reads links in ``/proc/<pid>/fd/`` to support `openat(2)`-like
 syscalls made by the guest programs.
 
 
-Example
-=======
+Examples
+========
 
 In the following examples the directories ``/mnt/slackware-8.0`` and
 ``/mnt/armslack-12.2/`` contain a Linux distribution respectively made
 for x86 CPUs and ARM CPUs.
 
 
-``chroot``
-----------
+``chroot`` equivalent
+---------------------
 
-To execute a program inside a given Linux distribution, users just
-have to specify the path to the guest rootfs followed by the desired
-command.  The example below executes the program ``cat`` to print the
-content of a file, both are from the guest Linux distribution::
+To execute a command inside a given Linux distribution, just give
+``proot`` the path to the guest rootfs followed by the desired command.
+The example below executes the program ``cat`` to print the content of
+a file::
 
     proot /mnt/slackware-8.0/ cat /etc/motd
     
     Welcome to Slackware Linux 8.0
 
-The default command is ``/bin/sh`` if none were specified, thus the
+The default command is ``/bin/sh`` when none is specified. Thus the
 shortest way to confine an interactive shell and all its sub-programs
 is::
 
@@ -240,8 +239,8 @@ is::
     Welcome to Slackware Linux 8.0
 
 
-``mount --bind``
-----------------
+``mount --bind`` equivalent
+---------------------------
 
 The option ``-b``, short for ``--bind``, makes any file from the host
 rootfs accessible in the confined environment just as if it were
@@ -253,7 +252,7 @@ programs that rely on some specific files::
     $ ps -o tty,command
     Error, do this: mount -t proc none /proc
 
-::
+Works better with::
 
     proot -b /proc /mnt/slackware-8.0/
     
@@ -281,7 +280,7 @@ The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using ``/`` as the path to the guest rootfs and
 by specifying an alternate binding location (separated by ``:``).  It
 is quite handy to cheat programs that perform access to hard-coded
-locations, like not well written installation scripts::
+locations, like some installation scripts::
 
     proot -b /tmp/alternate_usr:/usr /
     
@@ -291,14 +290,14 @@ locations, like not well written installation scripts::
     install -m 755 prog "/usr/bin"
     [...] # prog was installed in "/tmp/alternate_usr/bin" actually
 
-or to substitute system configuration files, for example the DNS
-setting::
+It can also be used to substitute system configuration files, for
+example the DNS setting::
 
     proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com
 
 
-``binfmt_misc``
----------------
+``binfmt_misc`` equivalent
+--------------------------
 
 PRoot uses QEMU to execute programs built for a CPU architecture
 incompatible with the host one.  From users' point-of-view, guest
