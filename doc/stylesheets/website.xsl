@@ -38,14 +38,14 @@
 	  <div id="contents">
 	    <ul>
 	      <li><a href="#description">Description</a></li>
-	      <li><a href="#example">Example</a></li>
+	      <li><a href="#examples">Examples</a></li>
 	      <li><a href="#download">Download</a></li>
 	      <li><a href="#help">Help</a></li>
 	    </ul>
 	  </div>
 
 	  <xsl:apply-templates select="//section[@names='description']" />
-	  <xsl:apply-templates select="//section[@names='example']" />
+	  <xsl:apply-templates select="//section[@names='examples']" />
 
 	  <div class="section" id="download">
 	    <h2>Download</h2>

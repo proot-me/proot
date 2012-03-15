@@ -1,11 +1,11 @@
 proot: proot (chroot, mount --bind, and binfmt_misc without any privilege)
 proot:
-proot: PRoot is a user-mode implementation of chroot, mount --bind,
-proot: and binfmt_misc, that means users don't need any privilege or
-proot: setup to use an arbitrary directory as the new root
-proot: file-system, to make files accessible somewhere else in the
-proot: file-system hierarchy, and to execute programs built for
-proot: another CPU architecture transparently through QEMU.  PRoot
-proot: relies on ptrace, an unprivileged system-call available in
-proot: every Linux kernels.
+proot: PRoot is a user-space implementation of chroot, mount --bind,
+proot: and binfmt_misc.  It relies on ptrace, an unprivileged
+proot: system-call, available in every Linux kernel.  This means that
+proot: users don't need any privilege or setup to do things like:
+proot: using an arbitrary directory as the new root file-system or
+proot: making files accessible somewhere else in the file-system
+proot: hierarchy or executing programs built for another CPU
+proot: architecture transparently through QEMU.
 proot: Home: http://proot.me

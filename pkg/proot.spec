@@ -12,13 +12,14 @@ Prefix    : /usr
 Name      : proot
 
 %description
-PRoot is a user-mode implementation of chroot, mount --bind,
-and binfmt_misc, that means users don't need any privilege or
-setup to use an arbitrary directory as the new root file-system, to
-make files accessible somewhere else in the file-system hierarchy, and
-to execute programs built for another CPU architecture transparently
-through QEMU.  PRoot relies on ptrace, an unprivileged system-call
-available in every Linux kernels.
+PRoot is a user-space implementation of chroot, mount --bind,
+and binfmt_misc.  It relies on ptrace, an unprivileged
+system-call, available in every Linux kernel.  This means that users
+don't need any privilege or setup to do things like: using an
+arbitrary directory as the new root file-system or making files
+accessible somewhere else in the file-system hierarchy or executing
+programs built for another CPU architecture transparently through
+QEMU.
 
 %prep
 %setup -n proot-%{version}

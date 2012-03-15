@@ -20,15 +20,14 @@ Synopsis
 Description
 ===========
 
-PRoot is a user-mode implementation of ``chroot``, ``mount --bind``,
-and ``binfmt_misc``. This means that users don't need any privilege or
-setup to do things like: using an arbitrary directory as the new root
-file-system or making files accessible somewhere else in the
-file-system hierarchy or executing programs built for another CPU
-architecture transparently through QEMU.
-
-PRoot relies on ``ptrace``, an unprivileged system-call, available in
-every Linux kernel.
+PRoot is a user-space implementation of ``chroot``, ``mount --bind``,
+and ``binfmt_misc``.  It relies on ``ptrace``, an unprivileged
+system-call, available in every Linux kernel.  This means that users
+don't need any privilege or setup to do things like: using an
+arbitrary directory as the new root file-system or making files
+accessible somewhere else in the file-system hierarchy or executing
+programs built for another CPU architecture transparently through
+QEMU.
 
 The new root file-system, a.k.a *guest rootfs*, typically contains a
 Linux distribution.  By default PRoot confines the execution of
@@ -151,7 +150,7 @@ Alias options
 The following options are aliases for handy sets of options.
 
 -B, -M
-    Alias: ``-b`` for each path of the list below
+    Alias: ``-b`` for each path of a recommended list
 
     There are a couple of bindings that are needed for most guest
     programs to behave correctly regarding the configuration part of

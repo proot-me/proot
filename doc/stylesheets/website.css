@@ -27,9 +27,9 @@ body {
     margin-top: 1.5em;
     margin-bottom: 1.5em;
 
-    -moz-box-shadow: 0 0 5px 5px #333333;
-    -webkit-box-shadow: 0 0 5px 5px #333333;
-    box-shadow: 0 0 1em 0.5em #333333;
+    -moz-box-shadow: 0 0 1.5em 0.5em #333333;
+    -webkit-box-shadow: 0 0 1.5em 0.5em #333333;
+    box-shadow: 0 0 1.5em 0.5em #333333;
 }
 
 #title {
@@ -55,6 +55,9 @@ h2 {
 
 h3 {
     margin-left: 1em;
+}
+
+h3 tt {
     font-style: italic;
 }
 

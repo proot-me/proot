@@ -131,7 +131,7 @@ static struct option options[] = {
 		{ .name = "--about", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_V,
-	  .description = "Print version, copyright, license, and contact, then exit.",
+	  .description = "Print version, copyright, license and contact, then exit.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
