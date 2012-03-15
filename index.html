@@ -1,50 +1,51 @@
 <?xml version="1.0"?>
-<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot — chroot, mount --bind, and binfmt_misc without privilege/setup</title><link rel="stylesheet" href="website.css" type="text/css"/><meta itemprop="name" content="PRoot"/><meta itemprop="description" content="PRoot is a user-mode implementation of chroot, mount --bind,&#10;and binfmt_misc, that means users don't need any privilege or&#10;setup to use an arbitrary directory as the new root file-system, to&#10;make files accessible somewhere else in the file-system hierarchy, and&#10;to execute programs built for another CPU architecture transparently&#10;through QEMU.  PRoot relies on ptrace, an unprivileged system-call&#10;available in every Linux kernels."/></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small" data-annotation="none"><!--By default XSLTproc converts tags with no
-	    content to self-closing tags--></div></div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#example">Example</a></li><li><a href="#download">Download</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-mode implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
-and <tt>binfmt_misc</tt>, that means users don't need any privilege or
-setup to use an arbitrary directory as the new root file-system, to
-make files accessible somewhere else in the file-system hierarchy, and
-to execute programs built for another CPU architecture transparently
-through QEMU.  PRoot relies on <tt>ptrace</tt>, an unprivileged system-call
-available in every Linux kernels.</p><p>The new root file-system, a.k.a <em>guest rootfs</em>, typically contains a
+<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot — chroot, mount --bind, and binfmt_misc without privilege/setup</title><link rel="stylesheet" href="website.css" type="text/css"/><meta itemprop="name" content="PRoot"/><meta itemprop="description" content="PRoot is a user-space implementation of chroot, mount --bind,&#10;and binfmt_misc.  It relies on ptrace, an unprivileged&#10;system-call, available in every Linux kernel.  This means that users&#10;don't need any privilege or setup to do things like: using an&#10;arbitrary directory as the new root file-system or making files&#10;accessible somewhere else in the file-system hierarchy or executing&#10;programs built for another CPU architecture transparently through&#10;QEMU."/></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small" data-annotation="none"><!--By default XSLTproc converts tags with no
+	    content to self-closing tags--></div></div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#examples">Examples</a></li><li><a href="#download">Download</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-space implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
+and <tt>binfmt_misc</tt>.  It relies on <tt>ptrace</tt>, an unprivileged
+system-call, available in every Linux kernel.  This means that users
+don't need any privilege or setup to do things like: using an
+arbitrary directory as the new root file-system or making files
+accessible somewhere else in the file-system hierarchy or executing
+programs built for another CPU architecture transparently through
+QEMU.</p><p>The new root file-system, a.k.a <em>guest rootfs</em>, typically contains a
 Linux distribution.  By default PRoot confines the execution of
 programs to the guest rootfs only, however users can use the built-in
 <em>mount/bind</em> mechanism to access files and directories from the actual
-root file-system, a.k.a <em>host rootfs</em>, as if they were part of the
-guest rootfs.</p><p>When the guest Linux distribution is made for a CPU architecture
+root file-system, a.k.a <em>host rootfs</em>, just as if they were part of
+the guest rootfs.</p><p>When the guest Linux distribution is made for a CPU architecture
 incompatible with the host one, PRoot uses the CPU emulator QEMU to
 execute transparently guest programs.  It's a convenient way to
 develop, to build, and to validate any guest Linux packages seamlessly
 on users' computer, just as if they were in a <em>native</em> guest
 environment.  That way all of the cross-compilation issues are
 avoided.</p><p>PRoot can also <em>mix</em> the execution of host programs and the execution
-of guest programs emulated by QEMU.  This is useful to use programs
-that aren't available initially in the guest environment and to speed
-up build-time by using cross-compilation tools or any CPU independent
-program, like interpreters.</p><p>It is worth noting that the guest kernel is never involved, regardless
-of whether QEMU is used.  Technically, when guest programs perform
-access to system resources, PRoot translates their requests before
-sending them to the host kernel.  This implies guest programs can use
-host resources (devices, network, ...) just as if they were "normal"
-host programs.</p></div><div xmlns="" class="section" id="example"><h2>Example</h2><p>In the following examples the directories <tt>/mnt/slackware-8.0</tt> and
+of guest programs emulated by QEMU.  This is useful for programs that
+aren't available initially in the guest environment and to speed up
+build-time by using cross-compilation tools or CPU-independent
+programs, like interpreters.</p><p>It is worth noting that the guest kernel is never involved, regardless
+of whether QEMU is used or not.  Technically, when guest programs
+perform access to system resources, PRoot translates their requests
+before sending them to the host kernel.  This means that guest
+programs can use host resources (devices, network, ...) just as if
+they were "normal" host programs.</p></div><div xmlns="" class="section" id="examples"><h2>Examples</h2><p>In the following examples the directories <tt>/mnt/slackware-8.0</tt> and
 <tt>/mnt/armslack-12.2/</tt> contain a Linux distribution respectively made
-for x86 CPUs and ARM CPUs.</p><div class="section" id="chroot"><h3><tt>chroot</tt></h3><p>To execute a program inside a given Linux distribution, users just
-have to specify the path to the guest rootfs followed by the desired
-command.  The example below executes the program <tt>cat</tt> to print the
-content of a file, both are from the guest Linux distribution:</p><pre>proot /mnt/slackware-8.0/ cat /etc/motd
+for x86 CPUs and ARM CPUs.</p><div class="section" id="chroot\ equivalent"><h3><tt>chroot</tt> equivalent</h3><p>To execute a command inside a given Linux distribution, just give
+<tt>proot</tt> the path to the guest rootfs followed by the desired command.
+The example below executes the program <tt>cat</tt> to print the content of
+a file:</p><pre>proot /mnt/slackware-8.0/ cat /etc/motd
 
-Welcome to Slackware Linux 8.0</pre><p>The default command is <tt>/bin/sh</tt> if none were specified, thus the
+Welcome to Slackware Linux 8.0</pre><p>The default command is <tt>/bin/sh</tt> when none is specified. Thus the
 shortest way to confine an interactive shell and all its sub-programs
 is:</p><pre>proot /mnt/slackware-8.0/
 
 $ cat /etc/motd
-Welcome to Slackware Linux 8.0</pre></div><div class="section" id="mount\ --bind"><h3><tt>mount --bind</tt></h3><p>The option <tt>-b</tt>, short for <tt>--bind</tt>, makes any file from the host
+Welcome to Slackware Linux 8.0</pre></div><div class="section" id="mount\ --bind\ equivalent"><h3><tt>mount --bind</tt> equivalent</h3><p>The option <tt>-b</tt>, short for <tt>--bind</tt>, makes any file from the host
 rootfs accessible in the confined environment just as if it were
 initially part of the guest rootfs.  It is sometimes required to run
 programs that rely on some specific files:</p><pre>proot /mnt/slackware-8.0/
 
 $ ps -o tty,command
-Error, do this: mount -t proc none /proc</pre><pre>proot -b /proc /mnt/slackware-8.0/
+Error, do this: mount -t proc none /proc</pre><p>Works better with:</p><pre>proot -b /proc /mnt/slackware-8.0/
 
 $ ps -o tty,command
 TT       COMMAND
@@ -64,14 +65,14 @@ pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command</pre><p>The bind mechanis
 in the host rootfs by using <tt>/</tt> as the path to the guest rootfs and
 by specifying an alternate binding location (separated by <tt>:</tt>).  It
 is quite handy to cheat programs that perform access to hard-coded
-locations, like not well written installation scripts:</p><pre>proot -b /tmp/alternate_usr:/usr /
+locations, like some installation scripts:</p><pre>proot -b /tmp/alternate_usr:/usr /
 
 $ cd to/sources
 $ make install
 [...]
 install -m 755 prog "/usr/bin"
-[...] # prog was installed in "/tmp/alternate_usr/bin" actually</pre><p>or to substitute system configuration files, for example the DNS
-setting:</p><pre>proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com</pre></div><div class="section" id="binfmt_misc"><h3><tt>binfmt_misc</tt></h3><p>PRoot uses QEMU to execute programs built for a CPU architecture
+[...] # prog was installed in "/tmp/alternate_usr/bin" actually</pre><p>It can also be used to substitute system configuration files, for
+example the DNS setting:</p><pre>proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com</pre></div><div class="section" id="binfmt_misc\ equivalent"><h3><tt>binfmt_misc</tt> equivalent</h3><p>PRoot uses QEMU to execute programs built for a CPU architecture
 incompatible with the host one.  From users' point-of-view, guest
 programs handled by QEMU are executed transparently, that is, just
 like host programs.  To enable this feature users just have to specify
