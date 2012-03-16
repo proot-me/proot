@@ -5,6 +5,11 @@
 Next minor
 ==========
 
+* Adjust utsname.machine for 32-bit guest binaries running on 64-bit host systems.
+
+     It will improve the compatibility with package managers that
+     deduce the guest system architecture from `uname -m`.
+
 * Fix the detranslation of "conflicting" host-side bindings.
 
   The detranslation isn't a state machine yet, hence it doesn't know

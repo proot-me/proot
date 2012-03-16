@@ -320,8 +320,7 @@ static void create_dummy(char c_path[PATH_MAX], const char * real_path)
 	return;
 
 error:
-	if (config.verbose_level > 0)
-		notice(WARNING, USER, "can't create parent directories for \"%s\"", c_path);
+	notice(WARNING, USER, "can't create parent directories for \"%s\"", c_path);
 }
 
 /**
