@@ -69,15 +69,12 @@ static void handle_option_b(char *value)
 static char *which(char *const command)
 {
 	char *const argv[3] = { "which", command, NULL };
+	char which_output[PATH_MAX];
 	int pipe_fd[2];
 	char *path;
 	int status;
 	pid_t pid;
 
-	path = calloc(PATH_MAX, sizeof(char));
-	if (!path)
-		notice(ERROR, SYSTEM, "calloc()");
-		
 	status = pipe(pipe_fd);
 	if (status < 0)
 		notice(ERROR, SYSTEM, "pipe()");
@@ -102,13 +99,13 @@ static char *which(char *const command)
 	default: /* parent */
 		close(pipe_fd[1]); /* "write" end */
 
-		status = read(pipe_fd[0], path, PATH_MAX - 1);
+		status = read(pipe_fd[0], which_output, PATH_MAX - 1);
 		if (status < 0)
 			notice(ERROR, SYSTEM, "read()");
 		if (status == 0)
 			notice(ERROR, USER, "%s: command not found", command);
 		assert(status < PATH_MAX);
-		path[status - 1] = '\0'; /* overwrite "\n" */
+		which_output[status - 1] = '\0'; /* overwrite "\n" */
 
 		close(pipe_fd[0]); /* "read" end */
 
@@ -120,6 +117,10 @@ static char *which(char *const command)
 			notice(ERROR, USER, "`%s %s` returned an error", argv[0], command);
 		break;
 	}
+
+	path = realpath(which_output, NULL);
+	if (!path)
+		notice(ERROR, SYSTEM, "realpath()");
 
 	return path;
 }
@@ -183,7 +184,6 @@ static void handle_option_q(char *value)
 	config.qemu[0] = which(config.qemu[0]);
 	config.qemu[nb_args] = NULL;
 
-	/* XXX */
 	config.host_rootfs = "/host-rootfs";
 	bind_path("/", config.host_rootfs, true);
 }
