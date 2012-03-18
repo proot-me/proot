@@ -1,5 +1,14 @@
 <?xml version="1.0"?>
-<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot — chroot, mount --bind, and binfmt_misc without privilege/setup</title><link rel="stylesheet" href="website.css" type="text/css"/><meta itemprop="name" content="PRoot"/><meta itemprop="description" content="PRoot is a user-space implementation of chroot, mount --bind,&#10;and binfmt_misc.  It relies on ptrace, an unprivileged&#10;system-call, available in every Linux kernel.  This means that users&#10;don't need any privilege or setup to do things like: using an&#10;arbitrary directory as the new root file-system or making files&#10;accessible somewhere else in the file-system hierarchy or executing&#10;programs built for another CPU architecture transparently through&#10;QEMU."/></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small" data-annotation="none"><!--By default XSLTproc converts tags with no
+<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot — chroot, mount --bind, and binfmt_misc without privilege/setup</title><link rel="stylesheet" href="website.css" type="text/css"/><meta itemprop="name" content="PRoot"/><meta itemprop="description" content="PRoot is a user-space implementation of chroot, mount --bind,&#10;and binfmt_misc.  It relies on ptrace, an unprivileged&#10;system-call, available in every Linux kernel.  This means that users&#10;don't need any privilege or setup to do things like: using an&#10;arbitrary directory as the new root file-system or making files&#10;accessible somewhere else in the file-system hierarchy or executing&#10;programs built for another CPU architecture transparently through&#10;QEMU."/><script type="text/javascript">
+	      var _gaq = _gaq || [];
+	      _gaq.push(['_setAccount', 'UA-20176046-1']);
+	      _gaq.push(['_trackPageview']);
+	      (function() {
+	      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+	      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+	      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+	      })();
+	  </script></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small" data-annotation="none"><!--By default XSLTproc converts tags with no
 	    content to self-closing tags--></div></div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#examples">Examples</a></li><li><a href="#download">Download</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-space implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
 and <tt>binfmt_misc</tt>.  It relies on <tt>ptrace</tt>, an unprivileged
 system-call, available in every Linux kernel.  This means that users
@@ -127,15 +136,6 @@ script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre><
 	    the <a href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
 	    manual</a> first.
 	    </p></div><script type="text/javascript">
-	      var _gaq = _gaq || [];
-	      _gaq.push(['_setAccount', 'UA-20176046-1']);
-	      _gaq.push(['_trackPageview']);
-	      (function() {
-	      var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-	      ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-	      var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-	      })();
-	  </script><script type="text/javascript">
 	    (function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
 	    po.src = 'https://apis.google.com/js/plusone.js';
