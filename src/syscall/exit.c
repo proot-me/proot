@@ -59,10 +59,8 @@ case PR_getcwd: {
 		goto end;
 	}
 
-	if (size > PATH_MAX) {
-		status = -ENAMETOOLONG;
-		break;
-	}
+	if (size > PATH_MAX)
+		size = PATH_MAX;
 
 	if (size == 0) {
 		status = -EINVAL;
@@ -75,9 +73,8 @@ case PR_getcwd: {
 	if (status < 0)
 		goto end;
 
-	/* No '\0' were found, that shouldn't happen...  */
 	if (status >= size) {
-		status = -ERANGE;
+		status = (size == PATH_MAX ? -ENAMETOOLONG : -ERANGE);
 		break;
 	}
 
@@ -92,7 +89,7 @@ case PR_getcwd: {
 
 	new_size = status;
 	if (new_size > size) {
-		status = -ERANGE;
+		status = (size == PATH_MAX ? -ENAMETOOLONG : -ERANGE);
 		break;
 	}
 
@@ -145,10 +142,8 @@ case PR_readlinkat: {
 		goto end;
 	}
 
-	if (max_size > PATH_MAX) {
-		status = -ENAMETOOLONG;
-		break;
-	}
+	if (max_size > PATH_MAX)
+		max_size = PATH_MAX;
 
 	if (max_size == 0) {
 		status = -EINVAL;
