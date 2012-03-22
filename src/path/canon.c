@@ -93,11 +93,16 @@ int canonicalize(pid_t pid, const char *fake_path, int deref_final,
 			return status;
 		is_final = status;
 
-		if (strcmp(component, ".") == 0 && !is_final)
+		if (strcmp(component, ".") == 0) {
+			if (is_final)
+				is_final = FINAL_FORCE_DIR;
 			continue;
+		}
 
 		if (strcmp(component, "..") == 0) {
 			pop_component(result);
+			if (is_final)
+				is_final = FINAL_FORCE_DIR;
 			continue;
 		}
 

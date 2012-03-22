@@ -5,17 +5,6 @@
 Next minor
 ==========
 
-* Fix the termination of the canonicalized path in the following case:
-
-    $ cd /foo/bar
-    $ proot -v -b . [...]
-    [...]
-    proot info: binding = /foo/bar:/foo/bar/.
-
-    $ proot -v -b .. [...]
-    [...]
-    proot info: binding = /foo
-
 * Fix the detranslation of "conflicting" host-side bindings.
 
   The detranslation isn't a state machine yet, hence it doesn't know
