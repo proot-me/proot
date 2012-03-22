@@ -201,43 +201,77 @@ case PR_readlinkat: {
 }
 	break;
 
-case PR_uname:
-	if (config.kernel_release) {
-		struct utsname utsname;
-		word_t release_addr;
-		size_t release_size;
+case PR_uname: {
+	struct utsname utsname;
+	word_t address;
+	size_t size;
 
-		result = peek_ureg(tracee, SYSARG_RESULT);
-		if (errno != 0) {
-			status = -errno;
-			goto end;
-		}
-		if ((int) result < 0) {
-			status = 0;
-			goto end;
-		}
+	bool change_uname;
 
-		result = peek_ureg(tracee, SYSARG_1);
-		if (errno != 0) {
-			status = -errno;
-			goto end;
-		}
+#if defined(ARCH_X86_64)
+	change_uname = config.kernel_release != NULL || tracee->uregs == uregs2;
+#else
+	change_uname = config.kernel_release != NULL;
+#endif
 
-		release_addr = result + offsetof(struct utsname, release);
-		release_size = sizeof(utsname.release);
-
-		status = get_tracee_string(tracee, &(utsname.release), release_addr, release_size);
-		if (status < 0)
-			goto end;
-
-		strncpy(utsname.release, config.kernel_release, release_size);
-		utsname.release[release_size - 1] = '\0';
-
-		status = copy_to_tracee(tracee, release_addr, &(utsname.release), strlen(utsname.release) + 1);
-		if (status < 0)
-			goto end;
+	if (!change_uname) {
+		/* Nothing to do.  */
+		status = 0;
+		goto end;
 	}
+
+	result = peek_ureg(tracee, SYSARG_RESULT);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	/* Error reported by the kernel.  */
+	if ((int) result < 0) {
+		status = 0;
+		goto end;
+	}
+
+	address = peek_ureg(tracee, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	status = copy_from_tracee(tracee, &utsname, address, sizeof(utsname));
+	if (status < 0)
+		goto end;
+
+	/*
+	 * Note: on x86_64, we can handle the two modes (32/64) with
+	 * the same code since struct utsname as always the same
+	 * layout.
+	 */
+
+	if (config.kernel_release) {
+		size = sizeof(utsname.release);
+
+		strncpy(utsname.release, config.kernel_release, size);
+		utsname.release[size - 1] = '\0';
+	}
+
+#if defined(ARCH_X86_64)
+	if (tracee->uregs == uregs2) {
+		size = sizeof(utsname.machine);
+
+		/* Some 32-bit programs like package managers can be
+		 * confused when the kernel reports "x86_64".  */
+		strncpy(utsname.machine, "i386", size);
+		utsname.machine[size - 1] = '\0';
+	}
+#endif
+
+	status = copy_to_tracee(tracee, address, &utsname, sizeof(utsname));
+	if (status < 0)
+		goto end;
+
 	status = 0;
+}
 	break;
 
 case PR_getuid:

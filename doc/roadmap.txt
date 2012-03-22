@@ -5,10 +5,16 @@
 Next minor
 ==========
 
-* Adjust utsname.machine for 32-bit guest binaries running on 64-bit host systems.
+* Fix the termination of the canonicalized path in the following case:
 
-     It will improve the compatibility with package managers that
-     deduce the guest system architecture from `uname -m`.
+    $ cd /foo/bar
+    $ proot -v -b . [...]
+    [...]
+    proot info: binding = /foo/bar:/foo/bar/.
+
+    $ proot -v -b .. [...]
+    [...]
+    proot info: binding = /foo
 
 * Fix the detranslation of "conflicting" host-side bindings.
 
@@ -68,17 +74,6 @@ Fixes
 * Fix the feature "attach on-the-fly"
 
 * Fix support for runners that do execve()
-
-* Fix the termination of the canonicalized path in the following case:
-
-    $ cd /foo/bar
-    $ proot -v -b . [...]
-    [...]
-    proot info: binding = /foo/bar:/foo/bar/.
-
-    $ proot -v -b .. [...]
-    [...]
-    proot info: binding = /foo
 
 
 Features
