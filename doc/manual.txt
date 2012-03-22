@@ -125,14 +125,14 @@ Regular options
     does not improve the compatibility.
 
 -0, --root-id
-    Force syscalls ``get*id`` to report identity 0, aka "root".
+    Force syscalls ``chown*`` and ``get*id`` to return 0, aka "root".
 
     Some programs will refuse to work if they are not run with "root"
-    privileges, even if there is no technical reason for that. This
-    option allows users to cheat this kind of check by faking the user
-    and group identity.
-
-    .. TODO: add a note about ``fakeroot``.
+    privileges, even if there is no technical reason for that.  This
+    is typically the case with package managers.  This option allows
+    users to bypass this kind of limitation by faking the user/group
+    identity, and by faking the success of any ownership change.  Note
+    that this option is quite limited compared to ``fakeroot``.
 
 -v, --verbose
     Increase the level of debug information.
@@ -370,7 +370,8 @@ script::
 See Also
 ========
 
-chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1), bindfs(1)
+chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1),
+bindfs(1), fakeroot(1), fakechroot(1)
 
 
 Colophon

@@ -274,6 +274,33 @@ case PR_uname: {
 }
 	break;
 
+case PR_chown:
+case PR_fchown:
+case PR_lchown:
+case PR_chown32:
+case PR_fchown32:
+case PR_lchown32:
+case PR_fchownat:
+	if (!config.fake_id0) {
+		status = 0;
+		goto end;
+	}
+
+	result = peek_ureg(tracee, SYSARG_RESULT);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	/* Override only permission errors.  */
+	if ((int) result != -EPERM) {
+		status = 0;
+		goto end;
+	}
+
+	status = 0;
+	break;
+
 case PR_getuid:
 case PR_getgid:
 case PR_getegid:
