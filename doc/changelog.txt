@@ -1,3 +1,29 @@
+Release v1.8.3
+==============
+
+New features
+------------
+
+* The -0 option now fakes success on ownership changes.  This improves
+  the compatibility with package managers that abort if ``chown(2)``
+  fails.  Note that this is quite limited compared to ``fakeroot``.
+
+* Force utsname.machine to "i386" for 32-bit programs running on
+  x86_64 systems.  This improves the compatibility with package
+  managers that deduce the current architecture from `uname -m`.
+
+Fixes
+-----
+
+* Fix a regression regarding the concatenation of the ``..`` with a
+  path ending with ``.``.  For intance you can now do ``ls foo`` where
+  ``foo`` is a symbolic link to ``/bar/.``.
+
+* Don't return an error if the specified size for ``getcwd(2)`` and
+  ``readlink(2)`` is greater than PATH_MAX.  Technically the result
+  may likely be shorter than this limit.
+
+
 Release v1.8.2
 ==============
 
