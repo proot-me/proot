@@ -5,6 +5,14 @@
 Next minor
 ==========
 
+* Investigate why the Slackware package installer can't execute the
+  install-script::
+
+      # installpkg perl-5.14.0-arm-2.tgz
+      ...
+      Executing install script for ...
+      sh: /proc/self/fd/0: No such file or directory
+
 * Fix the detranslation of "conflicting" host-side bindings.
 
   The detranslation isn't a state machine yet, hence it doesn't know
@@ -35,6 +43,11 @@ Next major
     * Remove most of string copy.
 
 * Use the mixed-mode mechanism to run QEMU (instead of trigger/LD_PRELOAD)
+
+* Allow one root per tracee, then add support for the chroot syscall
+  under PRoot.
+
+  It should make pacman (the Arch Linux package manager) happy.
 
 
 Not yet scheduled
