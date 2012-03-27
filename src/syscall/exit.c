@@ -269,6 +269,32 @@ case PR_uname: {
 }
 	break;
 
+case PR_vfork:
+case PR_fork:
+case PR_clone:
+	result = peek_ureg(tracee, SYSARG_RESULT);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	/* Error reported by the kernel.  */
+	if ((int) result < 0) {
+		status = 0;
+		goto end;
+	}
+
+	/* Declare the child as soon as possible to avoid a
+	 * race-condition: if the last tracee forks then exits
+	 * *before* its child has made at least one syscall, then the
+	 * number of tracees might reach zero.  As a consequence PRoot
+	 * exists too, leaving this child process un-traced.  */
+	(void) get_tracee_info(result);
+
+	/* Nothing to report.  */
+	status = 0;
+	goto end;
+
 case PR_chown:
 case PR_fchown:
 case PR_lchown:
