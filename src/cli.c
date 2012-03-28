@@ -406,6 +406,9 @@ int main(int argc, char *argv[])
 	else
 		config.command = default_command;
 
+	config.ignore_elf_interpreter =
+		(getenv("PROOT_IGNORE_ELF_INTERPRETER") != NULL);
+
 	/* TODO: remove the need for initialization.  */
 	init_module_path();
 	init_module_tracee_info();

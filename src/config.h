@@ -34,6 +34,7 @@ struct config {
 	char **qemu;
 	char **command;
 
+	bool ignore_elf_interpreter;
 	bool allow_unknown_syscalls;
 	bool disable_aslr;
 	bool fake_id0;
