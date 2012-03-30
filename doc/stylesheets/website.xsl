@@ -63,7 +63,7 @@
 	      PRoot sources are hosted on <a
 	      href="https://github.com/cedric-vincent/PRoot">GitHub</a>
 	      and the latest release is <a
-	      href="http://software.opensuse.org/download.html?project=home:cedric-vincent&#38;package=PRoot">packaged
+	      href="http://software.opensuse.org/download.html?project=home:cedric-vincent&#38;package=proot">packaged
 	      for most PC Linux distributions</a>, choose wisely ;)
 	    </p>
 	  </div>
