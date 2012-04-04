@@ -5,6 +5,20 @@
 Next minor
 ==========
 
+* Make the de-translatation independant from the "bind-ness":
+
+      $ proot -b /:/host-rootfs -b /tmp /usr/local/slack/install/slackware-13.37-d1/
+
+      $ cd /usr
+      $ ln -s /usr/bin/as
+      $ ls -l as
+      lrwxrwxrwx 1 1000 users 11 Apr  4 10:40 as -> /usr/bin/as
+
+      $ cd /tmp
+      $ ln -s /usr/bin/as
+      $ ls -l as
+      lrwxrwxrwx 1 1000 users 11 Apr  4 10:40 as -> /host-rootfs/usr/bin/as
+
 * Investigate why the Slackware package installer can't execute the
   install-script::
 
@@ -42,6 +56,10 @@ Next major
 
     * Remove most of string copy.
 
+* Emulate *at syscalls with non-*at equivalents to allow the execution
+  of guest programs that might be too recent compared to the host
+  system.
+
 * Use the mixed-mode mechanism to run QEMU (instead of trigger/LD_PRELOAD)
 
 * Allow one root per tracee, then add support for the chroot syscall
@@ -77,6 +95,8 @@ Fixes
 
 * Fix support for runners that do execve()
 
+* Add support for the string $ORIGIN (or equivalently ${ORIGIN}) in an rpath specification
+
 
 Features
 --------
@@ -99,6 +119,14 @@ Features
 * Add two new options: --user-id & --group-id, and make -0 an alias to these options
 
 * Allow a per-module verbose level
+
+
+Documentation
+-------------
+
+* Explain what happens with unknown syscalls when using --allow-unknown-syscalls.
+
+* Explain bindings aren't exclusive, i.e. "-b /tmp:/foo" doesn't invalidate "-b /tmp:/bar".
 
 
 Clean-up
@@ -165,8 +193,8 @@ Misc.
 * Check the code coverage of PRoot
 
 
-Security
---------
+Completeness
+------------
 
 * Ensure tracees' clone flags has CLONE_PTRACE & ~CLONE_UNTRACED.
 
@@ -178,7 +206,7 @@ Security
 
 * Don't exit() on error
 
-* Use Valgrind & Coverity Prevent
+* Use Valgrind, Coverity Prevent, and AddressSanitizer.
 
 * Try Scrashme (syscall fuzzer) against PRoot
 
