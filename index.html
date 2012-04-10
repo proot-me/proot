@@ -8,8 +8,8 @@
 	  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
 	  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
 	  })();
-	</script></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small"><!--By default XSLTproc converts tags with no
-	    content to self-closing tags--></div></div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#examples">Examples</a></li><li><a href="#download">Download</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-space implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
+	</script></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small" data-annotation="none"><!--By default XSLTproc converts tags with no
+	    content to self-closing tags--></div></div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#examples">Examples</a></li><li><a href="#downloads">Downloads</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-space implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
 and <tt>binfmt_misc</tt>.  This means that users don't need any privilege
 or setup to do things like: using an arbitrary directory as the new
 root file-system or making files accessible somewhere else in the
@@ -73,7 +73,7 @@ pts/6    /lib/ld-linux.so.2 /bin/sh
 pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command</pre><p>The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using <tt>/</tt> as the path to the guest rootfs and
 by specifying an alternate binding location (separated by <tt>:</tt>).  It
-is quite handy to cheat programs that perform access to hard-coded
+is typically useful to cheat programs that perform access to hard-coded
 locations, like some installation scripts:</p><pre>proot -b /tmp/alternate_usr:/usr /
 
 $ cd to/sources
@@ -125,11 +125,21 @@ Built for x86_64-slackware-linux-gnu</pre><p>It's worth mentioning that even whe
 host programs and the emulated execution of guest programs, they still
 believe they are running in a native guest environment.  As a
 demonstration, here is a partial output of a typical <tt>./configure</tt>
-script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div class="section" id="download"><h2>Download</h2><p>
-	      PRoot sources are hosted on <a href="https://github.com/cedric-vincent/PRoot">GitHub</a>
-	      and the latest release is <a href="http://software.opensuse.org/download.html?project=home:cedric-vincent&amp;package=proot">packaged
-	      for most PC Linux distributions</a>, choose wisely ;)
-	    </p></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions, bug reports,
+script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div xmlns="" class="section" id="downloads"><h2>Downloads</h2><div class="section" id=""><h3>PRoot</h3><p>The latest release of PRoot is packaged on <a href="http://packages.proot.me">http://packages.proot.me</a>
+and sources are hosted on <a href="http://github.proot.me">http://github.proot.me</a>.</p></div><div class="section" id="root\ file-systems"><h3>Root file-systems</h3><p>Here follows a couple of URLs where some root file-systems archives
+can be freely downloaded.  Note that the errors reported by <tt>tar</tt>
+when extracting these archives can be safely ignored.  Obviously these
+files are not required when PRoot is used as a <tt>mount --bind</tt>
+equivalent only, that is, when the path to the guest rootfs is <tt>/</tt>.</p><ul><li><p>Slackware/ARM:</p><p><a href="ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/">ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/</a></p></li><li><p>Fedora/ARM:</p><p><a href="http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/">http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/</a></p></li><li><p>CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
+CPUs, from the OpenVZ project:</p><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p>ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES,
+... x86 and x86_64 CPUs, from the OpenVZ community:</p><p><a href="http://download.openvz.org/template/precreated/contrib/">http://download.openvz.org/template/precreated/contrib/</a></p></li></ul><p>Technically such root file-system archive can be created by running
+the following command on the expected Linux distribution:</p><pre>tar --one-file-system --create --gzip --file my_rootfs.tar.gz /</pre></div><div class="section" id="qemu"><h3>QEMU</h3><p>QEMU is required only if the guest root file-system was made for a CPU
+architecture incompatible with the host one, for instance when using a
+ARM rootfs on a x86_64 computer.  This package can be installed either
+from <a href="http://qemu.proot.me">http://qemu.proot.me</a> or from the host package manager under the
+name of "qemu-user" on most Linux distro.  In case one would like to
+build QEMU from sources, the <tt>--enable-linux-user</tt> option has to be
+specified to the <tt>./configure</tt> script.</p></div></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions, bug reports,
 	    suggestions, and patchs to <a href="mailto:proot_me@googlegroups.com">the
 	    mailing-list</a> or to <a href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
 	    forum</a>, but please be sure that your answer isn't in
