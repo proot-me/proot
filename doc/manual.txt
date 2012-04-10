@@ -278,7 +278,7 @@ recommended paths::
 The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using ``/`` as the path to the guest rootfs and
 by specifying an alternate binding location (separated by ``:``).  It
-is quite handy to cheat programs that perform access to hard-coded
+is typically useful to cheat programs that perform access to hard-coded
 locations, like some installation scripts::
 
     proot -b /tmp/alternate_usr:/usr /
@@ -367,6 +367,61 @@ script::
     checking whether the C compiler is a cross-compiler... no
 
 
+Downloads
+=========
+
+PRoot
+-----
+
+The latest release of PRoot is packaged on http://packages.proot.me
+and sources are hosted on http://github.proot.me.
+
+
+Root file-systems
+-----------------
+
+Here follows a couple of URLs where some root file-systems archives
+can be freely downloaded.  Note that the errors reported by ``tar``
+when extracting these archives can be safely ignored.  Obviously these
+files are not required when PRoot is used as a ``mount --bind``
+equivalent only, that is, when the path to the guest rootfs is ``/``.
+
+* Slackware/ARM:
+
+  ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/
+
+* Fedora/ARM:
+
+  http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/
+
+* CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
+  CPUs, from the OpenVZ project:
+
+  http://download.openvz.org/template/precreated/
+
+* ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES,
+  ... x86 and x86_64 CPUs, from the OpenVZ community:
+
+  http://download.openvz.org/template/precreated/contrib/
+
+Technically such root file-system archive can be created by running
+the following command on the expected Linux distribution::
+
+    tar --one-file-system --create --gzip --file my_rootfs.tar.gz /
+
+
+QEMU
+----
+
+QEMU is required only if the guest root file-system was made for a CPU
+architecture incompatible with the host one, for instance when using a
+ARM rootfs on a x86_64 computer.  This package can be installed either
+from http://qemu.proot.me or from the host package manager under the
+name of "qemu-user" on most Linux distro.  In case one would like to
+build QEMU from sources, the ``--enable-linux-user`` option has to be
+specified to the ``./configure`` script.
+
+
 See Also
 ========
 
@@ -378,4 +433,4 @@ Colophon
 ========
 
 Visit http://proot.me for help, bug reports, suggestions, patchs, ...
-Copyright (C) 2010, 2011, 2012 STMicroelectronics, licensed under GPL v2 or later.
+Copyright (C) 2012 STMicroelectronics, licensed under GPL v2 or later.

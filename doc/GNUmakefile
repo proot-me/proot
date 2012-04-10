@@ -1,13 +1,13 @@
 all: proot.1 cli.h proot.spec index.html
 
 proot.1: manual.txt
-	rst2man.py $< $@
+	rst2man $< $@
 
 %.xml: %.txt
-	rst2xml.py --no-doctype $< $@
+	rst2xml --no-doctype $< $@
 
 %.html: %.txt
-	rst2html.py $< $@
+	rst2html $< $@
 
 # Workaround to avoid unescaped C character.
 manual-quoted.txt: manual.txt

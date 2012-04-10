@@ -55,6 +55,7 @@ h2 {
 
 h3 {
     margin-left: 1em;
+    margin-top: 1em;
 }
 
 h3 tt {
@@ -146,6 +147,14 @@ pre {
 
 tt {
     font-family: monospace;
+}
+
+ul {
+    margin-left: 3em;
+}
+
+li p, li pre {
+    margin-left: 0;
 }
 
 @media print {

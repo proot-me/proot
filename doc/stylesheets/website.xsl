@@ -49,24 +49,14 @@
 	    <ul>
 	      <li><a href="#description">Description</a></li>
 	      <li><a href="#examples">Examples</a></li>
-	      <li><a href="#download">Download</a></li>
+	      <li><a href="#downloads">Downloads</a></li>
 	      <li><a href="#help">Help</a></li>
 	    </ul>
 	  </div>
 
 	  <xsl:apply-templates select="//section[@names='description']" />
 	  <xsl:apply-templates select="//section[@names='examples']" />
-
-	  <div class="section" id="download">
-	    <h2>Download</h2>
-	    <p>
-	      PRoot sources are hosted on <a
-	      href="https://github.com/cedric-vincent/PRoot">GitHub</a>
-	      and the latest release is <a
-	      href="http://software.opensuse.org/download.html?project=home:cedric-vincent&#38;package=proot">packaged
-	      for most PC Linux distributions</a>, choose wisely ;)
-	    </p>
-	  </div>
+	  <xsl:apply-templates select="//section[@names='downloads']" />
 
 	  <div class="section" id="help">
 	    <h2>Help</h2>
@@ -146,6 +136,18 @@
   </xsl:template>
 
   <xsl:template match="comment">
+  </xsl:template>
+
+  <xsl:template match="bullet_list">
+    <ul>
+      <xsl:apply-templates/>
+    </ul>
+  </xsl:template>
+
+  <xsl:template match="list_item">
+    <li>
+      <xsl:apply-templates/>
+    </li>
   </xsl:template>
 
   <xsl:template match="reference">
