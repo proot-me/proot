@@ -25,9 +25,9 @@ and ``binfmt_misc``.  This means that users don't need any privilege
 or setup to do things like: using an arbitrary directory as the new
 root file-system or making files accessible somewhere else in the
 file-system hierarchy or executing programs built for another CPU
-architecture transparently through QEMU.  Technically PRoot relies on
-``ptrace``, an unprivileged system-call available in every Linux
-kernel.
+architecture transparently through QEMU user-mode.  Technically PRoot
+relies on ``ptrace``, an unprivileged system-call available in every
+Linux kernel.
 
 The new root file-system, a.k.a *guest rootfs*, typically contains a
 Linux distribution.  By default PRoot confines the execution of
@@ -37,25 +37,25 @@ root file-system, a.k.a *host rootfs*, just as if they were part of
 the guest rootfs.
 
 When the guest Linux distribution is made for a CPU architecture
-incompatible with the host one, PRoot uses the CPU emulator QEMU to
-execute transparently guest programs.  It's a convenient way to
-develop, to build, and to validate any guest Linux packages seamlessly
-on users' computer, just as if they were in a *native* guest
-environment.  That way all of the cross-compilation issues are
+incompatible with the host one, PRoot uses the CPU emulator QEMU
+user-mode to execute transparently guest programs.  It's a convenient
+way to develop, to build, and to validate any guest Linux packages
+seamlessly on users' computer, just as if they were in a *native*
+guest environment.  That way all of the cross-compilation issues are
 avoided.
 
 PRoot can also *mix* the execution of host programs and the execution
-of guest programs emulated by QEMU.  This is useful to use host
-equivalents of programs that are missing from the guest rootfs and to
-speed up build-time by using cross-compilation tools or
+of guest programs emulated by QEMU user-mode.  This is useful to use
+host equivalents of programs that are missing from the guest rootfs
+and to speed up build-time by using cross-compilation tools or
 CPU-independent programs, like interpreters.
 
 It is worth noting that the guest kernel is never involved, regardless
-of whether QEMU is used or not.  Technically, when guest programs
-perform access to system resources, PRoot translates their requests
-before sending them to the host kernel.  This means that guest
-programs can use host resources (devices, network, ...) just as if
-they were "normal" host programs.
+of whether QEMU user-mode is used or not.  Technically, when guest
+programs perform access to system resources, PRoot translates their
+requests before sending them to the host kernel.  This means that
+guest programs can use host resources (devices, network, ...) just as
+if they were "normal" host programs.
 
 
 Options
@@ -86,13 +86,13 @@ Regular options
     Execute guest programs through QEMU as specified by *command*.
 
     Each time a guest program is going to be executed, PRoot inserts
-    the QEMU *command* in front of the initial request.  That way,
-    guest programs actually run on a virtual guest CPU emulated by
-    QEMU.  The native execution of host programs is still effective
-    and the whole host rootfs is bound to ``/host-rootfs`` in the
-    guest environment.
+    the QEMU user-mode *command* in front of the initial request.
+    That way, guest programs actually run on a virtual guest CPU
+    emulated by QEMU user-mode.  The native execution of host programs
+    is still effective and the whole host rootfs is bound to
+    ``/host-rootfs`` in the guest environment.
 
-    This option is automatically enabled by the option ``-Q``.
+    This option is automatically enabled by the ``-Q`` option.
 
 -w path, --pwd=path, --cwd=path
     Set the initial working directory to *path*, default is ``/``.
@@ -102,7 +102,7 @@ Regular options
     is ``./configure`` scripts.  This option avoids the need for
     running a shell and then entering the directory manually.
 
-    See option ``-W``.
+    See the ``-W`` option.
 
 -u, --allow-unknown-syscalls
     Allow the execution of unknown syscalls.
@@ -179,8 +179,8 @@ The following options are aliases for handy sets of options.
 -Q command
     Alias: ``-q *command* -B``
 
-    This option is highly recommended when using QEMU; it enables all
-    the recommended bindings.
+    This option is highly recommended when using QEMU user-mode; it
+    enables all the recommended bindings.
 
 -W
     Alias: ``-b . -w .``
@@ -220,9 +220,9 @@ for x86 CPUs and ARM CPUs.
 ---------------------
 
 To execute a command inside a given Linux distribution, just give
-``proot`` the path to the guest rootfs followed by the desired command.
-The example below executes the program ``cat`` to print the content of
-a file::
+``proot`` the path to the guest rootfs followed by the desired
+command.  The example below executes the program ``cat`` to print the
+content of a file::
 
     proot /mnt/slackware-8.0/ cat /etc/motd
     
@@ -278,8 +278,8 @@ recommended paths::
 The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using ``/`` as the path to the guest rootfs and
 by specifying an alternate binding location (separated by ``:``).  It
-is typically useful to cheat programs that perform access to hard-coded
-locations, like some installation scripts::
+is typically useful to cheat programs that perform access to
+hard-coded locations, like some installation scripts::
 
     proot -b /tmp/alternate_usr:/usr /
     
@@ -298,12 +298,13 @@ example the DNS setting::
 ``binfmt_misc`` equivalent
 --------------------------
 
-PRoot uses QEMU to execute programs built for a CPU architecture
-incompatible with the host one.  From users' point-of-view, guest
-programs handled by QEMU are executed transparently, that is, just
-like host programs.  To enable this feature users just have to specify
-which instance of QEMU they want to use with the option ``-q`` or
-``-Q`` (this latter implies ``-B``)::
+PRoot uses QEMU user-mode to execute programs built for a CPU
+architecture incompatible with the host one.  From users'
+point-of-view, guest programs handled by QEMU user-mode are executed
+transparently, that is, just like host programs.  To enable this
+feature users just have to specify which instance of QEMU user-mode
+they want to use with the option ``-q`` or ``-Q`` (this latter implies
+``-B``)::
 
     proot -Q qemu-arm /mnt/armslack-12.2/
     
@@ -311,7 +312,8 @@ which instance of QEMU they want to use with the option ``-q`` or
     Welcome to ARMedSlack Linux 12.2
 
 The parameter of the ``-q/-Q`` option is actually a whole QEMU
-command, for instance to enable its GDB server on port 1234::
+user-mode command, for instance to enable its GDB server on port
+1234::
 
     proot -Q "qemu-arm -g 1234" /mnt/armslack-12.2/ emacs
 
@@ -319,9 +321,9 @@ PRoot allows to mix transparently the emulated execution of guest
 programs and the native execution of host programs in the same
 file-system namespace.  It's typically useful to extend the list of
 available programs and to speed up build-time significantly.  This
-mixed-execution feature is enabled by default when using QEMU, and the
-content of the host rootfs is made accessible through
-``/host-rootfs``::
+mixed-execution feature is enabled by default when using QEMU
+user-mode, and the content of the host rootfs is made accessible
+through ``/host-rootfs``::
 
     proot -Q qemu-arm /mnt/armslack-12.2/
     
@@ -377,14 +379,14 @@ The latest release of PRoot is packaged on http://packages.proot.me
 and sources are hosted on http://github.proot.me.
 
 
-Root file-systems
------------------
+Rootfs
+------
 
-Here follows a couple of URLs where some root file-systems archives
-can be freely downloaded.  Note that the errors reported by ``tar``
-when extracting these archives can be safely ignored.  Obviously these
-files are not required when PRoot is used as a ``mount --bind``
-equivalent only, that is, when the path to the guest rootfs is ``/``.
+Here follows a couple of URLs where some rootfs archives can be freely
+downloaded.  Note that the errors reported by ``tar`` when extracting
+these archives can be safely ignored.  Obviously these files are not
+required when PRoot is used as a ``mount --bind`` equivalent only,
+that is, when the path to the guest rootfs is ``/``.
 
 * Slackware/ARM:
 
@@ -399,27 +401,27 @@ equivalent only, that is, when the path to the guest rootfs is ``/``.
 
   http://download.openvz.org/template/precreated/
 
-* ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES,
-  ... x86 and x86_64 CPUs, from the OpenVZ community:
+* ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES, and
+  etc. for x86 and x86_64 CPUs, from the OpenVZ community:
 
   http://download.openvz.org/template/precreated/contrib/
 
-Technically such root file-system archive can be created by running
-the following command on the expected Linux distribution::
+Technically such rootfs archive can be created by running the
+following command on the expected Linux distribution::
 
     tar --one-file-system --create --gzip --file my_rootfs.tar.gz /
 
 
-QEMU
-----
+QEMU user-mode
+--------------
 
-QEMU is required only if the guest root file-system was made for a CPU
+QEMU user-mode is required only if the guest rootfs was made for a CPU
 architecture incompatible with the host one, for instance when using a
 ARM rootfs on a x86_64 computer.  This package can be installed either
 from http://qemu.proot.me or from the host package manager under the
 name of "qemu-user" on most Linux distro.  In case one would like to
-build QEMU from sources, the ``--enable-linux-user`` option has to be
-specified to the ``./configure`` script.
+build QEMU user-mode from sources, the ``--enable-linux-user`` option
+has to be specified to the ``./configure`` script.
 
 
 See Also

@@ -39,7 +39,7 @@
 	<div id="title">
 	  <h1>PRoot</h1>
 	  <xsl:text> </xsl:text>
-	  <div class="g-plusone" data-size="small" data-annotation="none">
+	  <div class="g-plusone" data-size="small">
 	    <xsl:comment>By default XSLTproc converts tags with no
 	    content to self-closing tags</xsl:comment>
 	  </div>
