@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot — chroot, mount --bind, and binfmt_misc without privilege/setup</title><link rel="stylesheet" href="website.css" type="text/css"/><meta itemprop="name" content="PRoot"/><meta itemprop="description" content="PRoot is a user-space implementation of chroot, mount --bind,&#10;and binfmt_misc.  This means that users don't need any privilege&#10;or setup to do things like: using an arbitrary directory as the new&#10;root file-system or making files accessible somewhere else in the&#10;file-system hierarchy or executing programs built for another CPU&#10;architecture transparently through QEMU.  Technically PRoot relies on&#10;ptrace, an unprivileged system-call available in every Linux&#10;kernel."/><script type="text/javascript">
+<html xmlns="http://www.w3.org/1999/xhtml" itemscope="" itemtype="http://schema.org/Product" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8"/><title>PRoot — chroot, mount --bind, and binfmt_misc without privilege/setup</title><link rel="stylesheet" href="website.css" type="text/css"/><meta itemprop="name" content="PRoot"/><meta itemprop="description" content="PRoot is a user-space implementation of chroot, mount --bind,&#10;and binfmt_misc.  This means that users don't need any privilege&#10;or setup to do things like: using an arbitrary directory as the new&#10;root file-system or making files accessible somewhere else in the&#10;file-system hierarchy or executing programs built for another CPU&#10;architecture transparently through QEMU user-mode.  Technically PRoot&#10;relies on ptrace, an unprivileged system-call available in every&#10;Linux kernel."/><script type="text/javascript">
 	  var _gaq = _gaq || [];
 	  _gaq.push(['_setAccount', 'UA-20176046-1']);
 	  _gaq.push(['_trackPageview']);
@@ -8,40 +8,40 @@
 	  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
 	  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
 	  })();
-	</script></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small" data-annotation="none"><!--By default XSLTproc converts tags with no
+	</script></head><body><div id="title"><h1>PRoot</h1> <div class="g-plusone" data-size="small"><!--By default XSLTproc converts tags with no
 	    content to self-closing tags--></div></div><div id="contents"><ul><li><a href="#description">Description</a></li><li><a href="#examples">Examples</a></li><li><a href="#downloads">Downloads</a></li><li><a href="#help">Help</a></li></ul></div><div xmlns="" class="section" id="description"><h2>Description</h2><p>PRoot is a user-space implementation of <tt>chroot</tt>, <tt>mount --bind</tt>,
 and <tt>binfmt_misc</tt>.  This means that users don't need any privilege
 or setup to do things like: using an arbitrary directory as the new
 root file-system or making files accessible somewhere else in the
 file-system hierarchy or executing programs built for another CPU
-architecture transparently through QEMU.  Technically PRoot relies on
-<tt>ptrace</tt>, an unprivileged system-call available in every Linux
-kernel.</p><p>The new root file-system, a.k.a <em>guest rootfs</em>, typically contains a
+architecture transparently through QEMU user-mode.  Technically PRoot
+relies on <tt>ptrace</tt>, an unprivileged system-call available in every
+Linux kernel.</p><p>The new root file-system, a.k.a <em>guest rootfs</em>, typically contains a
 Linux distribution.  By default PRoot confines the execution of
 programs to the guest rootfs only, however users can use the built-in
 <em>mount/bind</em> mechanism to access files and directories from the actual
 root file-system, a.k.a <em>host rootfs</em>, just as if they were part of
 the guest rootfs.</p><p>When the guest Linux distribution is made for a CPU architecture
-incompatible with the host one, PRoot uses the CPU emulator QEMU to
-execute transparently guest programs.  It's a convenient way to
-develop, to build, and to validate any guest Linux packages seamlessly
-on users' computer, just as if they were in a <em>native</em> guest
-environment.  That way all of the cross-compilation issues are
+incompatible with the host one, PRoot uses the CPU emulator QEMU
+user-mode to execute transparently guest programs.  It's a convenient
+way to develop, to build, and to validate any guest Linux packages
+seamlessly on users' computer, just as if they were in a <em>native</em>
+guest environment.  That way all of the cross-compilation issues are
 avoided.</p><p>PRoot can also <em>mix</em> the execution of host programs and the execution
-of guest programs emulated by QEMU.  This is useful to use host
-equivalents of programs that are missing from the guest rootfs and to
-speed up build-time by using cross-compilation tools or
+of guest programs emulated by QEMU user-mode.  This is useful to use
+host equivalents of programs that are missing from the guest rootfs
+and to speed up build-time by using cross-compilation tools or
 CPU-independent programs, like interpreters.</p><p>It is worth noting that the guest kernel is never involved, regardless
-of whether QEMU is used or not.  Technically, when guest programs
-perform access to system resources, PRoot translates their requests
-before sending them to the host kernel.  This means that guest
-programs can use host resources (devices, network, ...) just as if
-they were "normal" host programs.</p></div><div xmlns="" class="section" id="examples"><h2>Examples</h2><p>In the following examples the directories <tt>/mnt/slackware-8.0</tt> and
+of whether QEMU user-mode is used or not.  Technically, when guest
+programs perform access to system resources, PRoot translates their
+requests before sending them to the host kernel.  This means that
+guest programs can use host resources (devices, network, ...) just as
+if they were "normal" host programs.</p></div><div xmlns="" class="section" id="examples"><h2>Examples</h2><p>In the following examples the directories <tt>/mnt/slackware-8.0</tt> and
 <tt>/mnt/armslack-12.2/</tt> contain a Linux distribution respectively made
 for x86 CPUs and ARM CPUs.</p><div class="section" id="chroot\ equivalent"><h3><tt>chroot</tt> equivalent</h3><p>To execute a command inside a given Linux distribution, just give
-<tt>proot</tt> the path to the guest rootfs followed by the desired command.
-The example below executes the program <tt>cat</tt> to print the content of
-a file:</p><pre>proot /mnt/slackware-8.0/ cat /etc/motd
+<tt>proot</tt> the path to the guest rootfs followed by the desired
+command.  The example below executes the program <tt>cat</tt> to print the
+content of a file:</p><pre>proot /mnt/slackware-8.0/ cat /etc/motd
 
 Welcome to Slackware Linux 8.0</pre><p>The default command is <tt>/bin/sh</tt> when none is specified. Thus the
 shortest way to confine an interactive shell and all its sub-programs
@@ -73,30 +73,32 @@ pts/6    /lib/ld-linux.so.2 /bin/sh
 pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command</pre><p>The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using <tt>/</tt> as the path to the guest rootfs and
 by specifying an alternate binding location (separated by <tt>:</tt>).  It
-is typically useful to cheat programs that perform access to hard-coded
-locations, like some installation scripts:</p><pre>proot -b /tmp/alternate_usr:/usr /
+is typically useful to cheat programs that perform access to
+hard-coded locations, like some installation scripts:</p><pre>proot -b /tmp/alternate_usr:/usr /
 
 $ cd to/sources
 $ make install
 [...]
 install -m 755 prog "/usr/bin"
 [...] # prog was installed in "/tmp/alternate_usr/bin" actually</pre><p>It can also be used to substitute system configuration files, for
-example the DNS setting:</p><pre>proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com</pre></div><div class="section" id="binfmt_misc\ equivalent"><h3><tt>binfmt_misc</tt> equivalent</h3><p>PRoot uses QEMU to execute programs built for a CPU architecture
-incompatible with the host one.  From users' point-of-view, guest
-programs handled by QEMU are executed transparently, that is, just
-like host programs.  To enable this feature users just have to specify
-which instance of QEMU they want to use with the option <tt>-q</tt> or
-<tt>-Q</tt> (this latter implies <tt>-B</tt>):</p><pre>proot -Q qemu-arm /mnt/armslack-12.2/
+example the DNS setting:</p><pre>proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com</pre></div><div class="section" id="binfmt_misc\ equivalent"><h3><tt>binfmt_misc</tt> equivalent</h3><p>PRoot uses QEMU user-mode to execute programs built for a CPU
+architecture incompatible with the host one.  From users'
+point-of-view, guest programs handled by QEMU user-mode are executed
+transparently, that is, just like host programs.  To enable this
+feature users just have to specify which instance of QEMU user-mode
+they want to use with the option <tt>-q</tt> or <tt>-Q</tt> (this latter implies
+<tt>-B</tt>):</p><pre>proot -Q qemu-arm /mnt/armslack-12.2/
 
 $ cat /etc/motd
 Welcome to ARMedSlack Linux 12.2</pre><p>The parameter of the <tt>-q/-Q</tt> option is actually a whole QEMU
-command, for instance to enable its GDB server on port 1234:</p><pre>proot -Q "qemu-arm -g 1234" /mnt/armslack-12.2/ emacs</pre><p>PRoot allows to mix transparently the emulated execution of guest
+user-mode command, for instance to enable its GDB server on port
+1234:</p><pre>proot -Q "qemu-arm -g 1234" /mnt/armslack-12.2/ emacs</pre><p>PRoot allows to mix transparently the emulated execution of guest
 programs and the native execution of host programs in the same
 file-system namespace.  It's typically useful to extend the list of
 available programs and to speed up build-time significantly.  This
-mixed-execution feature is enabled by default when using QEMU, and the
-content of the host rootfs is made accessible through
-<tt>/host-rootfs</tt>:</p><pre>proot -Q qemu-arm /mnt/armslack-12.2/
+mixed-execution feature is enabled by default when using QEMU
+user-mode, and the content of the host rootfs is made accessible
+through <tt>/host-rootfs</tt>:</p><pre>proot -Q qemu-arm /mnt/armslack-12.2/
 
 $ file /bin/echo
 [...] ELF 32-bit LSB executable, ARM [...]
@@ -126,20 +128,20 @@ host programs and the emulated execution of guest programs, they still
 believe they are running in a native guest environment.  As a
 demonstration, here is a partial output of a typical <tt>./configure</tt>
 script:</p><pre>checking whether the C compiler is a cross-compiler... no</pre></div></div><div xmlns="" class="section" id="downloads"><h2>Downloads</h2><div class="section" id=""><h3>PRoot</h3><p>The latest release of PRoot is packaged on <a href="http://packages.proot.me">http://packages.proot.me</a>
-and sources are hosted on <a href="http://github.proot.me">http://github.proot.me</a>.</p></div><div class="section" id="root\ file-systems"><h3>Root file-systems</h3><p>Here follows a couple of URLs where some root file-systems archives
-can be freely downloaded.  Note that the errors reported by <tt>tar</tt>
-when extracting these archives can be safely ignored.  Obviously these
-files are not required when PRoot is used as a <tt>mount --bind</tt>
-equivalent only, that is, when the path to the guest rootfs is <tt>/</tt>.</p><ul><li><p>Slackware/ARM:</p><p><a href="ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/">ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/</a></p></li><li><p>Fedora/ARM:</p><p><a href="http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/">http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/</a></p></li><li><p>CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
-CPUs, from the OpenVZ project:</p><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p>ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES,
-... x86 and x86_64 CPUs, from the OpenVZ community:</p><p><a href="http://download.openvz.org/template/precreated/contrib/">http://download.openvz.org/template/precreated/contrib/</a></p></li></ul><p>Technically such root file-system archive can be created by running
-the following command on the expected Linux distribution:</p><pre>tar --one-file-system --create --gzip --file my_rootfs.tar.gz /</pre></div><div class="section" id="qemu"><h3>QEMU</h3><p>QEMU is required only if the guest root file-system was made for a CPU
+and sources are hosted on <a href="http://github.proot.me">http://github.proot.me</a>.</p></div><div class="section" id="rootfs"><h3>Rootfs</h3><p>Here follows a couple of URLs where some rootfs archives can be freely
+downloaded.  Note that the errors reported by <tt>tar</tt> when extracting
+these archives can be safely ignored.  Obviously these files are not
+required when PRoot is used as a <tt>mount --bind</tt> equivalent only,
+that is, when the path to the guest rootfs is <tt>/</tt>.</p><ul><li><p>Slackware/ARM:</p><p><a href="ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/">ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/</a></p></li><li><p>Fedora/ARM:</p><p><a href="http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/">http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/</a></p></li><li><p>CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
+CPUs, from the OpenVZ project:</p><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p>ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES, and
+etc. for x86 and x86_64 CPUs, from the OpenVZ community:</p><p><a href="http://download.openvz.org/template/precreated/contrib/">http://download.openvz.org/template/precreated/contrib/</a></p></li></ul><p>Technically such rootfs archive can be created by running the
+following command on the expected Linux distribution:</p><pre>tar --one-file-system --create --gzip --file my_rootfs.tar.gz /</pre></div><div class="section" id="qemu\ user-mode"><h3>QEMU user-mode</h3><p>QEMU user-mode is required only if the guest rootfs was made for a CPU
 architecture incompatible with the host one, for instance when using a
 ARM rootfs on a x86_64 computer.  This package can be installed either
 from <a href="http://qemu.proot.me">http://qemu.proot.me</a> or from the host package manager under the
 name of "qemu-user" on most Linux distro.  In case one would like to
-build QEMU from sources, the <tt>--enable-linux-user</tt> option has to be
-specified to the <tt>./configure</tt> script.</p></div></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions, bug reports,
+build QEMU user-mode from sources, the <tt>--enable-linux-user</tt> option
+has to be specified to the <tt>./configure</tt> script.</p></div></div><div class="section" id="help"><h2>Help</h2><p>Feel free to send your questions, bug reports,
 	    suggestions, and patchs to <a href="mailto:proot_me@googlegroups.com">the
 	    mailing-list</a> or to <a href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
 	    forum</a>, but please be sure that your answer isn't in
