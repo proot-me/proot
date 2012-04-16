@@ -96,10 +96,6 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 
 	binding->host.length = strlen(binding->host.path);
 
-	/* Special case when the host rootfs is bound. */
-	if (binding->host.length == 1)
-		binding->host.length = 0;
-
 	tmp = guest_path ? guest_path : host_path;
 	if (strlen(tmp) >= PATH_MAX) {
 		notice(ERROR, INTERNAL, "binding location \"%s\" is too long", tmp);
@@ -162,6 +158,7 @@ int substitute_binding(int which, char path[PATH_MAX])
 		struct binding_path *ref;
 		struct binding_path *anti_ref;
 		enum path_comparison comparison;
+		size_t new_length;
 
 		if (!binding->sanitized)
 			continue;
@@ -187,48 +184,72 @@ int substitute_binding(int which, char path[PATH_MAX])
 		    && comparison != PATH1_IS_PREFIX)
 			continue;
 
-		if (which == BINDING_HOST_REF) {
-			/* Don't substitute systematically the prefix of the
-			 * rootfs when used as an asymmetric binding, as with:
-			 *
-			 *     proot -m /usr:/location /usr/local/slackware
-			 */
-			if (root_length != 1 /* rootfs != "/" */
-			    && belongs_to_guestfs(path))
+		/* Don't substitute systematically the prefix of the
+		 * rootfs when used as an asymmetric binding, as with:
+		 *
+		 *     proot -m /usr:/location /usr/local/slackware
+		 */
+		if (   which == BINDING_HOST_REF
+		    && root_length != 1
+		    && belongs_to_guestfs(path))
 				continue;
-
-			/* Avoid an extra trailing '/' when in the
-			 * asymmetric binding of the host rootfs. */
-			if (ref->length == 0 &&	path_length == 1)
-				path_length = 0;
-		}
 
 		/* Is it a "symetric" binding?  */
 		if (binding->need_substitution == 0)
 			return 0;
 
-		/* Ensure the substitution will not create a buffer
-		 * overflow. */
-		if (path_length - ref->length + anti_ref->length >= PATH_MAX)  {
-			notice(WARNING, INTERNAL, "Can't handle binding %s: pathname too long");
-			return -1;
-		}
+		/* Substitute the leading ref' with anti_ref'.  */
+		if (anti_ref->length == 1) {
+			/* Special case when "-b /:/foo".  Substitute
+			 * "/foo/bin" with "/bin" not "//bin".  */
+			assert(which == BINDING_GUEST_REF);
 
-		/* Replace the guest path with the host path. */
-		memmove(path + anti_ref->length, path + ref->length, path_length - ref->length);
-		memcpy(path, anti_ref->path, anti_ref->length);
-		path[path_length - ref->length + anti_ref->length] = '\0';
-
-		/* Special case when the host rootfs is bound at
-		 * the guest path pointed to by path[]. */
-		if (path[0] == '\0') {
-			path[0] = '/';
-			path[1] = '\0';
+			new_length = path_length - ref->length;
+			if (new_length != 0)
+				memmove(path, path + ref->length, new_length);
+			else {
+				/* Translating "/".  */
+				path[0] = '/';
+				new_length = 1;
+			}
 		}
+		else if (ref->length == 1) {
+			/* Special case when "-b /:/foo". Substitute
+			 * "/bin" with "/foo/bin" not "/foobin".  */
+			assert(which == BINDING_HOST_REF);
+
+			new_length = anti_ref->length + path_length;
+			if (new_length >= PATH_MAX)
+				goto too_long;
+
+			if (path_length > 1) {
+				memmove(path + anti_ref->length, path, path_length);
+				memcpy(path, anti_ref->path, anti_ref->length);
+			}
+			else {
+				/* Translating "/".  */
+				memcpy(path, anti_ref->path, anti_ref->length);
+				new_length = anti_ref->length;
+			}
+		}
+		else {
+			/* Generic substitution case.  */
+
+			new_length = path_length - ref->length + anti_ref->length;
+			if (new_length >= PATH_MAX)
+				goto too_long;
+
+			memmove(path + anti_ref->length,
+				path + ref->length,
+				path_length - ref->length);
+			memcpy(path, anti_ref->path, anti_ref->length);
+		}
+		path[new_length] = '\0';
 
 		return 1;
 	}
 
+too_long:
 	return -1;
 }
 
