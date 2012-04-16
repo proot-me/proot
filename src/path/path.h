@@ -55,6 +55,17 @@ extern int list_open_fd(pid_t pid);
 extern char root[PATH_MAX];
 extern size_t root_length;
 
+enum path_comparison {
+	PATHS_ARE_EQUAL = 0,
+	PATH1_IS_PREFIX = -1,
+	PATH2_IS_PREFIX = 1,
+	PATHS_ARE_NOT_COMPARABLE = 125,
+};
+
+extern enum path_comparison compare_paths(const char *path1, const char *path2);
+extern enum path_comparison compare_paths2(const char *path1, size_t length1,
+					const char *path2, size_t length2);
+
 /* Check if path interpretable relatively to dirfd, see openat(2) for details. */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
 

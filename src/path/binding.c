@@ -131,7 +131,9 @@ void print_bindings()
 	struct binding *binding;
 
 	for (binding = bindings; binding != NULL; binding = binding->next) {
-		if (strcmp(binding->real.path, binding->location.path) == 0)
+		if (compare_paths2(binding->real.path, binding->real.length,
+				   binding->location.path, binding->location.length)
+			== PATHS_ARE_EQUAL)
 			notice(INFO, USER, "binding = %s", binding->real.path);
 		else
 			notice(INFO, USER, "binding = %s:%s",
@@ -159,6 +161,7 @@ int substitute_binding(int which, char path[PATH_MAX])
 	for (binding = bindings; binding != NULL; binding = binding->next) {
 		struct binding_path *ref;
 		struct binding_path *anti_ref;
+		enum path_comparison comparison;
 
 		if (!binding->sanitized)
 			continue;
@@ -179,12 +182,9 @@ int substitute_binding(int which, char path[PATH_MAX])
 			return -1;
 		}
 
-		/* Skip comparisons that obviously fail. */
-		if (ref->length > path_length)
-			continue;
-
-		if (   path[ref->length] != '/'
-		    && path[ref->length] != '\0')
+		comparison = compare_paths2(ref->path, ref->length, path, path_length);
+		if (   comparison != PATHS_ARE_EQUAL
+		    && comparison != PATH1_IS_PREFIX)
 			continue;
 
 		if (which == BINDING_REAL) {
@@ -193,7 +193,7 @@ int substitute_binding(int which, char path[PATH_MAX])
 			 *
 			 *     proot -m /usr:/location /usr/local/slackware
 			 */
-			if (root_length != 0 /* rootfs != "/" */
+			if (root_length != 1 /* rootfs != "/" */
 			    && belongs_to_guestfs(path))
 				continue;
 
@@ -202,12 +202,6 @@ int substitute_binding(int which, char path[PATH_MAX])
 			if (ref->length == 0 &&	path_length == 1)
 				path_length = 0;
 		}
-
-		/* Using strncmp(3) to compare paths works fine here
-		 * because both pathes were sanitized, i.e. there is
-		 * no redundant ".", ".." or "/". */
-		if (strncmp(ref->path, path, ref->length) != 0)
-			continue;
 
 		/* Is it a "symetric" binding?  */
 		if (binding->need_substitution == 0)
@@ -362,10 +356,10 @@ void init_bindings()
 			goto error;
 		}
 
-		/* TODO: use a real path comparison function, for instance
-		 * strcmp(3) reports a wrong result with "/foo" and "/foo/."  */
-		binding->need_substitution = strcmp(binding->real.path, binding->location.path);
 		binding->location.length = strlen(binding->location.path);
+		binding->need_substitution =
+			compare_paths(binding->real.path,
+				binding->location.path) != PATHS_ARE_EQUAL;
 
 		/* Remove the trailing slash as expected by substitute_binding(). */
 		if (binding->location.path[binding->location.length - 1] == '/') {
