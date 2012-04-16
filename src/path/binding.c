@@ -40,8 +40,8 @@ struct binding_path {
 };
 
 struct binding {
-	struct binding_path real;
-	struct binding_path location;
+	struct binding_path host;
+	struct binding_path guest;
 
 	int sanitized;
 	int need_substitution;
@@ -61,7 +61,7 @@ static void insort_binding(struct binding *binding)
 	struct binding *next = NULL;
 
 	for (next = bindings; next != NULL; previous = next, next = next->next) {
-		if (strcmp(binding->real.path, next->real.path) > 0)
+		if (strcmp(binding->host.path, next->host.path) > 0)
 			break;
 	}
 
@@ -77,7 +77,7 @@ static void insort_binding(struct binding *binding)
  * Save @path in the list of paths that are bound for the
  * translation mechanism.
  */
-void bind_path(const char *path, const char *location, bool must_exist)
+void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 {
 	struct binding *binding;
 	const char *tmp;
@@ -88,29 +88,29 @@ void bind_path(const char *path, const char *location, bool must_exist)
 		return;
 	}
 
-	if (realpath(path, binding->real.path) == NULL) {
+	if (realpath(host_path, binding->host.path) == NULL) {
 		if (must_exist)
-			notice(WARNING, SYSTEM, "realpath(\"%s\")", path);
+			notice(WARNING, SYSTEM, "realpath(\"%s\")", host_path);
 		goto error;
 	}
 
-	binding->real.length = strlen(binding->real.path);
+	binding->host.length = strlen(binding->host.path);
 
-	/* Special case when the real rootfs is bound. */
-	if (binding->real.length == 1)
-		binding->real.length = 0;
+	/* Special case when the host rootfs is bound. */
+	if (binding->host.length == 1)
+		binding->host.length = 0;
 
-	tmp = location ? location : path;
+	tmp = guest_path ? guest_path : host_path;
 	if (strlen(tmp) >= PATH_MAX) {
 		notice(ERROR, INTERNAL, "binding location \"%s\" is too long", tmp);
 		goto error;
 	}
 
-	strcpy(binding->location.path, tmp);
+	strcpy(binding->guest.path, tmp);
 
-	/* The sanitization of binding->location is delayed until
+	/* The sanitization of binding->guest is delayed until
 	 * init_module_path(). */
-	binding->location.length = 0;
+	binding->guest.length = 0;
 	binding->sanitized = 0;
 
 	insort_binding(binding);
@@ -131,19 +131,19 @@ void print_bindings()
 	struct binding *binding;
 
 	for (binding = bindings; binding != NULL; binding = binding->next) {
-		if (compare_paths2(binding->real.path, binding->real.length,
-				   binding->location.path, binding->location.length)
+		if (compare_paths2(binding->host.path, binding->host.length,
+				   binding->guest.path, binding->guest.length)
 			== PATHS_ARE_EQUAL)
-			notice(INFO, USER, "binding = %s", binding->real.path);
+			notice(INFO, USER, "binding = %s", binding->host.path);
 		else
 			notice(INFO, USER, "binding = %s:%s",
-				binding->real.path, binding->location.path);
+				binding->host.path, binding->guest.path);
 	}
 }
 
 /**
- * Substitute the binding location (if any) with the real path in
- * @path.  This function returns:
+ * Substitute the guest path (if any) with the host path in @path.
+ * This function returns:
  *
  *     * -1 if it is not a binding location
  *
@@ -167,14 +167,14 @@ int substitute_binding(int which, char path[PATH_MAX])
 			continue;
 
 		switch (which) {
-		case BINDING_LOCATION:
-			ref      = &binding->location;
-			anti_ref = &binding->real;
+		case BINDING_GUEST_REF:
+			ref      = &binding->guest;
+			anti_ref = &binding->host;
 			break;
 
-		case BINDING_REAL:
-			ref      = &binding->real;
-			anti_ref = &binding->location;
+		case BINDING_HOST_REF:
+			ref      = &binding->host;
+			anti_ref = &binding->guest;
 			break;
 
 		default:
@@ -187,7 +187,7 @@ int substitute_binding(int which, char path[PATH_MAX])
 		    && comparison != PATH1_IS_PREFIX)
 			continue;
 
-		if (which == BINDING_REAL) {
+		if (which == BINDING_HOST_REF) {
 			/* Don't substitute systematically the prefix of the
 			 * rootfs when used as an asymmetric binding, as with:
 			 *
@@ -198,7 +198,7 @@ int substitute_binding(int which, char path[PATH_MAX])
 				continue;
 
 			/* Avoid an extra trailing '/' when in the
-			 * asymmetric binding of the real rootfs. */
+			 * asymmetric binding of the host rootfs. */
 			if (ref->length == 0 &&	path_length == 1)
 				path_length = 0;
 		}
@@ -214,13 +214,13 @@ int substitute_binding(int which, char path[PATH_MAX])
 			return -1;
 		}
 
-		/* Replace the binding location with the real path. */
+		/* Replace the guest path with the host path. */
 		memmove(path + anti_ref->length, path + ref->length, path_length - ref->length);
 		memcpy(path, anti_ref->path, anti_ref->length);
 		path[path_length - ref->length + anti_ref->length] = '\0';
 
-		/* Special case when the real rootfs is bound at
-		 * the location pointed to by path[]. */
+		/* Special case when the host rootfs is bound at
+		 * the guest path pointed to by path[]. */
 		if (path[0] == '\0') {
 			path[0] = '/';
 			path[1] = '\0';
@@ -233,10 +233,10 @@ int substitute_binding(int which, char path[PATH_MAX])
 }
 
 /**
- * Create a "dummy" path up to the canonicalized binding location
- * @c_path, it cheats programs that walk up to it.
+ * Create a "dummy" path up to the canonicalized guest path @c_path,
+ * it cheats programs that walk up to it.
  */
-static void create_dummy(char c_path[PATH_MAX], const char * real_path)
+static void create_dummy(char c_path[PATH_MAX], const char *real_path)
 {
 	char t_current_path[PATH_MAX];
 	char t_path[PATH_MAX];
@@ -332,42 +332,42 @@ void init_bindings()
 
 		assert(!binding->sanitized);
 
-		strcpy(tmp, binding->location.path);
+		strcpy(tmp, binding->guest.path);
 
-		/* In case binding->location.path is relative.  */
-		if (!getcwd(binding->location.path, PATH_MAX)) {
+		/* In case binding->guest.path is relative.  */
+		if (!getcwd(binding->guest.path, PATH_MAX)) {
 			notice(WARNING, SYSTEM, "can't sanitize binding \"%s\"");
 			goto error;
 		}
 
-		/* Sanitize the location of the binding within the
+		/* Sanitize the guest path of the binding within the
 		   alternate rootfs since it is assumed by
-		   substitute_binding().  Note the real path is already
+		   substitute_binding().  Note the host path is already
 		   sanitized in bind_path().  */
-		status = canonicalize(0, tmp, 1, binding->location.path, 0);
+		status = canonicalize(0, tmp, 1, binding->guest.path, 0);
 		if (status < 0) {
 			notice(WARNING, INTERNAL, "sanitizing the binding location \"%s\": %s",
 			       tmp, strerror(-status));
 			goto error;
 		}
 
-		if (strcmp(binding->location.path, "/") == 0) {
+		if (strcmp(binding->guest.path, "/") == 0) {
 			notice(WARNING, USER, "can't create a binding in \"/\"");
 			goto error;
 		}
 
-		binding->location.length = strlen(binding->location.path);
+		binding->guest.length = strlen(binding->guest.path);
 		binding->need_substitution =
-			compare_paths(binding->real.path,
-				binding->location.path) != PATHS_ARE_EQUAL;
+			compare_paths(binding->host.path,
+				binding->guest.path) != PATHS_ARE_EQUAL;
 
 		/* Remove the trailing slash as expected by substitute_binding(). */
-		if (binding->location.path[binding->location.length - 1] == '/') {
-			binding->location.path[binding->location.length - 1] = '\0';
-			binding->location.length--;
+		if (binding->guest.path[binding->guest.length - 1] == '/') {
+			binding->guest.path[binding->guest.length - 1] = '\0';
+			binding->guest.length--;
 		}
 
-		create_dummy(binding->location.path, binding->real.path);
+		create_dummy(binding->guest.path, binding->host.path);
 
 		binding->sanitized = 1;
 		continue;

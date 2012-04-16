@@ -125,7 +125,7 @@ int canonicalize(pid_t pid, const char *fake_path, int deref_final,
 		if (status < 0)
 			return status;
 
-		if (substitute_binding(BINDING_LOCATION, tmp) >= 0) {
+		if (substitute_binding(BINDING_GUEST_REF, tmp) >= 0) {
 			strcpy(real_entry, tmp);
 		}
 		else {

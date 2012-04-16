@@ -28,8 +28,8 @@
 
 extern void bind_path(const char *path, const char *location, bool must_exist);
 extern void print_bindings(void);
-#define BINDING_LOCATION 1
-#define BINDING_REAL     2
+#define BINDING_GUEST_REF 1
+#define BINDING_HOST_REF  2
 extern int substitute_binding(int which, char path[PATH_MAX]);
 extern void init_bindings(void);
 
