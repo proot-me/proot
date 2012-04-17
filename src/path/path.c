@@ -276,7 +276,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
-		status = detranslate_path(result, true, true);
+		status = detranslate_path(result, NULL);
 		if (status < 0)
 			return status;
 	}
@@ -328,10 +328,13 @@ end:
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(char path[PATH_MAX], bool sanity_check, bool follow_binding)
+int detranslate_path(char path[PATH_MAX], char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
 	size_t new_length;
+
+	bool sanity_check;
+	bool follow_binding;
 
 	assert(initialized != 0);
 
@@ -343,6 +346,48 @@ int detranslate_path(char path[PATH_MAX], bool sanity_check, bool follow_binding
 	 * target of a relative symbolic link). */
 	if (path[0] != '/')
 		return 0;
+
+	/* Is it a symlink?  */
+	if (t_referrer != NULL) {
+		enum path_comparison comparison;
+
+		sanity_check = false;
+		follow_binding = false;
+
+		/* In some cases bings have to be resolved.  */
+		comparison = compare_paths("/proc", t_referrer);
+		if (comparison == PATH1_IS_PREFIX) {
+			/* Always resolve bindings for symlinks in
+			 * "/proc", they always point to the emulated
+			 * file-system namespace by design. */
+			follow_binding = true;
+		}
+		else if (!belongs_to_guestfs(t_referrer)) {
+			const char *binding_referree;
+			const char *binding_referrer;
+
+			binding_referree = get_path_binding(HOST_SIDE, path);
+			binding_referrer = get_path_binding(HOST_SIDE, t_referrer);
+			assert(binding_referrer != NULL);
+
+			/* Resolve bindings for symlinks that belong
+			 * to a binding and point to the same binding.
+			 * For example, if "-b /lib:/foo" is specified
+			 * and the symlink "/lib/a -> /lib/b" exists
+			 * in the host rootfs namespace, then it
+			 * should appear as "/foo/a -> /foo/b" in the
+			 * guest rootfs namespace for consistency
+			 * reasons.  */
+			if (binding_referree != NULL) {
+				comparison = compare_paths(binding_referree, binding_referrer);
+				follow_binding = (comparison == PATHS_ARE_EQUAL);
+			}
+		}
+	}
+	else {
+		sanity_check = true;
+		follow_binding = true;
+	}
 
 	if (follow_binding) {
 		switch (substitute_binding(HOST_SIDE, path)) {
