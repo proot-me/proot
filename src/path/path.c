@@ -300,7 +300,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 	/* Don't prepend the new root to the result of the
 	 * canonicalization if it is a binding, instead substitute the
 	 * binding location (leading part) with the real path.*/
-	if (substitute_binding(BINDING_GUEST_REF, result) >= 0)
+	if (substitute_binding(GUEST_SIDE, result) >= 0)
 		goto end;
 
 	strcpy(tmp, result);
@@ -345,7 +345,7 @@ int detranslate_path(char path[PATH_MAX], bool sanity_check, bool follow_binding
 		return 0;
 
 	if (follow_binding) {
-		switch (substitute_binding(BINDING_HOST_REF, path)) {
+		switch (substitute_binding(HOST_SIDE, path)) {
 		case 0:
 			return 0;
 		case 1:

@@ -28,9 +28,15 @@
 
 extern void bind_path(const char *path, const char *location, bool must_exist);
 extern void print_bindings(void);
-#define BINDING_GUEST_REF 1
-#define BINDING_HOST_REF  2
-extern int substitute_binding(int which, char path[PATH_MAX]);
+
+enum binding_side {
+	GUEST_SIDE = 1,
+	HOST_SIDE = 2,
+};
+
+extern const char *get_path_binding(enum binding_side side, char path[PATH_MAX]);
+extern int substitute_binding(enum binding_side side, char path[PATH_MAX]);
+
 extern void init_bindings(void);
 
 #endif /* BINDING_H */

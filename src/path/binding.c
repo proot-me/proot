@@ -43,8 +43,8 @@ struct binding {
 	struct binding_path host;
 	struct binding_path guest;
 
-	int sanitized;
-	int need_substitution;
+	bool sanitized;
+	bool need_substitution;
 
 	struct binding *next;
 };
@@ -107,7 +107,7 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	/* The sanitization of binding->guest is delayed until
 	 * init_module_path(). */
 	binding->guest.length = 0;
-	binding->sanitized = 0;
+	binding->sanitized = false;
 
 	insort_binding(binding);
 
@@ -138,6 +138,82 @@ void print_bindings()
 }
 
 /**
+ * Get the binding for the given @path (relatively to the given
+ * binding @side).
+ */
+static const struct binding *get_binding(enum binding_side side, char path[PATH_MAX])
+{
+	const struct binding *binding;
+	size_t path_length = strlen(path);
+
+	for (binding = bindings; binding != NULL; binding = binding->next) {
+		enum path_comparison comparison;
+		const struct binding_path *ref;
+
+		if (!binding->sanitized)
+			continue;
+
+		switch (side) {
+		case GUEST_SIDE:
+			ref = &binding->guest;
+			break;
+
+		case HOST_SIDE:
+			ref = &binding->host;
+			break;
+
+		default:
+			notice(WARNING, INTERNAL, "unexpected value for binding reference");
+			return NULL;
+		}
+
+		comparison = compare_paths2(ref->path, ref->length, path, path_length);
+		if (   comparison != PATHS_ARE_EQUAL
+		    && comparison != PATH1_IS_PREFIX)
+			continue;
+
+		/* Avoid false positive when a prefix of the rootfs is
+		 * used as an asymmetric binding, ex.:
+		 *
+		 *     proot -m /usr:/location /usr/local/slackware
+		 */
+		if (   side == HOST_SIDE
+		    && root_length != 1
+		    && belongs_to_guestfs(path))
+				continue;
+
+		return binding;
+	}
+
+	return NULL;
+}
+
+/**
+ * Get the binding path for the given @path (relatively to the given
+ * binding @side).
+ */
+const char *get_path_binding(enum binding_side side, char path[PATH_MAX])
+{
+	const struct binding *binding;
+
+	binding = get_binding(side, path);
+	if (!binding)
+		return NULL;
+
+	switch (side) {
+	case GUEST_SIDE:
+		return binding->guest.path;
+
+	case HOST_SIDE:
+		return binding->host.path;
+
+	default:
+		assert(0);
+		return NULL;
+	}
+}
+
+/**
  * Substitute the guest path (if any) with the host path in @path.
  * This function returns:
  *
@@ -149,105 +225,88 @@ void print_bindings()
  *     * 1 if it is a binding location and a substitution was performed
  *       ("asymmetric" binding)
  */
-int substitute_binding(int which, char path[PATH_MAX])
+int substitute_binding(enum binding_side side, char path[PATH_MAX])
 {
-	struct binding *binding;
-	size_t path_length = strlen(path);
+	const struct binding_path *reverse_ref;
+	const struct binding_path *ref;
+	const struct binding *binding;
+	size_t path_length;
+	size_t new_length;
 
-	for (binding = bindings; binding != NULL; binding = binding->next) {
-		struct binding_path *ref;
-		struct binding_path *anti_ref;
-		enum path_comparison comparison;
-		size_t new_length;
+	binding = get_binding(side, path);
+	if (!binding)
+		return -1;
 
-		if (!binding->sanitized)
-			continue;
+	/* Is it a "symetric" binding?  */
+	if (!binding->need_substitution)
+		return 0;
 
-		switch (which) {
-		case BINDING_GUEST_REF:
-			ref      = &binding->guest;
-			anti_ref = &binding->host;
-			break;
+	path_length = strlen(path);
 
-		case BINDING_HOST_REF:
-			ref      = &binding->host;
-			anti_ref = &binding->guest;
-			break;
+	switch (side) {
+	case GUEST_SIDE:
+		ref = &binding->guest;
+		reverse_ref = &binding->host;
+		break;
 
-		default:
-			notice(WARNING, INTERNAL, "unexpected value for binding reference");
-			return -1;
+	case HOST_SIDE:
+		ref = &binding->host;
+		reverse_ref = &binding->guest;
+		break;
+
+	default:
+		notice(WARNING, INTERNAL, "unexpected value for binding reference");
+		return -1;
+	}
+
+	/* Substitute the leading ref' with reverse_ref'.  */
+	if (reverse_ref->length == 1) {
+		/* Special case when "-b /:/foo".  Substitute
+		 * "/foo/bin" with "/bin" not "//bin".  */
+		assert(side == GUEST_SIDE);
+
+		new_length = path_length - ref->length;
+		if (new_length != 0)
+			memmove(path, path + ref->length, new_length);
+		else {
+			/* Translating "/".  */
+			path[0] = '/';
+			new_length = 1;
 		}
+	}
+	else if (ref->length == 1) {
+		/* Special case when "-b /:/foo". Substitute
+		 * "/bin" with "/foo/bin" not "/foobin".  */
+		assert(side == HOST_SIDE);
 
-		comparison = compare_paths2(ref->path, ref->length, path, path_length);
-		if (   comparison != PATHS_ARE_EQUAL
-		    && comparison != PATH1_IS_PREFIX)
-			continue;
+		new_length = reverse_ref->length + path_length;
+		if (new_length >= PATH_MAX)
+			goto too_long;
 
-		/* Don't substitute systematically the prefix of the
-		 * rootfs when used as an asymmetric binding, as with:
-		 *
-		 *     proot -m /usr:/location /usr/local/slackware
-		 */
-		if (   which == BINDING_HOST_REF
-		    && root_length != 1
-		    && belongs_to_guestfs(path))
-				continue;
-
-		/* Is it a "symetric" binding?  */
-		if (binding->need_substitution == 0)
-			return 0;
-
-		/* Substitute the leading ref' with anti_ref'.  */
-		if (anti_ref->length == 1) {
-			/* Special case when "-b /:/foo".  Substitute
-			 * "/foo/bin" with "/bin" not "//bin".  */
-			assert(which == BINDING_GUEST_REF);
-
-			new_length = path_length - ref->length;
-			if (new_length != 0)
-				memmove(path, path + ref->length, new_length);
-			else {
-				/* Translating "/".  */
-				path[0] = '/';
-				new_length = 1;
-			}
-		}
-		else if (ref->length == 1) {
-			/* Special case when "-b /:/foo". Substitute
-			 * "/bin" with "/foo/bin" not "/foobin".  */
-			assert(which == BINDING_HOST_REF);
-
-			new_length = anti_ref->length + path_length;
-			if (new_length >= PATH_MAX)
-				goto too_long;
-
-			if (path_length > 1) {
-				memmove(path + anti_ref->length, path, path_length);
-				memcpy(path, anti_ref->path, anti_ref->length);
-			}
-			else {
-				/* Translating "/".  */
-				memcpy(path, anti_ref->path, anti_ref->length);
-				new_length = anti_ref->length;
-			}
+		if (path_length > 1) {
+			memmove(path + reverse_ref->length, path, path_length);
+			memcpy(path, reverse_ref->path, reverse_ref->length);
 		}
 		else {
-			/* Generic substitution case.  */
-
-			new_length = path_length - ref->length + anti_ref->length;
-			if (new_length >= PATH_MAX)
-				goto too_long;
-
-			memmove(path + anti_ref->length,
-				path + ref->length,
-				path_length - ref->length);
-			memcpy(path, anti_ref->path, anti_ref->length);
+			/* Translating "/".  */
+			memcpy(path, reverse_ref->path, reverse_ref->length);
+			new_length = reverse_ref->length;
 		}
-		path[new_length] = '\0';
-
-		return 1;
 	}
+	else {
+		/* Generic substitution case.  */
+
+		new_length = path_length - ref->length + reverse_ref->length;
+		if (new_length >= PATH_MAX)
+			goto too_long;
+
+		memmove(path + reverse_ref->length,
+			path + ref->length,
+			path_length - ref->length);
+		memcpy(path, reverse_ref->path, reverse_ref->length);
+	}
+	path[new_length] = '\0';
+	return 1;
 
 too_long:
 	return -1;
@@ -390,11 +449,11 @@ void init_bindings()
 
 		create_dummy(binding->guest.path, binding->host.path);
 
-		binding->sanitized = 1;
+		binding->sanitized = true;
 		continue;
 
 	error:
 		/* TODO: remove this element from the list instead. */
-		binding->sanitized = 0;
+		binding->sanitized = false;
 	}
 }
