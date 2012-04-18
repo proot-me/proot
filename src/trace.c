@@ -182,11 +182,15 @@ int event_loop()
 	pid_t pid;
 
 	signal = 0;
-	while (get_nb_tracees() > 0) {
+	while (1) {
 		/* Wait for the next tracee's stop. */
 		pid = waitpid(-1, &tracee_status, __WALL);
-		if (pid < 0)
-			notice(ERROR, SYSTEM, "waitpid()");
+		if (pid < 0) {
+			if (errno != ECHILD)
+				notice(ERROR, SYSTEM, "waitpid()");
+			else
+				break;
+		}
 
 		/* Check every tracee file descriptors. */
 		if (config.check_fd)

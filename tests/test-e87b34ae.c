@@ -10,7 +10,7 @@ int main(void)
 	int status;
 	int i;
 
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 1000; i++) {
 		pid = fork();
 		switch (pid) {
 		case -1:

@@ -118,28 +118,6 @@ Documentation
 Clean-up
 --------
 
-* in event_loop(), replace::
-
-      while (get_nb_tracees() > 0) {
-          pid = waitpid(-1, &tracee_status, __WALL);
-          if (pid < 0)
-              notice(ERROR, SYSTEM, "waitpid()");
-          ...
-      }
-
-  with::
-
-      while (1) {
-          pid = waitpid(-1, &tracee_status, __WALL);
-          if (pid < 0)
-              if (errno != ECHILD)
-                  notice(ERROR, SYSTEM, "waitpid()");
-              else
-                  break;
-          ...
-      }
-      assert(get_nb_tracees() == 0)
-
 * Replace "readlink(XXX, path, PATH_MAX)" with "readlink(XXX, path, PATH_MAX - 1)"
 
 * get_tracee_string should return -ENAMETOOLONG when length(XXX) >= max_size
