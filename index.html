@@ -48,13 +48,13 @@ shortest way to confine an interactive shell and all its sub-programs
 is:</p><pre>proot /mnt/slackware-8.0/
 
 $ cat /etc/motd
-Welcome to Slackware Linux 8.0</pre></div><div class="section" id="mount\ --bind\ equivalent"><h3><tt>mount --bind</tt> equivalent</h3><p>The option <tt>-b</tt>, short for <tt>--bind</tt>, makes any file from the host
+Welcome to Slackware Linux 8.0</pre></div><div class="section" id="chroot\ +\ mount\ --bind\ equivalent"><h3><tt>chroot</tt> + <tt>mount --bind</tt> equivalent</h3><p>The option <tt>-b</tt>, short for <tt>--bind</tt>, makes any file from the host
 rootfs accessible in the confined environment just as if it were
 initially part of the guest rootfs.  It is sometimes required to run
 programs that rely on some specific files:</p><pre>proot /mnt/slackware-8.0/
 
 $ ps -o tty,command
-Error, do this: mount -t proc none /proc</pre><p>Works better with:</p><pre>proot -b /proc /mnt/slackware-8.0/
+Error, do this: mount -t proc none /proc</pre><p>works better with:</p><pre>proot -b /proc /mnt/slackware-8.0/
 
 $ ps -o tty,command
 TT       COMMAND
@@ -70,7 +70,7 @@ TT       COMMAND
 pts/6    -bash
 pts/6    proot -B /mnt/slackware-8.0/
 pts/6    /lib/ld-linux.so.2 /bin/sh
-pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command</pre><p>The bind mechanism can also be used to relocate files and directories
+pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command</pre></div><div class="section" id="mount\ --bind\ equivalent"><h3><tt>mount --bind</tt> equivalent</h3><p>The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using <tt>/</tt> as the path to the guest rootfs and
 by specifying an alternate binding location (separated by <tt>:</tt>).  It
 is typically useful to cheat programs that perform access to
