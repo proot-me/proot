@@ -51,8 +51,6 @@ Next major
 * Allow one root per tracee, then add support for the chroot syscall
   under PRoot.
 
-  It should make pacman (the Arch Linux package manager) happy.
-
 
 Not yet scheduled
 =================

@@ -125,14 +125,16 @@ Regular options
     does not improve the compatibility.
 
 -0, --root-id
-    Force syscalls ``chown*`` and ``get*id`` to return 0, aka "root".
+    Force some syscalls to behave as if executed by "root".
 
     Some programs will refuse to work if they are not run with "root"
     privileges, even if there is no technical reason for that.  This
     is typically the case with package managers.  This option allows
     users to bypass this kind of limitation by faking the user/group
-    identity, and by faking the success of any ownership change.  Note
-    that this option is quite limited compared to ``fakeroot``.
+    identity, and by faking the success of some operations like
+    changing the ownership of files, changing the root directory to
+    ``/``, ...  Note that this option is quite limited compared to
+    ``fakeroot``.
 
 -v, --verbose
     Increase the level of debug information.

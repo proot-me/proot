@@ -269,6 +269,48 @@ case PR_uname: {
 }
 	break;
 
+case PR_chroot: {
+	char path[PATH_MAX];
+	word_t input;
+
+	if (!config.fake_id0) {
+		status = 0;
+		goto end;
+	}
+
+	result = peek_ureg(tracee, SYSARG_RESULT);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	/* Override only permission errors.  */
+	if ((int) result != -EPERM) {
+		status = 0;
+		goto end;
+	}
+
+	input = peek_ureg(tracee, SYSARG_1);
+	if (errno != 0) {
+		status = -errno;
+		goto end;
+	}
+
+	status = get_tracee_string(tracee, path, input, PATH_MAX);
+	if (status < 0)
+		goto end;
+
+	/* Succeed only if the new rootfs == current rootfs.  */
+	status = compare_paths2(root, root_length, path, strlen(path));
+	if (status != PATHS_ARE_EQUAL) {
+		status = 0;
+		goto end;
+	}
+
+	status = 0;
+}
+	break;
+
 case PR_chown:
 case PR_fchown:
 case PR_lchown:
