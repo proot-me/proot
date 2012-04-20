@@ -43,34 +43,24 @@ struct binding {
 	struct binding_path host;
 	struct binding_path guest;
 
-	bool sanitized;
 	bool need_substitution;
 
+	struct binding *previous;
 	struct binding *next;
 };
 
 static struct binding *bindings = NULL;
+static struct binding *expected_bindings = NULL;
+static bool initialized = false;
 
 /**
- * Insert @binding into the list of @bindings, in a reversely sorted
- * manner.
+ * Add @binding to the list of expected bindings, used in
+ * init_bindings() to feed the list of actual @bindings.
  */
-static void insort_binding(struct binding *binding)
+static void expect_binding(struct binding *binding)
 {
-	struct binding *previous = NULL;
-	struct binding *next = NULL;
-
-	for (next = bindings; next != NULL; previous = next, next = next->next) {
-		if (strcmp(binding->host.path, next->host.path) > 0)
-			break;
-	}
-
-	if (previous)
-		previous->next = binding;
-	else
-		bindings = binding;
-
-	binding->next = next;
+	binding->next = expected_bindings;
+	expected_bindings = binding;
 }
 
 /**
@@ -107,9 +97,8 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	/* The sanitization of binding->guest is delayed until
 	 * init_module_path(). */
 	binding->guest.length = 0;
-	binding->sanitized = false;
 
-	insort_binding(binding);
+	expect_binding(binding);
 
 	return;
 
@@ -149,9 +138,6 @@ static const struct binding *get_binding(enum binding_side side, char path[PATH_
 	for (binding = bindings; binding != NULL; binding = binding->next) {
 		enum path_comparison comparison;
 		const struct binding_path *ref;
-
-		if (!binding->sanitized)
-			continue;
 
 		switch (side) {
 		case GUEST_SIDE:
@@ -232,6 +218,9 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 	const struct binding *binding;
 	size_t path_length;
 	size_t new_length;
+
+	if (!initialized)
+		return -1;
 
 	binding = get_binding(side, path);
 	if (!binding)
@@ -398,26 +387,107 @@ error:
 }
 
 /**
+ * Insert @binding into the list of @bindings, in a sorted manner so
+ * as to make the substitution of nested bindings determistic, ex.:
+ *
+ *     -b /bin:/foo/bin -b /usr/bin/more:/foo/bin/more
+ *
+ * Note: "nested" from the guest point-of-view.
+ */
+static struct binding *insort_binding(const struct binding *binding)
+{
+	struct binding *previous = NULL;
+	struct binding *next = NULL;
+	struct binding *iterator;
+	struct binding *new_binding;
+
+	/* Find where it should be added in the list.  */
+	for (iterator = bindings; iterator != NULL; iterator = iterator->next) {
+		enum path_comparison comparison;
+
+		comparison = compare_paths2(binding->guest.path, binding->guest.length,
+					    iterator->guest.path, iterator->guest.length);
+		switch (comparison) {
+		case PATHS_ARE_EQUAL:
+			notice(WARNING, USER,
+				"both '%s' and '%s' are bound to '%s, "
+				"only the first binding is enabled",
+				iterator->host.path, binding->host.path, binding->guest.path);
+			return NULL;
+
+		case PATH1_IS_PREFIX:
+			/* The new binding contains the iterator.  */
+			previous = iterator;
+			break;
+
+		case PATH2_IS_PREFIX:
+			/* The iterator contains the new binding.
+			 * Use the deepest container.  */
+			if (next == NULL)
+				next = iterator;
+			break;
+
+		case PATHS_ARE_NOT_COMPARABLE:
+			break;
+
+		default:
+			assert(0);
+		}
+	}
+
+	/* Work an a copy, the original will be freed by
+	 * init_bindings() later.  */
+	new_binding = malloc(sizeof(struct binding));
+	memcpy(new_binding, binding, sizeof(struct binding));
+
+	/* Insert this copy in the list.  */
+	if (previous != NULL) {
+		new_binding->previous = previous;
+		new_binding->next     = previous->next;
+		if (previous->next != NULL)
+			previous->next->previous = new_binding;
+		previous->next        = new_binding;
+	}
+	else if (next != NULL) {
+		new_binding->next     = next;
+		new_binding->previous = next->previous;
+		if (next->previous != NULL)
+			next->previous->next = new_binding;
+		next->previous        = new_binding;
+
+		/* Ensure the head points to the first binding.  */
+		if (next == bindings)
+			bindings = new_binding;
+	}
+	else {
+		new_binding->next     = bindings;
+		new_binding->previous = NULL;
+		bindings              = new_binding;
+	}
+
+	return new_binding;
+}
+
+/**
  * Initialize internal data of the path translator.
  */
 void init_bindings()
 {
 	struct binding *binding;
+	struct binding *new_binding;
 
 	/* Now the module is initialized so we can call
 	 * canonicalize() safely. */
-	for (binding = bindings; binding != NULL; binding = binding->next) {
+	for (binding = expected_bindings; binding != NULL; binding = binding->next) {
 		char tmp[PATH_MAX];
 		int status;
-
-		assert(!binding->sanitized);
 
 		strcpy(tmp, binding->guest.path);
 
 		/* In case binding->guest.path is relative.  */
 		if (!getcwd(binding->guest.path, PATH_MAX)) {
 			notice(WARNING, SYSTEM, "can't sanitize binding \"%s\"");
-			goto error;
+			continue;
 		}
 
 		/* Sanitize the guest path of the binding within the
@@ -428,12 +498,12 @@ void init_bindings()
 		if (status < 0) {
 			notice(WARNING, INTERNAL, "sanitizing the binding location \"%s\": %s",
 			       tmp, strerror(-status));
-			goto error;
+			continue;
 		}
 
 		if (strcmp(binding->guest.path, "/") == 0) {
 			notice(WARNING, USER, "can't create a binding in \"/\"");
-			goto error;
+			continue;
 		}
 
 		binding->guest.length = strlen(binding->guest.path);
@@ -447,13 +517,23 @@ void init_bindings()
 			binding->guest.length--;
 		}
 
-		create_dummy(binding->guest.path, binding->host.path);
+		new_binding = insort_binding(binding);
+		if (!new_binding)
+			continue;
 
-		binding->sanitized = true;
-		continue;
-
-	error:
-		/* TODO: remove this element from the list instead. */
-		binding->sanitized = false;
+		create_dummy(new_binding->guest.path, new_binding->host.path);
 	}
+
+	/* Free the list of expected bindings, it will not be used
+	 * anymore.  */
+	if (expected_bindings != NULL) {
+		struct binding *next;
+
+		for (binding = expected_bindings, next = binding->next;
+		     next != NULL;
+		     binding = next, next = binding->next)
+			free(binding);
+	}
+
+	initialized = true;
 }

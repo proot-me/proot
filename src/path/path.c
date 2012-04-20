@@ -41,7 +41,7 @@
 
 #include "compat.h"
 
-static int initialized = 0;
+static bool initialized = false;
 char root[PATH_MAX];
 size_t root_length;
 
@@ -196,7 +196,7 @@ void init_module_path()
 	strcpy(root, config.guest_rootfs);
 
 	root_length = strlen(root);
-	initialized = 1;
+	initialized = true;
 
 	init_bindings();
 }
@@ -235,7 +235,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 	int status;
 	pid_t pid;
 
-	assert(initialized != 0);
+	assert(initialized);
 
 	pid = (tracee != NULL ? tracee->pid : getpid());
 
@@ -336,7 +336,7 @@ int detranslate_path(char path[PATH_MAX], char t_referrer[PATH_MAX])
 	bool sanity_check;
 	bool follow_binding;
 
-	assert(initialized != 0);
+	assert(initialized);
 
 #if BENCHMARK_TRACEE_HANDLING
 	return 0;
