@@ -1,0 +1,492 @@
+.\" Man page generated from reStructeredText.
+.
+.TH PROOT 1 "2012-03-23" "1.8.3" ""
+.SH NAME
+PRoot \- chroot, mount --bind, and binfmt_misc without privilege/setup
+.
+.nr rst2man-indent-level 0
+.
+.de1 rstReportMargin
+\\$1 \\n[an-margin]
+level \\n[rst2man-indent-level]
+level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
+-
+\\n[rst2man-indent0]
+\\n[rst2man-indent1]
+\\n[rst2man-indent2]
+..
+.de1 INDENT
+.\" .rstReportMargin pre:
+. RS \\$1
+. nr rst2man-indent\\n[rst2man-indent-level] \\n[an-margin]
+. nr rst2man-indent-level +1
+.\" .rstReportMargin post:
+..
+.de UNINDENT
+. RE
+.\" indent \\n[an-margin]
+.\" old: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.nr rst2man-indent-level -1
+.\" new: \\n[rst2man-indent\\n[rst2man-indent-level]]
+.in \\n[rst2man-indent\\n[rst2man-indent-level]]u
+..
+.SH SYNOPSIS
+.sp
+\fBproot\fP [\fIoption\fP] ... \fI/path/to/guest/rootfs\fP [\fIprogram\fP [\fIarg\fP] ...]
+.SH DESCRIPTION
+.sp
+PRoot is a user\-space implementation of \fBchroot\fP, \fBmount \-\-bind\fP,
+and \fBbinfmt_misc\fP.  This means that users don\(aqt need any privilege
+or setup to do things like: using an arbitrary directory as the new
+root file\-system or making files accessible somewhere else in the
+file\-system hierarchy or executing programs built for another CPU
+architecture transparently through QEMU user\-mode.  Technically PRoot
+relies on \fBptrace\fP, an unprivileged system\-call available in every
+Linux kernel.
+.sp
+The new root file\-system, a.k.a \fIguest rootfs\fP, typically contains a
+Linux distribution.  By default PRoot confines the execution of
+programs to the guest rootfs only, however users can use the built\-in
+\fImount/bind\fP mechanism to access files and directories from the actual
+root file\-system, a.k.a \fIhost rootfs\fP, just as if they were part of
+the guest rootfs.
+.sp
+When the guest Linux distribution is made for a CPU architecture
+incompatible with the host one, PRoot uses the CPU emulator QEMU
+user\-mode to execute transparently guest programs.  It\(aqs a convenient
+way to develop, to build, and to validate any guest Linux packages
+seamlessly on users\(aq computer, just as if they were in a \fInative\fP
+guest environment.  That way all of the cross\-compilation issues are
+avoided.
+.sp
+PRoot can also \fImix\fP the execution of host programs and the execution
+of guest programs emulated by QEMU user\-mode.  This is useful to use
+host equivalents of programs that are missing from the guest rootfs
+and to speed up build\-time by using cross\-compilation tools or
+CPU\-independent programs, like interpreters.
+.sp
+It is worth noting that the guest kernel is never involved, regardless
+of whether QEMU user\-mode is used or not.  Technically, when guest
+programs perform access to system resources, PRoot translates their
+requests before sending them to the host kernel.  This means that
+guest programs can use host resources (devices, network, ...) just as
+if they were "normal" host programs.
+.SH OPTIONS
+.sp
+The command\-line interface is composed of three \fIordered\fP parts:
+PRoot\(aqs options (optional), path to the guest rootfs (mandatory), and
+the command to launch (\fB/bin/sh\fP by default).
+.sp
+This section describes the options supported by PRoot, that is, the
+first part of its command\-line interface.
+.SS Regular options
+.INDENT 0.0
+.TP
+.BI \-b \ path, \ \-\-bind\fB= path, \ \-m \ path, \ \-\-mount\fB= path
+Make the content of \fIpath\fP accessible in the guest rootfs.
+.sp
+This option makes any file or directory of the host rootfs
+accessible in the confined environment just as if it were part of
+the guest rootfs.  By default the host path is bound to the same
+path in the guest rootfs but users can specify any other location
+with the syntax: \fB\-b *host_path*:*guest_location*\fP. Such
+bindings are said "asymmetric".
+.TP
+.BI \-q \ command, \ \-\-qemu\fB= command
+Execute guest programs through QEMU as specified by \fIcommand\fP.
+.sp
+Each time a guest program is going to be executed, PRoot inserts
+the QEMU user\-mode \fIcommand\fP in front of the initial request.
+That way, guest programs actually run on a virtual guest CPU
+emulated by QEMU user\-mode.  The native execution of host programs
+is still effective and the whole host rootfs is bound to
+\fB/host\-rootfs\fP in the guest environment.
+.sp
+This option is automatically enabled by the \fB\-Q\fP option.
+.TP
+.BI \-w \ path, \ \-\-pwd\fB= path, \ \-\-cwd\fB= path
+Set the initial working directory to \fIpath\fP, default is \fB/\fP.
+.sp
+Some programs expect to be launched from a given directory but do
+not perform any \fBchdir\fP by themselves, the most common example
+is \fB./configure\fP scripts.  This option avoids the need for
+running a shell and then entering the directory manually.
+.sp
+See the \fB\-W\fP option.
+.TP
+.B \-u,  \-\-allow\-unknown\-syscalls
+Allow the execution of unknown syscalls.
+.sp
+PRoot has to know the semantics of a syscall to translate its
+arguments. This is why any syscall that PRoot isn\(aqt aware of is
+blocked.  This option disables this default behavior.
+.TP
+.BI \-k \ string, \ \-\-kernel\-release\fB= string
+Force syscall \fBuname\fP to report \fIstring\fP as kernel release.
+.sp
+Technically the GNU C library relies on syscalls provided by the
+kernel that\(aqs why it performs a sanity check at each program
+start\-up to verify whether the current kernel is known to be
+compatible.  If users are running a GNU C library that expects a
+kernel more recent than the one used on their computers, they will
+get the error "FATAL: kernel too old".  This option allows users
+to cheat this sanity check by faking the release number of the
+current kernel.  This option should be used with care since it
+does not improve the compatibility.
+.TP
+.B \-0,  \-\-root\-id
+Force syscalls \fBchown*\fP and \fBget*id\fP to return 0, aka "root".
+.sp
+Some programs will refuse to work if they are not run with "root"
+privileges, even if there is no technical reason for that.  This
+is typically the case with package managers.  This option allows
+users to bypass this kind of limitation by faking the user/group
+identity, and by faking the success of any ownership change.  Note
+that this option is quite limited compared to \fBfakeroot\fP.
+.TP
+.B \-v,  \-\-verbose
+Increase the level of debug information.
+.TP
+.B \-V,  \-\-version,  \-\-about
+Print version, copyright, license and contact, then exit.
+.TP
+.B \-h,  \-\-help,  \-\-usage
+Print the version and the command\-line usage, then exit.
+.UNINDENT
+.SS Alias options
+.sp
+The following options are aliases for handy sets of options.
+.INDENT 0.0
+.TP
+.B \-B,  \-M
+Alias: \fB\-b\fP for each path of a recommended list
+.sp
+There are a couple of bindings that are needed for most guest
+programs to behave correctly regarding the configuration part of
+the host computer which is not specific to the host Linux
+distribution, such as: user/group information, network setup,
+run\-time information, users\(aq files, ... This highly recommended
+option enables the following bindings:
+.INDENT 7.0
+.IP \(bu 2
+/etc/host.conf
+.IP \(bu 2
+/etc/hosts
+.IP \(bu 2
+/etc/hosts.equiv
+.IP \(bu 2
+/etc/mtab
+.IP \(bu 2
+/etc/netgroup
+.IP \(bu 2
+/etc/networks
+.IP \(bu 2
+/etc/passwd
+.IP \(bu 2
+/etc/group
+.IP \(bu 2
+/etc/nsswitch.conf
+.IP \(bu 2
+/etc/resolv.conf
+.IP \(bu 2
+/etc/localtime
+.IP \(bu 2
+/dev/
+.IP \(bu 2
+/sys/
+.IP \(bu 2
+/proc/
+.IP \(bu 2
+/tmp/
+.IP \(bu 2
+$HOME
+.UNINDENT
+.TP
+.BI \-Q \ command
+Alias: \fB\-q *command* \-B\fP
+.sp
+This option is highly recommended when using QEMU user\-mode; it
+enables all the recommended bindings.
+.TP
+.B \-W
+Alias: \fB\-b . \-w .\fP
+.sp
+Make the current working directory accessible in the guest rootfs
+and then use it as the initial working directory.  This option is
+typically useful to launch \fB./configure\fP scripts directly, for
+instance.
+.UNINDENT
+.SH EXIT STATUS
+.sp
+If an internal error occurs, \fBproot\fP returns a non\-zero exit status,
+otherwise it returns the exit status of the last terminated
+program. When an error has occurred, the only way to know if it comes
+from the last terminated program or from \fBproot\fP itself is to have a
+look at the error message.
+.SH FILES
+.sp
+PRoot reads links in \fB/proc/<pid>/fd/\fP to support \fIopenat(2)\fP\-like
+syscalls made by the guest programs.
+.SH EXAMPLES
+.sp
+In the following examples the directories \fB/mnt/slackware\-8.0\fP and
+\fB/mnt/armslack\-12.2/\fP contain a Linux distribution respectively made
+for x86 CPUs and ARM CPUs.
+.SS \fBchroot\fP equivalent
+.sp
+To execute a command inside a given Linux distribution, just give
+\fBproot\fP the path to the guest rootfs followed by the desired
+command.  The example below executes the program \fBcat\fP to print the
+content of a file:
+.sp
+.nf
+.ft C
+proot /mnt/slackware\-8.0/ cat /etc/motd
+
+Welcome to Slackware Linux 8.0
+.ft P
+.fi
+.sp
+The default command is \fB/bin/sh\fP when none is specified. Thus the
+shortest way to confine an interactive shell and all its sub\-programs
+is:
+.sp
+.nf
+.ft C
+proot /mnt/slackware\-8.0/
+
+$ cat /etc/motd
+Welcome to Slackware Linux 8.0
+.ft P
+.fi
+.SS \fBchroot\fP + \fBmount \-\-bind\fP equivalent
+.sp
+The option \fB\-b\fP, short for \fB\-\-bind\fP, makes any file from the host
+rootfs accessible in the confined environment just as if it were
+initially part of the guest rootfs.  It is sometimes required to run
+programs that rely on some specific files:
+.sp
+.nf
+.ft C
+proot /mnt/slackware\-8.0/
+
+$ ps \-o tty,command
+Error, do this: mount \-t proc none /proc
+.ft P
+.fi
+.sp
+works better with:
+.sp
+.nf
+.ft C
+proot \-b /proc /mnt/slackware\-8.0/
+
+$ ps \-o tty,command
+TT       COMMAND
+?        \-bash
+?        proot \-b /proc /mnt/slackware\-8.0/
+?        /lib/ld\-linux.so.2 /bin/sh
+?        /lib/ld\-linux.so.2 /usr/bin/ps \-o tty,command
+.ft P
+.fi
+.sp
+Actually there\(aqs a bunch of such specific files, that\(aqs why PRoot
+provides the option \fB\-B\fP to bind automatically a pre\-defined list of
+recommended paths:
+.sp
+.nf
+.ft C
+proot \-B /mnt/slackware\-8.0/
+
+$ ps \-o tty,command
+TT       COMMAND
+pts/6    \-bash
+pts/6    proot \-B /mnt/slackware\-8.0/
+pts/6    /lib/ld\-linux.so.2 /bin/sh
+pts/6    /lib/ld\-linux.so.2 /usr/bin/ps \-o tty,command
+.ft P
+.fi
+.SS \fBmount \-\-bind\fP equivalent
+.sp
+The bind mechanism can also be used to relocate files and directories
+in the host rootfs by using \fB/\fP as the path to the guest rootfs and
+by specifying an alternate binding location (separated by \fB:\fP).  It
+is typically useful to cheat programs that perform access to
+hard\-coded locations, like some installation scripts:
+.sp
+.nf
+.ft C
+proot \-b /tmp/alternate_usr:/usr /
+
+$ cd to/sources
+$ make install
+[...]
+install \-m 755 prog "/usr/bin"
+[...] # prog was installed in "/tmp/alternate_usr/bin" actually
+.ft P
+.fi
+.sp
+It can also be used to substitute system configuration files, for
+example the DNS setting:
+.sp
+.nf
+.ft C
+proot \-b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com
+.ft P
+.fi
+.SS \fBbinfmt_misc\fP equivalent
+.sp
+PRoot uses QEMU user\-mode to execute programs built for a CPU
+architecture incompatible with the host one.  From users\(aq
+point\-of\-view, guest programs handled by QEMU user\-mode are executed
+transparently, that is, just like host programs.  To enable this
+feature users just have to specify which instance of QEMU user\-mode
+they want to use with the option \fB\-q\fP or \fB\-Q\fP (this latter implies
+\fB\-B\fP):
+.sp
+.nf
+.ft C
+proot \-Q qemu\-arm /mnt/armslack\-12.2/
+
+$ cat /etc/motd
+Welcome to ARMedSlack Linux 12.2
+.ft P
+.fi
+.sp
+The parameter of the \fB\-q/\-Q\fP option is actually a whole QEMU
+user\-mode command, for instance to enable its GDB server on port
+1234:
+.sp
+.nf
+.ft C
+proot \-Q "qemu\-arm \-g 1234" /mnt/armslack\-12.2/ emacs
+.ft P
+.fi
+.sp
+PRoot allows to mix transparently the emulated execution of guest
+programs and the native execution of host programs in the same
+file\-system namespace.  It\(aqs typically useful to extend the list of
+available programs and to speed up build\-time significantly.  This
+mixed\-execution feature is enabled by default when using QEMU
+user\-mode, and the content of the host rootfs is made accessible
+through \fB/host\-rootfs\fP:
+.sp
+.nf
+.ft C
+proot \-Q qemu\-arm /mnt/armslack\-12.2/
+
+$ file /bin/echo
+[...] ELF 32\-bit LSB executable, ARM [...]
+$ /bin/echo \(aqHello world!\(aq
+Hello world!
+
+$ file /host\-rootfs/bin/echo
+[...] ELF 64\-bit LSB executable, x86\-64 [...]
+$ /host\-rootfs/bin/echo \(aqHello mixed world!\(aq
+Hello mixed world!
+.ft P
+.fi
+.sp
+Since both host and guest programs use the guest rootfs as \fB/\fP,
+users may want to deactivate explicitly cross\-filesystem support found
+in most GNU cross\-compilation tools.  For example with GCC configured
+to cross\-compile to the ARM target:
+.sp
+.nf
+.ft C
+proot \-Q qemu\-arm /mnt/armslack\-12.2/
+
+$ export CC=/host\-rootfs/opt/cross\-tools/arm\-linux/bin/gcc
+$ export CFLAGS="\-\-sysroot=/"   # could be optional indeed
+$ ./configure; make
+.ft P
+.fi
+.sp
+As with regular files, a host instance of a program can be bound over
+its guest instance.  Here is an example where the guest binary of
+\fBmake\fP is overlaid by the host one:
+.sp
+.nf
+.ft C
+proot \-Q qemu\-arm \-b /usr/bin/make /mnt/armslack\-12.2/
+
+$ which make
+/usr/bin/make
+$ make \-\-version # overlaid
+GNU Make 3.82
+Built for x86_64\-slackware\-linux\-gnu
+.ft P
+.fi
+.sp
+It\(aqs worth mentioning that even when mixing the native execution of
+host programs and the emulated execution of guest programs, they still
+believe they are running in a native guest environment.  As a
+demonstration, here is a partial output of a typical \fB./configure\fP
+script:
+.sp
+.nf
+.ft C
+checking whether the C compiler is a cross\-compiler... no
+.ft P
+.fi
+.SH DOWNLOADS
+.SS PRoot
+.sp
+The latest release of PRoot is packaged on \fI\%http://packages.proot.me\fP
+and sources are hosted on \fI\%http://github.proot.me\fP.
+.SS Rootfs
+.sp
+Here follows a couple of URLs where some rootfs archives can be freely
+downloaded.  Note that the errors reported by \fBtar\fP when extracting
+these archives can be safely ignored.  Obviously these files are not
+required when PRoot is used as a \fBmount \-\-bind\fP equivalent only,
+that is, when the path to the guest rootfs is \fB/\fP.
+.INDENT 0.0
+.IP \(bu 2
+Slackware/ARM:
+.sp
+\fI\%ftp://ftp.armedslack.org/armedslack/armedslack\-devtools/minirootfs/\fP
+.IP \(bu 2
+Fedora/ARM:
+.sp
+\fI\%http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/\fP
+.IP \(bu 2
+CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
+CPUs, from the OpenVZ project:
+.sp
+\fI\%http://download.openvz.org/template/precreated/\fP
+.IP \(bu 2
+ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES, and
+etc. for x86 and x86_64 CPUs, from the OpenVZ community:
+.sp
+\fI\%http://download.openvz.org/template/precreated/contrib/\fP
+.UNINDENT
+.sp
+Technically such rootfs archive can be created by running the
+following command on the expected Linux distribution:
+.sp
+.nf
+.ft C
+tar \-\-one\-file\-system \-\-create \-\-gzip \-\-file my_rootfs.tar.gz /
+.ft P
+.fi
+.SS QEMU user\-mode
+.sp
+QEMU user\-mode is required only if the guest rootfs was made for a CPU
+architecture incompatible with the host one, for instance when using a
+ARM rootfs on a x86_64 computer.  This package can be installed either
+from \fI\%http://qemu.proot.me\fP or from the host package manager under the
+name of "qemu\-user" on most Linux distro.  In case one would like to
+build QEMU user\-mode from sources, the \fB\-\-enable\-linux\-user\fP option
+has to be specified to the \fB./configure\fP script.
+.SH SEE ALSO
+.sp
+chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1),
+bindfs(1), fakeroot(1), fakechroot(1)
+.SH COLOPHON
+.sp
+Visit \fI\%http://proot.me\fP for help, bug reports, suggestions, patchs, ...
+Copyright (C) 2012 STMicroelectronics, licensed under GPL v2 or later.
+.\" Generated by docutils manpage writer.
+.\" 
+.

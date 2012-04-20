@@ -143,6 +143,14 @@ pre {
     font-family: monospace;
 
     white-space: pre-wrap;
+
+    border-radius: 0.5em;
+    -moz-border-radius: 0.5em;
+}
+
+pre:first-line
+{
+    font-style: italic;
 }
 
 tt {

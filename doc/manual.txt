@@ -240,8 +240,8 @@ is::
     Welcome to Slackware Linux 8.0
 
 
-``mount --bind`` equivalent
----------------------------
+``chroot`` + ``mount --bind`` equivalent
+----------------------------------------
 
 The option ``-b``, short for ``--bind``, makes any file from the host
 rootfs accessible in the confined environment just as if it were
@@ -253,7 +253,7 @@ programs that rely on some specific files::
     $ ps -o tty,command
     Error, do this: mount -t proc none /proc
 
-Works better with::
+works better with::
 
     proot -b /proc /mnt/slackware-8.0/
     
@@ -276,6 +276,10 @@ recommended paths::
     pts/6    proot -B /mnt/slackware-8.0/
     pts/6    /lib/ld-linux.so.2 /bin/sh
     pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
+
+
+``mount --bind`` equivalent
+---------------------------
 
 The bind mechanism can also be used to relocate files and directories
 in the host rootfs by using ``/`` as the path to the guest rootfs and
