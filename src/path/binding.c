@@ -49,7 +49,8 @@ struct binding {
 	struct binding *next;
 };
 
-static struct binding *bindings = NULL;
+static struct binding *bindings_guest_order = NULL;
+static struct binding *bindings_host_order = NULL;
 static struct binding *expected_bindings = NULL;
 static bool initialized = false;
 
@@ -115,7 +116,7 @@ void print_bindings()
 {
 	struct binding *binding;
 
-	for (binding = bindings; binding != NULL; binding = binding->next) {
+	for (binding = bindings_guest_order; binding != NULL; binding = binding->next) {
 		if (compare_paths2(binding->host.path, binding->host.length,
 				   binding->guest.path, binding->guest.length)
 			== PATHS_ARE_EQUAL)
@@ -132,8 +133,23 @@ void print_bindings()
  */
 static const struct binding *get_binding(enum binding_side side, char path[PATH_MAX])
 {
+	const struct binding *bindings;
 	const struct binding *binding;
 	size_t path_length = strlen(path);
+
+	switch (side) {
+	case GUEST_SIDE:
+		bindings = bindings_guest_order;
+		break;
+
+	case HOST_SIDE:
+		bindings = bindings_host_order;
+		break;
+
+	default:
+		assert(0);
+		return NULL;
+	}
 
 	for (binding = bindings; binding != NULL; binding = binding->next) {
 		enum path_comparison comparison;
@@ -149,7 +165,7 @@ static const struct binding *get_binding(enum binding_side side, char path[PATH_
 			break;
 
 		default:
-			notice(WARNING, INTERNAL, "unexpected value for binding reference");
+			assert(0);
 			return NULL;
 		}
 
@@ -244,7 +260,7 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 		break;
 
 	default:
-		notice(WARNING, INTERNAL, "unexpected value for binding reference");
+		assert(0);
 		return -1;
 	}
 
@@ -392,23 +408,61 @@ error:
  *
  *     -b /bin:/foo/bin -b /usr/bin/more:/foo/bin/more
  *
- * Note: "nested" from the guest point-of-view.
+ * Note: "nested" from the @side point-of-view.
  */
-static struct binding *insort_binding(const struct binding *binding)
+static struct binding *insort_binding(enum binding_side side, const struct binding *binding)
 {
+	struct binding *bindings;
 	struct binding *previous = NULL;
 	struct binding *next = NULL;
 	struct binding *iterator;
 	struct binding *new_binding;
 
+	switch (side) {
+	case GUEST_SIDE:
+		bindings = bindings_guest_order;
+		break;
+
+	case HOST_SIDE:
+		bindings = bindings_host_order;
+		break;
+
+	default:
+		assert(0);
+		return NULL;
+	}
+
 	/* Find where it should be added in the list.  */
 	for (iterator = bindings; iterator != NULL; iterator = iterator->next) {
 		enum path_comparison comparison;
+		const struct binding_path *binding_path;
+		const struct binding_path *iterator_path;
 
-		comparison = compare_paths2(binding->guest.path, binding->guest.length,
-					    iterator->guest.path, iterator->guest.length);
+		switch (side) {
+		case GUEST_SIDE:
+			binding_path = &binding->guest;
+			iterator_path = &iterator->guest;
+			break;
+
+		case HOST_SIDE:
+			binding_path = &binding->host;
+			iterator_path = &iterator->host;
+			break;
+
+		default:
+			assert(0);
+			return NULL;
+		}
+
+		comparison = compare_paths2(binding_path->path, binding_path->length,
+					    iterator_path->path, iterator_path->length);
 		switch (comparison) {
 		case PATHS_ARE_EQUAL:
+			if (side == HOST_SIDE) {
+				previous = iterator;
+				break;
+			}
+
 			notice(WARNING, USER,
 				"both '%s' and '%s' are bound to '%s, "
 				"only the first binding is enabled",
@@ -432,12 +486,17 @@ static struct binding *insort_binding(const struct binding *binding)
 
 		default:
 			assert(0);
+			return NULL;
 		}
 	}
 
 	/* Work an a copy, the original will be freed by
 	 * init_bindings() later.  */
 	new_binding = malloc(sizeof(struct binding));
+	if (!new_binding) {
+		notice(WARNING, SYSTEM, "malloc()");
+		return NULL;
+	}
 	memcpy(new_binding, binding, sizeof(struct binding));
 
 	/* Insert this copy in the list.  */
@@ -463,6 +522,20 @@ static struct binding *insort_binding(const struct binding *binding)
 		new_binding->next     = bindings;
 		new_binding->previous = NULL;
 		bindings              = new_binding;
+	}
+
+	switch (side) {
+	case GUEST_SIDE:
+		bindings_guest_order = bindings;
+		break;
+
+	case HOST_SIDE:
+		bindings_host_order = bindings;
+		break;
+
+	default:
+		assert(0);
+		return NULL;
 	}
 
 	return new_binding;
@@ -517,7 +590,11 @@ void init_bindings()
 			binding->guest.length--;
 		}
 
-		new_binding = insort_binding(binding);
+		new_binding = insort_binding(GUEST_SIDE, binding);
+		if (!new_binding)
+			continue;
+
+		new_binding = insort_binding(HOST_SIDE, new_binding);
 		if (!new_binding)
 			continue;
 

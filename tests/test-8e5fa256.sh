@@ -18,11 +18,12 @@ ${PROOT} -b /tmp:/foo ${ROOTFS} readlink /foo/${LINK_NAME1} | grep ^/foo/ced-hos
 ${PROOT} -b /tmp:/foo ${ROOTFS} readlink /tmp/${LINK_NAME1} | grep ^/tmp/ced-guest$
 
 ${PROOT} -b /:/host-rootfs ${ROOTFS} readlink /tmp/${LINK_NAME1} | grep ^/tmp/ced-guest$
-${PROOT} -b /:/host-rootfs -b /tmp ${ROOTFS} readlink /tmp/${LINK_NAME1} | grep ^/tmp/ced-host$
-${PROOT} -b /:/host-rootfs -b /tmp:/foo ${ROOTFS} readlink /foo/${LINK_NAME1} | grep ^/foo/ced-host$
 ${PROOT} -b /:/host-rootfs -b /tmp:/foo ${ROOTFS} readlink /tmp/${LINK_NAME1} | grep ^/tmp/ced-guest$
 
-# This isn't an expected behavior but it works:
+# Always use the deepest binding, deepest from the host point-of-view.
+${PROOT} -b /:/host-rootfs ${ROOTFS} readlink /tmp/${LINK_NAME1} | grep ^/tmp/ced-guest$
+${PROOT} -b /:/host-rootfs -b /tmp ${ROOTFS} readlink /tmp/${LINK_NAME1} | grep ^/tmp/ced-host$
+${PROOT} -b /:/host-rootfs -b /tmp:/foo ${ROOTFS} readlink /foo/${LINK_NAME1} | grep ^/foo/ced-host$
 ${PROOT} -b /:/host-rootfs -b /tmp ${ROOTFS} readlink /host-rootfs/tmp/${LINK_NAME1} | grep ^/tmp/ced-host$
 ${PROOT} -b /:/host-rootfs -b /tmp:/foo ${ROOTFS} readlink /host-rootfs/tmp/${LINK_NAME1} | grep ^/foo/ced-host$
 
