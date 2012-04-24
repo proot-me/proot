@@ -51,6 +51,7 @@
 	      <li><a href="#examples">Examples</a></li>
 	      <li><a href="#downloads">Downloads</a></li>
 	      <li><a href="#help">Help</a></li>
+	      <li><a href="https://plus.google.com/107605112469213359575/posts">News+</a></li>
 	    </ul>
 	  </div>
 
@@ -69,6 +70,12 @@
 	    the <a
 	    href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
 	    manual</a> first.
+	    </p>
+	    <p>Also, Rémi Duraffort has written an interesting article
+	    on <a
+	    href="http://ivoire.dinauz.org/blog/post/2012/04/16/PRoot-sorcery">how
+	    to use a Debian rootfs with PRoot</a>, from scratch and
+	    without QEMU user-mode.
 	    </p>
 	  </div>
 
