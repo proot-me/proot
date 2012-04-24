@@ -78,6 +78,10 @@ h3 tt {
     padding-bottom: 0.5em;
 }
 
+#contents ul {
+    margin: 0;
+}
+
 #contents li {
     display: inline;
 
