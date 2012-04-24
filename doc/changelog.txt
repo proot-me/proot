@@ -1,3 +1,42 @@
+Release v1.8.4
+==============
+
+New feature
+-----------
+
+* The -0 option now fakes success on ``chroot("/")``.  This feature is
+  required by some guest package managers, like ``pacman`` -- the Arch
+  Linux Package Manager.
+
+Fix
+---
+
+* Nested bindings are now correctly supported.  For example with these
+  bindings -- nested from the host point-of-view::
+
+      host$ proot -b /:/host-rootfs -b /tmp ...
+      guest$ ln -s /tmp/bar /tmp/foo
+      # ... points to "/tmp/bar" instead of "/host-rootfs/tmp/bar"
+
+  and with these bindings -- nested from the guest point-of-view::
+
+      host$ proot -b /bin -b /usr/bin/find:/bin/find ...
+      guest$ /bin/find
+      # ... works instead of "no such file or directory"
+
+Internal changes
+----------------
+
+This section is dedicated to PRoot developpers.
+
+* Functions to compare two pathes (equal, prefix, not comparable, ...)
+  are now available, at last.
+
+* The "ignore ELF interpreter" option can be (dis|en)able with the
+  ``PROOT_IGNORE_ELF_INTERPRETER`` environment variable and/or with
+  the ``config.ignore_elf_interpreter`` internal variable.
+
+
 Release v1.8.3
 ==============
 

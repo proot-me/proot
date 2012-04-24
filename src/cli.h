@@ -22,13 +22,13 @@ struct option {
 };
 
 #ifndef VERSION
-#define VERSION "1.8.3"
+#define VERSION "1.8.4"
 #endif
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
 static const char *synopsis = "proot [option] ... /path/to/guest/rootfs [program [arg] ...]";
 static const char *colophon = "Visit http://proot.me for help, bug reports, suggestions, patchs, ...\n\
-Copyright (C) 2010, 2011, 2012 STMicroelectronics, licensed under GPL v2 or later.";
+Copyright (C) 2012 STMicroelectronics, licensed under GPL v2 or later.";
 
 static char *recommended_bindings[] = {
 	"/etc/host.conf",
@@ -113,7 +113,7 @@ static struct option options[] = {
 		{ .name = "--root-id", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_0,
-	  .description = "Force syscalls chown* and get*id to return 0, aka \"root\".",
+	  .description = "Force some syscalls to behave as if executed by \"root\".",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
