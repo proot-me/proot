@@ -57,6 +57,19 @@ void init_module_ldso()
 }
 
 /**
+ * Check if the environment @variable has the given @name.
+ */
+static bool check_variable_name(const char *variable, const char *name)
+{
+	size_t length = strlen(name);
+
+	return (variable[0] == name[0]
+		&& length < strlen(variable)
+		&& variable[length] == '='
+		&& strncmp(variable, name, length) == 0);
+}
+
+/**
  * This function ensures that environment variables related to the
  * dynamic linker are applied to the emulated program, not to QEMU
  * itself.  For instance, let's say the user has entered the
@@ -96,11 +109,8 @@ bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const c
 		    || (*envp)[i][2] != '_')
 			continue;
 
-		bool passthru(const char *variable, const char *value) {
-			size_t length = strlen(variable);
-
-			if ((*envp)[i][length] != '='
-			    || strncmp((*envp)[i], variable, length) != 0)
+		bool passthru(const char *name, const char *value) {
+			if (!check_variable_name((*envp)[i], name))
 				return false;
 
 			/* Errors are not fatal here.  */
@@ -285,7 +295,7 @@ int rebuild_host_ldso_paths(const char t_program[PATH_MAX], char **envp[])
 
 	/* Search if there's a LD_LIBRARY_PATH variable. */
 	for (i = 0; (*envp)[i] != NULL; i++) {
-		if (strcmp("LD_LIBRARY_PATH", (*envp)[i]) == 0)
+		if (check_variable_name((*envp)[i], "LD_LIBRARY_PATH"))
 			break;
 	}
 
