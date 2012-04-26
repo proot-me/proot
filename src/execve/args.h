@@ -30,6 +30,8 @@
 #define ARG_MAX 131072
 #endif
 
+extern bool check_env_entry_name(const char *variable, const char *name);
+extern char **get_env_entry(char *envp[], const char *name);
 extern int replace_env_entry(char **entry, const char *new_value);
 extern int new_env_entry(char **envp[], const char *name, const char *value);
 extern int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...);
