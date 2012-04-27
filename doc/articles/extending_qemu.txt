@@ -1,15 +1,13 @@
-.. include:: stylesheets/article-html.txt
+.. include:: ../stylesheets/article-html.txt
 
-========================================
-PRoot: a Step Forward for QEMU User-Mode
-========================================
+================================================
+Extending QEMU User-Mode with PRoot: Why and How
+================================================
 
-:Author:       Cédric Vincent & Yves Janin
-:Organization: STMicroelectronics, Compilation Expertise Center
-:Address:      12 Rue Jules Horowitz, Grenoble, FRANCE
-:Contact:      *firstname.lastname*\ @st.com
-:Workshop:     1st International QEMU Users' Forum
-:Version:      1.1
+:Original Title:  PRoot: a Step Forward for QEMU User-Mode
+:Published at:    1st International QEMU Users' Forum
+:Authors:         Cédric Vincent & Yves Janin
+:PRoot Version:   0.5
 
 :Abstract:
 
@@ -80,7 +78,7 @@ of the control of QEMU.  As a conclusion R2 is not supported either.
 
 .. |Q1P1| replace:: Q1\ :sub:`P1`
 
-.. figure:: article-proot+qemu-fig1.svg
+.. figure:: extending_qemu-fig1.svg
 
    Figure 1: Guest process[es] running under QEMU, arrows are system calls flow
 
@@ -104,7 +102,7 @@ new process about to be created, it can change the initial request and
 get a new instance of QEMU running the new process (R2) as shown in
 Figure 1 (c).
 
-.. figure:: article-proot+qemu-fig2.svg
+.. figure:: extending_qemu-fig2.svg
 
    Figure 2: Control flow of a syscall done by a guest process under QEMU+PRoot
 
