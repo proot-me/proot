@@ -29,7 +29,7 @@
 #include <sys/time.h>   /* *rlimit(2), */
 #include <sys/resource.h> /* *rlimit(2), */
 #include <fcntl.h>      /* AT_FDCWD, */
-#include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
+#include <unistd.h>     /* fork(2), chdir(2), getpid(2), setpgrp(2), */
 #include <string.h>     /* strcpy(3), */
 #include <errno.h>      /* errno(3), */
 #include <stdbool.h>    /* bool, true, false, */
@@ -59,6 +59,12 @@ bool launch_process()
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		if (status < 0)
 			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
+
+		/* Don't use the same process group for PRoot and its
+		 * tracees.  */
+		status = setpgrp();
+		if (status < 0)
+			notice(WARNING, SYSTEM, "setpgrp()");
 
 		/* Warn about open file descriptors. They won't be
 		 * translated until they are closed. */
