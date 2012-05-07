@@ -222,17 +222,27 @@ int event_loop()
 		}
 		else if (WIFSTOPPED(tracee_status)) {
 
-			/* Don't WSTOPSIG() to extract the signal
+			/* Don't use WSTOPSIG() to extract the signal
 			 * since it clears the PTRACE_EVENT_* bits. */
 			signal = (tracee_status & 0xfff00) >> 8;
 
 			switch (signal) {
+				static bool skip_bare_sigtrap = false;
+
 			case SIGTRAP:
 				/* Distinguish some events from others and
 				 * automatically trace each new process with
-				 * the same options.  Note: only the first
-				 * process should come here (because of
-				 * TRACE*FORK/CLONE/EXEC). */
+				 * the same options.
+				 *
+				 * Note that only the first bare SIGTRAP is
+				 * related to the tracing loop, others SIGTRAP
+				 * carry tracing information because of
+				 * TRACE*FORK/CLONE/EXEC.
+				 */
+				if (skip_bare_sigtrap)
+					break;
+				skip_bare_sigtrap = true;
+
 				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
 						PTRACE_O_TRACESYSGOOD |
 						PTRACE_O_TRACEFORK    |
