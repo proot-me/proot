@@ -33,6 +33,7 @@
 #include <string.h>     /* strcpy(3), */
 #include <errno.h>      /* errno(3), */
 #include <stdbool.h>    /* bool, true, false, */
+#include <assert.h>     /* assert(3), */
 
 #include "trace.h"
 #include "notice.h"
@@ -181,6 +182,7 @@ bool attach_process(pid_t pid)
 
 int event_loop()
 {
+	struct tracee_info *tracee;
 	int last_exit_status = -1;
 	int tracee_status;
 	long status;
@@ -202,18 +204,22 @@ int event_loop()
 		if (config.check_fd)
 			foreach_tracee(check_fd);
 
+		/* Get the information about this tracee. */
+		tracee = get_tracee_info(pid);
+		assert(tracee != NULL);
+
 		if (WIFEXITED(tracee_status)) {
 			VERBOSE(1, "pid %d: exited with status %d",
 			           pid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
-			delete_tracee(pid);
+			delete_tracee(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(tracee_status)) {
 			VERBOSE(get_nb_tracees() != 1,
 				"pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
-			delete_tracee(pid);
+			delete_tracee(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFCONTINUED(tracee_status)) {
@@ -243,7 +249,7 @@ int event_loop()
 					break;
 				skip_bare_sigtrap = true;
 
-				status = ptrace(PTRACE_SETOPTIONS, pid, NULL,
+				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
 						PTRACE_O_TRACESYSGOOD |
 						PTRACE_O_TRACEFORK    |
 						PTRACE_O_TRACEVFORK   |
@@ -253,10 +259,10 @@ int event_loop()
 					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 				/* Fall through. */
 			case SIGTRAP | 0x80:
-				status = translate_syscall(pid);
+				status = translate_syscall(tracee);
 				if (status < 0) {
 					/* The process died in a syscall. */
-					delete_tracee(pid);
+					delete_tracee(tracee);
 					continue; /* Skip the call to ptrace(SYSCALL). */
 				}
 				signal = 0;
@@ -270,10 +276,15 @@ int event_loop()
 				signal = 0;
 				break;
 
-			default:
-				/* Propagate all signals but SIGSTOP. */
-				if (signal == SIGSTOP)
+			case SIGSTOP:
+				/* For each tracee, the first SIGSTOP
+				 * is only used to notify the tracer.  */
+				if (!tracee->allow_sigstop)
 					signal = 0;
+				tracee->allow_sigstop = true;
+				break;
+
+			default:
 				break;
 			}
 		}
@@ -284,11 +295,11 @@ int event_loop()
 
 		/* Restart the tracee and stop it at the next entry or
 		 * exit of a system call. */
-		status = ptrace(PTRACE_SYSCALL, pid, NULL, signal);
+		status = ptrace(PTRACE_SYSCALL, tracee->pid, NULL, signal);
 		if (status < 0) {
 			 /* The process died in a syscall.  */
 			notice(WARNING, SYSTEM, "ptrace(SYSCALL)");
-			delete_tracee(pid);
+			delete_tracee(tracee);
 		}
 	}
 

@@ -122,15 +122,9 @@ struct tracee_info *new_tracee(pid_t pid)
 /**
  * Reset the entry in tracee_infos[] related to the tracee @pid.
  */
-void delete_tracee(pid_t pid)
+void delete_tracee(struct tracee_info *tracee)
 {
-	struct tracee_info *tracee;
-
 	nb_tracees--;
-
-	tracee = get_tracee_info(pid);
-	assert(tracee != NULL);
-
 	reset_tracee(tracee, true);
 }
 

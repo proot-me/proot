@@ -36,13 +36,14 @@ struct tracee_info {
 	char *trigger; /* Name of the file/directory used to start the path translation. */
 	off_t *uregs;  /* Current register bank, also used to know the current ABI. */
 	char *exe;     /* Path to the executable, à la /proc/self/exe. */
+	bool allow_sigstop; /* Used to avoid the first SIGSTOP (spurious). */
 };
 
 typedef int (*foreach_tracee_t)(pid_t pid);
 
 extern void init_module_tracee_info(void);
 extern struct tracee_info *new_tracee(pid_t pid);
-extern void delete_tracee(pid_t pid);
+extern void delete_tracee(struct tracee_info *tracee);
 extern size_t get_nb_tracees(void);
 extern struct tracee_info *get_tracee_info(pid_t pid);
 extern int foreach_tracee(foreach_tracee_t callback);
