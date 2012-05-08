@@ -132,9 +132,9 @@ and sources are hosted on <a href="http://github.proot.me">http://github.proot.m
 downloaded.  Note that the errors reported by <tt>tar</tt> when extracting
 these archives can be safely ignored.  Obviously these files are not
 required when PRoot is used as a <tt>mount --bind</tt> equivalent only,
-that is, when the path to the guest rootfs is <tt>/</tt>.</p><ul><li><p>Slackware/ARM:</p><p><a href="ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/">ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/</a></p></li><li><p>Fedora/ARM:</p><p><a href="http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/">http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/</a></p></li><li><p>CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
-CPUs, from the OpenVZ project:</p><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p>ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES, and
-etc. for x86 and x86_64 CPUs, from the OpenVZ community:</p><p><a href="http://download.openvz.org/template/precreated/contrib/">http://download.openvz.org/template/precreated/contrib/</a></p></li></ul><p>Technically such rootfs archive can be created by running the
+that is, when the path to the guest rootfs is <tt>/</tt>.</p><ul><li><p>Slackware, Arch, Fedora for ARM:</p><ul><li><p><a href="ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/">ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/</a></p></li><li><p><a href="http://archlinuxarm.org/developers/downloads">http://archlinuxarm.org/developers/downloads</a></p></li><li><p><a href="http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/">http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/</a></p></li></ul></li><li><p>CentOS, Debian, Fedora, Scientific, Suse, Ubuntu, ALT, Arch, CERN,
+Gentoo, OpenSuse, Openwall, Slackware, SLES, and etc. for x86 and
+x86_64 CPUs, from the OpenVZ project and community:</p><ul><li><p><a href="http://download.openvz.org/template/precreated/">http://download.openvz.org/template/precreated/</a></p></li><li><p><a href="http://download.openvz.org/template/precreated/contrib/">http://download.openvz.org/template/precreated/contrib/</a></p></li></ul></li></ul><p>Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution:</p><pre>tar --one-file-system --create --gzip --file my_rootfs.tar.gz /</pre></div><div class="section" id="qemu\ user-mode"><h3>QEMU user-mode</h3><p>QEMU user-mode is required only if the guest rootfs was made for a CPU
 architecture incompatible with the host one, for instance when using a
 ARM rootfs on a x86_64 computer.  This package can be installed either
@@ -147,10 +147,11 @@ has to be specified to the <tt>./configure</tt> script.</p></div></div><div clas
 	    forum</a>, but please be sure that your answer isn't in
 	    the <a href="https://github.com/cedric-vincent/PRoot/blob/master/doc/manual.txt">user
 	    manual</a> first.
-	    </p><p>Also, Rémi Duraffort has written an interesting article
+	    </p><p>Also, Rémi Duraffort has written interesting articles
 	    on <a href="http://ivoire.dinauz.org/blog/post/2012/04/16/PRoot-sorcery">how
-	    to use a Debian rootfs with PRoot</a>, from scratch and
-	    without QEMU user-mode.
+	    to use a foreign Debian rootfs with PRoot</a> in order to
+	    <a href="http://ivoire.dinauz.org/blog/post/2012/05/04/Making-VLC-at-home">build
+	    and test VLC on this guest Linux distribution</a>.
 	    </p></div><script type="text/javascript">
 	    (function() {
 	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
