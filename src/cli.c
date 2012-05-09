@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
 
 	config.guest_rootfs = realpath(argv[i++], NULL);
 	if (config.guest_rootfs == NULL)
-		notice(SYSTEM, ERROR, "realpath(\"%s\")", argv[i - 1]);
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", argv[i - 1]);
 
 	if (i < argc)
 		config.command = &argv[i];
