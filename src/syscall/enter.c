@@ -219,6 +219,7 @@ case PR_recvmmsg:
 case PR_recvmsg:
 case PR_remap_file_pages:
 case PR_request_key:
+case PR_restart_syscall:
 case PR_rt_sigaction:
 case PR_rt_sigpending:
 case PR_rt_sigprocmask:
@@ -352,13 +353,6 @@ case PR_arm_sync_file_range:
 #endif /*  */
 
 	/* Nothing to do. */
-	status = 0;
-	break;
-
-case PR_restart_syscall:
-	/* I'm not able to know if I catched this syscall at the
-	 * entry or the exit stage, and actually we just don't care™. */
-	tracee->sysnum = (word_t)-1;
 	status = 0;
 	break;
 
