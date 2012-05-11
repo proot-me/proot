@@ -34,6 +34,7 @@
 #include <errno.h>      /* errno(3), */
 #include <stdbool.h>    /* bool, true, false, */
 #include <assert.h>     /* assert(3), */
+#include <stdlib.h>     /* atexit(3), */
 
 #include "trace.h"
 #include "notice.h"
@@ -174,14 +175,90 @@ bool attach_process(pid_t pid)
 	return (tracee != NULL);
 }
 
+/* Send the KILL signal to all [known] tracees.  */
+static void kill_all_tracees()
+{
+	int kill_tracee(pid_t pid)
+	{
+		kill(pid, SIGKILL);
+		return 0;
+	}
+
+	foreach_tracee(kill_tracee);
+}
+
+static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
+{
+	notice(WARNING, INTERNAL, "signal %d received from process %d", signum, siginfo->si_pid);
+	kill_all_tracees();
+
+	/* Exit immediately for system signals (segmentation fault,
+	 * illegal instruction, ...), otherwise exit cleanly through
+	 * the event loop.  */
+	if (signum != SIGQUIT)
+		_exit(EXIT_FAILURE);
+}
+
 int event_loop()
 {
+	struct sigaction signal_action;
 	struct tracee_info *tracee;
 	int last_exit_status = -1;
 	int tracee_status;
 	long status;
+	int signum;
 	int signal;
 	pid_t pid;
+
+	/* Kill all tracees when exiting.  */
+	status = atexit(kill_all_tracees);
+	if (status != 0)
+		notice(WARNING, INTERNAL, "atexit() failed");
+
+	/* All signals are blocked when the signal handler is called.
+	 * SIGINFO is used to know which process has signaled us and
+	 * RESTART is used to restart waitpid(2) seamlessly.  */
+	bzero(&signal_action, sizeof(signal_action));
+	signal_action.sa_flags = SA_SIGINFO | SA_RESTART;
+	status = sigfillset(&signal_action.sa_mask);
+	if (status < 0)
+		notice(WARNING, SYSTEM, "sigfillset()");
+
+	/* Handle all signals.  */
+	for (signum = 0; signum < SIGRTMAX; signum++) {
+		switch (signum) {
+		case SIGQUIT:
+		case SIGILL:
+		case SIGABRT:
+		case SIGFPE:
+		case SIGSEGV:
+			/* Kill all tracees on abnormal termination
+			 * signals.  This ensures no process is left
+			 * untraced.  */
+			signal_action.sa_sigaction = kill_all_tracees2;
+			break;
+
+		case SIGCHLD:
+		case SIGCONT:
+		case SIGSTOP:
+		case SIGTSTP:
+		case SIGTTIN:
+		case SIGTTOU:
+			/* The default action is OK for these signals,
+			 * they are related to tty and job control.  */
+			continue;
+
+		default:
+			/* Ignore all other signals, including
+			 * terminating ones (^C for instance). */
+			signal_action.sa_sigaction = (void *)SIG_IGN;
+			break;
+		}
+
+		status = sigaction(signum, &signal_action, NULL);
+		if (status < 0 && errno != EINVAL)
+			notice(WARNING, SYSTEM, "sigaction(%d)", signum);
+	}
 
 	signal = 0;
 	while (1) {
@@ -199,7 +276,7 @@ int event_loop()
 			foreach_tracee(check_fd);
 
 		/* Get the information about this tracee. */
-		tracee = get_tracee_info(pid);
+		tracee = get_tracee_info(pid, true);
 		assert(tracee != NULL);
 
 		if (WIFEXITED(tracee_status)) {
