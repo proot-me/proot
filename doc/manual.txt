@@ -394,23 +394,18 @@ these archives can be safely ignored.  Obviously these files are not
 required when PRoot is used as a ``mount --bind`` equivalent only,
 that is, when the path to the guest rootfs is ``/``.
 
-* Slackware/ARM:
+* Slackware, Arch, Fedora for ARM:
 
-  ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/
+  * ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/
+  * http://archlinuxarm.org/developers/downloads
+  * http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/
 
-* Fedora/ARM:
+* CentOS, Debian, Fedora, Scientific, Suse, Ubuntu, ALT, Arch, CERN,
+  Gentoo, OpenSuse, Openwall, Slackware, SLES, and etc. for x86 and
+  x86_64 CPUs, from the OpenVZ project and community:
 
-  http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/
-
-* CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
-  CPUs, from the OpenVZ project:
-
-  http://download.openvz.org/template/precreated/
-
-* ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES, and
-  etc. for x86 and x86_64 CPUs, from the OpenVZ community:
-
-  http://download.openvz.org/template/precreated/contrib/
+  * http://download.openvz.org/template/precreated/
+  * http://download.openvz.org/template/precreated/contrib/
 
 Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution::
