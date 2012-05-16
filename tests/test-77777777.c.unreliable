@@ -5,12 +5,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-void handler(int signo)
-{
-	if (signo == SIGSTOP)
-		exit(EXIT_SUCCESS);
-}
-
 int main()
 {
 	int child_status;
@@ -29,6 +23,7 @@ int main()
 			perror("raise(SIGSTOP)");
 			exit(EXIT_FAILURE);
 		}
+		sleep(1);
 		exit(EXIT_FAILURE);
 
 	default: /* parent */
@@ -37,6 +32,16 @@ int main()
 			perror("waitpid()");
 			exit(EXIT_FAILURE);
 		}
+
+		if (WIFEXITED(child_status))
+			printf("exited, status=%d\n", WEXITSTATUS(child_status));
+		else if (WIFSIGNALED(child_status))
+			printf("killed by signal %d\n", WTERMSIG(child_status));
+		else if (WIFSTOPPED(child_status))
+			printf("stopped by signal %d\n", WSTOPSIG(child_status));
+		else if (WIFCONTINUED(child_status))
+			printf("continued\n");
+
 		if (WIFSTOPPED(child_status))
 			exit(EXIT_SUCCESS);
 		else
