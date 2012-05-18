@@ -256,7 +256,7 @@ case PR_uname: {
 
 		/* Some 32-bit programs like package managers can be
 		 * confused when the kernel reports "x86_64".  */
-		strncpy(utsname.machine, "i386", size);
+		strncpy(utsname.machine, "i686", size);
 		utsname.machine[size - 1] = '\0';
 	}
 #endif
