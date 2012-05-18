@@ -1,6 +1,6 @@
-.\" Man page generated from reStructeredText.
+.\" Man page generated from reStructuredText.
 .
-.TH PROOT 1 "2012-04-24" "1.8.4" ""
+.TH PROOT 1 "2012-05-18" "1.9" ""
 .SH NAME
 PRoot \- chroot, mount --bind, and binfmt_misc without privilege/setup
 .
@@ -83,7 +83,6 @@ first part of its command\-line interface.
 .INDENT 0.0
 .TP
 .BI \-b \ path, \ \-\-bind\fB= path, \ \-m \ path, \ \-\-mount\fB= path
-.
 Make the content of \fIpath\fP accessible in the guest rootfs.
 .sp
 This option makes any file or directory of the host rootfs
@@ -94,7 +93,6 @@ with the syntax: \fB\-b *host_path*:*guest_location*\fP. Such
 bindings are said "asymmetric".
 .TP
 .BI \-q \ command, \ \-\-qemu\fB= command
-.
 Execute guest programs through QEMU as specified by \fIcommand\fP.
 .sp
 Each time a guest program is going to be executed, PRoot inserts
@@ -107,7 +105,6 @@ is still effective and the whole host rootfs is bound to
 This option is automatically enabled by the \fB\-Q\fP option.
 .TP
 .BI \-w \ path, \ \-\-pwd\fB= path, \ \-\-cwd\fB= path
-.
 Set the initial working directory to \fIpath\fP, default is \fB/\fP.
 .sp
 Some programs expect to be launched from a given directory but do
@@ -118,7 +115,6 @@ running a shell and then entering the directory manually.
 See the \fB\-W\fP option.
 .TP
 .B \-u,  \-\-allow\-unknown\-syscalls
-.
 Allow the execution of unknown syscalls.
 .sp
 PRoot has to know the semantics of a syscall to translate its
@@ -126,7 +122,6 @@ arguments. This is why any syscall that PRoot isn\(aqt aware of is
 blocked.  This option disables this default behavior.
 .TP
 .BI \-k \ string, \ \-\-kernel\-release\fB= string
-.
 Force syscall \fBuname\fP to report \fIstring\fP as kernel release.
 .sp
 Technically the GNU C library relies on syscalls provided by the
@@ -140,7 +135,6 @@ current kernel.  This option should be used with care since it
 does not improve the compatibility.
 .TP
 .B \-0,  \-\-root\-id
-.
 Force some syscalls to behave as if executed by "root".
 .sp
 Some programs will refuse to work if they are not run with "root"
@@ -153,15 +147,12 @@ changing the ownership of files, changing the root directory to
 \fBfakeroot\fP.
 .TP
 .B \-v,  \-\-verbose
-.
 Increase the level of debug information.
 .TP
 .B \-V,  \-\-version,  \-\-about
-.
 Print version, copyright, license and contact, then exit.
 .TP
 .B \-h,  \-\-help,  \-\-usage
-.
 Print the version and the command\-line usage, then exit.
 .UNINDENT
 .SS Alias options
@@ -170,7 +161,6 @@ The following options are aliases for handy sets of options.
 .INDENT 0.0
 .TP
 .B \-B,  \-M
-.
 Alias: \fB\-b\fP for each path of a recommended list
 .sp
 There are a couple of bindings that are needed for most guest
@@ -181,64 +171,46 @@ run\-time information, users\(aq files, ... This highly recommended
 option enables the following bindings:
 .INDENT 7.0
 .IP \(bu 2
-.
 /etc/host.conf
 .IP \(bu 2
-.
 /etc/hosts
 .IP \(bu 2
-.
 /etc/hosts.equiv
 .IP \(bu 2
-.
 /etc/mtab
 .IP \(bu 2
-.
 /etc/netgroup
 .IP \(bu 2
-.
 /etc/networks
 .IP \(bu 2
-.
 /etc/passwd
 .IP \(bu 2
-.
 /etc/group
 .IP \(bu 2
-.
 /etc/nsswitch.conf
 .IP \(bu 2
-.
 /etc/resolv.conf
 .IP \(bu 2
-.
 /etc/localtime
 .IP \(bu 2
-.
 /dev/
 .IP \(bu 2
-.
 /sys/
 .IP \(bu 2
-.
 /proc/
 .IP \(bu 2
-.
 /tmp/
 .IP \(bu 2
-.
 $HOME
 .UNINDENT
 .TP
 .BI \-Q \ command
-.
 Alias: \fB\-q *command* \-B\fP
 .sp
 This option is highly recommended when using QEMU user\-mode; it
 enables all the recommended bindings.
 .TP
 .B \-W
-.
 Alias: \fB\-b . \-w .\fP
 .sp
 Make the current working directory accessible in the guest rootfs
@@ -473,27 +445,25 @@ required when PRoot is used as a \fBmount \-\-bind\fP equivalent only,
 that is, when the path to the guest rootfs is \fB/\fP.
 .INDENT 0.0
 .IP \(bu 2
-.
-Slackware/ARM:
-.sp
+Slackware, Arch, Fedora for ARM:
+.INDENT 2.0
+.IP \(bu 2
 \fI\%ftp://ftp.armedslack.org/armedslack/armedslack\-devtools/minirootfs/\fP
 .IP \(bu 2
-.
-Fedora/ARM:
-.sp
-\fI\%http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/\fP
+\fI\%http://archlinuxarm.org/developers/downloads\fP
 .IP \(bu 2
-.
-CentOS, Debian, Fedora, Scientific, Suse, Ubuntu for x86 and x86_64
-CPUs, from the OpenVZ project:
-.sp
+\fI\%http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/\fP
+.UNINDENT
+.IP \(bu 2
+CentOS, Debian, Fedora, Scientific, Suse, Ubuntu, ALT, Arch, CERN,
+Gentoo, OpenSuse, Openwall, Slackware, SLES, and etc. for x86 and
+x86_64 CPUs, from the OpenVZ project and community:
+.INDENT 2.0
+.IP \(bu 2
 \fI\%http://download.openvz.org/template/precreated/\fP
 .IP \(bu 2
-.
-ALT, Arch, CERN, Gentoo, OpenSuse, Openwall, Slackware, SLES, and
-etc. for x86 and x86_64 CPUs, from the OpenVZ community:
-.sp
 \fI\%http://download.openvz.org/template/precreated/contrib/\fP
+.UNINDENT
 .UNINDENT
 .sp
 Technically such rootfs archive can be created by running the
@@ -522,5 +492,4 @@ bindfs(1), fakeroot(1), fakechroot(1)
 Visit \fI\%http://proot.me\fP for help, bug reports, suggestions, patchs, ...
 Copyright (C) 2012 STMicroelectronics, licensed under GPL v2 or later.
 .\" Generated by docutils manpage writer.
-.\" 
 .

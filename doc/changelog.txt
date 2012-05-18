@@ -1,3 +1,30 @@
+Release v1.9
+============
+
+Fixes
+-----
+
+* Be as transparent as possible with respect to SIGSTOP and SIGTRAP
+  signals.  For instance, the Open POSIX Test Suite now reports the
+  same level of success whether it is run under PRoot or not (it
+  depends on the kernel version though).
+
+* Ignore terminating signals and kill all tracees on abnormal
+  termination signals (^\, segmentation fault, divide by zero, ...).
+  This ensures no tracee will stay alive without being monitored
+  anymore.
+
+* Force utsname.machine to "i686" -- instead of "i386" -- for 32-bit
+  programs running on x86_64 systems.  This improves the compatibility
+  with package managers that deduce the current architecture from
+  `uname -m`.
+
+* Fix x86_64 support for linkat() and fchownat().
+
+* Fix mixed-execution support, LD_LIBRARY_PATH was defined twice for
+  host programs.
+
+
 Release v1.8.4
 ==============
 
