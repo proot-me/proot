@@ -18,6 +18,7 @@ struct option {
 	const char *class;
 	option_handler_t handler;
 	const char *description;
+	const char *detail;
 	struct argument arguments[5];
 };
 
@@ -73,6 +74,12 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_b,
 	  .description = "Make the content of *path* accessible in the guest rootfs.",
+	  .detail = "\tThis option makes any file or directory of the host rootfs\n\
+\taccessible in the confined environment just as if it were part of\n\
+\tthe guest rootfs.  By default the host path is bound to the same\n\
+\tpath in the guest rootfs but users can specify any other location\n\
+\twith the syntax: -b *host_path*:*guest_location*. Such\n\
+\tbindings are said \"asymmetric\".",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -81,6 +88,14 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_q,
 	  .description = "Execute guest programs through QEMU as specified by *command*.",
+	  .detail = "\tEach time a guest program is going to be executed, PRoot inserts\n\
+\tthe QEMU user-mode command in front of the initial request.\n\
+\tThat way, guest programs actually run on a virtual guest CPU\n\
+\temulated by QEMU user-mode.  The native execution of host programs\n\
+\tis still effective and the whole host rootfs is bound to\n\
+\t/host-rootfs in the guest environment.\n\
+\t\n\
+\tThis option is automatically enabled by the -Q option.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -90,6 +105,12 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_w,
 	  .description = "Set the initial working directory to *path*, default is /.",
+	  .detail = "\tSome programs expect to be launched from a given directory but do\n\
+\tnot perform any chdir by themselves, the most common example\n\
+\tis ./configure scripts.  This option avoids the need for\n\
+\trunning a shell and then entering the directory manually.\n\
+\t\n\
+\tSee the -W option.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -98,6 +119,9 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_u,
 	  .description = "Allow the execution of unknown syscalls.",
+	  .detail = "\tPRoot has to know the semantics of a syscall to translate its\n\
+\targuments. This is why any syscall that PRoot isn't aware of is\n\
+\tblocked.  This option disables this default behavior.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -106,6 +130,15 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_k,
 	  .description = "Force syscall uname to report *string* as kernel release.",
+	  .detail = "\tTechnically the GNU C library relies on syscalls provided by the\n\
+\tkernel that's why it performs a sanity check at each program\n\
+\tstart-up to verify whether the current kernel is known to be\n\
+\tcompatible.  If users are running a GNU C library that expects a\n\
+\tkernel more recent than the one used on their computers, they will\n\
+\tget the error \"FATAL: kernel too old\".  This option allows users\n\
+\tto cheat this sanity check by faking the release number of the\n\
+\tcurrent kernel.  This option should be used with care since it\n\
+\tdoes not improve the compatibility.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -114,6 +147,14 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_0,
 	  .description = "Force some syscalls to behave as if executed by \"root\".",
+	  .detail = "\tSome programs will refuse to work if they are not run with \"root\"\n\
+\tprivileges, even if there is no technical reason for that.  This\n\
+\tis typically the case with package managers.  This option allows\n\
+\tusers to bypass this kind of limitation by faking the user/group\n\
+\tidentity, and by faking the success of some operations like\n\
+\tchanging the ownership of files, changing the root directory to\n\
+\t/, ...  Note that this option is quite limited compared to\n\
+\tfakeroot.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -122,6 +163,7 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_v,
 	  .description = "Increase the level of debug information.",
+	  .detail = "",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -131,6 +173,7 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_V,
 	  .description = "Print version, copyright, license and contact, then exit.",
+	  .detail = "",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -140,6 +183,7 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_h,
 	  .description = "Print the version and the command-line usage, then exit.",
+	  .detail = "",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
@@ -148,6 +192,29 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_B,
 	  .description = "Alias: -b for each path of a recommended list",
+	  .detail = "\tThere are a couple of bindings that are needed for most guest\n\
+\tprograms to behave correctly regarding the configuration part of\n\
+\tthe host computer which is not specific to the host Linux\n\
+\tdistribution, such as: user/group information, network setup,\n\
+\trun-time information, users' files, ... This highly recommended\n\
+\toption enables the following bindings:\n\
+\t\n\
+\t    * /etc/host.conf\n\
+\t    * /etc/hosts\n\
+\t    * /etc/hosts.equiv\n\
+\t    * /etc/mtab\n\
+\t    * /etc/netgroup\n\
+\t    * /etc/networks\n\
+\t    * /etc/passwd\n\
+\t    * /etc/group\n\
+\t    * /etc/nsswitch.conf\n\
+\t    * /etc/resolv.conf\n\
+\t    * /etc/localtime\n\
+\t    * /dev/\n\
+\t    * /sys/\n\
+\t    * /proc/\n\
+\t    * /tmp/\n\
+\t    * $HOME",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
@@ -155,6 +222,8 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_Q,
 	  .description = "Alias: -q *command* -B",
+	  .detail = "\tThis option is highly recommended when using QEMU user-mode; it\n\
+\tenables all the recommended bindings.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
@@ -162,6 +231,10 @@ static struct option options[] = {
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_W,
 	  .description = "Alias: -b . -w .",
+	  .detail = "\tMake the current working directory accessible in the guest rootfs\n\
+\tand then use it as the initial working directory.  This option is\n\
+\ttypically useful to launch ./configure scripts directly, for\n\
+\tinstance.",
 	},
 };
 

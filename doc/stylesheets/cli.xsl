@@ -24,6 +24,7 @@ struct option {
 	const char *class;
 	option_handler_t handler;
 	const char *description;
+	const char *detail;
 	struct argument arguments[5];
 };
 
@@ -116,6 +117,10 @@ static struct option options[] = {
     <xsl:text>	  .description = "</xsl:text>
     <xsl:apply-templates select="../description/paragraph[1]" mode="options" />
     <xsl:text>",
+</xsl:text>
+    <xsl:text>	  .detail = "</xsl:text>
+    <xsl:apply-templates select="../description/paragraph[position() > 1]" />
+    <xsl:text>",
 	},
 </xsl:text>
   </xsl:template>
@@ -124,6 +129,13 @@ static struct option options[] = {
     <xsl:text>*</xsl:text>
     <xsl:value-of select="." />
     <xsl:text>*</xsl:text>
+  </xsl:template>
+
+  <xsl:template match="paragraph">
+      <xsl:apply-templates/>
+    <xsl:text>
+
+</xsl:text>
   </xsl:template>
 
   <!-- Option aliases declarations -->

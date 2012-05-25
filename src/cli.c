@@ -217,14 +217,14 @@ static void handle_option_V(char *value)
 {
 	printf("PRoot %s: %s.\n", version, subtitle);
 	printf("%s\n", colophon);
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }
 
 static void print_usage(bool);
 static void handle_option_h(char *value)
 {
 	print_usage(true);
-	exit(EXIT_FAILURE);
+	exit(EXIT_SUCCESS);
 }
 
 static void handle_option_B(char *value)
@@ -269,7 +269,12 @@ static void print_usage(bool detailed)
 			if (!argument->name || (!detailed && j != 0)) {
 				DETAIL(printf("\n"));
 				printf("\t%s\n", options[i].description);
-				DETAIL(printf("\n"));
+				if (detailed) {
+					if (options[i].detail[0] != '\0')
+						printf("\n%s\n\n", options[i].detail);
+					else
+						printf("\n");
+				}
 				break;
 			}
 
