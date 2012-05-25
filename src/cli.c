@@ -120,7 +120,7 @@ static char *which(char *const command)
 
 	path = realpath(which_output, NULL);
 	if (!path)
-		notice(ERROR, SYSTEM, "realpath()");
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", which_output);
 
 	return path;
 }
@@ -308,10 +308,15 @@ static void print_execve_help(const char *argv0)
 
 static void error_separator(struct argument *argument)
 {
-	notice(ERROR, USER,
-		"option '%s' and its value must be separated by '%c'.",
-		argument->name,
-		argument->separator);
+	if (argument->separator == '\0')
+		notice(ERROR, USER,
+			"option '%s' expects no value.",
+			argument->name);
+	else
+		notice(ERROR, USER,
+			"option '%s' and its value must be separated by '%c'.",
+			argument->name,
+			argument->separator);
 }
 
 int main(int argc, char *argv[])
@@ -395,7 +400,7 @@ int main(int argc, char *argv[])
 
 	if (argc == i)
 		notice(ERROR, USER,
-			"no guest rootfs were specified.", argv[0]);
+			"no guest rootfs was specified.", argv[0]);
 
 	config.guest_rootfs = realpath(argv[i++], NULL);
 	if (config.guest_rootfs == NULL)

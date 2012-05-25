@@ -29,7 +29,9 @@
 #include "notice.h"
 
 /**
- * XXX
+ * Print @message to the standard error stream according to its
+ * @severity and @origin.  This function exits if the @severity is
+ * ERROR.
  */
 void notice(enum notice_severity severity, enum notice_origin origin, const char *message, ...)
 {
