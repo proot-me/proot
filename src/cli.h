@@ -158,12 +158,14 @@ static struct option options[] = {
 	},
 	{ .class = "Regular options",
 	  .arguments = {
-		{ .name = "-v", .separator = '\0', .value = NULL },
-		{ .name = "--verbose", .separator = '\0', .value = NULL },
+		{ .name = "-v", .separator = ' ', .value = "value" },
+		{ .name = "--verbose", .separator = '=', .value = "value" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_v,
-	  .description = "Increase the level of debug information.",
-	  .detail = "",
+	  .description = "Set the level of debug information to *value*.",
+	  .detail = "\tThe higher the integer value is, the more detailled debug\n\
+\tinformation is printed to the standard error stream.  A negative\n\
+\tvalue makes PRoot quiet except on fatal errors.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {

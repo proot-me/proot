@@ -136,8 +136,12 @@ Regular options
     ``/``, ...  Note that this option is quite limited compared to
     ``fakeroot``.
 
--v, --verbose
-    Increase the level of debug information.
+-v value, --verbose=value
+    Set the level of debug information to *value*.
+
+    The higher the integer *value* is, the more detailled debug
+    information is printed to the standard error stream.  A negative
+    *value* makes PRoot quiet except on fatal errors.
 
 -V, --version, --about
     Print version, copyright, license and contact, then exit.

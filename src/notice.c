@@ -26,6 +26,7 @@
 #include <stdarg.h> /* va_*, */
 #include <stdio.h>  /* vfprintf(3), */
 
+#include "config.h"
 #include "notice.h"
 
 /**
@@ -36,6 +37,9 @@
 void notice(enum notice_severity severity, enum notice_origin origin, const char *message, ...)
 {
 	va_list extra_params;
+
+	if (config.verbose_level < 0 && severity != ERROR)
+		return;
 
 	switch (severity) {
 	case WARNING:

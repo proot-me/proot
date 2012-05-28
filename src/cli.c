@@ -23,7 +23,7 @@
 #define _GNU_SOURCE    /* get_current_dir_name(3), */
 #include <stdio.h>     /* printf(3), */
 #include <string.h>    /* string(3), */
-#include <stdlib.h>    /* exit(3), */
+#include <stdlib.h>    /* exit(3), atoi(3), */
 #include <stdbool.h>   /* bool, true, false, */
 #include <assert.h>    /* assert(3), */
 #include <unistd.h>    /* acess(2), pipe(2), dup2(2), */
@@ -210,7 +210,7 @@ static void handle_option_0(char *value)
 
 static void handle_option_v(char *value)
 {
-	config.verbose_level++;
+	config.verbose_level = atoi(value);
 }
 
 static void handle_option_V(char *value)
