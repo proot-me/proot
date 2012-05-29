@@ -136,6 +136,18 @@ int canonicalize(pid_t pid, const char *fake_path, int deref_final,
 
 		status = lstat(real_entry, &statl);
 
+		/* Return an error if a non-final component isn't a
+		 * directory nor a symlink.  The error is "No such
+		 * file or directory" if this component doesn't exist,
+		 * otherwise the error is "Not a directory".  This
+		 * sanity check is bypassed if the canonicalization is
+		 * made in the name of PRoot itself (pid == 0) since
+		 * this would return a spurious error during the
+		 * creation of "deep" guest binding paths.  */
+		if (!is_final && pid != 0 &&
+		    !S_ISDIR(statl.st_mode) && !S_ISLNK(statl.st_mode))
+			return (status < 0 ? -ENOENT : -ENOTDIR);
+
 		/* Nothing special to do if it's not a link or if we
 		   explicitly ask to not dereference 'fake_path', as
 		   required by syscalls like lstat(2). Obviously, this
