@@ -420,11 +420,11 @@ static struct binding *insort_binding(enum binding_side side, const struct bindi
 
 	switch (side) {
 	case GUEST_SIDE:
-		bindings = bindings_guest_order;
+		next = bindings = bindings_guest_order;
 		break;
 
 	case HOST_SIDE:
-		bindings = bindings_host_order;
+		next = bindings = bindings_host_order;
 		break;
 
 	default:
@@ -519,7 +519,8 @@ static struct binding *insort_binding(enum binding_side side, const struct bindi
 			bindings = new_binding;
 	}
 	else {
-		new_binding->next     = bindings;
+		/* First item in this list.  */
+		new_binding->next     = NULL;
 		new_binding->previous = NULL;
 		bindings              = new_binding;
 	}
