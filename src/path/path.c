@@ -28,7 +28,7 @@
 #include <sys/types.h> /* pid_t, */
 #include <sys/stat.h>  /* S_ISDIR, */
 #include <dirent.h>    /* opendir(3), readdir(3), */
-#include <stdio.h>     /* sprintf(3), */
+#include <stdio.h>     /* snprintf(3), */
 #include <errno.h>     /* E*, */
 #include <stddef.h>    /* ptrdiff_t, */
 
@@ -251,9 +251,9 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 
 		/* Format the path to the "virtual" link. */
 		if (dir_fd == AT_FDCWD)
-			status = sprintf(link, "/proc/%d/cwd", pid);
+			status = snprintf(link, sizeof(link), "/proc/%d/cwd", pid);
 		else
-			status = sprintf(link, "/proc/%d/fd/%d", pid, dir_fd);
+			status = snprintf(link, sizeof(link), "/proc/%d/fd/%d", pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
@@ -284,7 +284,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", pid, result, fake_path);
 
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(pid, fake_path, deref_final, result, 0);
+	status = canonicalize(tracee, fake_path, deref_final, result, 0);
 	if (status < 0)
 		return status;
 
@@ -522,7 +522,7 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 	DIR *dirp;
 
 	/* Format the path to the "virtual" directory. */
-	status = sprintf(proc_fd, "/proc/%d/fd", pid);
+	status = snprintf(proc_fd, sizeof(proc_fd), "/proc/%d/fd", pid);
 	if (status < 0 || status >= sizeof(proc_fd))
 		return 0;
 

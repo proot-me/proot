@@ -23,7 +23,11 @@
 #ifndef CANON_H
 #define CANON_H
 
-extern int canonicalize(pid_t pid, const char *fake_path, int deref_final,
+#include <stdbool.h>
+
+#include "tracee/info.h"
+
+extern int canonicalize(struct tracee_info *tracee, const char *fake_path, bool deref_final,
 			char result[PATH_MAX], unsigned int nb_readlink);
 
 #endif /* CANON_H */

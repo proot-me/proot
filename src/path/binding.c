@@ -568,7 +568,7 @@ void init_bindings()
 		   alternate rootfs since it is assumed by
 		   substitute_binding().  Note the host path is already
 		   sanitized in bind_path().  */
-		status = canonicalize(0, tmp, 1, binding->guest.path, 0);
+		status = canonicalize(0, tmp, true, binding->guest.path, 0);
 		if (status < 0) {
 			notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
 			       tmp, strerror(-status));
