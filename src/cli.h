@@ -23,11 +23,11 @@ struct option {
 };
 
 #ifndef VERSION
-#define VERSION "1.9"
+#define VERSION "2.0"
 #endif
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
-static const char *synopsis = "proot [option] ... /path/to/guest/rootfs [program [arg] ...]";
+static const char *synopsis = "proot [option] ... [command]";
 static const char *colophon = "Visit http://proot.me for help, bug reports, suggestions, patchs, ...\n\
 Copyright (C) 2012 STMicroelectronics, licensed under GPL v2 or later.";
 
@@ -51,6 +51,7 @@ static char *recommended_bindings[] = {
 	NULL,
 };
 
+static void handle_option_r(char *value);
 static void handle_option_b(char *value);
 static void handle_option_q(char *value);
 static void handle_option_w(char *value);
@@ -65,6 +66,19 @@ static void handle_option_Q(char *value);
 static void handle_option_W(char *value);
 
 static struct option options[] = {
+	{ .class = "Regular options",
+	  .arguments = {
+		{ .name = "-r", .separator = ' ', .value = "path" },
+		{ .name = "--rootfs", .separator = '=', .value = "path" },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_r,
+	  .description = "Use *path* as the new guest root file-system, default is /.",
+	  .detail = "\tThe specified path typically contains a Linux distribution where\n\
+\tall new programs will be confined.  The default rootfs is /\n\
+\twhen none is specified, this makes sense when the bind mechanism\n\
+\tis used to relocate host files and directories, see the -b\n\
+\toption and the Examples section for details.",
+	},
 	{ .class = "Regular options",
 	  .arguments = {
 		{ .name = "-b", .separator = ' ', .value = "path" },

@@ -6,15 +6,15 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2012-05-18
-:Version: 1.9
+:Date: 2012-08-06
+:Version: 2.0
 :Manual section: 1
 
 
 Synopsis
 ========
 
-**proot** [*option*] ... */path/to/guest/rootfs* [*program* [*arg*] ...]
+**proot** [*option*] ... [*command*]
 
 
 Description
@@ -61,16 +61,23 @@ if they were "normal" host programs.
 Options
 =======
 
-The command-line interface is composed of three *ordered* parts:
-PRoot's options (optional), path to the guest rootfs (mandatory), and
-the command to launch (``/bin/sh`` by default).
-
-This section describes the options supported by PRoot, that is, the
-first part of its command-line interface.
+The command-line interface is composed of two parts: first PRoot's
+options (optional), then the command to launch (``/bin/sh`` if not
+specified).  This section describes the options supported by PRoot,
+that is, the first part of its command-line interface.
 
 
 Regular options
 ---------------
+
+-r path, --rootfs=path
+    Use *path* as the new guest root file-system, default is ``/``.
+
+    The specified *path* typically contains a Linux distribution where
+    all new programs will be confined.  The default rootfs is ``/``
+    when none is specified, this makes sense when the bind mechanism
+    is used to relocate host files and directories, see the ``-b``
+    option and the ``Examples`` section for details.
 
 -b path, --bind=path, -m path, --mount=path
     Make the content of *path* accessible in the guest rootfs.
@@ -230,7 +237,7 @@ To execute a command inside a given Linux distribution, just give
 command.  The example below executes the program ``cat`` to print the
 content of a file::
 
-    proot /mnt/slackware-8.0/ cat /etc/motd
+    proot -r /mnt/slackware-8.0/ cat /etc/motd
     
     Welcome to Slackware Linux 8.0
 
@@ -238,7 +245,7 @@ The default command is ``/bin/sh`` when none is specified. Thus the
 shortest way to confine an interactive shell and all its sub-programs
 is::
 
-    proot /mnt/slackware-8.0/
+    proot -r /mnt/slackware-8.0/
     
     $ cat /etc/motd
     Welcome to Slackware Linux 8.0
@@ -252,14 +259,14 @@ rootfs accessible in the confined environment just as if it were
 initially part of the guest rootfs.  It is sometimes required to run
 programs that rely on some specific files::
 
-    proot /mnt/slackware-8.0/
+    proot -r /mnt/slackware-8.0/
     
     $ ps -o tty,command
     Error, do this: mount -t proc none /proc
 
 works better with::
 
-    proot -b /proc /mnt/slackware-8.0/
+    proot -r /mnt/slackware-8.0/ -b /proc
     
     $ ps -o tty,command
     TT       COMMAND
@@ -272,7 +279,7 @@ Actually there's a bunch of such specific files, that's why PRoot
 provides the option ``-B`` to bind automatically a pre-defined list of
 recommended paths::
 
-    proot -B /mnt/slackware-8.0/
+    proot -r /mnt/slackware-8.0/ -B
     
     $ ps -o tty,command
     TT       COMMAND
@@ -282,27 +289,30 @@ recommended paths::
     pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
 
 
-``mount --bind`` equivalent
----------------------------
+``mount --bind`` equivalent only
+--------------------------------
 
-The bind mechanism can also be used to relocate files and directories
-in the host rootfs by using ``/`` as the path to the guest rootfs and
-by specifying an alternate binding location (separated by ``:``).  It
+The default rootfs is ``/`` when none is specified, this permits to
+use the bind mechanism to relocate host files and directories.  This
 is typically useful to cheat programs that perform access to
 hard-coded locations, like some installation scripts::
 
-    proot -b /tmp/alternate_usr:/usr /
+    proot -b /tmp/alternate_opt:/opt
     
     $ cd to/sources
     $ make install
     [...]
-    install -m 755 prog "/usr/bin"
-    [...] # prog was installed in "/tmp/alternate_usr/bin" actually
+    install -m 755 prog "/opt/bin"
+    [...] # prog is installed in "/tmp/alternate_opt/bin" actually
 
-It can also be used to substitute system configuration files, for
-example the DNS setting::
+As shown in this example, it is possible to bind over files not even
+owned by the user.  This can be used to *overlay* system configuration
+files, for instance the DNS setting (here ``~/alternate_hosts``
+contains ``1.2.3.4 google.com``)::
 
-    proot -b ./alternate_resolv.conf:/etc/resolv.conf / resolveip google.com
+    proot -b ~/alternate_hosts:/etc/hosts resolveip google.com
+
+    IP address of google.com is 1.2.3.4
 
 
 ``binfmt_misc`` equivalent
@@ -316,7 +326,7 @@ feature users just have to specify which instance of QEMU user-mode
 they want to use with the option ``-q`` or ``-Q`` (this latter implies
 ``-B``)::
 
-    proot -Q qemu-arm /mnt/armslack-12.2/
+    proot -r /mnt/armslack-12.2/ -Q qemu-arm
     
     $ cat /etc/motd
     Welcome to ARMedSlack Linux 12.2
@@ -325,7 +335,7 @@ The parameter of the ``-q/-Q`` option is actually a whole QEMU
 user-mode command, for instance to enable its GDB server on port
 1234::
 
-    proot -Q "qemu-arm -g 1234" /mnt/armslack-12.2/ emacs
+    proot -r /mnt/armslack-12.2/ -Q "qemu-arm -g 1234" emacs
 
 PRoot allows to mix transparently the emulated execution of guest
 programs and the native execution of host programs in the same
@@ -335,7 +345,7 @@ mixed-execution feature is enabled by default when using QEMU
 user-mode, and the content of the host rootfs is made accessible
 through ``/host-rootfs``::
 
-    proot -Q qemu-arm /mnt/armslack-12.2/
+    proot -r /mnt/armslack-12.2/ -Q qemu-arm
     
     $ file /bin/echo
     [...] ELF 32-bit LSB executable, ARM [...]
@@ -352,7 +362,7 @@ users may want to deactivate explicitly cross-filesystem support found
 in most GNU cross-compilation tools.  For example with GCC configured
 to cross-compile to the ARM target::
 
-    proot -Q qemu-arm /mnt/armslack-12.2/
+    proot -r /mnt/armslack-12.2/ -Q qemu-arm
     
     $ export CC=/host-rootfs/opt/cross-tools/arm-linux/bin/gcc
     $ export CFLAGS="--sysroot=/"   # could be optional indeed
@@ -362,7 +372,7 @@ As with regular files, a host instance of a program can be bound over
 its guest instance.  Here is an example where the guest binary of
 ``make`` is overlaid by the host one::
 
-   proot -Q qemu-arm -b /usr/bin/make /mnt/armslack-12.2/
+   proot -r /mnt/armslack-12.2/ -Q qemu-arm -b /usr/bin/make
    
    $ which make
    /usr/bin/make
@@ -395,8 +405,7 @@ Rootfs
 Here follows a couple of URLs where some rootfs archives can be freely
 downloaded.  Note that the errors reported by ``tar`` when extracting
 these archives can be safely ignored.  Obviously these files are not
-required when PRoot is used as a ``mount --bind`` equivalent only,
-that is, when the path to the guest rootfs is ``/``.
+required when PRoot is used as a ``mount --bind`` equivalent only.
 
 * Slackware, Arch, Fedora for ARM:
 

@@ -1,5 +1,5 @@
 if [ -z `which rm` ] || [ -z `which mcookie` ]; then
-    exit 125
+    exit 125;
 fi
 
 TMP=`mcookie`

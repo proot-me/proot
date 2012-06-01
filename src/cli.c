@@ -28,6 +28,9 @@
 #include <assert.h>    /* assert(3), */
 #include <unistd.h>    /* acess(2), pipe(2), dup2(2), */
 #include <sys/wait.h>  /* wait(2), */
+#include <sys/types.h> /* stat(2), */
+#include <sys/stat.h>  /* stat(2), */
+#include <unistd.h>    /* stat(2), */
 
 #include "cli.h"
 #include "config.h"
@@ -40,6 +43,11 @@
 #include "build.h"
 
 struct config config;
+
+static void handle_option_r(char *value)
+{
+	config.guest_rootfs = value;
+}
 
 static void new_binding(char *value, bool must_exist)
 {
@@ -340,7 +348,7 @@ int main(int argc, char *argv[])
 		char *arg = argv[i];
 
 		/* The current argument is the value of a short option.  */
-		if (handler) {
+		if (handler != NULL) {
 			handler(arg);
 			handler = NULL;
 			continue;
@@ -395,21 +403,33 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		notice(ERROR, USER, "unknown option '%s'.", arg, argv[0]);
+		notice(ERROR, USER, "unknown option '%s'.", arg);
 
 	known_option:
-		if (handler != NULL && argc == i)
+		if (handler != NULL && i == argc - 1)
 			notice(ERROR, USER,
-				"missing value for option '%s'.", arg, argv[0]);
+				"missing value for option '%s'.", arg);
 	}
 
-	if (argc == i)
-		notice(ERROR, USER,
-			"no guest rootfs was specified.", argv[0]);
+	/* When no guest rootfs were specified: if the first bare
+	 * option is a directory, then the old command-line interface
+	 * (similar to the chroot one) is expected.  Otherwise this is
+	 * the new command-line interface where the default guest
+	 * rootfs is "/".
+	 */
+	if (config.guest_rootfs == NULL) {
+		struct stat buf;
 
-	config.guest_rootfs = realpath(argv[i++], NULL);
+		status = stat(argv[i], &buf);
+		if (status == 0 && S_ISDIR(buf.st_mode))
+			config.guest_rootfs = argv[i++];
+		else
+			config.guest_rootfs = "/";
+	}
+
+	config.guest_rootfs = realpath(config.guest_rootfs, NULL);
 	if (config.guest_rootfs == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", argv[i - 1]);
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", config.guest_rootfs);
 
 	if (i < argc)
 		config.command = &argv[i];
