@@ -24,6 +24,8 @@
 #define ARCH_H
 
 typedef unsigned long word_t;
+#define SIZEOF_WORD __SIZEOF_LONG__
+
 #define SYSCALL_AVOIDER -2
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
@@ -67,7 +69,7 @@ typedef unsigned long word_t;
     #define user_regs_struct pt_regs
     #define SYSNUM_HEADER "syscall/sysnum-sh4.h"
     #define HOST_ELF_MACHINE {42, 0};
-
+    #define NO_MISALIGNED_ACCESS 1
 #else
 
     #error "Unsupported architecture"
