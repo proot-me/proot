@@ -1,4 +1,4 @@
-if [ -z `which sh` ] || [ -z `which readlink` ] || [ -z `which grep` ] || [ -z `which echo` ] || [ ! -e /proc/self/fd/0 ]; then
+if [ -z `which sh` ] || [ -z `which readlink` ] || [ -z `which grep` ] || [ -z `which echo` ]  || [ -z `which mcookie` ] || [ ! -e /proc/self/fd/0 ]; then
     exit 125;
 fi
 
@@ -12,6 +12,10 @@ ${PROOT} / sh -c 'echo "OK" | readlink /proc/self/fd/0' | grep -E "^pipe:\[[[:di
 ! ${PROOT} / sh -c 'echo "OK" | readlink /proc/self/fd/0/../0'
 
 ${PROOT} / sh -c 'echo "echo OK" | sh /proc/self/fd/0' | grep ^OK$
+
+TMP=/tmp/$(mcookie)
+${PROOT} / sh -c "exec 6<>${TMP}; readlink /proc/self/fd/6" | grep ^${TMP}$
+rm -f ${TMP}
 
 # XXX ${PROOT} / readlink /proc/self/exe | grep ^/bin/readlink$
 # XXX ! ${PROOT} / readlink /proc/self/exe/
