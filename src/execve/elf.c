@@ -256,7 +256,7 @@ static int foreach_dynamic_entry(int fd,
  */
 static int add_xpaths(int fd, uint64_t offset, char **xpaths)
 {
-	char *paths;
+	char *paths = NULL;
 	char *tmp;
 
 	size_t length;

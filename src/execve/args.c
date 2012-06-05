@@ -346,8 +346,8 @@ int set_args(struct tracee_info *tracee, char *args[], enum sysarg sysarg)
 {
 	word_t *tracee_args;
 
-	word_t previous_sp;
-	word_t tracee_argp;
+	word_t previous_sp = 0;
+	word_t tracee_argp = 0;
 	word_t argp;
 
 	int nb_args;
