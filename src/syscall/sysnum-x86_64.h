@@ -2,7 +2,7 @@
  *
  * This file was generated thanks to the following command:
  *
- *     cpp -dM /usr/include/asm/unistd.h | grep '^#define PR_' | sed s/PR_/PR_/g
+ *     cpp -dM linux/arch/x86/syscalls/../include/generated/asm/unistd_64.h | grep #define __NR_ | sed s/__NR_/PR_/g | sort -u
  */
 
 #include "syscall/sysnum-undefined.h"
@@ -25,6 +25,7 @@
 #define PR_chmod 90
 #define PR_chown 92
 #define PR_chroot 161
+#define PR_clock_adjtime 305
 #define PR_clock_getres 229
 #define PR_clock_gettime 228
 #define PR_clock_nanosleep 230
@@ -78,6 +79,7 @@
 #define PR_get_mempolicy 239
 #define PR_get_robust_list 274
 #define PR_get_thread_area 211
+#define PR_getcpu 309
 #define PR_getcwd 79
 #define PR_getdents 78
 #define PR_getdents64 217
@@ -164,10 +166,12 @@
 #define PR_munlock 150
 #define PR_munlockall 152
 #define PR_munmap 11
+#define PR_name_to_handle_at 303
 #define PR_nanosleep 35
 #define PR_newfstatat 262
 #define PR_nfsservctl 180
 #define PR_open 2
+#define PR_open_by_handle_at 304
 #define PR_openat 257
 #define PR_pause 34
 #define PR_perf_event_open 298
@@ -181,6 +185,8 @@
 #define PR_pread64 17
 #define PR_preadv 295
 #define PR_prlimit64 302
+#define PR_process_vm_readv 310
+#define PR_process_vm_writev 311
 #define PR_pselect6 270
 #define PR_ptrace 101
 #define PR_putpmsg 182
@@ -229,6 +235,7 @@
 #define PR_semop 65
 #define PR_semtimedop 220
 #define PR_sendfile 40
+#define PR_sendmmsg 307
 #define PR_sendmsg 46
 #define PR_sendto 44
 #define PR_set_mempolicy 238
@@ -242,6 +249,7 @@
 #define PR_setgroups 116
 #define PR_sethostname 170
 #define PR_setitimer 38
+#define PR_setns 308
 #define PR_setpgid 109
 #define PR_setpriority 141
 #define PR_setregid 114
@@ -273,6 +281,7 @@
 #define PR_symlinkat 266
 #define PR_sync 162
 #define PR_sync_file_range 277
+#define PR_syncfs 306
 #define PR_sysfs 139
 #define PR_sysinfo 99
 #define PR_syslog 103
@@ -312,88 +321,88 @@
 #define PR_writev 20
 
 /*
- * These following syscalls do not exist on x86_64, this list was
- * generated thanks to:
- *
- *    make 2>&1 | grep undeclared | grep PR_
- *
- * Note that syscall numbers from -1 to -10 are reserved for PRoot
- * internal usage.
+ * These following syscalls do not exist on x86_64.  Note that syscall
+ * numbers from -1 to -10 are reserved for PRoot internal usage.
  */
-#define PR__llseek -11
-#define PR__newselect -12
-#define PR_bdflush -13
-#define PR_break -14
-#define PR_chown32 -15
-#define PR_fadvise64_64 -16
-#define PR_fchown32 -17
-#define PR_fcntl64 -18
-#define PR_fstat64 -19
-#define PR_fstatat64 -110
-#define PR_fstatfs64 -111
-#define PR_ftime -112
-#define PR_ftruncate64 -113
-#define PR_getcpu -114
-#define PR_getegid32 -115
-#define PR_geteuid32 -116
-#define PR_getgid32 -117
-#define PR_getgroups32 -118
-#define PR_getresgid32 -119
-#define PR_getresuid32 -120
-#define PR_getuid32 -121
-#define PR_gtty -122
-#define PR_idle -123
-#define PR_ipc -124
-#define PR_lchown32 -125
-#define PR_lock -126
-#define PR_lstat64 -127
-#define PR_madvise1 -128
-#define PR_mmap2 -129
-#define PR_mpx -130
-#define PR_nice -131
-#define PR_oldfstat -132
-#define PR_oldlstat -133
-#define PR_oldolduname -134
-#define PR_oldstat -135
-#define PR_olduname -136
-#define PR_prof -137
-#define PR_profil -138
-#define PR_readdir -139
-#define PR_sendfile64 -140
-#define PR_setfsgid32 -141
-#define PR_setfsuid32 -142
-#define PR_setgid32 -143
-#define PR_setgroups32 -144
-#define PR_setregid32 -145
-#define PR_setresgid32 -146
-#define PR_setresuid32 -147
-#define PR_setreuid32 -148
-#define PR_setuid32 -149
-#define PR_sgetmask -150
-#define PR_sigaction -151
-#define PR_signal -152
-#define PR_sigpending -153
-#define PR_sigprocmask -154
-#define PR_sigreturn -155
-#define PR_sigsuspend -156
-#define PR_socketcall -157
-#define PR_ssetmask -158
-#define PR_stat64 -159
-#define PR_statfs64 -160
-#define PR_stime -161
-#define PR_stty -162
-#define PR_truncate64 -163
-#define PR_ugetrlimit -164
-#define PR_ulimit -165
-#define PR_umount -166
-#define PR_vm86 -167
-#define PR_vm86old -168
-#define PR_waitpid -169
-#define PR_cacheflush -170
-#define PR_streams1 -171
-#define PR_streams2 -172
-#define PR_pciconfig_iobase -173
-#define PR_pciconfig_read -174
-#define PR_pciconfig_write -175
-#define PR_recv -176
-#define PR_send -177
+
+#define PR_ARM_breakpoint -11
+#define PR_ARM_cacheflush -12
+#define PR_ARM_set_tls -13
+#define PR_ARM_usr26 -14
+#define PR_ARM_usr32 -15
+#define PR__llseek -16
+#define PR__newselect -17
+#define PR_arm_fadvise64_64 -18
+#define PR_arm_sync_file_range -19
+#define PR_bdflush -20
+#define PR_break -21
+#define PR_cacheflush -22
+#define PR_chown32 -23
+#define PR_fadvise64_64 -24
+#define PR_fchown32 -25
+#define PR_fcntl64 -26
+#define PR_fstat64 -27
+#define PR_fstatat64 -28
+#define PR_fstatfs64 -29
+#define PR_ftime -30
+#define PR_ftruncate64 -31
+#define PR_getegid32 -32
+#define PR_geteuid32 -33
+#define PR_getgid32 -34
+#define PR_getgroups32 -35
+#define PR_getresgid32 -36
+#define PR_getresuid32 -37
+#define PR_getuid32 -38
+#define PR_gtty -39
+#define PR_idle -40
+#define PR_ipc -41
+#define PR_lchown32 -42
+#define PR_lock -43
+#define PR_lstat64 -44
+#define PR_mmap2 -45
+#define PR_mpx -46
+#define PR_nice -47
+#define PR_oldfstat -48
+#define PR_oldlstat -49
+#define PR_oldolduname -50
+#define PR_oldstat -51
+#define PR_olduname -52
+#define PR_pciconfig_iobase -53
+#define PR_pciconfig_read -54
+#define PR_pciconfig_write -55
+#define PR_prof -56
+#define PR_profil -57
+#define PR_readdir -58
+#define PR_recv -59
+#define PR_send -60
+#define PR_sendfile64 -61
+#define PR_setfsgid32 -62
+#define PR_setfsuid32 -63
+#define PR_setgid32 -64
+#define PR_setgroups32 -65
+#define PR_setregid32 -66
+#define PR_setresgid32 -67
+#define PR_setresuid32 -68
+#define PR_setreuid32 -69
+#define PR_setuid32 -70
+#define PR_sgetmask -71
+#define PR_sigaction -72
+#define PR_signal -73
+#define PR_sigpending -74
+#define PR_sigprocmask -75
+#define PR_sigreturn -76
+#define PR_sigsuspend -77
+#define PR_socketcall -78
+#define PR_ssetmask -79
+#define PR_stat64 -80
+#define PR_statfs64 -81
+#define PR_stime -82
+#define PR_stty -83
+#define PR_sync_file_range2 -84
+#define PR_truncate64 -85
+#define PR_ugetrlimit -86
+#define PR_ulimit -87
+#define PR_umount -88
+#define PR_vm86 -89
+#define PR_vm86old -90
+#define PR_waitpid -91

@@ -38,6 +38,7 @@ case PR_brk:
 case PR_cacheflush:
 case PR_capget:
 case PR_capset:
+case PR_clock_adjtime:
 case PR_clock_getres:
 case PR_clock_gettime:
 case PR_clock_nanosleep:
@@ -150,9 +151,6 @@ case PR_lock:
 case PR_lookup_dcookie:
 case PR_lseek:
 case PR_madvise:
-#if (PR_madvise1 != PR_madvise)
-case PR_madvise1: /* On i386 both values are equal. */
-#endif
 case PR_mbind:
 case PR_migrate_pages:
 case PR_mincore:
@@ -185,6 +183,7 @@ case PR_nice:
 case PR_oldfstat:
 case PR_oldolduname:
 case PR_olduname:
+case PR_open_by_handle_at:
 case PR_pause:
 case PR_pciconfig_iobase:
 case PR_pciconfig_read:
@@ -199,6 +198,8 @@ case PR_prctl:
 case PR_pread64:
 case PR_preadv:
 case PR_prlimit64:
+case PR_process_vm_readv:
+case PR_process_vm_writev:
 case PR_prof:
 case PR_profil:
 case PR_pselect6:
@@ -247,6 +248,7 @@ case PR_semtimedop:
 case PR_send:
 case PR_sendfile:
 case PR_sendfile64:
+case PR_sendmmsg:
 case PR_sendmsg:
 case PR_sendto:
 case PR_set_mempolicy:
@@ -264,6 +266,7 @@ case PR_setgroups:
 case PR_setgroups32:
 case PR_sethostname:
 case PR_setitimer:
+case PR_setns:
 case PR_setpgid:
 case PR_setpriority:
 case PR_setregid:
@@ -301,12 +304,11 @@ case PR_socketpair:
 case PR_splice:
 case PR_ssetmask:
 case PR_stime:
-case PR_streams1:
-case PR_streams2:
 case PR_stty:
 case PR_sync:
 case PR_sync_file_range:
-/* case PR_sync_file_range2: */
+case PR_sync_file_range2:
+case PR_syncfs:
 case PR_sysfs:
 case PR_sysinfo:
 case PR_syslog:
@@ -420,6 +422,7 @@ case PR_fchownat:
 case PR_fstatat64:
 case PR_newfstatat:
 case PR_utimensat:
+case PR_name_to_handle_at:
 	dirfd = peek_ureg(tracee, SYSARG_1);
 	if (errno != 0) {
 		status = -errno;
@@ -430,7 +433,7 @@ case PR_utimensat:
 	if (status < 0)
 		break;
 
-	flags = (tracee->sysnum == PR_fchownat)
+	flags = (tracee->sysnum == PR_fchownat || tracee->sysnum == PR_name_to_handle_at)
 		? peek_ureg(tracee, SYSARG_5)
 		: peek_ureg(tracee, SYSARG_4);
 	if (errno != 0) {
