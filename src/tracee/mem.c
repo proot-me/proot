@@ -29,68 +29,48 @@
 #include <limits.h>     /* ULONG_MAX, */
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
+#include <string.h>     /* memcpy(3), */
+#include <stdint.h>     /* uint8_t, */
 
 #include "tracee/mem.h"
-#include "arch.h"    /* REG_SYSARG_*, word_t, NO_MISALIGNED_ACCESS, SIZEOF_WORD */
+#include "arch.h"            /* REG_SYSARG_*, word_t, NO_MISALIGNED_ACCESS */
 #include "syscall/syscall.h" /* USER_REGS_OFFSET, */
-#include "tracee/ureg.h"    /* peek_ureg(), poke_ureg(), */
+#include "tracee/ureg.h"     /* peek_ureg(), poke_ureg(), */
 #include "notice.h"
 
-static inline word_t read_mem_word(unsigned char *ptr) {
-	return *(word_t *)ptr;
-}
-
-static inline void write_mem_word(unsigned char *ptr, word_t src) {
-	*((word_t *)ptr) = src;
-}
-
+/**
+ * Load the word at the given @address, potentially *not* aligned.
+ */
+static inline word_t load_word(const void *address)
+{
 #ifdef NO_MISALIGNED_ACCESS
-#if SIZEOF_WORD < 4 || SIZEOF_WORD > 8 || SIZEOF_WORD % 4 != 0
-#error "unimplemented functionality for this SIZEOF_WORD"
-#endif
-static inline word_t get_word(unsigned char *ptr) {
-	union {
-		unsigned char c[sizeof(word_t)];
-		word_t w;
-	} u;
-	if (((word_t)ptr) % sizeof(word_t) == 0)
-		return read_mem_word(ptr);
-
-	u.c[0] = ptr[0]; u.c[1] = ptr[1];
-	u.c[2] = ptr[2]; u.c[3] = ptr[3];
-#if SIZEOF_WORD == 8
-	u.c[4] = ptr[4]; u.c[5] = ptr[5];
-	u.c[6] = ptr[6]; u.c[7] = ptr[7];
-#endif
-	return u.w;
-}
-static inline void set_word(unsigned char *ptr, word_t src) {
-	union {
-		unsigned char c[sizeof(word_t)];
-		word_t w;
-	} u;
-	if (((word_t)ptr) % sizeof(word_t) == 0) {
-		write_mem_word(ptr, src);
-		return;
+	if (((word_t)address) % sizeof(word_t) == 0)
+		return *(word_t *)address;
+	else {
+		word_t value;
+		memcpy(&value, address, sizeof(word_t));
+		return value;
 	}
-
-	u.w = src;
-	ptr[0] = u.c[0]; ptr[1] = u.c[1];
-	ptr[2] = u.c[2]; ptr[3] = u.c[3];
-#if SIZEOF_WORD == 8
-	ptr[4] = u.c[4]; ptr[5] = u.c[5];
-	ptr[6] = u.c[6]; ptr[7] = u.c[7];
-#endif
-	return;
-}
 #else
-static inline word_t get_word(unsigned char *ptr) {
-	return read_mem_word(ptr);
-}
-static inline void set_word(unsigned char *ptr, word_t src) {
-	write_mem_word(ptr, src);
-}
+	return *(word_t *)address;
 #endif
+}
+
+/**
+ * Store the word with the given @value to the given @address,
+ * potentially *not* aligned.
+ */
+static inline void store_word(void *address, word_t value)
+{
+#ifdef NO_MISALIGNED_ACCESS
+	if (((word_t)address) % sizeof(word_t) == 0)
+		*((word_t *)address) = value;
+	else
+		memcpy(address, &value, sizeof(word_t));
+#else
+	*((word_t *)address) = value;
+#endif
+}
 
 /**
  * Resize by @size bytes the stack of the @tracee. This function
@@ -134,43 +114,45 @@ word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size)
  */
 int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *src_tracer, word_t size)
 {
-	unsigned char *src  = (unsigned char *)src_tracer;
-	unsigned char *dest = (unsigned char *)dest_tracee;
+	word_t *src  = (word_t *)src_tracer;
+	word_t *dest = (word_t *)dest_tracee;
 
 	long   status;
 	word_t word, i, j;
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
 
-	unsigned char *last_dest_word;
+	uint8_t *last_dest_word;
+	uint8_t *last_src_word;
 
 	nb_trailing_bytes = size % sizeof(word_t);
 	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i*sizeof(word_t),
-				get_word(&src[i*sizeof(word_t)]));
+		status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, load_word(&src[i]));
 		if (status < 0) {
 			notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 			return -EFAULT;
 		}
 	}
 
-	/* Copy the bytes in the last word carefully since we have
+	/* Copy the bytes in the last word carefully since we have to
 	 * overwrite only the relevant ones. */
 
-	word = ptrace(PTRACE_PEEKDATA, tracee->pid, dest + i*sizeof(word_t), NULL);
+	word = ptrace(PTRACE_PEEKDATA, tracee->pid, dest + i, NULL);
 	if (errno != 0) {
 		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 
-	last_dest_word = (unsigned char *)&word;
-	for (j = 0; j < nb_trailing_bytes; j++)
-		last_dest_word[j] = src[i*sizeof(word_t) + j];
+	last_dest_word = (uint8_t *)&word;
+	last_src_word  = (uint8_t *)&src[i];
 
-	status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i*sizeof(word_t), word);
+	for (j = 0; j < nb_trailing_bytes; j++)
+		last_dest_word[j] = last_src_word[j];
+
+	status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, word);
 	if (status < 0) {
 		notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 		return -EFAULT;
@@ -186,41 +168,43 @@ int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *s
  */
 int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t size)
 {
-	unsigned char *src  = (unsigned char *)src_tracee;
-	unsigned char *dest = (unsigned char *)dest_tracer;
+	word_t *src  = (word_t *)src_tracee;
+	word_t *dest = (word_t *)dest_tracer;
 
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
 	word_t word, i, j;
 
-	unsigned char *last_src_word;
+	uint8_t *last_src_word;
+	uint8_t *last_dest_word;
 
 	nb_trailing_bytes = size % sizeof(word_t);
 	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i*sizeof(word_t), NULL);
+		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0) {
 			notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 			return -EFAULT;
 		}
-		set_word(&dest[i*sizeof(word_t)], word);
+		store_word(&dest[i], word);
 	}
 
 	/* Copy the bytes from the last word carefully since we have
-	 * to not overwrite the bytes lying beyond the @to buffer. */
+	 * to not overwrite the bytes lying beyond @dest_tracer. */
 
-	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i*sizeof(word_t), NULL);
+	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0) {
 		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 
-	last_src_word  = (unsigned char *)&word;
+	last_dest_word = (uint8_t *)&dest[i];
+	last_src_word  = (uint8_t *)&word;
 
 	for (j = 0; j < nb_trailing_bytes; j++)
-		dest[i*sizeof(word_t) + j] = last_src_word[j];
+		last_dest_word[j] = last_src_word[j];
 
 	return 0;
 }
@@ -234,43 +218,46 @@ int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_t
  */
 int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t max_size)
 {
-	unsigned char *src  = (unsigned char *)src_tracee;
-	unsigned char *dest = (unsigned char *)dest_tracer;
+	word_t *src  = (word_t *)src_tracee;
+	word_t *dest = (word_t *)dest_tracer;
 
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
 	word_t word, i, j;
 
-	unsigned char *src_word;
+	uint8_t *src_word;
+	uint8_t *dest_word;
 
 	nb_trailing_bytes = max_size % sizeof(word_t);
 	nb_full_words     = (max_size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i*sizeof(word_t), NULL);
+		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0)
 			return -EFAULT;
 
-		set_word(&dest[i*sizeof(word_t)], word);
+		store_word(&dest[i], word);
 
 		/* Stop once an end-of-string is detected. */
-		src_word = (unsigned char *)&word;
+		src_word = (uint8_t *)&word;
 		for (j = 0; j < sizeof(word_t); j++)
 			if (src_word[j] == '\0')
 				return i * sizeof(word_t) + j + 1;
 	}
 
 	/* Copy the bytes from the last word carefully since we have
-	 * to not overwrite the bytes lying beyond the @to buffer. */
+	 * to not overwrite the bytes lying beyond @dest_tracer. */
 
-	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i*sizeof(word_t), NULL);
+	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0)
 		return -EFAULT;
 
-	src_word  = (unsigned char *)&word;
+	dest_word = (uint8_t *)&dest[i];
+	src_word  = (uint8_t *)&word;
+
 	for (j = 0; j < nb_trailing_bytes; j++) {
-		dest[i*sizeof(word_t) + j] = src_word[j];
+		dest_word[j] = src_word[j];
 		if (src_word[j] == '\0')
 			break;
 	}

@@ -24,7 +24,6 @@
 #define ARCH_H
 
 typedef unsigned long word_t;
-#define SIZEOF_WORD __SIZEOF_LONG__
 
 #define SYSCALL_AVOIDER -2
 
@@ -40,7 +39,6 @@ typedef unsigned long word_t;
 #        define ARCH_X86 1
 #    elif defined(__SH4__)
 #        define ARCH_SH4 1
-#        warning "Untested architecture"
 #    else
 #        error "Unsupported architecture"
 #    endif
