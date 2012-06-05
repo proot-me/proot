@@ -46,6 +46,7 @@
 
 bool launch_process()
 {
+	struct tracee_info *tracee;
 	struct rlimit rlimit;
 	long status;
 	pid_t pid;
@@ -148,8 +149,13 @@ bool launch_process()
 		return false;
 
 	default: /* parent */
-		return (new_tracee(pid) != NULL);
-		break;
+		tracee = new_tracee(pid);
+		if (tracee == NULL)
+			return false;
+
+		/* This tracee has no traced parent.  */
+		tracee->parent = (void *)-1;
+		return true;
 	}
 
 	/* Never reached.  */
@@ -172,7 +178,12 @@ bool attach_process(pid_t pid)
 	list_open_fd(pid);
 
 	tracee = new_tracee(pid);
-	return (tracee != NULL);
+	if (tracee == NULL)
+		return false;
+
+	/* This tracee has no traced parent.  */
+	tracee->parent = (void *)-1;
+	return true;
 }
 
 /* Send the KILL signal to all [known] tracees.  */
@@ -330,6 +341,7 @@ int event_loop()
 					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 				/* Fall through. */
 			case SIGTRAP | 0x80:
+				assert(tracee->parent != NULL);
 				status = translate_syscall(tracee);
 				if (status < 0) {
 					/* The process died in a syscall. */
@@ -341,18 +353,55 @@ int event_loop()
 
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
-			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
+			case SIGTRAP | PTRACE_EVENT_CLONE << 8: {
+				struct tracee_info *child_tracee;
+				pid_t child_pid;
+
+				signal = 0;
+
+				/* Get the pid of the tracee's new child.  */
+				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &child_pid);
+				if (status < 0) {
+					notice(WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
+					break;
+				}
+
+				/* Declare the parent of this new tracee.  */
+				child_tracee = get_tracee_info(child_pid, true);
+				child_tracee->parent = tracee;
+
+				/* Restart the child tracee if it was started
+				 * before this notification event.  */
+				if (child_tracee->sigstop == SIGSTOP_PENDING) {
+					tracee->sigstop = SIGSTOP_ALLOWED;
+					status = ptrace(PTRACE_SYSCALL, child_pid, NULL, 0);
+					if (status < 0) {
+						notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d)", child_pid);
+						delete_tracee(tracee);
+					}
+				}
+			}
+				break;
+
 			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
-				/* Ignore these signals. */
 				signal = 0;
 				break;
 
 			case SIGSTOP:
 				/* For each tracee, the first SIGSTOP
 				 * is only used to notify the tracer.  */
-				if (!tracee->allow_sigstop)
+
+				/* Stop this tracee until PRoot has received
+				 * the EVENT_*FORK|CLONE notification.  */
+				if (tracee->parent == NULL) {
+					tracee->sigstop = SIGSTOP_PENDING;
+					continue;
+				}
+
+				if (tracee->sigstop == SIGSTOP_IGNORED) {
+					tracee->sigstop = SIGSTOP_ALLOWED;
 					signal = 0;
-				tracee->allow_sigstop = true;
+				}
 				break;
 
 			default:
@@ -369,7 +418,7 @@ int event_loop()
 		status = ptrace(PTRACE_SYSCALL, tracee->pid, NULL, signal);
 		if (status < 0) {
 			 /* The process died in a syscall.  */
-			notice(WARNING, SYSTEM, "ptrace(SYSCALL)");
+			notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d)", tracee->pid);
 			delete_tracee(tracee);
 		}
 	}

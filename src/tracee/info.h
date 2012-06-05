@@ -36,7 +36,12 @@ struct tracee_info {
 	char *trigger; /* Name of the file/directory used to start the path translation. */
 	off_t *uregs;  /* Current register bank, also used to know the current ABI. */
 	char *exe;     /* Path to the executable, à la /proc/self/exe. */
-	bool allow_sigstop; /* Used to avoid the first SIGSTOP (spurious). */
+	enum {         /* State for the special handling of SIGSTOP.  */
+		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */
+		SIGSTOP_ALLOWED,      /* Allow SIGSTOP (once the parent is known).   */
+		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
+	} sigstop;
+	struct tracee_info *parent; /* Parent of this tracee (unused yet). */
 };
 
 typedef int (*foreach_tracee_t)(pid_t pid);

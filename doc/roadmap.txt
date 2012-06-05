@@ -19,12 +19,7 @@ Short term
       /a
 
   * for /proc/<pid>/root: allow one root per tracee, then add support
-    for the chroot syscall under PRoot.  This requires the
-    "synchronous process creation" feature described below.
-
-* Add a "synchronous process creation" feature where children are
-  started only once PRoot knows the parent (PTRACE_GETEVENTMSG and/or
-  return from clone/fork).
+    for the chroot syscall under PRoot.
 
 
 Middle term
