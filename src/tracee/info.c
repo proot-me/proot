@@ -177,3 +177,68 @@ int foreach_tracee(foreach_tracee_t callback)
 
 	return 0;
 }
+
+/**
+ * Make the @child tracee inherit filesystem information from the
+ * @parent tracee.  Depending on the @parent->clone_flags, some
+ * information are copied or shared.
+ */
+void inherit_fs_info(struct tracee_info *child, struct tracee_info *parent)
+{
+	child->parent = parent;
+
+	assert(child->exe  == NULL);
+	// assert(child->root == NULL);
+	// assert(child->cwd  == NULL);
+
+	/* The first tracee is started by PRoot and does nothing but a
+	 * call to execve(2), thus child->exe will be automatically
+	 * updated later.  */
+	if (parent == NULL) {
+		child->parent = (void *)-1;
+		child->exe = NULL;
+		// child->root = strdup(config.guest_rootfs);
+		// child->cwd  = strdup(config.initial_cwd);
+		return;
+	}
+
+	assert(parent->exe  != NULL);
+	// assert(parent->root != NULL);
+	// assert(parent->cwd  != NULL);
+
+	/* The path to the executable is updated if the process does a
+	 * call to execve(2).  */
+	child->exe = strdup(parent->exe);
+
+#if 0
+	/* If CLONE_FS is set, the parent and the child process share
+	 * the same file system information.  This includes the root
+	 * of the file system, the current working directory, and the
+	 * umask.  Any call to chroot(2), chdir(2), or umask(2)
+	 * performed by the parent process or the child process also
+	 * affects the other process.
+	 *
+	 * If CLONE_FS is not set, the child process works on a copy
+	 * of the file system information of the parent process at the
+	 * time of the clone() call.  Calls to chroot(2), chdir(2),
+	 * umask(2) performed later by one of the processes do not
+	 * affect the other process.
+	 *
+	 * -- clone(2) man-page
+	 */
+	if ((parent->clone_flags & CLONE_FS) != 0) {
+		/* File-system information is shared.  */
+		child->root = parent->root;
+		child->cwd  = parent->cwd;
+		/* TODO: use a reference counter to release the memory
+		   only once no tracee uses it.  */
+	}
+	else {
+		/* File-system information is copied.  */
+		child->root = strdup(parent->root);
+		child->cwd  = strdup(parent->cwd);
+	}
+#endif
+
+	return;
+}

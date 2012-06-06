@@ -98,28 +98,27 @@ static enum action readlink_proc(char result[PATH_MAX], const char path[PATH_MAX
 	comparison = compare_paths(proc_path, path);
 	switch (comparison) {
 	case PATHS_ARE_EQUAL:
-#if 0
 #define SUBSTITUTE(name)					\
 		do {						\
-			if (strcmp(component, #name) == 0	\
-				&& tracee->name == NULL) {	\
-				status = strlen(tracee->name);	\
-				if (status >= PATH_MAX)		\
-					return -EPERM;		\
-				strcpy(result, tracee->name);	\
-				return CANONICALIZE;		\
-			}					\
+			if (strcmp(component, #name) != 0)	\
+				break;				\
+								\
+			status = strlen(tracee->name);		\
+			if (status >= PATH_MAX)			\
+				return -EPERM;			\
+								\
+			strcpy(result, tracee->name);		\
+			return CANONICALIZE;			\
 		} while (0)
 
 		/* Substitute link "/proc/<PID>/???" with the content
 		 * of tracee->???.  */
 		SUBSTITUTE(exe);
-		SUBSTITUTE(root);
-		SUBSTITUTE(cwd);
-
-		return DEFAULT;
+		//SUBSTITUTE(root);
+		//SUBSTITUTE(cwd);
 #undef SUBSTITUTE
-#endif
+		return DEFAULT;
+
 	case PATH1_IS_PREFIX:
 		/* Handle "/proc/<PID>/???" below.  */
 		break;

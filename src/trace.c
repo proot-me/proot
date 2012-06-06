@@ -154,7 +154,7 @@ bool launch_process()
 			return false;
 
 		/* This tracee has no traced parent.  */
-		tracee->parent = (void *)-1;
+		inherit_fs_info(tracee, NULL);
 		return true;
 	}
 
@@ -182,7 +182,7 @@ bool attach_process(pid_t pid)
 		return false;
 
 	/* This tracee has no traced parent.  */
-	tracee->parent = (void *)-1;
+	inherit_fs_info(tracee, NULL);
 	return true;
 }
 
@@ -368,7 +368,7 @@ int event_loop()
 
 				/* Declare the parent of this new tracee.  */
 				child_tracee = get_tracee_info(child_pid, true);
-				child_tracee->parent = tracee;
+				inherit_fs_info(child_tracee, tracee);
 
 				/* Restart the child tracee if it was started
 				 * before this notification event.  */

@@ -229,6 +229,10 @@ int translate_execve(struct tracee_info *tracee)
 		goto end;
 	argv_has_changed = (status > 0);
 
+	if (tracee->exe != NULL)
+		free(tracee->exe);
+	tracee->exe = strdup(u_path);
+
 	/* I'd prefer the binfmt_misc approach instead.  */
 	if (config.qemu && !is_host_elf(t_interp)) {
 		status = push_args(false, &argv, 1, u_interp);
