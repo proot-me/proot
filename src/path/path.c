@@ -328,7 +328,7 @@ end:
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(char path[PATH_MAX], char t_referrer[PATH_MAX])
+int detranslate_path(char path[PATH_MAX], const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
 	size_t new_length;
@@ -354,7 +354,7 @@ int detranslate_path(char path[PATH_MAX], char t_referrer[PATH_MAX])
 		sanity_check = false;
 		follow_binding = false;
 
-		/* In some cases bings have to be resolved.  */
+		/* In some cases bindings have to be resolved.  */
 		comparison = compare_paths("/proc", t_referrer);
 		if (comparison == PATH1_IS_PREFIX) {
 			/* Always resolve bindings for symlinks in
@@ -434,7 +434,7 @@ int detranslate_path(char path[PATH_MAX], char t_referrer[PATH_MAX])
  * Check if the translated @t_path belongs to the guest rootfs, that
  * is, isn't from a binding.
  */
-bool belongs_to_guestfs(char *t_path)
+bool belongs_to_guestfs(const char *t_path)
 {
 	enum path_comparison comparison;
 

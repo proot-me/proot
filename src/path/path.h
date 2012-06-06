@@ -39,8 +39,8 @@
 
 extern void init_module_path();
 extern int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
-extern int detranslate_path(char path[PATH_MAX], char t_referrer[PATH_MAX]);
-extern bool belongs_to_guestfs(char *path);
+extern int detranslate_path(char path[PATH_MAX], const char t_referrer[PATH_MAX]);
+extern bool belongs_to_guestfs(const char *path);
 
 extern int join_paths(int number_paths, char result[PATH_MAX], ...);
 extern int next_component(char component[NAME_MAX], const char **cursor);

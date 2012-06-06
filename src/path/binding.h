@@ -34,7 +34,7 @@ enum binding_side {
 	HOST_SIDE = 2,
 };
 
-extern const char *get_path_binding(enum binding_side side, char path[PATH_MAX]);
+extern const char *get_path_binding(enum binding_side side, const char path[PATH_MAX]);
 extern int substitute_binding(enum binding_side side, char path[PATH_MAX]);
 
 extern void init_bindings(void);

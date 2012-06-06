@@ -131,7 +131,7 @@ void print_bindings()
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-static const struct binding *get_binding(enum binding_side side, char path[PATH_MAX])
+static const struct binding *get_binding(enum binding_side side, const char path[PATH_MAX])
 {
 	const struct binding *bindings;
 	const struct binding *binding;
@@ -194,7 +194,7 @@ static const struct binding *get_binding(enum binding_side side, char path[PATH_
  * Get the binding path for the given @path (relatively to the given
  * binding @side).
  */
-const char *get_path_binding(enum binding_side side, char path[PATH_MAX])
+const char *get_path_binding(enum binding_side side, const char path[PATH_MAX])
 {
 	const struct binding *binding;
 
