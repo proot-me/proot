@@ -28,139 +28,11 @@
 #include <unistd.h>    /* access(2), lstat(2), */
 #include <string.h>    /* string(3), */
 #include <assert.h>    /* assert(3), */
-#include <stdio.h>     /* snprintf(3), */
-#include <stdlib.h>    /* atoi(3), strtol(3), */
 
 #include "path/canon.h"
 #include "path/path.h"
 #include "path/binding.h"
-
-/* Action to do after a call to readlink_proc().  */
-enum action {
-	DEFAULT        = 0,    /* Nothing special to do, threat it as a regular link.  */
-	CANONICALIZE   = 1,    /* The symlink was dereferenced, now canonicalize it.  */
-	DONT_CANONICALIZE = 2, /* The symlink shouldn't be dereferenced nor canonicalized.  */
-};
-
-/**
- * This function emulates the @result of readlink("@path/@component")
- * with respect to @tracee, where @path belongs to "/proc" (according
- * to @comparison).  This function returns -errno on error, an enum
- * @action otherwise (c.f. above).
- *
- * Unlike readlink(), this function includes the nul terminating byte
- * to @result.
- */
-static enum action readlink_proc(char result[PATH_MAX], const char path[PATH_MAX],
-			const char component[NAME_MAX], struct tracee_info *tracee,
-			enum path_comparison comparison)
-{
-	struct tracee_info *known_tracee;
-	char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
-	int status;
-	pid_t pid;
-
-	/* Remember: comparison = compare_paths("/proc", path)  */
-	switch (comparison) {
-	case PATHS_ARE_EQUAL:
-		/* Substitute "/proc/self" with "/proc/<PID>".  */
-		if (strcmp(component, "self") != 0)
-			return DEFAULT;
-
-		status = snprintf(result, PATH_MAX, "/proc/%d", tracee->pid);
-		if (status < 0 || status >= PATH_MAX)
-			return -EPERM;
-
-		return CANONICALIZE;
-
-	case PATH1_IS_PREFIX:
-		/* Handle "/proc/<PID>" below, where <PID> is process
-		 * monitored by PRoot.  */
-		break;
-
-	default:
-		return DEFAULT;
-	}
-
-	pid = atoi(path + strlen("/proc/"));
-	if (pid == 0)
-		return DEFAULT;
-
-	known_tracee = get_tracee_info(pid, false);
-	if (!known_tracee)
-		return DEFAULT;
-
-	/* Handle links in "/proc/<PID>/".  */
-	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
-	if (status < 0 || status >= sizeof(proc_path))
-		return -EPERM;
-
-	comparison = compare_paths(proc_path, path);
-	switch (comparison) {
-	case PATHS_ARE_EQUAL:
-#define SUBSTITUTE(name)					\
-		do {						\
-			if (strcmp(component, #name) != 0)	\
-				break;				\
-								\
-			status = strlen(tracee->name);		\
-			if (status >= PATH_MAX)			\
-				return -EPERM;			\
-								\
-			strcpy(result, tracee->name);		\
-			return CANONICALIZE;			\
-		} while (0)
-
-		/* Substitute link "/proc/<PID>/???" with the content
-		 * of tracee->???.  */
-		SUBSTITUTE(exe);
-		//SUBSTITUTE(root);
-		//SUBSTITUTE(cwd);
-#undef SUBSTITUTE
-		return DEFAULT;
-
-	case PATH1_IS_PREFIX:
-		/* Handle "/proc/<PID>/???" below.  */
-		break;
-
-	default:
-		return DEFAULT;
-	}
-
-	/* Handle links in "/proc/<PID>/fd/".  */
-	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d/fd", pid);
-	if (status < 0 || status >= sizeof(proc_path))
-		return -EPERM;
-
-	comparison = compare_paths(proc_path, path);
-	switch (comparison) {
-	case PATHS_ARE_EQUAL:
-		/* Sanity check: a number is expected.  */
-		errno = 0;
-		(void) strtol(component, (char **) NULL, 10);
-		if (errno != 0)
-			return -EPERM;
-
-		/* Don't dereference "/proc/<PID>/fd/???" now: they
-		 * can point to anonymous pipe, socket, ...  otherwise
-		 * they point to a path already canonicalized by the
-		 * kernel.
-		 *
-		 * Note they are still correctly detranslated in
-		 * syscall/exit.c if a monitored process uses
-		 * readlink() against any of them.  */
-		status = snprintf(result, PATH_MAX, "%s/%s", path, component);
-		if (status < 0 || status >= PATH_MAX)
-			return -EPERM;
-
-		return DONT_CANONICALIZE;
-
-	default:
-		return DEFAULT;
-	}
-
-	return DEFAULT;
-}
+#include "path/proc.h"
 
 /**
  * Copy in @result the canonicalization (see `man 3 realpath`) of
@@ -291,7 +163,7 @@ int canonicalize(struct tracee_info *tracee, const char *fake_path, bool deref_f
 			/* Some links in "/proc" are generated
 			 * dynamically by the kernel.  PRoot has to
 			 * emulate some of them.  */
-			status = readlink_proc(tmp, result, component, tracee, comparison);
+			status = readlink_proc(tracee, tmp, result, component, comparison);
 			if (status < 0)
 				return status;
 			else if (status == DONT_CANONICALIZE) {
@@ -312,7 +184,7 @@ int canonicalize(struct tracee_info *tracee, const char *fake_path, bool deref_f
 
 			/* Remove the leading "root" part if needed, it's
 			 * useful for "/proc/self/cwd/" for instance. */
-			status = detranslate_path(tmp, real_entry);
+			status = detranslate_path(tracee, tmp, real_entry);
 			if (status < 0)
 				return status;
 		}

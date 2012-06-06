@@ -78,7 +78,7 @@ case PR_getcwd: {
 		break;
 	}
 
-	status = detranslate_path(path, NULL);
+	status = detranslate_path(tracee, path, NULL);
 	if (status < 0)
 		break;
 
@@ -174,7 +174,7 @@ case PR_readlinkat: {
 		break;
 	}
 
-	status = detranslate_path(referee, referer);
+	status = detranslate_path(tracee, referee, referer);
 	if (status < 0)
 		break;
 

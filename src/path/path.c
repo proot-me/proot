@@ -35,6 +35,7 @@
 #include "path/path.h"
 #include "path/binding.h"
 #include "path/canon.h"
+#include "path/proc.h"
 #include "notice.h"
 #include "config.h"
 #include "build.h"
@@ -276,7 +277,7 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
-		status = detranslate_path(result, NULL);
+		status = detranslate_path(tracee, result, NULL);
 		if (status < 0)
 			return status;
 	}
@@ -328,7 +329,7 @@ end:
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(char path[PATH_MAX], const char t_referrer[PATH_MAX])
+int detranslate_path(struct tracee_info *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
 	size_t new_length;
@@ -357,6 +358,17 @@ int detranslate_path(char path[PATH_MAX], const char t_referrer[PATH_MAX])
 		/* In some cases bindings have to be resolved.  */
 		comparison = compare_paths("/proc", t_referrer);
 		if (comparison == PATH1_IS_PREFIX) {
+			/* Some links in "/proc" are generated
+			 * dynamically by the kernel.  PRoot has to
+			 * emulate some of them.  */
+			char proc_path[PATH_MAX];
+			strcpy(proc_path, path);
+			new_length = readlink_proc2(tracee, proc_path, t_referrer);
+			if (new_length != 0) {
+				strcpy(path, proc_path);
+				return new_length + 1;
+			}
+
 			/* Always resolve bindings for symlinks in
 			 * "/proc", they always point to the emulated
 			 * file-system namespace by design. */

@@ -20,15 +20,26 @@
  * 02110-1301 USA.
  */
 
-#ifndef CANON_H
-#define CANON_H
+#ifndef PROC_H
+#define PROC_H
 
-#include <stdbool.h>
 #include <limits.h>
 
 #include "tracee/info.h"
+#include "path/path.h"
 
-extern int canonicalize(struct tracee_info *tracee, const char *fake_path, bool deref_final,
-			char result[PATH_MAX], unsigned int nb_readlink);
+/* Action to do after a call to readlink_proc().  */
+enum action {
+	DEFAULT        = 0,    /* Nothing special to do, threat it as a regular link.  */
+	CANONICALIZE   = 1,    /* The symlink was dereferenced, now canonicalize it.  */
+	DONT_CANONICALIZE = 2, /* The symlink shouldn't be dereferenced nor canonicalized.  */
+};
 
-#endif /* CANON_H */
+
+extern enum action readlink_proc(struct tracee_info *tracee, char result[PATH_MAX],
+				const char path[PATH_MAX], const char component[NAME_MAX],
+				enum path_comparison comparison);
+
+extern size_t readlink_proc2(struct tracee_info *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
+
+#endif /* PROC_H */

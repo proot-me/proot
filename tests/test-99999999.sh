@@ -1,6 +1,35 @@
-if [ -z `which grep` ] || [ -z `which md5sum` ]; then
+if [ -z `which readlink` ] || [ -z `which cut` ] || [ -z `which grep` ] || [ -z `which md5sum` ]; then
     exit 125;
 fi
+
+WHICH_READLINK=$(readlink -f $(which readlink))
+
+${PROOT} / readlink /proc/self/exe         | grep ^${WHICH_READLINK}$
+${PROOT} / sh -c 'readlink /proc/self/exe' | grep ^${WHICH_READLINK}$
+${PROOT} / sh -c 'readlink /proc/$$/exe'   | grep ^${WHICH_READLINK}$
+${PROOT} -b /proc ${ROOTFS} readlink /proc/self/exe | grep ^${WHICH_READLINK}$
+
+${PROOT} / readlink /proc/1/../self/exe         | grep ^${WHICH_READLINK}$
+${PROOT} / sh -c 'readlink /proc/1/../self/exe' | grep ^${WHICH_READLINK}$
+${PROOT} / sh -c 'readlink /proc/1/../$$/exe'   | grep ^${WHICH_READLINK}$
+${PROOT} -b /proc ${ROOTFS} readlink /proc/1/../self/exe | grep ^${WHICH_READLINK}$
+
+! ${PROOT} / readlink /proc/self/exe/
+! ${PROOT} / readlink /proc/self/exe/..
+! ${PROOT} / readlink /proc/self/exe/../exe
+
+! ${PROOT} -b /proc / readlink /proc/self/exe/
+! ${PROOT} -b /proc / readlink /proc/self/exe/..
+! ${PROOT} -b /proc / readlink /proc/self/exe/../exe
+
+TEST=$(${PROOT} / readlink /proc/self/fd/0 | grep -E "^/proc/[[:digit:]]+/fd/0$" | true)
+test -z $TEST
+
+TEST=$(${PROOT} -b /proc ${ROOTFS} readlink /proc/self/fd/0 | grep -E "^/proc/[[:digit:]]+/fd/0$" | true)
+test -z $TEST
+
+TEST=$(readlink -f /proc/$$/exe)
+${PROOT} / sh -c 'true; readlink /proc/$$/exe' | grep ${TEST}
 
 MD5=$(md5sum $(which md5sum) | cut -f 1 -d ' ')
 

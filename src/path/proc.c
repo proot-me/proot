@@ -1,0 +1,188 @@
+/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
+ *
+ * This file is part of PRoot.
+ *
+ * Copyright (C) 2010, 2011, 2012 STMicroelectronics
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA.
+ */
+
+#include <stdio.h>   /* snprintf(3), */
+#include <string.h>  /* strcmp(3), */
+#include <stdlib.h>  /* atoi(3), strtol(3), */
+#include <errno.h>   /* E*, */
+#include <assert.h>  /* assert(3), */
+
+#include "path/proc.h"
+#include "tracee/info.h"
+#include "path/path.h"
+
+/**
+ * This function emulates the @result of readlink("@base/@component")
+ * with respect to @tracee, where @base belongs to "/proc" (according
+ * to @comparison).  This function returns -errno on error, an enum
+ * @action otherwise (c.f. above).
+ *
+ * Unlike readlink(), this function includes the nul terminating byte
+ * to @result.
+ */
+enum action readlink_proc(struct tracee_info *tracee, char result[PATH_MAX],
+			const char base[PATH_MAX], const char component[NAME_MAX],
+			enum path_comparison comparison)
+{
+	struct tracee_info *known_tracee;
+	char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
+	int status;
+	pid_t pid;
+
+	assert(comparison == compare_paths("/proc", base));
+
+	/* Remember: comparison = compare_paths("/proc", base)  */
+	switch (comparison) {
+	case PATHS_ARE_EQUAL:
+		/* Substitute "/proc/self" with "/proc/<PID>".  */
+		if (strcmp(component, "self") != 0)
+			return DEFAULT;
+
+		status = snprintf(result, PATH_MAX, "/proc/%d", tracee->pid);
+		if (status < 0 || status >= PATH_MAX)
+			return -EPERM;
+
+		return CANONICALIZE;
+
+	case PATH1_IS_PREFIX:
+		/* Handle "/proc/<PID>" below, where <PID> is process
+		 * monitored by PRoot.  */
+		break;
+
+	default:
+		return DEFAULT;
+	}
+
+	pid = atoi(base + strlen("/proc/"));
+	if (pid == 0)
+		return DEFAULT;
+
+	known_tracee = get_tracee_info(pid, false);
+	if (!known_tracee)
+		return DEFAULT;
+
+	/* Handle links in "/proc/<PID>/".  */
+	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
+	if (status < 0 || status >= sizeof(proc_path))
+		return -EPERM;
+
+	comparison = compare_paths(proc_path, base);
+	switch (comparison) {
+	case PATHS_ARE_EQUAL:
+#define SUBSTITUTE(name)					\
+		do {						\
+			if (strcmp(component, #name) != 0)	\
+				break;				\
+								\
+			status = strlen(known_tracee->name);	\
+			if (status >= PATH_MAX)			\
+				return -EPERM;			\
+								\
+			strncpy(result, known_tracee->name, status + 1); \
+			return CANONICALIZE;			\
+		} while (0)
+
+		/* Substitute link "/proc/<PID>/???" with the content
+		 * of tracee->???.  */
+		SUBSTITUTE(exe);
+		//SUBSTITUTE(root);
+		//SUBSTITUTE(cwd);
+#undef SUBSTITUTE
+		return DEFAULT;
+
+	case PATH1_IS_PREFIX:
+		/* Handle "/proc/<PID>/???" below.  */
+		break;
+
+	default:
+		return DEFAULT;
+	}
+
+	/* Handle links in "/proc/<PID>/fd/".  */
+	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d/fd", pid);
+	if (status < 0 || status >= sizeof(proc_path))
+		return -EPERM;
+
+	comparison = compare_paths(proc_path, base);
+	switch (comparison) {
+	case PATHS_ARE_EQUAL:
+		/* Sanity check: a number is expected.  */
+		errno = 0;
+		(void) strtol(component, (char **) NULL, 10);
+		if (errno != 0)
+			return -EPERM;
+
+		/* Don't dereference "/proc/<PID>/fd/???" now: they
+		 * can point to anonymous pipe, socket, ...  otherwise
+		 * they point to a path already canonicalized by the
+		 * kernel.
+		 *
+		 * Note they are still correctly detranslated in
+		 * syscall/exit.c if a monitored process uses
+		 * readlink() against any of them.  */
+		status = snprintf(result, PATH_MAX, "%s/%s", base, component);
+		if (status < 0 || status >= PATH_MAX)
+			return -EPERM;
+
+		return DONT_CANONICALIZE;
+
+	default:
+		return DEFAULT;
+	}
+
+	return DEFAULT;
+}
+
+/**
+ * This function emulates the @result of readlink("@referer") with
+ * respect to @tracee, where @referer is a strict subpath of "/proc".
+ * This function returns the length of @result if the readlink was
+ * emulated, 0 otherwise.
+ *
+ * Unlike readlink(), this function includes the nul terminating byte
+ * to @result (but this byte is not counted in the returned value).
+ */
+size_t readlink_proc2(struct tracee_info *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
+{
+	enum action action;
+	char base[PATH_MAX];
+	char *component;
+
+	assert(compare_paths("/proc", referer) == PATH1_IS_PREFIX);
+
+	/* It's safe to use strrchr() here since @referer was
+	 * previously canonicalized.  */
+	strcpy(base, referer);
+	component = strrchr(base, '/');
+
+	/* These cases are not possible: @referer is supposed to be a
+	 * canonicalized subpath of "/proc".  */
+	assert(component != NULL && component != base);
+
+	component[0] = '\0';
+	component++;
+	if (component[0] == '\0')
+		return 0;
+
+	action = readlink_proc(tracee, result, base, component, PATH1_IS_PREFIX);
+	return (action == CANONICALIZE ? strlen(result) : 0);
+}

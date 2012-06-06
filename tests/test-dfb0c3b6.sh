@@ -16,8 +16,3 @@ ${PROOT} / sh -c 'echo "echo OK" | sh /proc/self/fd/0' | grep ^OK$
 TMP=/tmp/$(mcookie)
 ${PROOT} / sh -c "exec 6<>${TMP}; readlink /proc/self/fd/6" | grep ^${TMP}$
 rm -f ${TMP}
-
-# XXX ${PROOT} / readlink /proc/self/exe | grep ^/bin/readlink$
-# XXX ! ${PROOT} / readlink /proc/self/exe/
-# XXX ! ${PROOT} / readlink /proc/self/exe/..
-# XXX ! ${PROOT} / readlink /proc/self/exe/../exe

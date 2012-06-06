@@ -24,6 +24,7 @@ OBJECTS = cli.o			\
 	path/binding.o		\
 	path/canon.o		\
 	path/path.o		\
+	path/proc.o		\
 	syscall/syscall.o	\
 	tracee/info.o		\
 	tracee/mem.o		\

@@ -229,6 +229,11 @@ int translate_execve(struct tracee_info *tracee)
 		goto end;
 	argv_has_changed = (status > 0);
 
+	/* "/proc/self/exe" points to a canonicalized path -- from the
+	 * guest point-of-view --, hence detranslate_path(t_interp).
+	 * We can re-use u_path since it is not useful anymore.  */
+	strcpy(u_path, t_interp);
+	(void) detranslate_path(tracee, u_path, NULL);
 	if (tracee->exe != NULL)
 		free(tracee->exe);
 	tracee->exe = strdup(u_path);
