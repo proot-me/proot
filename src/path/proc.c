@@ -124,11 +124,13 @@ enum action readlink_proc(struct tracee_info *tracee, char result[PATH_MAX],
 
 	comparison = compare_paths(proc_path, base);
 	switch (comparison) {
+		char *end_ptr;
+
 	case PATHS_ARE_EQUAL:
 		/* Sanity check: a number is expected.  */
 		errno = 0;
-		(void) strtol(component, (char **) NULL, 10);
-		if (errno != 0)
+		(void) strtol(component, &end_ptr, 10);
+		if (errno != 0 || end_ptr == component)
 			return -EPERM;
 
 		/* Don't dereference "/proc/<PID>/fd/???" now: they

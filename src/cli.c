@@ -23,7 +23,7 @@
 #define _GNU_SOURCE    /* get_current_dir_name(3), */
 #include <stdio.h>     /* printf(3), */
 #include <string.h>    /* string(3), */
-#include <stdlib.h>    /* exit(3), atoi(3), */
+#include <stdlib.h>    /* exit(3), strtol(3), */
 #include <stdbool.h>   /* bool, true, false, */
 #include <assert.h>    /* assert(3), */
 #include <unistd.h>    /* acess(2), pipe(2), dup2(2), */
@@ -31,6 +31,7 @@
 #include <sys/types.h> /* stat(2), */
 #include <sys/stat.h>  /* stat(2), */
 #include <unistd.h>    /* stat(2), */
+#include <errno.h>     /* errno(3), */
 
 #include "cli.h"
 #include "config.h"
@@ -218,7 +219,12 @@ static void handle_option_0(char *value)
 
 static void handle_option_v(char *value)
 {
-	config.verbose_level = atoi(value);
+	char *end_ptr = NULL;
+
+	errno = 0;
+	config.verbose_level = strtol(value, &end_ptr, 10);
+	if (errno != 0 || end_ptr == value)
+		notice(ERROR, USER, "option `-v` expects an integer value.");
 }
 
 static void handle_option_V(char *value)
