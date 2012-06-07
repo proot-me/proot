@@ -149,7 +149,8 @@ bool launch_process()
 		return false;
 
 	default: /* parent */
-		tracee = new_tracee(pid);
+		/* Allocate its tracee_info structure.  */
+		tracee = get_tracee_info(pid, true);
 		if (tracee == NULL)
 			return false;
 
@@ -177,7 +178,8 @@ bool attach_process(pid_t pid)
 	 * until they are closed. */
 	list_open_fd(pid);
 
-	tracee = new_tracee(pid);
+	/* Allocate its tracee_info structure.  */
+	tracee = get_tracee_info(pid, true);
 	if (tracee == NULL)
 		return false;
 
@@ -298,8 +300,7 @@ int event_loop()
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(tracee_status)) {
-			VERBOSE(get_nb_tracees() != 1,
-				"pid %d: terminated with signal %d",
+			VERBOSE(1, "pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
 			delete_tracee(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
@@ -376,7 +377,7 @@ int event_loop()
 					tracee->sigstop = SIGSTOP_ALLOWED;
 					status = ptrace(PTRACE_SYSCALL, child_pid, NULL, 0);
 					if (status < 0) {
-						notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d)", child_pid);
+						notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d) [1]", child_pid);
 						delete_tracee(tracee);
 					}
 				}
@@ -418,7 +419,7 @@ int event_loop()
 		status = ptrace(PTRACE_SYSCALL, tracee->pid, NULL, signal);
 		if (status < 0) {
 			 /* The process died in a syscall.  */
-			notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d)", tracee->pid);
+			notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d) [2]", tracee->pid);
 			delete_tracee(tracee);
 		}
 	}

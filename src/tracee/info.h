@@ -47,9 +47,7 @@ struct tracee_info {
 typedef int (*foreach_tracee_t)(pid_t pid);
 
 extern void init_module_tracee_info(void);
-extern struct tracee_info *new_tracee(pid_t pid);
 extern void delete_tracee(struct tracee_info *tracee);
-extern size_t get_nb_tracees(void);
 extern struct tracee_info *get_tracee_info(pid_t pid, bool create);
 extern int foreach_tracee(foreach_tracee_t callback);
 extern void inherit_fs_info(struct tracee_info *child, struct tracee_info *parent);

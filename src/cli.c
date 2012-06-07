@@ -421,7 +421,6 @@ int main(int argc, char *argv[])
 
 	/* TODO: remove the need for initialization.  */
 	init_module_path();
-	init_module_tracee_info();
 	init_module_ldso();
 
 	if (config.verbose_level)

@@ -20,35 +20,36 @@
  * 02110-1301 USA.
  */
 
-#include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <sys/types.h>  /* pid_t, size_t, */
-#include <stdlib.h>     /* NULL, exit(3), */
-#include <stddef.h>     /* offsetof(), */
-#include <sys/user.h>   /* struct user*, */
-#include <limits.h>     /* ULONG_MAX, */
+#include <stdlib.h>     /* NULL, */
 #include <assert.h>     /* assert(3), */
-#include <sys/wait.h>   /* waitpid(2), */
 #include <string.h>     /* bzero(3), */
 #include <stdbool.h>    /* bool, true, false, */
 
 #include "tracee/info.h"
-#include "arch.h"    /* REG_SYSARG_*, word_t */
-#include "syscall/syscall.h" /* USER_REGS_OFFSET, */
 #include "notice.h"
 
-static struct tracee_info *tracee_infos;
-static size_t max_tracees = 0;
-static size_t nb_tracees = 0;
+ /* Don't use too many entries since XXX all XXX when searching for a
+  * new tracee.  */
+#define POOL_MAX_ENTRIES 16
+
+struct pool {
+	struct tracee_info entries[POOL_MAX_ENTRIES];
+	size_t nb_entries;
+	struct pool *next;
+};
+
+static struct pool *first_pool = NULL;
 
 /**
- * Reset the default values for the structure @tracee.
+ * Reset the default values for the given @tracee.
  */
-static void reset_tracee(struct tracee_info *tracee, bool free_fields)
+void delete_tracee(struct tracee_info *tracee)
 {
-	if (free_fields && tracee->trigger != NULL)
+	if (tracee->trigger != NULL)
 		free(tracee->trigger);
 
-	if (free_fields && tracee->exe != NULL)
+	if (tracee->exe != NULL)
 		free(tracee->exe);
 
 	bzero(tracee, sizeof(struct tracee_info));
@@ -57,122 +58,106 @@ static void reset_tracee(struct tracee_info *tracee, bool free_fields)
 }
 
 /**
- * Allocate @nb_elements empty entries in the table tracee_infos[].
+ * Allocate a new pool and initialize an entry for the tracee @pid.
  */
-void init_module_tracee_info()
+static struct tracee_info *new_tracee(pid_t pid)
 {
+	struct pool *last_pool;
+	struct pool *new_pool;
 	size_t i;
-	const int nb_elements = 64;
 
-	tracee_infos = calloc(nb_elements, sizeof(struct tracee_info));
-	if (tracee_infos == NULL)
-		notice(ERROR, SYSTEM, "calloc()");
+	/* Search for the last pool.  */
+	for (last_pool = first_pool; last_pool != NULL; last_pool = last_pool->next)
+		if (last_pool->next == NULL)
+			break;
 
-	/* Set the default values for each entry. */
-	for(i = 0; i < nb_elements; i++)
-		reset_tracee(&tracee_infos[i], false);
-
-	max_tracees = nb_elements;
-}
-
-/**
- * Initialize a new entry in the table tracee_infos[] for the tracee @pid.
- */
-struct tracee_info *new_tracee(pid_t pid)
-{
-	size_t i;
-	size_t first_slot;
-	struct tracee_info *new_tracee_infos;
-
-	assert(nb_tracees <= max_tracees);
-
-	/* Check if there is still an empty entry in tracee_info[]. */
-	if (nb_tracees == max_tracees) {
-		new_tracee_infos = realloc(tracee_infos, 2 * max_tracees * sizeof(struct tracee_info));
-		if (new_tracee_infos == NULL) {
-			notice(WARNING, SYSTEM, "realloc()");
-			return NULL;
-		}
-
-		/* Set the default values for each new entry. */
-		for(i = max_tracees; i < 2 * max_tracees; i++)
-			reset_tracee(&new_tracee_infos[i], false);
-
-		first_slot = max_tracees; /* Skip non-empty slot. */
-		max_tracees = 2 * max_tracees;
-		tracee_infos = new_tracee_infos;
-	}
-	else
-		first_slot = 0;
-
-	/* Search for a free slot. */
-	for(i = first_slot; i < max_tracees; i++) {
-		if (tracee_infos[i].pid == 0) {
-			tracee_infos[i].pid = pid;
-			nb_tracees++;
-			return &tracee_infos[i];
-		}
+	new_pool = calloc(1, sizeof(struct pool));
+	if (new_pool == NULL) {
+		notice(WARNING, SYSTEM, "calloc()");
+		return NULL;
 	}
 
-	/* Should never happen. */
-	assert(0);
-	return NULL;
+	if (last_pool != NULL)
+		last_pool->next = new_pool;
+	else {
+		assert(first_pool == NULL);
+		first_pool = new_pool;
+	}
+
+	/* Set the default values for each new entry. */
+	for(i = 0; i < POOL_MAX_ENTRIES; i++)
+		delete_tracee(&new_pool->entries[i]);
+
+	new_pool->entries[0].pid = pid;
+	return &new_pool->entries[0];
 }
 
 /**
- * Reset the entry in tracee_infos[] related to the tracee @pid.
- */
-void delete_tracee(struct tracee_info *tracee)
-{
-	nb_tracees--;
-	reset_tracee(tracee, true);
-}
-
-/**
- * Give the number of tracee alive at this time.
- */
-size_t get_nb_tracees()
-{
-	return nb_tracees;
-}
-
-/**
- * Search in the table tracee_infos[] for the entry related to the
- * tracee @pid.
+ * Return the entry related to the tracee @pid.  If no entry were
+ * found, a new one is created if @create is true, otherwise NULL is
+ * returned.
  */
 struct tracee_info *get_tracee_info(pid_t pid, bool create)
 {
+	struct tracee_info *tracee;
+	struct pool *pool;
 	size_t i;
 
-	/* Search for the entry related to this tracee process. */
-	for(i = 0; i < max_tracees; i++)
-		if (tracee_infos[i].pid == pid)
-			return &tracee_infos[i];
+	/* Remember what the first free slot is in the first free
+	 * pool, if we have to @create a new entry.  */
+	struct pool *free_pool = NULL;
+	size_t free_slot = 0;
+
+	for (pool = first_pool; pool != NULL; pool = pool->next) {
+		for(i = 0; i < POOL_MAX_ENTRIES; i++) {
+			if (pool->entries[i].pid == pid)
+				return &pool->entries[i];
+
+			if (!create
+			    || free_pool != NULL
+			    || pool->entries[i].pid != 0)
+				continue;
+
+			free_pool = pool;
+			free_slot = i;
+		}
+	}
 
 	if (!create)
 		return NULL;
 
-	/* Create the tracee_infos[] entry dynamically. */
-	return new_tracee(pid);
+	if (free_pool != NULL) {
+		tracee = &free_pool->entries[free_slot];
+		tracee->pid = pid;
+		return tracee;
+	}
+	else {
+		tracee = new_tracee(pid);
+		assert(tracee != NULL);
+		return tracee;
+	}
 }
 
 /**
- * Call @callback on each living tracee process. It returns the status
- * of the first failure, that is, if @callback returned seomthing
+ * Call @callback on each tracees.  This function returns the status
+ * of the first failure, that is, if @callback returned something
  * lesser than 0, otherwise 0.
  */
 int foreach_tracee(foreach_tracee_t callback)
 {
+	struct pool *pool;
 	int status;
-	int i;
+	size_t i;
 
-	for(i = 0; i < max_tracees; i++) {
-		if (tracee_infos[i].pid == 0)
-			continue;
+	for (pool = first_pool; pool != NULL; pool = pool->next) {
+		for(i = 0; i < POOL_MAX_ENTRIES; i++) {
+			if (pool->entries[i].pid == 0)
+				continue;
 
-		status = callback(tracee_infos[i].pid);
-		if (status < 0)
-			return status;
+			status = callback(pool->entries[i].pid);
+			if (status < 0)
+				return status;
+		}
 	}
 
 	return 0;
