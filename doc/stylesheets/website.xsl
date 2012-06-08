@@ -50,7 +50,7 @@
 	      <li><a href="#description">Description</a></li>
 	      <li><a href="#examples">Examples</a></li>
 	      <li><a href="#downloads">Downloads</a></li>
-	      <li><a href="#help">Help</a></li>
+	      <li><a href="#support">Support</a></li>
 	      <li><a href="https://plus.google.com/107605112469213359575/posts">News+</a></li>
 	    </ul>
 	  </div>
@@ -59,8 +59,8 @@
 	  <xsl:apply-templates select="//section[@names='examples']" />
 	  <xsl:apply-templates select="//section[@names='downloads']" />
 
-	  <div class="section" id="help">
-	    <h2>Help</h2>
+	  <div class="section" id="support">
+	    <h2>Support</h2>
 	    <p>Feel free to send your questions, bug reports,
 	    suggestions, and patchs to <a
 	    href="mailto:proot_me@googlegroups.com">the
