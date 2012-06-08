@@ -1,3 +1,60 @@
+Release v2.0
+============
+
+New features
+------------
+
+* There's now a specific support to handle special symlinks in /proc.
+  As of now, only the following ones are correctly handled:
+
+      * /proc/self, it was already supported previously but now this
+        is done consistently (i.e. not a hack);
+
+      * /proc/<PID>/exe, for any <PID> monitored by PRoot; and
+
+      * /proc/<PID>/fd/<FD>.
+
+* The list of supported syscalls was updated, as of Linux 3.4.1.
+
+Command-line interface changes
+------------------------------
+
+* The path to the guest rootfs can now be specified by the new
+  -r/--rootfs option.  This permits the use of shell aliases, for
+  example:
+
+      $ alias armedslack='proot -Q qemu-arm -r /path/to/armedslack'
+      $ armedslack -v 1 -b ~/arm_cpuinfo:/proc/cpuinfo
+
+  That wasn't possible previously because the path to the guest rootfs
+  had to be the last option.
+
+* The -v/--verbose option now takes a parameter, and a negative
+  integer makes PRoot quiet except on fatal errors.
+
+* The -h/--help option now prints a detailed message.
+
+* The -V/--version and -h/--help options now exit with success.
+
+Fix
+---
+
+* Return correct errno if a non-final path component isn't a directory
+  nor a symlink.
+
+* Fix the insertion of an item in the list of host/guest bindings.
+
+
+Internal changes
+----------------
+
+This section is dedicated to PRoot developpers.
+
+* File-system information is now inherited from a traced process to
+  its children.  This permits the corrent emulation of symlinks in
+  /proc/self: cmdline, exe, cwd, root, ...
+
+
 Release v1.9
 ============
 
