@@ -46,9 +46,6 @@ static struct pool *first_pool = NULL;
  */
 void delete_tracee(struct tracee_info *tracee)
 {
-	if (tracee->trigger != NULL)
-		free(tracee->trigger);
-
 	if (tracee->exe != NULL)
 		free(tracee->exe);
 

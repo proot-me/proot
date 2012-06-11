@@ -54,6 +54,10 @@ This section is dedicated to PRoot developpers.
   its children.  This permits the corrent emulation of symlinks in
   /proc/self: cmdline, exe, cwd, root, ...
 
+* The execution of QEMU is now fully confined to the virtual rootfs
+  namespace: it now relies on the "mixed-execution" feature, just like
+  a regular host program.
+
 
 Release v1.9
 ============

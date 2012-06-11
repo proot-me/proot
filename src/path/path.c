@@ -203,26 +203,6 @@ void init_module_path()
 }
 
 /**
- * Check if the translation should be delayed.
- *
- * It is useful when using a runner that needs shared libraries or
- * reads some configuration files, for instance.
- */
-static bool is_delayed(struct tracee_info *tracee, const char *path)
-{
-	if (tracee->trigger == NULL)
-		return false;
-
-	if (compare_paths(tracee->trigger, path) != PATHS_ARE_EQUAL)
-		return true;
-
-	free(tracee->trigger);
-	tracee->trigger = NULL;
-
-	return false;
-}
-
-/**
  * Copy in @result the equivalent of @root + canonicalize(@dir_fd +
  * @fake_path).  If @fake_path is not absolute then it is relative to
  * the directory referred by the descriptor @dir_fd (AT_FDCWD is for
@@ -288,15 +268,6 @@ int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd
 	status = canonicalize(tracee, fake_path, deref_final, result, 0);
 	if (status < 0)
 		return status;
-
-	/* Don't use the result of the canonicalization if the
-	 * translation is delayed, use the origin input path instead. */
-	if (config.qemu && tracee != NULL && is_delayed(tracee, fake_path)) {
-		if (strlen(fake_path) >= PATH_MAX)
-			return -ENAMETOOLONG;
-		strcpy(result, fake_path);
-		goto end;
-	}
 
 	/* Don't prepend the new root to the result of the
 	 * canonicalization if it is a binding, instead substitute the

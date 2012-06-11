@@ -204,6 +204,7 @@ int translate_execve(struct tracee_info *tracee)
 
 	bool envp_has_changed = false;
 	bool argv_has_changed = false;
+	bool inhibit_rpath = false;
 	int size = 0;
 	int status;
 
@@ -238,67 +239,58 @@ int translate_execve(struct tracee_info *tracee)
 		free(tracee->exe);
 	tracee->exe = strdup(u_path);
 
-	/* I'd prefer the binfmt_misc approach instead.  */
-	if (config.qemu && !is_host_elf(t_interp)) {
-		status = push_args(false, &argv, 1, u_interp);
-		if (status < 0)
-			goto end;
+	if (config.qemu) {
+		/* Prepend the QEMU command to the initial argv[] if
+		 * it's a "foreign" binary.  */
+		if (!is_host_elf(t_interp)) {
+			status = push_args(false, &argv, 1, u_interp);
+			if (status < 0)
+				goto end;
 
-		status = push_args(true, &argv, -1, config.qemu);
-		if (status < 0)
-			goto end;
+			status = push_args(true, &argv, -1, config.qemu);
+			if (status < 0)
+				goto end;
 
-		envp_has_changed = ldso_env_passthru(&envp, &argv, "-E", "-U");
+			envp_has_changed = ldso_env_passthru(&envp, &argv, "-E", "-U");
 
-		/* Errors are not fatal here.  */
-		if (!argv_has_changed)
-			push_args(false, &argv, 2, "-0", argv0);
-		else
-			push_args(false, &argv, 2, "-0", u_interp);
+			/* Errors are not fatal here.  */
+			if (!argv_has_changed)
+				push_args(false, &argv, 2, "-0", argv0);
+			else
+				push_args(false, &argv, 2, "-0", u_interp);
 
-		argv_has_changed = true;
+			argv_has_changed = true;
 
-		/* Delay the translation of the newly instantiated
-		 * runner until it accesses the program to execute,
-		 * that way the runner can first access its own files
-		 * outside of the rootfs. */
-		tracee->trigger = strdup(u_interp);
-		if (tracee->trigger == NULL) {
-			status = -ENOMEM;
-			goto end;
+			/* Launch the runner actually. */
+			strcpy(t_interp, config.qemu[0]);
+			status = join_paths(2, u_interp, config.host_rootfs, config.qemu[0]);
+			if (status < 0)
+				goto end;
 		}
-
-		/* Launch the runner actually. */
-		strcpy(t_interp, config.qemu[0]);
-	}
-	else {
-		bool inhibit_rpath = false;
 
 		/* Provide information to the host dynamic linker to
 		 * find host libraries (remember the guest root
 		 * file-system contains libraries for the guest
-		 * architecture only).  Errors are not fatal here.  */
-		if (config.qemu) {
-			status = rebuild_host_ldso_paths(t_interp, &envp);
-			if (status < 0)
-				goto end;
-			inhibit_rpath = (status > 0);
-			envp_has_changed = true;
-		}
-
-		status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
+		 * architecture only).  */
+		status = rebuild_host_ldso_paths(t_interp, &envp);
 		if (status < 0)
 			goto end;
-		argv_has_changed = argv_has_changed || (status > 0);
+		inhibit_rpath = (status > 0);
+		envp_has_changed = true;
+	}
 
-		if (inhibit_rpath && !config.ignore_elf_interpreter) {
-			/* Tell the dynamic linker to ignore RPATHs specified
-			 * in the *main* program.  To disable the RPATH
-			 * mechanism globally, we have to list all objects
-			 * here (NYI).  Errors are not fatal here.  */
-			status = push_args(false, &argv, 2, "--inhibit-rpath", "''");
-			argv_has_changed = argv_has_changed || (status > 0);
-		}
+	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
+	if (status < 0)
+		goto end;
+	argv_has_changed = argv_has_changed || (status > 0);
+
+	if (inhibit_rpath && !config.ignore_elf_interpreter) {
+		/* Tell the dynamic linker to ignore RPATHs specified
+		 * in the *main* program.  To disable the RPATH
+		 * mechanism globally, we have to list all objects
+		 * here (NYI).  Errors are not fatal here.  */
+		status = push_args(false, &argv, 2, "--inhibit-rpath", "''");
+		argv_has_changed = argv_has_changed || (status > 0);
 	}
 
 	VERBOSE(4, "execve: %s", t_interp);

@@ -35,7 +35,12 @@ Middle term
   of guest programs that might be too recent compared to the host
   system.
 
-* Use the mixed-mode mechanism to run QEMU (instead of trigger/LD_PRELOAD)
+* A host program that launches a guest program shouldn't propagate its
+  host LD_LIBRARY_PATH environment variable.
+
+* Add support for a special environment variable to add paths
+  dynamically to the host LD_LIBRARY_PATH
+  ("EXTRA_HOST_LD_LIBRARY_PATH").
 
 
 Not yet scheduled

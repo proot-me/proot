@@ -2,8 +2,6 @@ if [ ! -x  ${ROOTFS}/bin/readlink ] || [ -z `which readlink` ] || [ -z `which cu
     exit 125;
 fi
 
-set -x
-
 WHICH_READLINK=$(readlink -f $(which readlink))
 
 ${PROOT} / readlink /proc/self/exe         | grep ^${WHICH_READLINK}$

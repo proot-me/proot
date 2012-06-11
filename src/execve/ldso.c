@@ -72,20 +72,19 @@ void init_module_ldso()
  *
  *     env LD_TRACE_LOADED_OBJECTS=1 qemu /bin/ls
  *
- * Note that the variables LD_LIBRARY_PATH and LD_PRELOAD are always
- * needed by QEMU (it should be harmless with another runner):
+ * Note that the LD_LIBRARY_PATH variable is always required to run
+ * QEMU (a host binary):
  *
- *     env LD_PRELOAD=libgcc_s.so.1 qemu -U LD_PRELOAD /bin/ls
+ *     env LD_LIBRARY_PATH=... qemu -U LD_LIBRARY_PATH /bin/ls
  *
- * or when LD_PRELOAD was also specified by the user:
+ * or when LD_LIBRARY_PATH was also specified by the user:
  *
- *     env LD_PRELOAD=libgcc_s.so.1 qemu -E LD_PRELOAD=libm.so.6 /bin/ls
+ *     env LD_LIBRARY_PATH=... qemu -E LD_LIBRARY_PATH=... /bin/ls
  */
 bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const char *undefine)
 {
 	int i;
 	bool has_seen_library_path = false;
-	bool has_seen_preload = false;
 
 	for (i = 0; (*envp)[i] != NULL; i++) {
 		bool is_known = false;
@@ -96,39 +95,38 @@ bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const c
 		    || (*envp)[i][2] != '_')
 			continue;
 
-		bool passthru(const char *name, const char *value) {
+		bool passthru(const char *name) {
 			if (!check_env_entry_name((*envp)[i], name))
 				return false;
 
 			/* Errors are not fatal here.  */
 			push_args(false, argv, 2, define, (*envp)[i]);
-			replace_env_entry(&(*envp)[i], value);
+			replace_env_entry(&(*envp)[i], NULL);
 			return true;
 		}
 
-		has_seen_library_path |= passthru("LD_LIBRARY_PATH", initial_ldso_paths);
-		has_seen_preload      |= passthru("LD_PRELOAD", "libgcc_s.so.1");
-
-		is_known |= passthru("LD_BIND_NOW", NULL);
-		is_known |= passthru("LD_TRACE_LOADED_OBJECTS", NULL);
-		is_known |= passthru("LD_AOUT_LIBRARY_PATH", NULL);
-		is_known |= passthru("LD_AOUT_PRELOAD", NULL);
-		is_known |= passthru("LD_AUDIT", NULL);
-		is_known |= passthru("LD_BIND_NOT", NULL);
-		is_known |= passthru("LD_DEBUG", NULL);
-		is_known |= passthru("LD_DEBUG_OUTPUT", NULL);
-		is_known |= passthru("LD_DYNAMIC_WEAK", NULL);
-		is_known |= passthru("LD_HWCAP_MASK", NULL);
-		is_known |= passthru("LD_KEEPDIR", NULL);
-		is_known |= passthru("LD_NOWARN", NULL);
-		is_known |= passthru("LD_ORIGIN_PATH", NULL);
-		is_known |= passthru("LD_POINTER_GUARD", NULL);
-		is_known |= passthru("LD_PROFILE", NULL);
-		is_known |= passthru("LD_PROFILE_OUTPUT", NULL);
-		is_known |= passthru("LD_SHOW_AUXV", NULL);
-		is_known |= passthru("LD_USE_LOAD_BIAS", NULL);
-		is_known |= passthru("LD_VERBOSE", NULL);
-		is_known |= passthru("LD_WARN", NULL);
+		has_seen_library_path |= passthru("LD_LIBRARY_PATH");
+		is_known |= passthru("LD_PRELOAD");
+		is_known |= passthru("LD_BIND_NOW");
+		is_known |= passthru("LD_TRACE_LOADED_OBJECTS");
+		is_known |= passthru("LD_AOUT_LIBRARY_PATH");
+		is_known |= passthru("LD_AOUT_PRELOAD");
+		is_known |= passthru("LD_AUDIT");
+		is_known |= passthru("LD_BIND_NOT");
+		is_known |= passthru("LD_DEBUG");
+		is_known |= passthru("LD_DEBUG_OUTPUT");
+		is_known |= passthru("LD_DYNAMIC_WEAK");
+		is_known |= passthru("LD_HWCAP_MASK");
+		is_known |= passthru("LD_KEEPDIR");
+		is_known |= passthru("LD_NOWARN");
+		is_known |= passthru("LD_ORIGIN_PATH");
+		is_known |= passthru("LD_POINTER_GUARD");
+		is_known |= passthru("LD_PROFILE");
+		is_known |= passthru("LD_PROFILE_OUTPUT");
+		is_known |= passthru("LD_SHOW_AUXV");
+		is_known |= passthru("LD_USE_LOAD_BIAS");
+		is_known |= passthru("LD_VERBOSE");
+		is_known |= passthru("LD_WARN");
 
 		if (!is_known && config.verbose_level >= 1)
 			notice(WARNING, INTERNAL, "unknown LD_ environment variable");
@@ -136,14 +134,7 @@ bool ldso_env_passthru(char **envp[], char **argv[], const char *define, const c
 
 	if (!has_seen_library_path) {
 		/* Errors are not fatal here.  */
-		new_env_entry(envp, "LD_LIBRARY_PATH", initial_ldso_paths);
 		push_args(false, argv, 2, undefine, "LD_LIBRARY_PATH");
-	}
-
-	if (!has_seen_preload) {
-		/* Errors are not fatal here.  */
-		new_env_entry(envp, "LD_PRELOAD", "libgcc_s.so.1");
-		push_args(false, argv, 2, undefine, "LD_PRELOAD");
 	}
 
 	/* Return always true since LD_LIBRARY_PATH and LD_PRELOAD are
