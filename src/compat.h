@@ -39,6 +39,9 @@
 #    ifndef PTRACE_SETOPTIONS
 #        define PTRACE_SETOPTIONS	0x4200
 #    endif
+#    ifndef PTRACE_GETEVENTMSG
+#        define PTRACE_GETEVENTMSG	0x4201
+#    endif
 #    ifndef PTRACE_O_TRACESYSGOOD
 #        define PTRACE_O_TRACESYSGOOD	0x00000001
 #    endif
