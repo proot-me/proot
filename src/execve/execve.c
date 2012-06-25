@@ -208,6 +208,8 @@ int translate_execve(struct tracee_info *tracee)
 	int size = 0;
 	int status;
 
+	assert(tracee != NULL);
+
 	status = get_sysarg_path(tracee, u_path, SYSARG_1);
 	if (status < 0)
 		return status;

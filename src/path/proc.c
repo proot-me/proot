@@ -25,6 +25,7 @@
 #include <stdlib.h>  /* atoi(3), strtol(3), */
 #include <errno.h>   /* E*, */
 #include <assert.h>  /* assert(3), */
+#include <unistd.h>  /* getpid(2), */
 
 #include "path/proc.h"
 #include "tracee/info.h"
@@ -39,16 +40,18 @@
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result.
  */
-enum action readlink_proc(struct tracee_info *tracee, char result[PATH_MAX],
+enum action readlink_proc(const struct tracee_info *tracee, char result[PATH_MAX],
 			const char base[PATH_MAX], const char component[NAME_MAX],
 			enum path_comparison comparison)
 {
-	struct tracee_info *known_tracee;
+	const struct tracee_info *known_tracee;
 	char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
 	int status;
 	pid_t pid;
 
 	assert(comparison == compare_paths("/proc", base));
+
+	pid = (tracee != NULL ? tracee->pid : getpid());
 
 	/* Remember: comparison = compare_paths("/proc", base)  */
 	switch (comparison) {
@@ -57,7 +60,7 @@ enum action readlink_proc(struct tracee_info *tracee, char result[PATH_MAX],
 		if (strcmp(component, "self") != 0)
 			return DEFAULT;
 
-		status = snprintf(result, PATH_MAX, "/proc/%d", tracee->pid);
+		status = snprintf(result, PATH_MAX, "/proc/%d", pid);
 		if (status < 0 || status >= PATH_MAX)
 			return -EPERM;
 
@@ -163,7 +166,7 @@ enum action readlink_proc(struct tracee_info *tracee, char result[PATH_MAX],
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result (but this byte is not counted in the returned value).
  */
-size_t readlink_proc2(struct tracee_info *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
+size_t readlink_proc2(const struct tracee_info *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
 {
 	enum action action;
 	char base[PATH_MAX];

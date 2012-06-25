@@ -36,10 +36,10 @@ enum action {
 };
 
 
-extern enum action readlink_proc(struct tracee_info *tracee, char result[PATH_MAX],
+extern enum action readlink_proc(const struct tracee_info *tracee, char result[PATH_MAX],
 				const char path[PATH_MAX], const char component[NAME_MAX],
 				enum path_comparison comparison);
 
-extern size_t readlink_proc2(struct tracee_info *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
+extern size_t readlink_proc2(const struct tracee_info *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
 
 #endif /* PROC_H */
