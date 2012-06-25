@@ -21,6 +21,19 @@ Short term
   * for /proc/<pid>/root: allow one root per tracee, then add support
     for the chroot syscall under PRoot.
 
+* Emulate stat/getdents-like syscalls for "dummy" path that can't be created.
+
+  It should fix this kind of scenario::
+
+      host$ proot -m /etc:/does_not_exist/etc /
+      proot warning: can't create the binding location "/does_not_exist/etc": [...]
+
+      guest$ cd /does_not_exist/etc
+      sh: cd: /does_not_exist/etc: No such file or directory
+
+* A host program that launches a guest program shouldn't propagate its
+  host LD_LIBRARY_PATH environment variable.
+
 
 Middle term
 ===========
@@ -35,9 +48,6 @@ Middle term
   of guest programs that might be too recent compared to the host
   system.
 
-* A host program that launches a guest program shouldn't propagate its
-  host LD_LIBRARY_PATH environment variable.
-
 * Add support for a special environment variable to add paths
   dynamically to the host LD_LIBRARY_PATH
   ("EXTRA_HOST_LD_LIBRARY_PATH").
@@ -48,16 +58,6 @@ Not yet scheduled
 
 Fixes
 -----
-
-* Emulate stat/getdents-like syscalls for "dummy" path that can't be created.
-
-  It should fix this kind of scenario::
-
-      host$ proot -m /etc:/does_not_exist/etc /
-      proot warning: can't create the binding location "/does_not_exist/etc": [...]
-
-      guest$ cd /does_not_exist/etc
-      sh: cd: /does_not_exist/etc: No such file or directory
 
 * Fix the feature "attach on-the-fly"
 

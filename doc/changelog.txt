@@ -48,11 +48,11 @@ Fix
 Internal changes
 ----------------
 
-This section is dedicated to PRoot developpers.
+This section is dedicated to PRoot developers.
 
 * File-system information is now inherited from a traced process to
-  its children.  This permits the corrent emulation of symlinks in
-  /proc/self: cmdline, exe, cwd, root, ...
+  its children.  This permits the emulation of symlinks in /proc/self:
+  cmdline, exe, cwd, root, ...
 
 * The execution of QEMU is now fully confined to the virtual rootfs
   namespace: it now relies on the "mixed-execution" feature, just like
@@ -115,7 +115,7 @@ Fix
 Internal changes
 ----------------
 
-This section is dedicated to PRoot developpers.
+This section is dedicated to PRoot developers.
 
 * Functions to compare two pathes (equal, prefix, not comparable, ...)
   are now available, at last.

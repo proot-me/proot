@@ -400,7 +400,7 @@ static void create_dummy(char c_path[PATH_MAX], const char *real_path)
 
 error:
 	notice(WARNING, USER,
-		"can't create the guest path (binding) \"%s\": you can access it without seeing it though", c_path);
+		"can't create the guest path (binding) \"%s\": you can still access it *directly*, without seeing it though", c_path);
 }
 
 /**
