@@ -1,3 +1,15 @@
+Release v2.0.1
+==============
+
+* Fix a compatibility issue with QEMU v1.1
+
+* Fix the initialization of bindings that point to "/proc/self".
+
+These problems were reported by Alkino:
+
+    https://github.com/cedric-vincent/PRoot/issues/3
+
+
 Release v2.0
 ============
 
