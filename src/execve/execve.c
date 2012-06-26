@@ -83,7 +83,8 @@ static int expand_interp(struct tracee_info *tracee,
 			 char t_interp[PATH_MAX],
 			 char u_interp[PATH_MAX],
 			 char **argv[],
-			 extract_interp_t callback)
+			 extract_interp_t callback,
+			 bool ignore_interpreter)
 {
 	char argument[ARG_MAX];
 
@@ -96,10 +97,10 @@ static int expand_interp(struct tracee_info *tracee,
 	if (status < 0)
 		return status;
 
-	/* Skip the extraction of the ELF interpreter on demand, in
+	/* Skip the extraction of the interpreter on demand, in
 	 * this case we execute the translation of u_path (t_interp)
 	 * directly. */
-	if (callback == extract_elf_interp && config.ignore_elf_interpreter) {
+	if (ignore_interpreter) {
 		strcpy(u_interp, u_path);
 		return 0;
 	}
@@ -144,7 +145,7 @@ static int expand_interp(struct tracee_info *tracee,
 	 */
 
 	VERBOSE(3, "expand shebang: %s -> %s %s %s",
-		(*argv)[0], u_path, argument, u_path);
+		(*argv)[0], u_interp, argument, u_path);
 
 	if (argument[0] != '\0')
 		status = push_args(true, argv, 3, u_interp, argument, u_path);
@@ -202,6 +203,7 @@ int translate_execve(struct tracee_info *tracee)
 	char **argv = NULL;
 	char *argv0 = NULL;
 
+	bool ignore_elf_interpreter = config.ignore_elf_interpreter;
 	bool envp_has_changed = false;
 	bool argv_has_changed = false;
 	bool inhibit_rpath = false;
@@ -227,7 +229,7 @@ int translate_execve(struct tracee_info *tracee)
 		goto end;
 	assert(envp != NULL);
 
-	status = expand_interp(tracee, u_path, t_interp, u_interp, &argv, extract_script_interp);
+	status = expand_interp(tracee, u_path, t_interp, u_interp, &argv, extract_script_interp, false);
 	if (status < 0)
 		goto end;
 	argv_has_changed = (status > 0);
@@ -268,6 +270,10 @@ int translate_execve(struct tracee_info *tracee)
 			status = join_paths(2, u_interp, config.host_rootfs, config.qemu[0]);
 			if (status < 0)
 				goto end;
+
+			/* Don't use the dynamic linker as a loader,
+			 * this makes QEMU v1.1 crash.  */
+			ignore_elf_interpreter = true;
 		}
 
 		/* Provide information to the host dynamic linker to
@@ -281,12 +287,12 @@ int translate_execve(struct tracee_info *tracee)
 		envp_has_changed = true;
 	}
 
-	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp);
+	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp, ignore_elf_interpreter);
 	if (status < 0)
 		goto end;
 	argv_has_changed = argv_has_changed || (status > 0);
 
-	if (inhibit_rpath && !config.ignore_elf_interpreter) {
+	if (status > 0 && inhibit_rpath) {
 		/* Tell the dynamic linker to ignore RPATHs specified
 		 * in the *main* program.  To disable the RPATH
 		 * mechanism globally, we have to list all objects
