@@ -661,7 +661,7 @@ case PR_renameat:
 	break;
 
 case PR_symlink:
-	status = translate_sysarg(tracee, SYSARG_2, REGULAR);
+	status = translate_sysarg(tracee, SYSARG_2, SYMLINK);
 	break;
 
 case PR_symlinkat:
@@ -675,7 +675,7 @@ case PR_symlinkat:
 	if (status < 0)
 		break;
 
-	status = translate_path2(tracee, newdirfd, newpath, SYSARG_3, REGULAR);
+	status = translate_path2(tracee, newdirfd, newpath, SYSARG_3, SYMLINK);
 	break;
 
 default:
