@@ -6,7 +6,7 @@ TMP=`mcookie`
 rm -f ${TMP}
 WHICH_RM=`which rm`
 
-COMMAND="${PROOT} / rm ${TMP}"
+COMMAND="${PROOT} -v -1 / rm ${TMP}"
 
 set +e
 WITHOUT=$(${COMMAND} 2>&1)

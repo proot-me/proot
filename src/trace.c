@@ -144,6 +144,8 @@ bool launch_process()
 		else
 			chdir("/");
 
+		notice(INFO, INTERNAL, "started");
+
 		execvp(config.command[0], config.command);
 
 		return false;
@@ -198,6 +200,8 @@ static void kill_all_tracees()
 	}
 
 	foreach_tracee(kill_tracee);
+
+	notice(INFO, USER, "exited");
 }
 
 static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
