@@ -20,9 +20,13 @@ check-%.sh: %.sh setup
 check-%.c: $(ROOTFS)/bin/% setup
 	$(call check_c,$*,$(PROOT) -b /proc $(ROOTFS) /bin/$*)
 
-# Special case.
+# Special cases.
 check-test-bdc90417.c: test-bdc90417
 	$(call check_c,$<,$(PROOT) -w . / $<)
+
+check-test-af062114.c: test-af062114
+	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true -b . -b /lib -b /lib64 -b /proc $(ROOTFS) $< | grep -- --inhibit-rpath)
+	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / $< | grep '^$<$$')
 
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
@@ -55,9 +59,12 @@ $(ROOTFS)/bin/%: %.c
 	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(Q)$(CC) -static $*.c -o $@ $(silently) || true
 
-# Special case.
+# Special cases.
 test-bdc90417: test-bdc90417.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-af062114: test-af062114.c
+	$(Q)$(CC) $< -Wl,-rpath=foo -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

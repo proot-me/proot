@@ -203,7 +203,7 @@ int translate_execve(struct tracee_info *tracee)
 	char **argv = NULL;
 	char *argv0 = NULL;
 
-	bool ignore_elf_interpreter = config.ignore_elf_interpreter;
+	bool ignore_elf_interpreter;
 	bool envp_has_changed = false;
 	bool argv_has_changed = false;
 	bool inhibit_rpath = false;
@@ -270,10 +270,6 @@ int translate_execve(struct tracee_info *tracee)
 			status = join_paths(2, u_interp, config.host_rootfs, config.qemu[0]);
 			if (status < 0)
 				goto end;
-
-			/* Don't use the dynamic linker as a loader,
-			 * this makes QEMU v1.1 crash.  */
-			ignore_elf_interpreter = true;
 		}
 
 		/* Provide information to the host dynamic linker to
@@ -286,6 +282,13 @@ int translate_execve(struct tracee_info *tracee)
 		inhibit_rpath = (status > 0);
 		envp_has_changed = true;
 	}
+
+	/* Dont't use the ELF interpreter as a loader if the host one
+	 * is compatible (currently the test is only "guest rootfs ==
+	 * host rootfs") or if there's no need for RPATH inhibition in
+	 * mixed-mode.  */
+	ignore_elf_interpreter = strcmp(config.guest_rootfs, "/") == 0
+				 || (config.qemu != NULL && !inhibit_rpath);
 
 	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp, ignore_elf_interpreter);
 	if (status < 0)
