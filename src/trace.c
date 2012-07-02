@@ -141,8 +141,14 @@ bool launch_process()
 				chdir("/");
 			}
 		}
-		else
-			chdir("/");
+		else {
+			status = chdir(".");
+			if (status < 0) {
+				notice(INFO, USER, "the current working directory isn't "
+					           "accessible anymore, changing to \"/\"");
+				chdir("/");
+			}
+		}
 
 		notice(INFO, INTERNAL, "started");
 
