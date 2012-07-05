@@ -25,13 +25,15 @@
 #include <sys/types.h>   /* pid_t, */
 #include <assert.h>      /* assert(3), */
 #include <limits.h>      /* PATH_MAX, */
-#include <stddef.h>      /* intptr_t, offsetof(3), */
+#include <stddef.h>      /* intptr_t, offsetof(3), getenv(2), */
 #include <errno.h>       /* errno(3), */
 #include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
 #include <sys/user.h>    /* struct user*, */
-#include <stdlib.h>      /* exit(3), */
+#include <stdlib.h>      /* exit(3), strtoul(3), */
 #include <string.h>      /* strlen(3), */
 #include <sys/utsname.h> /* struct utsname, */
+#include <stdarg.h>      /* va_*, */
+#include <linux/version.h> /* KERNEL_VERSION, */
 
 #include "syscall/syscall.h"
 #include "arch.h"
@@ -165,6 +167,104 @@ static int translate_sysarg(struct tracee_info *tracee, enum sysarg sysarg, int 
 	return translate_path2(tracee, AT_FDCWD, old_path, sysarg, deref_final);
 }
 
+static int parse_kernel_release(const char *release)
+{
+	unsigned long major = 0;
+	unsigned long minor = 0;
+	unsigned long revision = 0;
+	char *cursor = (char *)release;
+
+	major = strtoul(cursor, &cursor, 10);
+
+	if (*cursor == '.') {
+		cursor++;
+		minor = strtoul(cursor, &cursor, 10);
+	}
+
+	if (*cursor == '.') {
+		cursor++;
+		revision = strtoul(cursor, &cursor, 10);
+	}
+
+	return KERNEL_VERSION(major, minor, revision);
+}
+
+#define MAX_ARG_SHIFT 2
+struct syscall_modification {
+	int expected_release;
+	word_t new_sysarg_num;
+	struct {
+		enum sysarg sysarg; /* first argument to be moved.  */
+		size_t nb_args;     /* number of arguments to be moved.  */
+		int offset;         /* offset to be applied.  */
+	} shifts[MAX_ARG_SHIFT];
+};
+
+/**
+ * Modify the current syscall of @tracee as described by @modif.
+ *
+ * This function return -errno if an error occured, otherwise 0.
+ */
+static int modify_syscall(struct tracee_info *tracee, struct syscall_modification *modif)
+{
+	static int emulated_release = -1;
+	static int actual_release = -1;
+	int status;
+	int i;
+	int j;
+
+	assert(config.kernel_release != NULL);
+
+	if (emulated_release < 0)
+		emulated_release = parse_kernel_release(config.kernel_release);
+
+	if (actual_release < 0) {
+		struct utsname utsname;
+
+		status = uname(&utsname);
+		if (status < 0 || getenv("PROOT_FORCE_SYSCALL_COMPAT") != NULL)
+			actual_release = 0;
+		else
+			actual_release = parse_kernel_release(utsname.release);
+	}
+
+	/* Emulate only syscalls that are available in the expected
+	 * release but that are missing in the actual one.  */
+	if (   modif->expected_release <= actual_release
+	    || modif->expected_release > emulated_release)
+		return 0;
+
+	status = poke_ureg(tracee, SYSARG_NUM, modif->new_sysarg_num);
+	if (status < 0)
+		return status;
+
+	/* Shift syscall arguments.  */
+	for (i = 0; i < MAX_ARG_SHIFT; i++) {
+		enum sysarg sysarg = modif->shifts[i].sysarg;
+		size_t nb_args     = modif->shifts[i].nb_args;
+		int offset         = modif->shifts[i].offset;
+
+		for (j = 0; j < nb_args; j++) {
+			word_t arg;
+
+			arg = peek_ureg(tracee, sysarg + j);
+			if (errno != 0) {
+				status = -errno;
+				goto end;
+			}
+
+			status = poke_ureg(tracee, sysarg + j + offset, arg);
+			if (status < 0)
+				goto end;
+		}
+	}
+	status = 0;
+	tracee->sysnum = modif->new_sysarg_num;
+
+end:
+	return status;
+}
+
 /**
  * Translate the input arguments of the syscall @tracee->sysnum in the
  * @tracee->pid process area. This function sets @tracee->status to
@@ -216,12 +316,24 @@ static int translate_syscall_enter(struct tracee_info *tracee)
 	/* Translate input arguments. */
 	if (tracee->uregs == uregs) {
 		#include SYSNUM_HEADER
+
 		#include "syscall/enter.c"
+
+		if (config.kernel_release != NULL && status >= 0) {
+			/* Errors are ignored.  */
+			#include "syscall/compat.c"
+		}
 	}
 #ifdef SYSNUM_HEADER2
 	else if (tracee->uregs == uregs2) {
 		#include SYSNUM_HEADER2
+
 		#include "syscall/enter.c"
+
+		if (config.kernel_release != NULL && status >= 0) {
+			/* Errors are ignored.  */
+			#include "syscall/compat.c"
+		}
 	}
 #endif
 	#include "syscall/sysnum-undefined.h"

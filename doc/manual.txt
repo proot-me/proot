@@ -119,17 +119,13 @@ Regular options
     blocked.  This option disables this default behavior.
 
 -k string, --kernel-release=string
-    Force syscall ``uname`` to report *string* as kernel release.
+    Set the kernel release and compatibility level to *string*.
 
-    Technically the GNU C library relies on syscalls provided by the
-    kernel that's why it performs a sanity check at each program
-    start-up to verify whether the current kernel is known to be
-    compatible.  If users are running a GNU C library that expects a
-    kernel more recent than the one used on their computers, they will
-    get the error "FATAL: kernel too old".  This option allows users
-    to cheat this sanity check by faking the release number of the
-    current kernel.  This option should be used with care since it
-    does not improve the compatibility.
+    If a program is run on a kernel older than the one expected by its
+    GNU C library, the following error is reported: "FATAL: kernel too
+    old".  To be able to run such programs, PRoot can emulate some of
+    the syscalls that are available in the kernel release specified by
+    *string* but that are missing in the current kernel.
 
 -0, --root-id
     Force some syscalls to behave as if executed by "root".

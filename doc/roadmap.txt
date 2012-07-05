@@ -44,10 +44,6 @@ Middle term
 
     * Remove most of string copy.
 
-* Emulate *at syscalls with non-*at equivalents to allow the execution
-  of guest programs that might be too recent compared to the host
-  system.
-
 * Add support for a special environment variable to add paths
   dynamically to the host LD_LIBRARY_PATH
   ("EXTRA_HOST_LD_LIBRARY_PATH").
