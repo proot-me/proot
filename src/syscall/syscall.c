@@ -27,7 +27,6 @@
 #include <limits.h>      /* PATH_MAX, */
 #include <stddef.h>      /* intptr_t, offsetof(3), */
 #include <errno.h>       /* errno(3), */
-#include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
 #include <sys/user.h>    /* struct user*, */
 #include <stdlib.h>      /* exit(3), */
 #include <string.h>      /* strlen(3), */
@@ -37,6 +36,7 @@
 #include "arch.h"
 #include "tracee/mem.h"
 #include "tracee/info.h"
+#include "tracee/ureg.h"
 #include "path/path.h"
 #include "execve/execve.h"
 #include "notice.h"
@@ -57,8 +57,6 @@ int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg
 	word_t src;
 
 	src = peek_ureg(tracee, sysarg);
-	if (errno != 0)
-		return -errno;
 
 	/* Check if the parameter is not NULL. Technically we should
 	 * not return an -EFAULT for this special value since it is
@@ -104,11 +102,7 @@ int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, e
 	}
 
 	/* Make this argument point to the new data. */
-	status = poke_ureg(tracee, sysarg, tracee_ptr);
-	if (status < 0) {
-		(void) resize_tracee_stack(tracee, -size);
-		return status;
-	}
+	poke_ureg(tracee, sysarg, tracee_ptr);
 
 	return size;
 }
@@ -190,10 +184,6 @@ static int translate_syscall_enter(struct tracee_info *tracee)
 	char newpath[PATH_MAX];
 
 	tracee->sysnum = peek_ureg(tracee, SYSARG_NUM);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	if (config.verbose_level >= 3)
 		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
@@ -214,19 +204,22 @@ static int translate_syscall_enter(struct tracee_info *tracee)
 	}
 
 	/* Translate input arguments. */
-	if (tracee->uregs == uregs) {
+	switch (get_abi(tracee)) {
+	case ABI_DEFAULT: {
 		#include SYSNUM_HEADER
 		#include "syscall/enter.c"
 	}
+		break;
 #ifdef SYSNUM_HEADER2
-	else if (tracee->uregs == uregs2) {
+	case ABI_X86: {
 		#include SYSNUM_HEADER2
 		#include "syscall/enter.c"
 	}
+		break;
 #endif
 	#include "syscall/sysnum-undefined.h"
-	else {
-		notice(WARNING, INTERNAL, "unknown ABI (%p)", tracee->uregs);
+	default:
+		notice(WARNING, INTERNAL, "unknown ABI (%p)", get_abi(tracee));
 		status = -ENOSYS;
 	}
 
@@ -238,10 +231,7 @@ end:
 	/* Avoid the actual syscall if an error occured during the
 	 * translation. */
 	if (status < 0) {
-		status = poke_ureg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
-		if (status < 0)
-			return status;
-
+		poke_ureg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
 		tracee->sysnum = SYSCALL_AVOIDER;
 	}
 
@@ -254,19 +244,20 @@ end:
  */
 static int is_execve(struct tracee_info *tracee)
 {
-	if (tracee->uregs == uregs) {
+	switch (get_abi(tracee)) {
+	case ABI_DEFAULT: {
 		#include SYSNUM_HEADER
 		return tracee->sysnum == PR_execve;
 	}
 #ifdef SYSNUM_HEADER2
-	else if (tracee->uregs == uregs2) {
+	case ABI_X86: {
 		#include SYSNUM_HEADER2
 		return tracee->sysnum == PR_execve;
 	}
 #endif
 	#include "syscall/sysnum-undefined.h"
-	else {
-		notice(WARNING, INTERNAL, "unknown ABI (%p)", tracee->uregs);
+	default:
+		notice(WARNING, INTERNAL, "unknown ABI (%p)", get_abi(tracee));
 		return 0;
 	}
 }
@@ -285,29 +276,11 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 	word_t result;
 	int status;
 
-	/* Check if the process is still alive. */
-	(void) peek_ureg(tracee, STACK_POINTER);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
-
 	/* Set the tracee's errno if an error occured previously during
 	 * the translation. */
-	if (tracee->status < 0) {
-		status = poke_ureg(tracee, SYSARG_RESULT, (word_t) tracee->status);
-		if (status < 0)
-			goto end;
-
-		result = (word_t) tracee->status;
-	}
-	else {
-		result = peek_ureg(tracee, SYSARG_RESULT);
-		if (errno != 0) {
-			status = -errno;
-			goto end;
-		}
-	}
+	if (tracee->status < 0)
+		poke_ureg(tracee, SYSARG_RESULT, (word_t) tracee->status);
+	result = peek_ureg(tracee, SYSARG_RESULT);
 
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
@@ -316,35 +289,36 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 	    && (!is_execve(tracee) || (int) result < 0)) {
 		word_t tracee_ptr;
 		tracee_ptr = resize_tracee_stack(tracee, -tracee->status);
-		if (tracee_ptr == 0) {
-			status = poke_ureg(tracee, SYSARG_RESULT, (word_t) -EFAULT);
-			if (status < 0)
-				goto end;
-		}
+		if (tracee_ptr == 0)
+			poke_ureg(tracee, SYSARG_RESULT, (word_t) -EFAULT);
 	}
 
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid, result,
 		peek_ureg(tracee, STACK_POINTER));
 
 	/* Translate output arguments. */
-	if (tracee->uregs == uregs) {
+	switch (get_abi(tracee)) {
+	case ABI_DEFAULT: {
 		#include SYSNUM_HEADER
 		#include "syscall/exit.c"
 	}
+		break;
 #ifdef SYSNUM_HEADER2
-	else if (tracee->uregs == uregs2) {
+	case ABI_X86: {
 		#include SYSNUM_HEADER2
 		#include "syscall/exit.c"
 	}
+		break;
 #endif
 	#include "syscall/sysnum-undefined.h"
-	else {
-		notice(WARNING, INTERNAL, "unknown ABI (%p)", tracee->uregs);
+	default:
+		notice(WARNING, INTERNAL, "unknown ABI (%p)", get_abi(tracee));
 		status = -ENOSYS;
 	}
 
 	/* "status" was updated in syscall/exit.c.  */
-	status = poke_ureg(tracee, SYSARG_RESULT, (word_t) status);
+	poke_ureg(tracee, SYSARG_RESULT, (word_t) status);
+	status = 0;
 end:
 	if (status > 0)
 		status = 0;
@@ -359,30 +333,21 @@ end:
 
 int translate_syscall(struct tracee_info *tracee)
 {
-	int status __attribute__ ((unused));
+	int result;
+	int status;
 
-#ifdef BENCHMARK_PTRACE
-	/* Check if the process is still alive. */
-	(void) ptrace(PTRACE_PEEKUSER, pid, uregs[STACK_POINTER], NULL);
-	return -errno;
-#endif
-
-#ifdef ARCH_X86_64
-	/* Check the current ABI. */
-	status = ptrace(PTRACE_PEEKUSER, tracee->pid, USER_REGS_OFFSET(cs), NULL);
+	status = fetch_uregs(tracee);
 	if (status < 0)
 		return status;
-	if (status == 0x23)
-		tracee->uregs = uregs2;
-	else
-		tracee->uregs = uregs;
-#else
-	tracee->uregs = uregs;
-#endif /* ARCH_X86_64 */
 
 	/* Check if we are either entering or exiting a syscall. */
-	if (tracee->sysnum == (word_t) -1)
-		return translate_syscall_enter(tracee);
-	else
-		return translate_syscall_exit(tracee);
+	result = (tracee->sysnum == (word_t) -1
+		  ? translate_syscall_enter(tracee)
+		  : translate_syscall_exit(tracee));
+
+	status = push_uregs(tracee);
+	if (status < 0)
+		return status;
+
+	return result;
 }

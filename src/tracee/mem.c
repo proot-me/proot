@@ -34,7 +34,6 @@
 
 #include "tracee/mem.h"
 #include "arch.h"            /* REG_SYSARG_*, word_t, NO_MISALIGNED_ACCESS */
-#include "syscall/syscall.h" /* USER_REGS_OFFSET, */
 #include "tracee/ureg.h"     /* peek_ureg(), poke_ureg(), */
 #include "notice.h"
 
@@ -80,13 +79,10 @@ static inline void store_word(void *address, word_t value)
 word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size)
 {
 	word_t stack_pointer;
-	long status;
 
 	/* Get the current value of the stack pointer from the tracee's
 	 * USER area. */
 	stack_pointer = peek_ureg(tracee, STACK_POINTER);
-	if (errno != 0)
-		return 0;
 
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= size)
@@ -100,9 +96,7 @@ word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size)
 
 	/* Set the new value of the stack pointer in the tracee's USER
 	 * area. */
-	status = poke_ureg(tracee, STACK_POINTER, stack_pointer);
-	if (status < 0)
-		return 0;
+	poke_ureg(tracee, STACK_POINTER, stack_pointer);
 
 	return stack_pointer;
 }

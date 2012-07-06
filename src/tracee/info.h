@@ -24,17 +24,28 @@
 #define TRACEE_INFO_H
 
 #include <sys/types.h> /* pid_t, size_t, */
+#include <sys/user.h>  /* struct user*, */
 #include <stdbool.h>
 
-#include "arch.h" /* word_t, */
+#include "arch.h" /* word_t, user_regs_struct, */
 
 /* Information related to a tracee process. */
 struct tracee_info {
 	pid_t  pid;    /* Process identifier. */
 	word_t sysnum; /* Current syscall (-1 if none). */
 	int    status; /* -errno if < 0, otherwise amount of bytes used in the tracee's stack. */
-	off_t *uregs;  /* Current register bank, also used to know the current ABI. */
 	char *exe;     /* Path to the executable, à la /proc/self/exe. */
+
+	/* Cache for the tracee's general purpose registers.  */
+	struct {
+		struct user_regs_struct cache;
+		enum {
+			UREGS_ARE_INVALID = 0,
+			UREGS_ARE_VALID,
+			UREGS_HAVE_CHANGED,
+		} state;
+	} _uregs;
+
 	enum {         /* State for the special handling of SIGSTOP.  */
 		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */
 		SIGSTOP_ALLOWED,      /* Allow SIGSTOP (once the parent is known).   */

@@ -25,16 +25,24 @@
 #include <sys/ptrace.h> /* ptrace(2), PTRACE*, */
 #include <assert.h>     /* assert(3), */
 #include <errno.h>      /* errno(3), */
+#include <stddef.h>     /* offsetof(), */
+#include <stdint.h>     /* *int*_t(), */
 
 #include "tracee/ureg.h"
 #include "notice.h"  /* notice(), */
-#include "syscall/syscall.h" /* enum sysarg, STACK_POINTER, */
+
+/**
+ * Compute the offset of the register @reg_name in the USER area.
+ */
+#define USER_REGS_OFFSET(reg_name)			\
+	(offsetof(struct user, regs)			\
+	 + offsetof(struct user_regs_struct, reg_name))
 
 /* Specify the ABI registers (syscall argument passing, stack pointer).
  * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */
 #if defined(ARCH_X86_64)
 
-    off_t uregs[UREGS_LENGTH] = {
+    static off_t ureg_offset[] = {
 	[SYSARG_NUM]    = USER_REGS_OFFSET(orig_rax),
 	[SYSARG_1]      = USER_REGS_OFFSET(rdi),
 	[SYSARG_2]      = USER_REGS_OFFSET(rsi),
@@ -46,7 +54,7 @@
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
     };
 
-    off_t uregs2[UREGS_LENGTH] = {
+    static off_t ureg_offset_x86[] = {
 	[SYSARG_NUM]    = USER_REGS_OFFSET(orig_rax),
 	[SYSARG_1]      = USER_REGS_OFFSET(rbx),
 	[SYSARG_2]      = USER_REGS_OFFSET(rcx),
@@ -58,9 +66,14 @@
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp)
     };
 
+    #define UREG(tracee, index)							\
+	(*(word_t*) (tracee->_uregs.cache.cs == 0x23				\
+	     ? (((uint8_t *) &tracee->_uregs.cache) + ureg_offset_x86[index])	\
+	     : (((uint8_t *) &tracee->_uregs.cache) + ureg_offset[index])))
+
 #elif defined(ARCH_ARM_EABI)
 
-    off_t uregs[UREGS_LENGTH] = {
+    static off_t ureg_offset[] = {
 	[SYSARG_NUM]    = USER_REGS_OFFSET(uregs[7]),
 	[SYSARG_1]      = USER_REGS_OFFSET(uregs[0]),
 	[SYSARG_2]      = USER_REGS_OFFSET(uregs[1]),
@@ -74,7 +87,7 @@
 
 #elif defined(ARCH_X86)
 
-    off_t uregs[UREGS_LENGTH] = {
+    static off_t ureg_offset[] = {
 	[SYSARG_NUM]    = USER_REGS_OFFSET(orig_eax),
 	[SYSARG_1]      = USER_REGS_OFFSET(ebx),
 	[SYSARG_2]      = USER_REGS_OFFSET(ecx),
@@ -88,7 +101,7 @@
 
 #elif defined(ARCH_SH4)
 
-    off_t uregs[UREGS_LENGTH] = {
+    static off_t ureg_offset[] = {
 	[SYSARG_NUM]    = USER_REGS_OFFSET(regs[3]),
 	[SYSARG_1]      = USER_REGS_OFFSET(regs[4]),
 	[SYSARG_2]      = USER_REGS_OFFSET(regs[5]),
@@ -106,26 +119,30 @@
 
 #endif
 
+#if !defined(UREG)
+    #define UREG(tracee, index) \
+	(*(word_t*) (((uint8_t *) &tracee->_uregs.cache) + ureg_offset[index]))
+#endif
+
 /**
- * Return the value of the @tracee's register @index (regarding
- * uregs[]). This function sets the special global variable errno if
- * an error occured.
+ * Return the *cached* value of the given @tracees' @ureg.
  */
-word_t peek_ureg(struct tracee_info *tracee, int index)
+word_t peek_ureg(const struct tracee_info *tracee, enum ureg ureg)
 {
 	word_t result;
 
 	/* Sanity checks. */
-	assert(index >= SYSARG_NUM);
-	assert(index <= STACK_POINTER);
+	assert(ureg >= UREG_FIRST);
+	assert(ureg <= UREG_LAST);
+	assert(   tracee->_uregs.state == UREGS_ARE_VALID
+	       || tracee->_uregs.state == UREGS_HAVE_CHANGED);
 
-	/* Get the argument register from the tracee's USER area. */
-	result = ptrace(PTRACE_PEEKUSER, tracee->pid, tracee->uregs[index], NULL);
+	result = UREG(tracee, ureg);
 
-#ifdef ARCH_X86_64
+#if ARCH_X86_64
 	/* Use only the 32 least significant bits (LSB) when running
 	 * 32-bit processes on x86_64. */
-	if (tracee->uregs == uregs2)
+	if (get_abi(tracee) == ABI_X86)
 		result &= 0xFFFFFFFF;
 #endif
 
@@ -133,30 +150,89 @@ word_t peek_ureg(struct tracee_info *tracee, int index)
 }
 
 /**
- * Set the @tracee's register @index (regarding uregs[]) to @value.
- * This function returns -errno if an error occured.
+ * Set the *cached* value of the given @tracees' @ureg.
  */
-int poke_ureg(struct tracee_info *tracee, int index, word_t value)
+void poke_ureg(struct tracee_info *tracee, enum ureg ureg, word_t value)
 {
-	  long status;
+	/* Sanity checks. */
+	assert(ureg >= UREG_FIRST);
+	assert(ureg <= UREG_LAST);
+	assert(   tracee->_uregs.state == UREGS_ARE_VALID
+	       || tracee->_uregs.state == UREGS_HAVE_CHANGED);
 
-	  /* Sanity checks. */
-	  assert(index >= SYSARG_NUM);
-	  assert(index <= STACK_POINTER);
-
-#ifdef ARCH_X86_64
+#if defined(ARCH_X86_64)
 	/* Check we are using only the 32 LSB when running 32-bit
 	 * processes on x86_64. */
-	if (tracee->uregs == uregs2
+	if (get_abi(tracee) == ABI_X86
 	    && (value >> 32) != 0
 	    && (value >> 32) != 0xFFFFFFFF)
 		notice(WARNING, INTERNAL, "value too large for a 32-bit register");
 #endif
 
-	  /* Set the argument register in the tracee's USER area. */
-	  status = ptrace(PTRACE_POKEUSER, tracee->pid, tracee->uregs[index], value);
-	  if (status < 0)
-		  return -errno;
+	UREG(tracee, ureg) = value;
+	tracee->_uregs.state = UREGS_HAVE_CHANGED;
+}
 
-	  return 0;
+/**
+ * Copy all @tracee's general purpose registers into a dedicated
+ * cache.  This function returns -errno if an error occured, 0
+ * otherwise.
+ */
+int fetch_uregs(struct tracee_info *tracee)
+{
+	int status;
+
+	assert(tracee->_uregs.state == UREGS_ARE_INVALID);
+
+	status = ptrace(PTRACE_GETREGS, tracee->pid, NULL, &tracee->_uregs.cache);
+	if (status < 0)
+		return status;
+
+	tracee->_uregs.state = UREGS_ARE_VALID;
+	return 0;
+}
+
+/**
+ * Copy the cached values of all @tracee's general purpose registers
+ * back to the process, if necessary.  This function returns -errno if
+ * an error occured, 0 otherwise.
+ */
+int push_uregs(struct tracee_info *tracee)
+{
+	int status;
+
+	switch(tracee->_uregs.state) {
+	case UREGS_ARE_INVALID:
+		assert(0);
+		break;
+
+	case UREGS_ARE_VALID:
+		/* Nothing to do.  */
+		break;
+
+	case UREGS_HAVE_CHANGED:
+		status = ptrace(PTRACE_SETREGS, tracee->pid, NULL, &tracee->_uregs.cache);
+		if (status < 0)
+			return status;
+		break;
+	}
+
+	tracee->_uregs.state = UREGS_ARE_INVALID;
+	return 0;
+}
+
+/**
+ * Return the ABI currently used by the given @tracee.
+ */
+enum abi get_abi(const struct tracee_info *tracee)
+{
+	/* Sanity checks. */
+	assert(   tracee->_uregs.state == UREGS_ARE_VALID
+	       || tracee->_uregs.state == UREGS_HAVE_CHANGED);
+
+#if defined(ARCH_X86_64)
+	return (tracee->_uregs.cache.cs == 0x23 ? ABI_X86 : ABI_DEFAULT);
+#else
+	return ABI_DEFAULT;
+#endif /* ARCH_X86_64 */
 }

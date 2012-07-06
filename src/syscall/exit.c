@@ -36,10 +36,6 @@ case PR_getcwd: {
 	word_t output;
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
@@ -48,16 +44,8 @@ case PR_getcwd: {
 	}
 
 	output = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	size = (size_t) peek_ureg(tracee, SYSARG_2);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	if (size > PATH_MAX)
 		size = PATH_MAX;
@@ -115,10 +103,6 @@ case PR_readlinkat: {
 	word_t output;
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
@@ -130,17 +114,9 @@ case PR_readlinkat: {
 
 	output = peek_ureg(tracee, tracee->sysnum == PR_readlink
 				   ? SYSARG_2 : SYSARG_3);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	max_size = (size_t) peek_ureg(tracee, tracee->sysnum == PR_readlink
 					      ? SYSARG_3 : SYSARG_4);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	if (max_size > PATH_MAX)
 		max_size = PATH_MAX;
@@ -159,10 +135,6 @@ case PR_readlinkat: {
 
 	input = peek_ureg(tracee, tracee->sysnum == PR_readlink
 			        ? SYSARG_1 : SYSARG_2);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	/* Not optimal but safe (path is fully translated).  */
 	status = get_tracee_string(tracee, referer, input, PATH_MAX);
@@ -204,7 +176,7 @@ case PR_uname: {
 	bool change_uname;
 
 #if defined(ARCH_X86_64)
-	change_uname = config.kernel_release != NULL || tracee->uregs == uregs2;
+	change_uname = config.kernel_release != NULL || get_abi(tracee) == ABI_X86;
 #else
 	change_uname = config.kernel_release != NULL;
 #endif
@@ -216,10 +188,6 @@ case PR_uname: {
 	}
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
@@ -228,10 +196,6 @@ case PR_uname: {
 	}
 
 	address = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	status = copy_from_tracee(tracee, &utsname, address, sizeof(utsname));
 	if (status < 0)
@@ -251,7 +215,7 @@ case PR_uname: {
 	}
 
 #if defined(ARCH_X86_64)
-	if (tracee->uregs == uregs2) {
+	if (get_abi(tracee) == ABI_X86) {
 		size = sizeof(utsname.machine);
 
 		/* Some 32-bit programs like package managers can be
@@ -279,10 +243,6 @@ case PR_chroot: {
 	}
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	/* Override only permission errors.  */
 	if ((int) result != -EPERM) {
@@ -291,10 +251,6 @@ case PR_chroot: {
 	}
 
 	input = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	status = get_tracee_string(tracee, path, input, PATH_MAX);
 	if (status < 0)
@@ -324,10 +280,6 @@ case PR_fchownat:
 	}
 
 	result = peek_ureg(tracee, SYSARG_RESULT);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	/* Override only permission errors.  */
 	if ((int) result != -EPERM) {

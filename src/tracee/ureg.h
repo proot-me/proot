@@ -23,18 +23,37 @@
 #ifndef UREG_H
 #define UREG_H
 
-#include <sys/types.h> /* off_t */
-
 #include "tracee/info.h"
+#include "arch.h"
 
-#define UREGS_LENGTH 9
-extern off_t uregs[UREGS_LENGTH];
+enum ureg {
+	SYSARG_NUM = 0,
+	SYSARG_1,
+	SYSARG_2,
+	SYSARG_3,
+	SYSARG_4,
+	SYSARG_5,
+	SYSARG_6,
+	SYSARG_RESULT,
+	STACK_POINTER,
 
+	/* Helpers. */
+	UREG_FIRST = SYSARG_NUM,
+	UREG_LAST  = STACK_POINTER,
+};
+
+extern int fetch_uregs(struct tracee_info *tracee);
+extern int push_uregs(struct tracee_info *tracee);
+extern word_t peek_ureg(const struct tracee_info *tracee, enum ureg ureg);
+extern void poke_ureg(struct tracee_info *tracee, enum ureg ureg, word_t value);
+
+enum abi {
+	ABI_DEFAULT,
 #if defined(ARCH_X86_64)
-extern off_t uregs2[UREGS_LENGTH];
+	ABI_X86,
 #endif
+};
 
-extern word_t peek_ureg(struct tracee_info *tracee, int index);
-extern int poke_ureg(struct tracee_info *tracee, int index, word_t value);
+enum abi get_abi(const struct tracee_info *tracee);
 
 #endif /* UREG_H */

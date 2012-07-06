@@ -264,16 +264,14 @@ int get_args(struct tracee_info *tracee, char **args[], enum sysarg sysarg)
 	int i;
 
 #ifdef ARCH_X86_64
-#    define sizeof_word(tracee) ((tracee)->uregs == uregs \
-				? sizeof(word_t)	\
+#    define sizeof_word(tracee) (get_abi(tracee) == ABI_DEFAULT \
+				? sizeof(word_t)		\
 				: sizeof(word_t) / 2)
 #else
 #    define sizeof_word(tracee) (sizeof(word_t))
 #endif
 
 	tracee_args = peek_ureg(tracee, sysarg);
-	if (errno != 0)
-		return -errno;
 
 	/* Compute the number of entries in args[]. */
 	for (i = 0; ; i++) {
@@ -284,7 +282,7 @@ int get_args(struct tracee_info *tracee, char **args[], enum sysarg sysarg)
 
 #ifdef ARCH_X86_64
 		/* Use only the 32 LSB when running 32-bit processes. */
-		if (tracee->uregs == uregs2)
+		if (get_abi(tracee) == ABI_X86)
 			argp &= 0xFFFFFFFF;
 #endif
 		/* End of args[]. */
@@ -310,7 +308,7 @@ int get_args(struct tracee_info *tracee, char **args[], enum sysarg sysarg)
 
 #ifdef ARCH_X86_64
 		/* Use only the 32 LSB when running 32-bit processes. */
-		if (tracee->uregs == uregs2)
+		if (get_abi(tracee) == ABI_X86)
 			argp &= 0xFFFFFFFF;
 #endif
 		assert(argp != 0);
@@ -366,10 +364,6 @@ int set_args(struct tracee_info *tracee, char *args[], enum sysarg sysarg)
 
 	/* Copy the new arguments in the tracee's stack. */
 	previous_sp = peek_ureg(tracee, STACK_POINTER);
-	if (errno != 0) {
-		status = -errno;
-		goto end;
-	}
 
 	argp = previous_sp;
 	for (i = 0; args[i] != NULL; i++) {
@@ -392,7 +386,7 @@ int set_args(struct tracee_info *tracee, char *args[], enum sysarg sysarg)
 
 #ifdef ARCH_X86_64
 		/* Don't overwrite the "extra" 32-bit part. */
-		if (tracee->uregs == uregs2) {
+		if (get_abi(tracee) == ABI_X86) {
 			argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, tracee_argp, NULL);
 			if (errno != 0)
 				return -EFAULT;
@@ -409,15 +403,11 @@ int set_args(struct tracee_info *tracee, char *args[], enum sysarg sysarg)
 	}
 
 	/* Update the pointer to the new args[]. */
-	status = poke_ureg(tracee, sysarg, tracee_argp);
-	if (status < 0)
-		goto end;
+	poke_ureg(tracee, sysarg, tracee_argp);
 
 	/* Update the stack pointer to ensure [internal] coherency. It prevents
 	 * memory corruption if functions like set_sysarg_path() are called later. */
-	status = poke_ureg(tracee, STACK_POINTER, tracee_argp);
-	if (status < 0)
-		goto end;
+	poke_ureg(tracee, STACK_POINTER, tracee_argp);
 
 end:
 	free(tracee_args);

@@ -23,36 +23,14 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
 
-#include <stddef.h>     /* offsetof(), */
 #include <limits.h>     /* PATH_MAX, */
 #include <stdbool.h>    /* bool ,true, false, */
 
 #include "arch.h" /* word_t */
 #include "tracee/info.h"
+#include "tracee/ureg.h"
 
-enum sysarg {
-	SYSARG_NUM = 0,
-	SYSARG_1,
-	SYSARG_2,
-	SYSARG_3,
-	SYSARG_4,
-	SYSARG_5,
-	SYSARG_6,
-	SYSARG_RESULT,
-
-	/* Helpers. */
-	SYSARG_FIRST = SYSARG_NUM,
-	SYSARG_LAST  = SYSARG_RESULT
-};
-
-#define STACK_POINTER (SYSARG_LAST + 1)
-
-/**
- * Compute the offset of the register @reg_name in the USER area.
- */
-#define USER_REGS_OFFSET(reg_name)			\
-	(offsetof(struct user, regs)			\
-	 + offsetof(struct user_regs_struct, reg_name))
+#define sysarg ureg
 
 extern int translate_syscall(struct tracee_info *tracee);
 extern int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg);
