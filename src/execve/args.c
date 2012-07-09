@@ -31,6 +31,7 @@
 #include "tracee/info.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
+#include "tracee/abi.h"
 #include "notice.h"
 #include "syscall/syscall.h"
 #include "config.h"
@@ -263,14 +264,6 @@ int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
 	int status;
 	int i;
 
-#ifdef ARCH_X86_64
-#    define sizeof_word(tracee) (get_abi(tracee) == ABI_DEFAULT \
-				? sizeof(word_t)		\
-				: sizeof(word_t) / 2)
-#else
-#    define sizeof_word(tracee) (sizeof(word_t))
-#endif
-
 	tracee_args = peek_reg(tracee, reg);
 
 	/* Compute the number of entries in args[]. */
@@ -280,11 +273,10 @@ int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
 		if (errno != 0)
 			return -EFAULT;
 
-#ifdef ARCH_X86_64
 		/* Use only the 32 LSB when running 32-bit processes. */
-		if (get_abi(tracee) == ABI_X86)
+		if (is_32on64_mode(tracee))
 			argp &= 0xFFFFFFFF;
-#endif
+
 		/* End of args[]. */
 		if (argp == 0)
 			break;
@@ -306,11 +298,9 @@ int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
 		if (errno != 0)
 			return -EFAULT;
 
-#ifdef ARCH_X86_64
 		/* Use only the 32 LSB when running 32-bit processes. */
-		if (get_abi(tracee) == ABI_X86)
+		if (is_32on64_mode(tracee))
 			argp &= 0xFFFFFFFF;
-#endif
 		assert(argp != 0);
 
 		status = get_tracee_string(tracee, arg, argp, ARG_MAX);
@@ -384,17 +374,15 @@ int set_args(struct tracee_info *tracee, char *args[], enum reg reg)
 	for (i = nb_args - 1; i >= 0; i--) {
 		tracee_argp -= sizeof_word(tracee);
 
-#ifdef ARCH_X86_64
 		/* Don't overwrite the "extra" 32-bit part. */
-		if (get_abi(tracee) == ABI_X86) {
+		if (is_32on64_mode(tracee)) {
 			argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, tracee_argp, NULL);
 			if (errno != 0)
 				return -EFAULT;
 
-			assert(tracee_args[i] >> 32 == 0);
 			tracee_args[i] |= (argp & 0xFFFFFFFF00000000ULL);
 		}
-#endif
+
 		status = ptrace(PTRACE_POKEDATA, tracee->pid, tracee_argp, tracee_args[i]);
 		if (status <0) {
 			status = -EFAULT;

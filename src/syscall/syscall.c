@@ -37,6 +37,7 @@
 #include "tracee/mem.h"
 #include "tracee/info.h"
 #include "tracee/reg.h"
+#include "tracee/abi.h"
 #include "path/path.h"
 #include "execve/execve.h"
 #include "notice.h"
@@ -210,17 +211,16 @@ static int translate_syscall_enter(struct tracee_info *tracee)
 	}
 		break;
 #ifdef SYSNUM_HEADER2
-	case ABI_X86: {
+	case ABI_2: {
 		#include SYSNUM_HEADER2
 		#include "syscall/enter.c"
 	}
 		break;
 #endif
-	#include "syscall/sysnum-undefined.h"
 	default:
-		notice(WARNING, INTERNAL, "unknown ABI (%p)", get_abi(tracee));
-		status = -ENOSYS;
+		assert(0);
 	}
+	#include "syscall/sysnum-undefined.h"
 
 end:
 
@@ -241,7 +241,7 @@ end:
  * Check if the current syscall of @tracee actually is execve(2)
  * regarding the current ABI.
  */
-static int is_execve(struct tracee_info *tracee)
+static bool is_execve(struct tracee_info *tracee)
 {
 	switch (get_abi(tracee)) {
 	case ABI_DEFAULT: {
@@ -249,16 +249,15 @@ static int is_execve(struct tracee_info *tracee)
 		return tracee->sysnum == PR_execve;
 	}
 #ifdef SYSNUM_HEADER2
-	case ABI_X86: {
+	case ABI_2: {
 		#include SYSNUM_HEADER2
 		return tracee->sysnum == PR_execve;
 	}
 #endif
-	#include "syscall/sysnum-undefined.h"
 	default:
-		notice(WARNING, INTERNAL, "unknown ABI (%p)", get_abi(tracee));
-		return 0;
+		assert(0);
 	}
+	#include "syscall/sysnum-undefined.h"
 }
 
 /**
@@ -303,17 +302,16 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 	}
 		break;
 #ifdef SYSNUM_HEADER2
-	case ABI_X86: {
+	case ABI_2: {
 		#include SYSNUM_HEADER2
 		#include "syscall/exit.c"
 	}
 		break;
 #endif
-	#include "syscall/sysnum-undefined.h"
 	default:
-		notice(WARNING, INTERNAL, "unknown ABI (%p)", get_abi(tracee));
-		status = -ENOSYS;
+		assert(0);
 	}
+	#include "syscall/sysnum-undefined.h"
 
 	/* "status" was updated in syscall/exit.c.  */
 	poke_reg(tracee, SYSARG_RESULT, (word_t) status);

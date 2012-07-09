@@ -47,13 +47,4 @@ extern int push_regs(struct tracee_info *tracee);
 extern word_t peek_reg(const struct tracee_info *tracee, enum reg reg);
 extern void poke_reg(struct tracee_info *tracee, enum reg reg, word_t value);
 
-enum abi {
-	ABI_DEFAULT,
-#if defined(ARCH_X86_64)
-	ABI_X86,
-#endif
-};
-
-enum abi get_abi(const struct tracee_info *tracee);
-
 #endif /* TRACEE_REG_H */

@@ -29,6 +29,7 @@
 #include <stdint.h>     /* *int*_t(), */
 
 #include "tracee/reg.h"
+#include "tracee/abi.h"
 #include "notice.h"  /* notice(), */
 
 /**
@@ -139,12 +140,10 @@ word_t peek_reg(const struct tracee_info *tracee, enum reg reg)
 
 	result = REG(tracee, reg);
 
-#if ARCH_X86_64
 	/* Use only the 32 least significant bits (LSB) when running
-	 * 32-bit processes on x86_64. */
-	if (get_abi(tracee) == ABI_X86)
+	 * 32-bit processes on a 64-bit kernel.  */
+	if (is_32on64_mode(tracee))
 		result &= 0xFFFFFFFF;
-#endif
 
 	return result;
 }
@@ -159,15 +158,6 @@ void poke_reg(struct tracee_info *tracee, enum reg reg, word_t value)
 	assert(reg <= REG_LAST);
 	assert(   tracee->_regs.state == REGS_ARE_VALID
 	       || tracee->_regs.state == REGS_HAVE_CHANGED);
-
-#if defined(ARCH_X86_64)
-	/* Check we are using only the 32 LSB when running 32-bit
-	 * processes on x86_64. */
-	if (get_abi(tracee) == ABI_X86
-	    && (value >> 32) != 0
-	    && (value >> 32) != 0xFFFFFFFF)
-		notice(WARNING, INTERNAL, "value too large for a 32-bit register");
-#endif
 
 	REG(tracee, reg) = value;
 	tracee->_regs.state = REGS_HAVE_CHANGED;
@@ -219,20 +209,4 @@ int push_regs(struct tracee_info *tracee)
 
 	tracee->_regs.state = REGS_ARE_INVALID;
 	return 0;
-}
-
-/**
- * Return the ABI currently used by the given @tracee.
- */
-enum abi get_abi(const struct tracee_info *tracee)
-{
-	/* Sanity checks. */
-	assert(   tracee->_regs.state == REGS_ARE_VALID
-	       || tracee->_regs.state == REGS_HAVE_CHANGED);
-
-#if defined(ARCH_X86_64)
-	return (tracee->_regs.cache.cs == 0x23 ? ABI_X86 : ABI_DEFAULT);
-#else
-	return ABI_DEFAULT;
-#endif /* ARCH_X86_64 */
 }

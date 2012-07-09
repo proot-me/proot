@@ -175,11 +175,8 @@ case PR_uname: {
 
 	bool change_uname;
 
-#if defined(ARCH_X86_64)
-	change_uname = config.kernel_release != NULL || get_abi(tracee) == ABI_X86;
-#else
-	change_uname = config.kernel_release != NULL;
-#endif
+	change_uname = config.kernel_release != NULL
+		       || get_abi(tracee) != ABI_DEFAULT;
 
 	if (!change_uname) {
 		/* Nothing to do.  */
@@ -215,14 +212,25 @@ case PR_uname: {
 	}
 
 #if defined(ARCH_X86_64)
-	if (get_abi(tracee) == ABI_X86) {
+	switch (get_abi(tracee)) {
+	case ABI_DEFAULT:
+		/* Nothing to do.  */
+		break;
+
+	case ABI_2:
 		size = sizeof(utsname.machine);
 
 		/* Some 32-bit programs like package managers can be
 		 * confused when the kernel reports "x86_64".  */
 		strncpy(utsname.machine, "i686", size);
 		utsname.machine[size - 1] = '\0';
+		break;
+
+	default:
+		assert(0);
 	}
+#else
+	assert(get_abi(tracee) == ABI_DEFAULT);
 #endif
 
 	status = copy_to_tracee(tracee, address, &utsname, sizeof(utsname));
