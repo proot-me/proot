@@ -57,7 +57,7 @@ case PR_getcwd: {
 
 	/* The kernel does put the terminating NULL byte for
 	 * getcwd(2).  */
-	status = get_tracee_string(tracee, path, output, size);
+	status = read_string(tracee, path, output, size);
 	if (status < 0)
 		goto end;
 
@@ -82,7 +82,7 @@ case PR_getcwd: {
 	}
 
 	/* Overwrite the path.  */
-	status = copy_to_tracee(tracee, output, path, new_size);
+	status = write_data(tracee, output, path, new_size);
 	if (status < 0)
 		goto end;
 
@@ -128,7 +128,7 @@ case PR_readlinkat: {
 
 	/* The kernel does NOT put the terminating NULL byte for
 	 * getcwd(2).  */
-	status = copy_from_tracee(tracee, referee, output, old_size);
+	status = read_data(tracee, referee, output, old_size);
 	if (status < 0)
 		goto end;
 	referee[old_size] = '\0';
@@ -137,7 +137,7 @@ case PR_readlinkat: {
 			        ? SYSARG_1 : SYSARG_2);
 
 	/* Not optimal but safe (path is fully translated).  */
-	status = get_tracee_string(tracee, referer, input, PATH_MAX);
+	status = read_string(tracee, referer, input, PATH_MAX);
 	if (status < 0)
 		goto end;
 
@@ -158,7 +158,7 @@ case PR_readlinkat: {
 	new_size = (status - 1 < max_size ? status - 1 : max_size);
 
 	/* Overwrite the path.  */
-	status = copy_to_tracee(tracee, output, referee, new_size);
+	status = write_data(tracee, output, referee, new_size);
 	if (status < 0)
 		goto end;
 
@@ -194,7 +194,7 @@ case PR_uname: {
 
 	address = peek_reg(tracee, SYSARG_1);
 
-	status = copy_from_tracee(tracee, &utsname, address, sizeof(utsname));
+	status = read_data(tracee, &utsname, address, sizeof(utsname));
 	if (status < 0)
 		goto end;
 
@@ -233,7 +233,7 @@ case PR_uname: {
 	assert(get_abi(tracee) == ABI_DEFAULT);
 #endif
 
-	status = copy_to_tracee(tracee, address, &utsname, sizeof(utsname));
+	status = write_data(tracee, address, &utsname, sizeof(utsname));
 	if (status < 0)
 		goto end;
 
@@ -260,7 +260,7 @@ case PR_chroot: {
 
 	input = peek_reg(tracee, SYSARG_1);
 
-	status = get_tracee_string(tracee, path, input, PATH_MAX);
+	status = read_string(tracee, path, input, PATH_MAX);
 	if (status < 0)
 		goto end;
 

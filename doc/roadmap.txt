@@ -132,11 +132,7 @@ Completeness
 Performance
 -----------
 
-* Use one PTRACE_[GS]ETREGS instead of several PTRACE_P*K*USER.
-
-* Use process_vm_read/write instead of /proc/<pid>/mem or PTRACE_P*K*DATA.
-
-    * Fallback to /proc/<pid>/mem if these two syscalls aren't available.
+* Fallback to /proc/<pid>/mem when process_vm_readv() isn't available.
 
 * Don't move the stack pointer, use a pointer in the struct tracee_info
 

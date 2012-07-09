@@ -60,7 +60,7 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 		then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
 		fi;
 
-.SILENT .IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o
+.SILENT .IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o .check_process_vm .check_process_vm.o
 
 .check_readlinkat.o: .check_readlinkat.c
 	$(COMPILE:echo=false) $(silently) || true
@@ -70,13 +70,22 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 
 CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
 
-build.h: .check_readlinkat
+.check_process_vm.o: .check_process_vm.c
+	$(COMPILE:echo=false) $(silently) || true
+
+.check_process_vm: .check_process_vm.o
+	$(LINK:echo=false) $(silently) || true
+
+CHECK_PROCESS_VM = if [ -e .check_process_vm ]; then echo "\#define HAVE_PROCESS_VM"; fi
+
+build.h: .check_readlinkat .check_process_vm
 	$($(quiet)GEN)
 	$(Q)echo "/* This file is auto-generated, edit at your own risk.  */" > $@
 	$(Q)echo "#ifndef BUILD_H"      >> $@
 	$(Q)echo "#define BUILD_H"      >> $@
 	$(Q)sh -c '$(CHECK_VERSION)'     >> $@
 	$(Q)sh -c '$(CHECK_READLINKAT)'  >> $@
+	$(Q)sh -c '$(CHECK_PROCESS_VM)'  >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
 ######################################################################

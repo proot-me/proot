@@ -67,7 +67,7 @@ int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg re
 	}
 
 	/* Get the path from the tracee's memory space. */
-	size = get_tracee_string(tracee, path, src, PATH_MAX);
+	size = read_string(tracee, path, src, PATH_MAX);
 	if (size < 0)
 		return size;
 	if (size >= PATH_MAX)
@@ -90,14 +90,14 @@ int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, e
 	int status;
 
 	/* Allocate space into the tracee's stack to host the new data. */
-	tracee_ptr = resize_tracee_stack(tracee, size);
+	tracee_ptr = resize_stack(tracee, size);
 	if (tracee_ptr == 0)
 		return -EFAULT;
 
 	/* Copy the new data into the previously allocated space. */
-	status = copy_to_tracee(tracee, tracee_ptr, tracer_ptr, size);
+	status = write_data(tracee, tracee_ptr, tracer_ptr, size);
 	if (status < 0) {
-		(void) resize_tracee_stack(tracee, -size);
+		(void) resize_stack(tracee, -size);
 		return status;
 	}
 
@@ -286,7 +286,7 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 	    /* Restore the stack for execve() only if an error occured. */
 	    && (!is_execve(tracee) || (int) result < 0)) {
 		word_t tracee_ptr;
-		tracee_ptr = resize_tracee_stack(tracee, -tracee->status);
+		tracee_ptr = resize_stack(tracee, -tracee->status);
 		if (tracee_ptr == 0)
 			poke_reg(tracee, SYSARG_RESULT, (word_t) -EFAULT);
 	}

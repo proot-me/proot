@@ -22,7 +22,6 @@
 
 #include <stdlib.h>     /* *alloc(3), free(3), */
 #include <string.h>     /* string(3), */
-#include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <errno.h>      /* E*, */
 #include <stdarg.h>     /* va_*(3), */
 #include <assert.h>     /* assert(3), */
@@ -268,14 +267,9 @@ int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
 
 	/* Compute the number of entries in args[]. */
 	for (i = 0; ; i++) {
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid,
-				       tracee_args + i * sizeof_word(tracee), NULL);
+		argp = peek_mem(tracee, tracee_args + i * sizeof_word(tracee));
 		if (errno != 0)
 			return -EFAULT;
-
-		/* Use only the 32 LSB when running 32-bit processes. */
-		if (is_32on64_mode(tracee))
-			argp &= 0xFFFFFFFF;
 
 		/* End of args[]. */
 		if (argp == 0)
@@ -293,17 +287,13 @@ int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
 	for (i = 0; i < nb_args; i++) {
 		char arg[ARG_MAX];
 
-		argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid,
-				       tracee_args + i * sizeof_word(tracee), NULL);
+		argp = peek_mem(tracee, tracee_args + i * sizeof_word(tracee));
 		if (errno != 0)
 			return -EFAULT;
 
-		/* Use only the 32 LSB when running 32-bit processes. */
-		if (is_32on64_mode(tracee))
-			argp &= 0xFFFFFFFF;
 		assert(argp != 0);
 
-		status = get_tracee_string(tracee, arg, argp, ARG_MAX);
+		status = read_string(tracee, arg, argp, ARG_MAX);
 		if (status < 0)
 			return status;
 		if (status >= ARG_MAX)
@@ -360,7 +350,7 @@ int set_args(struct tracee_info *tracee, char *args[], enum reg reg)
 		size = strlen(args[i]) + 1;
 		argp -= size;
 
-		status = copy_to_tracee(tracee, argp, args[i], size);
+		status = write_data(tracee, argp, args[i], size);
 		if (status < 0)
 			goto end;
 
@@ -374,17 +364,8 @@ int set_args(struct tracee_info *tracee, char *args[], enum reg reg)
 	for (i = nb_args - 1; i >= 0; i--) {
 		tracee_argp -= sizeof_word(tracee);
 
-		/* Don't overwrite the "extra" 32-bit part. */
-		if (is_32on64_mode(tracee)) {
-			argp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, tracee_argp, NULL);
-			if (errno != 0)
-				return -EFAULT;
-
-			tracee_args[i] |= (argp & 0xFFFFFFFF00000000ULL);
-		}
-
-		status = ptrace(PTRACE_POKEDATA, tracee->pid, tracee_argp, tracee_args[i]);
-		if (status <0) {
+		poke_mem(tracee, tracee_argp, tracee_args[i]);
+		if (errno != 0) {
 			status = -EFAULT;
 			goto end;
 		}

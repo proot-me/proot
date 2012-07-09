@@ -46,5 +46,6 @@ extern int fetch_regs(struct tracee_info *tracee);
 extern int push_regs(struct tracee_info *tracee);
 extern word_t peek_reg(const struct tracee_info *tracee, enum reg reg);
 extern void poke_reg(struct tracee_info *tracee, enum reg reg, word_t value);
+extern word_t resize_stack(struct tracee_info *tracee, ssize_t size);
 
 #endif /* TRACEE_REG_H */

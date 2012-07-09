@@ -24,6 +24,7 @@
 #include <stdarg.h>    /* va_*(3), */
 #include <assert.h>    /* assert(3), */
 #include <stdlib.h>    /* realpath(3), free(3), */
+#include <fcntl.h>     /* AT_*,  */
 #include <unistd.h>    /* readlink*(2), *stat(2), getpid(2), */
 #include <sys/types.h> /* pid_t, */
 #include <sys/stat.h>  /* S_ISDIR, */

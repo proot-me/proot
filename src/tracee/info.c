@@ -29,8 +29,8 @@
 #include "tracee/info.h"
 #include "notice.h"
 
- /* Don't use too many entries since XXX all XXX when searching for a
-  * new tracee.  */
+ /* Don't use too many entries since they are all parsed when
+  * searching for a new tracee.  */
 #define POOL_MAX_ENTRIES 16
 
 struct pool {
