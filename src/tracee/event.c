@@ -36,7 +36,7 @@
 #include <assert.h>     /* assert(3), */
 #include <stdlib.h>     /* atexit(3), */
 
-#include "trace.h"
+#include "tracee/event.h"
 #include "notice.h"
 #include "path/path.h"
 #include "syscall/syscall.h"

@@ -29,7 +29,7 @@
 
 #include "execve/args.h"
 #include "tracee/info.h"
-#include "tracee/ureg.h"
+#include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "notice.h"
 #include "syscall/syscall.h"
@@ -255,7 +255,7 @@ int push_args(bool replace_argv0, char **args[], int nb_new_args, ...)
  * the @tracee process.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-int get_args(struct tracee_info *tracee, char **args[], enum sysarg sysarg)
+int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
 {
 	word_t tracee_args;
 	word_t argp;
@@ -271,7 +271,7 @@ int get_args(struct tracee_info *tracee, char **args[], enum sysarg sysarg)
 #    define sizeof_word(tracee) (sizeof(word_t))
 #endif
 
-	tracee_args = peek_ureg(tracee, sysarg);
+	tracee_args = peek_reg(tracee, reg);
 
 	/* Compute the number of entries in args[]. */
 	for (i = 0; ; i++) {
@@ -340,7 +340,7 @@ int get_args(struct tracee_info *tracee, char **args[], enum sysarg sysarg)
  *     /                       \                  \           \
  *    | args[0] | args[1] | ... | "/bin/script.sh" | "/bin/sh" |
  */
-int set_args(struct tracee_info *tracee, char *args[], enum sysarg sysarg)
+int set_args(struct tracee_info *tracee, char *args[], enum reg reg)
 {
 	word_t *tracee_args;
 
@@ -363,7 +363,7 @@ int set_args(struct tracee_info *tracee, char *args[], enum sysarg sysarg)
 		return -ENOMEM;
 
 	/* Copy the new arguments in the tracee's stack. */
-	previous_sp = peek_ureg(tracee, STACK_POINTER);
+	previous_sp = peek_reg(tracee, STACK_POINTER);
 
 	argp = previous_sp;
 	for (i = 0; args[i] != NULL; i++) {
@@ -403,11 +403,11 @@ int set_args(struct tracee_info *tracee, char *args[], enum sysarg sysarg)
 	}
 
 	/* Update the pointer to the new args[]. */
-	poke_ureg(tracee, sysarg, tracee_argp);
+	poke_reg(tracee, reg, tracee_argp);
 
 	/* Update the stack pointer to ensure [internal] coherency. It prevents
 	 * memory corruption if functions like set_sysarg_path() are called later. */
-	poke_ureg(tracee, STACK_POINTER, tracee_argp);
+	poke_reg(tracee, STACK_POINTER, tracee_argp);
 
 end:
 	free(tracee_args);

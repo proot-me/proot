@@ -23,6 +23,8 @@
 #ifndef INTERP_H
 #define INTERP_H
 
+#include <limits.h>
+
 #include "tracee/info.h"
 #include "execve/args.h" /* ARG_MAX, */
 

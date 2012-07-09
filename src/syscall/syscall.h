@@ -28,13 +28,11 @@
 
 #include "arch.h" /* word_t */
 #include "tracee/info.h"
-#include "tracee/ureg.h"
-
-#define sysarg ureg
+#include "tracee/reg.h"
 
 extern int translate_syscall(struct tracee_info *tracee);
-extern int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg);
-extern int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg);
-extern int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum sysarg sysarg);
+extern int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg);
+extern int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg);
+extern int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum reg reg);
 
 #endif /* SYSCALL_H */

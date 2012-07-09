@@ -15,7 +15,6 @@ LDFLAGS  =
 OBJECTS = cli.o			\
 	config.o		\
 	notice.o		\
-	trace.o			\
 	execve/args.o		\
 	execve/execve.o		\
 	execve/interp.o		\
@@ -28,7 +27,8 @@ OBJECTS = cli.o			\
 	syscall/syscall.o	\
 	tracee/info.o		\
 	tracee/mem.o		\
-	tracee/ureg.o
+	tracee/reg.o		\
+	tracee/event.o
 
 .DEFAULT_GOAL = proot
 all: proot

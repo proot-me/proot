@@ -20,13 +20,40 @@
  * 02110-1301 USA.
  */
 
-#ifndef TRACE_H
-#define TRACE_H
+#ifndef TRACEE_REG_H
+#define TRACEE_REG_H
 
-#include <stdbool.h>
+#include "tracee/info.h"
+#include "arch.h"
 
-extern bool launch_process();
-extern bool attach_process(pid_t pid);
-extern int event_loop();
+enum reg {
+	SYSARG_NUM = 0,
+	SYSARG_1,
+	SYSARG_2,
+	SYSARG_3,
+	SYSARG_4,
+	SYSARG_5,
+	SYSARG_6,
+	SYSARG_RESULT,
+	STACK_POINTER,
 
-#endif /* TRACE_H */
+	/* Helpers. */
+	REG_FIRST = SYSARG_NUM,
+	REG_LAST  = STACK_POINTER,
+};
+
+extern int fetch_regs(struct tracee_info *tracee);
+extern int push_regs(struct tracee_info *tracee);
+extern word_t peek_reg(const struct tracee_info *tracee, enum reg reg);
+extern void poke_reg(struct tracee_info *tracee, enum reg reg, word_t value);
+
+enum abi {
+	ABI_DEFAULT,
+#if defined(ARCH_X86_64)
+	ABI_X86,
+#endif
+};
+
+enum abi get_abi(const struct tracee_info *tracee);
+
+#endif /* TRACEE_REG_H */

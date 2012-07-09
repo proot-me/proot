@@ -24,7 +24,7 @@
 #define ARGS_H
 
 #include <stdbool.h>
-#include "syscall/syscall.h" /* enum sysarg */
+#include "tracee/reg.h" /* enum reg */
 
 #ifndef ARG_MAX
 #define ARG_MAX 131072
@@ -35,8 +35,8 @@ extern char **get_env_entry(char *envp[], const char *name);
 extern int replace_env_entry(char **entry, const char *new_value);
 extern int new_env_entry(char **envp[], const char *name, const char *value);
 extern int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...);
-extern int get_args(struct tracee_info *tracee, char **argv[], enum sysarg sysarg);
-extern int set_args(struct tracee_info *tracee, char *argv[], enum sysarg sysarg);
+extern int get_args(struct tracee_info *tracee, char **argv[], enum reg reg);
+extern int set_args(struct tracee_info *tracee, char *argv[], enum reg reg);
 extern void free_args(char *argv[]);
 
 #endif /* ARGS_H */

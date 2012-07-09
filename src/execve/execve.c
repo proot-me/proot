@@ -32,6 +32,7 @@
 #include "execve/interp.h"
 #include "execve/elf.h"
 #include "execve/ldso.h"
+#include "syscall/syscall.h"
 #include "notice.h"
 #include "path/path.h"
 #include "config.h"

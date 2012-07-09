@@ -35,7 +35,7 @@ case PR_getcwd: {
 	size_t size;
 	word_t output;
 
-	result = peek_ureg(tracee, SYSARG_RESULT);
+	result = peek_reg(tracee, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
@@ -43,9 +43,9 @@ case PR_getcwd: {
 		goto end;
 	}
 
-	output = peek_ureg(tracee, SYSARG_1);
+	output = peek_reg(tracee, SYSARG_1);
 
-	size = (size_t) peek_ureg(tracee, SYSARG_2);
+	size = (size_t) peek_reg(tracee, SYSARG_2);
 
 	if (size > PATH_MAX)
 		size = PATH_MAX;
@@ -102,7 +102,7 @@ case PR_readlinkat: {
 	word_t input;
 	word_t output;
 
-	result = peek_ureg(tracee, SYSARG_RESULT);
+	result = peek_reg(tracee, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
@@ -112,10 +112,10 @@ case PR_readlinkat: {
 
 	old_size = result;
 
-	output = peek_ureg(tracee, tracee->sysnum == PR_readlink
+	output = peek_reg(tracee, tracee->sysnum == PR_readlink
 				   ? SYSARG_2 : SYSARG_3);
 
-	max_size = (size_t) peek_ureg(tracee, tracee->sysnum == PR_readlink
+	max_size = (size_t) peek_reg(tracee, tracee->sysnum == PR_readlink
 					      ? SYSARG_3 : SYSARG_4);
 
 	if (max_size > PATH_MAX)
@@ -133,7 +133,7 @@ case PR_readlinkat: {
 		goto end;
 	referee[old_size] = '\0';
 
-	input = peek_ureg(tracee, tracee->sysnum == PR_readlink
+	input = peek_reg(tracee, tracee->sysnum == PR_readlink
 			        ? SYSARG_1 : SYSARG_2);
 
 	/* Not optimal but safe (path is fully translated).  */
@@ -187,7 +187,7 @@ case PR_uname: {
 		goto end;
 	}
 
-	result = peek_ureg(tracee, SYSARG_RESULT);
+	result = peek_reg(tracee, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
 	if ((int) result < 0) {
@@ -195,7 +195,7 @@ case PR_uname: {
 		goto end;
 	}
 
-	address = peek_ureg(tracee, SYSARG_1);
+	address = peek_reg(tracee, SYSARG_1);
 
 	status = copy_from_tracee(tracee, &utsname, address, sizeof(utsname));
 	if (status < 0)
@@ -242,7 +242,7 @@ case PR_chroot: {
 		goto end;
 	}
 
-	result = peek_ureg(tracee, SYSARG_RESULT);
+	result = peek_reg(tracee, SYSARG_RESULT);
 
 	/* Override only permission errors.  */
 	if ((int) result != -EPERM) {
@@ -250,7 +250,7 @@ case PR_chroot: {
 		goto end;
 	}
 
-	input = peek_ureg(tracee, SYSARG_1);
+	input = peek_reg(tracee, SYSARG_1);
 
 	status = get_tracee_string(tracee, path, input, PATH_MAX);
 	if (status < 0)
@@ -279,7 +279,7 @@ case PR_fchownat:
 		goto end;
 	}
 
-	result = peek_ureg(tracee, SYSARG_RESULT);
+	result = peek_reg(tracee, SYSARG_RESULT);
 
 	/* Override only permission errors.  */
 	if ((int) result != -EPERM) {

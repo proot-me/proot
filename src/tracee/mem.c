@@ -34,7 +34,7 @@
 
 #include "tracee/mem.h"
 #include "arch.h"            /* REG_SYSARG_*, word_t, NO_MISALIGNED_ACCESS */
-#include "tracee/ureg.h"     /* peek_ureg(), poke_ureg(), */
+#include "tracee/reg.h"      /* peek_reg(), poke_reg(), */
 #include "notice.h"
 
 /**
@@ -82,7 +82,7 @@ word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size)
 
 	/* Get the current value of the stack pointer from the tracee's
 	 * USER area. */
-	stack_pointer = peek_ureg(tracee, STACK_POINTER);
+	stack_pointer = peek_reg(tracee, STACK_POINTER);
 
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= size)
@@ -96,7 +96,7 @@ word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size)
 
 	/* Set the new value of the stack pointer in the tracee's USER
 	 * area. */
-	poke_ureg(tracee, STACK_POINTER, stack_pointer);
+	poke_reg(tracee, STACK_POINTER, stack_pointer);
 
 	return stack_pointer;
 }

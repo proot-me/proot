@@ -40,11 +40,11 @@ struct tracee_info {
 	struct {
 		struct user_regs_struct cache;
 		enum {
-			UREGS_ARE_INVALID = 0,
-			UREGS_ARE_VALID,
-			UREGS_HAVE_CHANGED,
+			REGS_ARE_INVALID = 0,
+			REGS_ARE_VALID,
+			REGS_HAVE_CHANGED,
 		} state;
-	} _uregs;
+	} _regs;
 
 	enum {         /* State for the special handling of SIGSTOP.  */
 		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */

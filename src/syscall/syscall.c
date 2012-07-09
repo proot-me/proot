@@ -36,27 +36,26 @@
 #include "arch.h"
 #include "tracee/mem.h"
 #include "tracee/info.h"
-#include "tracee/ureg.h"
+#include "tracee/reg.h"
 #include "path/path.h"
 #include "execve/execve.h"
 #include "notice.h"
-#include "tracee/ureg.h"
 #include "config.h"
 
 #include "compat.h"
 
 /**
  * Copy in @path a C string (PATH_MAX bytes max.) from the @tracee's
- * memory address space pointed to by the @sysarg argument of the
+ * memory address space pointed to by the @reg argument of the
  * current syscall.  This function returns -errno if an error occured,
  * otherwise it returns the size in bytes put into the @path.
  */
-int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg)
+int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg)
 {
 	int size;
 	word_t src;
 
-	src = peek_ureg(tracee, sysarg);
+	src = peek_reg(tracee, reg);
 
 	/* Check if the parameter is not NULL. Technically we should
 	 * not return an -EFAULT for this special value since it is
@@ -80,11 +79,11 @@ int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg
 /**
  * Copy @size bytes of the data pointed to by @tracer_ptr to a
  * @tracee's memory block allocated below its stack and make the
- * @sysarg argument of the current syscall points to this new block.
+ * @reg argument of the current syscall points to this new block.
  * This function returns -errno if an error occured, otherwise it
  * returns the size in bytes "allocated" into the stack.
  */
-int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum sysarg sysarg)
+int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum reg reg)
 {
 	word_t tracee_ptr;
 	int status;
@@ -102,31 +101,31 @@ int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, e
 	}
 
 	/* Make this argument point to the new data. */
-	poke_ureg(tracee, sysarg, tracee_ptr);
+	poke_reg(tracee, reg, tracee_ptr);
 
 	return size;
 }
 
 /**
  * Copy @path to a @tracee's memory block allocated below its stack
- * and make the @sysarg argument of the current syscall points to this
+ * and make the @reg argument of the current syscall points to this
  * new block.  This function returns -errno if an error occured,
  * otherwise it returns the size in bytes "allocated" into the stack.
  */
-int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum sysarg sysarg)
+int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg)
 {
-	return set_sysarg_data(tracee, path, strlen(path) + 1, sysarg);
+	return set_sysarg_data(tracee, path, strlen(path) + 1, reg);
 }
 
 /**
  * Translate @path and put the result in the @tracee's memory address
- * space pointed to by the @sysarg argument of the current
+ * space pointed to by the @reg argument of the current
  * syscall. See the documentation of translate_path() about the
  * meaning of @deref_final. This function returns -errno if an error
  * occured, otherwise it returns the size in bytes "allocated" into
  * the stack.
  */
-static int translate_path2(struct tracee_info *tracee, int dir_fd, char path[PATH_MAX], enum sysarg sysarg, int deref_final)
+static int translate_path2(struct tracee_info *tracee, int dir_fd, char path[PATH_MAX], enum reg reg, int deref_final)
 {
 	char new_path[PATH_MAX];
 	int status;
@@ -140,23 +139,23 @@ static int translate_path2(struct tracee_info *tracee, int dir_fd, char path[PAT
 	if (status < 0)
 		return status;
 
-	return set_sysarg_path(tracee, new_path, sysarg);
+	return set_sysarg_path(tracee, new_path, reg);
 }
 
 /**
  * A helper, see the comment of the function above.
  */
-static int translate_sysarg(struct tracee_info *tracee, enum sysarg sysarg, int deref_final)
+static int translate_sysarg(struct tracee_info *tracee, enum reg reg, int deref_final)
 {
 	char old_path[PATH_MAX];
 	int status;
 
 	/* Extract the original path. */
-	status = get_sysarg_path(tracee, old_path, sysarg);
+	status = get_sysarg_path(tracee, old_path, reg);
 	if (status < 0)
 		return status;
 
-	return translate_path2(tracee, AT_FDCWD, old_path, sysarg, deref_final);
+	return translate_path2(tracee, AT_FDCWD, old_path, reg, deref_final);
 }
 
 /**
@@ -183,15 +182,15 @@ static int translate_syscall_enter(struct tracee_info *tracee)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
-	tracee->sysnum = peek_ureg(tracee, SYSARG_NUM);
+	tracee->sysnum = peek_reg(tracee, SYSARG_NUM);
 
 	if (config.verbose_level >= 3)
 		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
 			tracee->pid, tracee->sysnum,
-			peek_ureg(tracee, SYSARG_1), peek_ureg(tracee, SYSARG_2),
-			peek_ureg(tracee, SYSARG_3), peek_ureg(tracee, SYSARG_4),
-			peek_ureg(tracee, SYSARG_5), peek_ureg(tracee, SYSARG_6),
-			peek_ureg(tracee, STACK_POINTER));
+			peek_reg(tracee, SYSARG_1), peek_reg(tracee, SYSARG_2),
+			peek_reg(tracee, SYSARG_3), peek_reg(tracee, SYSARG_4),
+			peek_reg(tracee, SYSARG_5), peek_reg(tracee, SYSARG_6),
+			peek_reg(tracee, STACK_POINTER));
 	else
 		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid, (int)tracee->sysnum);
 
@@ -231,7 +230,7 @@ end:
 	/* Avoid the actual syscall if an error occured during the
 	 * translation. */
 	if (status < 0) {
-		poke_ureg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
+		poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
 		tracee->sysnum = SYSCALL_AVOIDER;
 	}
 
@@ -279,8 +278,8 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 	/* Set the tracee's errno if an error occured previously during
 	 * the translation. */
 	if (tracee->status < 0)
-		poke_ureg(tracee, SYSARG_RESULT, (word_t) tracee->status);
-	result = peek_ureg(tracee, SYSARG_RESULT);
+		poke_reg(tracee, SYSARG_RESULT, (word_t) tracee->status);
+	result = peek_reg(tracee, SYSARG_RESULT);
 
 	/* De-allocate the space used to store the previously
 	 * translated paths. */
@@ -290,11 +289,11 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 		word_t tracee_ptr;
 		tracee_ptr = resize_tracee_stack(tracee, -tracee->status);
 		if (tracee_ptr == 0)
-			poke_ureg(tracee, SYSARG_RESULT, (word_t) -EFAULT);
+			poke_reg(tracee, SYSARG_RESULT, (word_t) -EFAULT);
 	}
 
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid, result,
-		peek_ureg(tracee, STACK_POINTER));
+		peek_reg(tracee, STACK_POINTER));
 
 	/* Translate output arguments. */
 	switch (get_abi(tracee)) {
@@ -317,7 +316,7 @@ static int translate_syscall_exit(struct tracee_info *tracee)
 	}
 
 	/* "status" was updated in syscall/exit.c.  */
-	poke_ureg(tracee, SYSARG_RESULT, (word_t) status);
+	poke_reg(tracee, SYSARG_RESULT, (word_t) status);
 	status = 0;
 end:
 	if (status > 0)
@@ -336,7 +335,7 @@ int translate_syscall(struct tracee_info *tracee)
 	int result;
 	int status;
 
-	status = fetch_uregs(tracee);
+	status = fetch_regs(tracee);
 	if (status < 0)
 		return status;
 
@@ -345,7 +344,7 @@ int translate_syscall(struct tracee_info *tracee)
 		  ? translate_syscall_enter(tracee)
 		  : translate_syscall_exit(tracee));
 
-	status = push_uregs(tracee);
+	status = push_regs(tracee);
 	if (status < 0)
 		return status;
 
