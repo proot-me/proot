@@ -2,7 +2,7 @@
  *
  * This file was generated thanks to the following command:
  *
- *     cpp -dM linux/arch/sh/include/asm/unistd_32.h | grep #define __NR_ | sed s/__NR_/PR_/g | sort -u
+ *     cpp -dM linux/arch/sh/include/asm/unistd_32.h | grep '#define __NR_' | sed s/__NR_/PR_/g | sort -u
  */
 
 #include "syscall/sysnum-undefined.h"

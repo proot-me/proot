@@ -208,6 +208,13 @@ static int translate_syscall_enter(Tracee *tracee)
 	}
 		break;
 #endif
+#ifdef SYSNUM_HEADER3
+	case ABI_3: {
+		#include SYSNUM_HEADER3
+		#include "syscall/enter.c"
+	}
+		break;
+#endif
 	default:
 		assert(0);
 	}
@@ -266,6 +273,13 @@ static int translate_syscall_exit(Tracee *tracee)
 #ifdef SYSNUM_HEADER2
 	case ABI_2: {
 		#include SYSNUM_HEADER2
+		#include "syscall/exit.c"
+	}
+		break;
+#endif
+#ifdef SYSNUM_HEADER3
+	case ABI_3: {
+		#include SYSNUM_HEADER3
 		#include "syscall/exit.c"
 	}
 		break;

@@ -2,7 +2,7 @@
  *
  * This file was generated thanks to the following command:
  *
- *     cpp -dM linux/arch/x86/syscalls/../include/generated/asm/unistd_32.h | grep #define __NR_ | sed s/__NR_/PR_/g | sort -u
+ *     cpp -dM linux/arch/x86/syscalls/../include/generated/asm/unistd_32.h | grep '#define __NR_' | sed s/__NR_/PR_/g | sort -u
  */
 
 #include "syscall/sysnum-undefined.h"
@@ -134,6 +134,7 @@
 #define PR_ioprio_get 290
 #define PR_ioprio_set 289
 #define PR_ipc 117
+#define PR_kcmp 349
 #define PR_kexec_load 283
 #define PR_keyctl 288
 #define PR_kill 37

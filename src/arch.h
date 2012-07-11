@@ -48,6 +48,7 @@ typedef unsigned long word_t;
 
     #define SYSNUM_HEADER  "syscall/sysnum-x86_64.h"
     #define SYSNUM_HEADER2 "syscall/sysnum-i386.h"
+    #define SYSNUM_HEADER3 "syscall/sysnum-x32.h"
     #define HOST_ELF_MACHINE {62, 3, 6, 0}
     #define RED_ZONE_SIZE 128
     #define OFFSETOF_STAT_UID_32 24
