@@ -35,7 +35,7 @@
 #include "syscall/syscall.h"
 #include "arch.h"
 #include "tracee/mem.h"
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "path/path.h"
@@ -51,7 +51,7 @@
  * current syscall.  This function returns -errno if an error occured,
  * otherwise it returns the size in bytes put into the @path.
  */
-int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg)
+int get_sysarg_path(const struct tracee *tracee, char path[PATH_MAX], enum reg reg)
 {
 	int size;
 	word_t src;
@@ -84,7 +84,7 @@ int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg re
  * This function returns -errno if an error occured, otherwise it
  * returns the size in bytes "allocated" into the stack.
  */
-int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum reg reg)
+int set_sysarg_data(struct tracee *tracee, void *tracer_ptr, word_t size, enum reg reg)
 {
 	word_t tracee_ptr;
 	int status;
@@ -113,7 +113,7 @@ int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, e
  * new block.  This function returns -errno if an error occured,
  * otherwise it returns the size in bytes "allocated" into the stack.
  */
-int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg)
+int set_sysarg_path(struct tracee *tracee, char path[PATH_MAX], enum reg reg)
 {
 	return set_sysarg_data(tracee, path, strlen(path) + 1, reg);
 }
@@ -126,7 +126,7 @@ int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg re
  * occured, otherwise it returns the size in bytes "allocated" into
  * the stack.
  */
-static int translate_path2(struct tracee_info *tracee, int dir_fd, char path[PATH_MAX], enum reg reg, int deref_final)
+static int translate_path2(struct tracee *tracee, int dir_fd, char path[PATH_MAX], enum reg reg, int deref_final)
 {
 	char new_path[PATH_MAX];
 	int status;
@@ -146,7 +146,7 @@ static int translate_path2(struct tracee_info *tracee, int dir_fd, char path[PAT
 /**
  * A helper, see the comment of the function above.
  */
-static int translate_sysarg(struct tracee_info *tracee, enum reg reg, int deref_final)
+static int translate_sysarg(struct tracee *tracee, enum reg reg, int deref_final)
 {
 	char old_path[PATH_MAX];
 	int status;
@@ -168,7 +168,7 @@ static int translate_sysarg(struct tracee_info *tracee, enum reg reg, int deref_
  * function returns -errno if an error occured from PRoot's
  * perspective, otherwise 0.
  */
-static int translate_syscall_enter(struct tracee_info *tracee)
+static int translate_syscall_enter(struct tracee *tracee)
 {
 	int flags;
 	int dirfd;
@@ -241,7 +241,7 @@ end:
  * Check if the current syscall of @tracee actually is execve(2)
  * regarding the current ABI.
  */
-static bool is_execve(struct tracee_info *tracee)
+static bool is_execve(struct tracee *tracee)
 {
 	switch (get_abi(tracee)) {
 	case ABI_DEFAULT: {
@@ -269,7 +269,7 @@ static bool is_execve(struct tracee_info *tracee)
  * "deallocated" to free the space used to store the previously
  * translated paths.
  */
-static int translate_syscall_exit(struct tracee_info *tracee)
+static int translate_syscall_exit(struct tracee *tracee)
 {
 	word_t result;
 	int status;
@@ -323,12 +323,12 @@ end:
 	/* Reset the current syscall number. */
 	tracee->sysnum = -1;
 
-	/* The struct tracee_info will be freed in
+	/* The struct tracee will be freed in
 	 * main_loop() if status < 0. */
 	return status;
 }
 
-int translate_syscall(struct tracee_info *tracee)
+int translate_syscall(struct tracee *tracee)
 {
 	int result;
 	int status;

@@ -27,7 +27,7 @@
 #include <assert.h>     /* assert(3), */
 
 #include "execve/args.h"
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "tracee/abi.h"
@@ -255,7 +255,7 @@ int push_args(bool replace_argv0, char **args[], int nb_new_args, ...)
  * the @tracee process.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
+int get_args(const struct tracee *tracee, char **args[], enum reg reg)
 {
 	word_t tracee_args;
 	word_t argp;
@@ -320,7 +320,7 @@ int get_args(struct tracee_info *tracee, char **args[], enum reg reg)
  *     /                       \                  \           \
  *    | args[0] | args[1] | ... | "/bin/script.sh" | "/bin/sh" |
  */
-int set_args(struct tracee_info *tracee, char *args[], enum reg reg)
+int set_args(struct tracee *tracee, char *args[], enum reg reg)
 {
 	word_t *tracee_args;
 

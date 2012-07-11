@@ -134,7 +134,7 @@ Performance
 
 * Fallback to /proc/<pid>/mem when process_vm_readv() isn't available.
 
-* Don't move the stack pointer, use a pointer in the struct tracee_info
+* Don't move the stack pointer, use a pointer in the struct tracee
 
 * Don't canonicalize if the path translation is delayed
 

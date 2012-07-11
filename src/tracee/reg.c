@@ -129,7 +129,7 @@
 /**
  * Return the *cached* value of the given @tracees' @reg.
  */
-word_t peek_reg(const struct tracee_info *tracee, enum reg reg)
+word_t peek_reg(const struct tracee *tracee, enum reg reg)
 {
 	word_t result;
 
@@ -152,7 +152,7 @@ word_t peek_reg(const struct tracee_info *tracee, enum reg reg)
 /**
  * Set the *cached* value of the given @tracees' @reg.
  */
-void poke_reg(struct tracee_info *tracee, enum reg reg, word_t value)
+void poke_reg(struct tracee *tracee, enum reg reg, word_t value)
 {
 	/* Sanity checks. */
 	assert(reg >= REG_FIRST);
@@ -169,7 +169,7 @@ void poke_reg(struct tracee_info *tracee, enum reg reg, word_t value)
  * cache.  This function returns -errno if an error occured, 0
  * otherwise.
  */
-int fetch_regs(struct tracee_info *tracee)
+int fetch_regs(struct tracee *tracee)
 {
 	int status;
 
@@ -188,7 +188,7 @@ int fetch_regs(struct tracee_info *tracee)
  * back to the process, if necessary.  This function returns -errno if
  * an error occured, 0 otherwise.
  */
-int push_regs(struct tracee_info *tracee)
+int push_regs(struct tracee *tracee)
 {
 	int status;
 
@@ -217,7 +217,7 @@ int push_regs(struct tracee_info *tracee)
  * returns 0 if an error occured, otherwise it returns the address of
  * the new stack pointer within the tracee's memory space.
  */
-word_t resize_stack(struct tracee_info *tracee, ssize_t size)
+word_t resize_stack(struct tracee *tracee, ssize_t size)
 {
 	word_t stack_pointer;
 

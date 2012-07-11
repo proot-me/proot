@@ -26,9 +26,9 @@
 #include <stdbool.h>
 #include <limits.h>
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 
-extern int canonicalize(struct tracee_info *tracee, const char *fake_path, bool deref_final,
+extern int canonicalize(const struct tracee *tracee, const char *fake_path, bool deref_final,
 			char result[PATH_MAX], unsigned int nb_readlink);
 
 #endif /* CANON_H */

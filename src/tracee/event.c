@@ -46,7 +46,7 @@
 
 bool launch_process()
 {
-	struct tracee_info *tracee;
+	struct tracee *tracee;
 	struct rlimit rlimit;
 	long status;
 	pid_t pid;
@@ -157,8 +157,8 @@ bool launch_process()
 		return false;
 
 	default: /* parent */
-		/* Allocate its tracee_info structure.  */
-		tracee = get_tracee_info(pid, true);
+		/* Allocate its tracee structure.  */
+		tracee = get_tracee(pid, true);
 		if (tracee == NULL)
 			return false;
 
@@ -174,7 +174,7 @@ bool launch_process()
 bool attach_process(pid_t pid)
 {
 	long status;
-	struct tracee_info *tracee;
+	struct tracee *tracee;
 
 	notice(WARNING, USER, "attaching a process on-the-fly is still experimental");
 
@@ -186,8 +186,8 @@ bool attach_process(pid_t pid)
 	 * until they are closed. */
 	list_open_fd(pid);
 
-	/* Allocate its tracee_info structure.  */
-	tracee = get_tracee_info(pid, true);
+	/* Allocate its tracee structure.  */
+	tracee = get_tracee(pid, true);
 	if (tracee == NULL)
 		return false;
 
@@ -225,7 +225,7 @@ static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
 int event_loop()
 {
 	struct sigaction signal_action;
-	struct tracee_info *tracee;
+	struct tracee *tracee;
 	int last_exit_status = -1;
 	int tracee_status;
 	long status;
@@ -299,7 +299,7 @@ int event_loop()
 			foreach_tracee(check_fd);
 
 		/* Get the information about this tracee. */
-		tracee = get_tracee_info(pid, true);
+		tracee = get_tracee(pid, true);
 		assert(tracee != NULL);
 
 		if (WIFEXITED(tracee_status)) {
@@ -365,7 +365,7 @@ int event_loop()
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			case SIGTRAP | PTRACE_EVENT_CLONE << 8: {
-				struct tracee_info *child_tracee;
+				struct tracee *child_tracee;
 				pid_t child_pid;
 
 				signal = 0;
@@ -378,7 +378,7 @@ int event_loop()
 				}
 
 				/* Declare the parent of this new tracee.  */
-				child_tracee = get_tracee_info(child_pid, true);
+				child_tracee = get_tracee(child_pid, true);
 				inherit_fs_info(child_tracee, tracee);
 
 				/* Restart the child tracee if it was started

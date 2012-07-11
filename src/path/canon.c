@@ -44,7 +44,7 @@
  * doing. This function returns -errno if an error occured, otherwise
  * it returns 0.
  */
-int canonicalize(struct tracee_info *tracee, const char *fake_path, bool deref_final,
+int canonicalize(const struct tracee *tracee, const char *fake_path, bool deref_final,
 		char result[PATH_MAX], unsigned int nb_readlink)
 {
 	const char *cursor;

@@ -20,8 +20,8 @@
  * 02110-1301 USA.
  */
 
-#ifndef TRACEE_INFO_H
-#define TRACEE_INFO_H
+#ifndef TRACEE_H
+#define TRACEE_H
 
 #include <sys/types.h> /* pid_t, size_t, */
 #include <sys/user.h>  /* struct user*, */
@@ -30,7 +30,7 @@
 #include "arch.h" /* word_t, user_regs_struct, */
 
 /* Information related to a tracee process. */
-struct tracee_info {
+struct tracee {
 	pid_t  pid;    /* Process identifier. */
 	word_t sysnum; /* Current syscall (-1 if none). */
 	int    status; /* -errno if < 0, otherwise amount of bytes used in the tracee's stack. */
@@ -51,15 +51,15 @@ struct tracee_info {
 		SIGSTOP_ALLOWED,      /* Allow SIGSTOP (once the parent is known).   */
 		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
 	} sigstop;
-	struct tracee_info *parent; /* Parent of this tracee (unused yet). */
+	struct tracee *parent; /* Parent of this tracee. */
 };
 
 typedef int (*foreach_tracee_t)(pid_t pid);
 
-extern void init_module_tracee_info(void);
-extern void delete_tracee(struct tracee_info *tracee);
-extern struct tracee_info *get_tracee_info(pid_t pid, bool create);
+extern void init_module_tracee(void);
+extern void delete_tracee(struct tracee *tracee);
+extern struct tracee *get_tracee(pid_t pid, bool create);
 extern int foreach_tracee(foreach_tracee_t callback);
-extern void inherit_fs_info(struct tracee_info *child, struct tracee_info *parent);
+extern void inherit_fs_info(struct tracee *child, struct tracee *parent);
 
-#endif /* TRACEE_INFO_H */
+#endif /* TRACEE_H */

@@ -23,7 +23,7 @@
 #ifndef TRACEE_REG_H
 #define TRACEE_REG_H
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "arch.h"
 
 enum reg {
@@ -42,10 +42,10 @@ enum reg {
 	REG_LAST  = STACK_POINTER,
 };
 
-extern int fetch_regs(struct tracee_info *tracee);
-extern int push_regs(struct tracee_info *tracee);
-extern word_t peek_reg(const struct tracee_info *tracee, enum reg reg);
-extern void poke_reg(struct tracee_info *tracee, enum reg reg, word_t value);
-extern word_t resize_stack(struct tracee_info *tracee, ssize_t size);
+extern int fetch_regs(struct tracee *tracee);
+extern int push_regs(struct tracee *tracee);
+extern word_t peek_reg(const struct tracee *tracee, enum reg reg);
+extern void poke_reg(struct tracee *tracee, enum reg reg, word_t value);
+extern word_t resize_stack(struct tracee *tracee, ssize_t size);
 
 #endif /* TRACEE_REG_H */

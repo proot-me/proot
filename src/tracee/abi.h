@@ -25,7 +25,7 @@
 
 #include <stdbool.h>
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "arch.h"
 #include "notice.h"
@@ -39,7 +39,7 @@ enum abi {
 /**
  * Return the ABI currently used by the given @tracee.
  */
-static inline enum abi get_abi(const struct tracee_info *tracee)
+static inline enum abi get_abi(const struct tracee *tracee)
 {
 #if defined(ARCH_X86_64)
 	switch (tracee->_regs.cache.cs) {
@@ -58,7 +58,7 @@ static inline enum abi get_abi(const struct tracee_info *tracee)
  * Return true if @tracee is a 32-bit process running on a 64-bit
  * kernel.
  */
-static inline bool is_32on64_mode(const struct tracee_info *tracee)
+static inline bool is_32on64_mode(const struct tracee *tracee)
 {
 	return (get_abi(tracee) != ABI_DEFAULT);
 }
@@ -67,7 +67,7 @@ static inline bool is_32on64_mode(const struct tracee_info *tracee)
  * Return the size of a word according to the ABI currently used by
  * the given @tracee.
  */
-static inline size_t sizeof_word(const struct tracee_info *tracee)
+static inline size_t sizeof_word(const struct tracee *tracee)
 {
 	return (is_32on64_mode(tracee)
 		? sizeof(word_t) / 2

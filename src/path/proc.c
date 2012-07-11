@@ -28,7 +28,7 @@
 #include <unistd.h>  /* getpid(2), */
 
 #include "path/proc.h"
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "path/path.h"
 
 /**
@@ -40,11 +40,11 @@
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result.
  */
-enum action readlink_proc(const struct tracee_info *tracee, char result[PATH_MAX],
+enum action readlink_proc(const struct tracee *tracee, char result[PATH_MAX],
 			const char base[PATH_MAX], const char component[NAME_MAX],
 			enum path_comparison comparison)
 {
-	const struct tracee_info *known_tracee;
+	const struct tracee *known_tracee;
 	char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
 	int status;
 	pid_t pid;
@@ -79,7 +79,7 @@ enum action readlink_proc(const struct tracee_info *tracee, char result[PATH_MAX
 	if (pid == 0)
 		return DEFAULT;
 
-	known_tracee = get_tracee_info(pid, false);
+	known_tracee = get_tracee(pid, false);
 	if (!known_tracee)
 		return DEFAULT;
 
@@ -166,7 +166,7 @@ enum action readlink_proc(const struct tracee_info *tracee, char result[PATH_MAX
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result (but this byte is not counted in the returned value).
  */
-size_t readlink_proc2(const struct tracee_info *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
+size_t readlink_proc2(const struct tracee *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
 {
 	enum action action;
 	char base[PATH_MAX];

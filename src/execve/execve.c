@@ -44,7 +44,7 @@
  * executable and is a regular file.  This function returns -errno if
  * an error occured, 0 otherwise.
  */
-static int translate_n_check(struct tracee_info *tracee, char t_path[PATH_MAX], const char *u_path)
+static int translate_n_check(struct tracee *tracee, char t_path[PATH_MAX], const char *u_path)
 {
 	struct stat statl;
 	int status;
@@ -79,7 +79,7 @@ static int translate_n_check(struct tracee_info *tracee, char t_path[PATH_MAX], 
  * the program itself if it doesn't use an interpreter) are stored in
  * @t_interp and @u_interp (respectively translated and untranslated).
  */
-static int expand_interp(struct tracee_info *tracee,
+static int expand_interp(struct tracee *tracee,
 			 const char *u_path,
 			 char t_interp[PATH_MAX],
 			 char u_interp[PATH_MAX],
@@ -194,7 +194,7 @@ static int expand_interp(struct tracee_info *tracee,
  *
  *     execve("/tmp/new_root/bin/sh", argv = [ "/bin/sh", "/bin/script.sh", "arg1", arg2", ... ], envp);
  */
-int translate_execve(struct tracee_info *tracee)
+int translate_execve(struct tracee *tracee)
 {
 	char u_path[PATH_MAX];
 	char t_interp[PATH_MAX];

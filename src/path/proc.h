@@ -25,7 +25,7 @@
 
 #include <limits.h>
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "path/path.h"
 
 /* Action to do after a call to readlink_proc().  */
@@ -36,10 +36,10 @@ enum action {
 };
 
 
-extern enum action readlink_proc(const struct tracee_info *tracee, char result[PATH_MAX],
+extern enum action readlink_proc(const struct tracee *tracee, char result[PATH_MAX],
 				const char path[PATH_MAX], const char component[NAME_MAX],
 				enum path_comparison comparison);
 
-extern size_t readlink_proc2(const struct tracee_info *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
+extern size_t readlink_proc2(const struct tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
 
 #endif /* PROC_H */

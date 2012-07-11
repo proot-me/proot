@@ -26,7 +26,7 @@
 #include <string.h>     /* bzero(3), */
 #include <stdbool.h>    /* bool, true, false, */
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "notice.h"
 
  /* Don't use too many entries since they are all parsed when
@@ -34,7 +34,7 @@
 #define POOL_MAX_ENTRIES 16
 
 struct pool {
-	struct tracee_info entries[POOL_MAX_ENTRIES];
+	struct tracee entries[POOL_MAX_ENTRIES];
 	size_t nb_entries;
 	struct pool *next;
 };
@@ -44,14 +44,14 @@ static struct pool *first_pool = NULL;
 /**
  * Reset the default values for the given @tracee.
  */
-void delete_tracee(struct tracee_info *tracee)
+void delete_tracee(struct tracee *tracee)
 {
 	assert(tracee != NULL);
 
 	if (tracee->exe != NULL)
 		free(tracee->exe);
 
-	bzero(tracee, sizeof(struct tracee_info));
+	bzero(tracee, sizeof(struct tracee));
 
 	tracee->sysnum = -1;
 }
@@ -59,7 +59,7 @@ void delete_tracee(struct tracee_info *tracee)
 /**
  * Allocate a new pool and initialize an entry for the tracee @pid.
  */
-static struct tracee_info *new_tracee(pid_t pid)
+static struct tracee *new_tracee(pid_t pid)
 {
 	struct pool *last_pool;
 	struct pool *new_pool;
@@ -96,9 +96,9 @@ static struct tracee_info *new_tracee(pid_t pid)
  * found, a new one is created if @create is true, otherwise NULL is
  * returned.
  */
-struct tracee_info *get_tracee_info(pid_t pid, bool create)
+struct tracee *get_tracee(pid_t pid, bool create)
 {
-	struct tracee_info *tracee;
+	struct tracee *tracee;
 	struct pool *pool;
 	size_t i;
 
@@ -167,7 +167,7 @@ int foreach_tracee(foreach_tracee_t callback)
  * @parent tracee.  Depending on the @parent->clone_flags, some
  * information are copied or shared.
  */
-void inherit_fs_info(struct tracee_info *child, struct tracee_info *parent)
+void inherit_fs_info(struct tracee *child, struct tracee *parent)
 {
 	child->parent = parent;
 

@@ -25,20 +25,20 @@
 
 #include <limits.h>
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "execve/args.h" /* ARG_MAX, */
 
-typedef int (* extract_interp_t)(struct tracee_info *tracee,
+typedef int (* extract_interp_t)(const struct tracee *tracee,
 				 const char *t_path,
 				 char u_interp[PATH_MAX],
 				 char argument[ARG_MAX]);
 
-extern int extract_script_interp(struct tracee_info *tracee,
+extern int extract_script_interp(const struct tracee *tracee,
 				 const char *t_path,
 				 char u_interp[PATH_MAX],
 				 char argument[ARG_MAX]);
 
-extern int extract_elf_interp(struct tracee_info *tracee,
+extern int extract_elf_interp(const struct tracee *tracee,
 				 const char *t_path,
 				 char u_interp[PATH_MAX],
 				 char argument[ARG_MAX]);

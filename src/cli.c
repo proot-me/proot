@@ -39,7 +39,7 @@
 #include "notice.h"
 #include "path/path.h"
 #include "tracee/event.h"
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "execve/ldso.h"
 #include "build.h"
 

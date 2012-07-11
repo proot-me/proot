@@ -27,12 +27,12 @@
 #include <stdbool.h>    /* bool ,true, false, */
 
 #include "arch.h" /* word_t */
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 #include "tracee/reg.h"
 
-extern int translate_syscall(struct tracee_info *tracee);
-extern int get_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg);
-extern int set_sysarg_path(struct tracee_info *tracee, char path[PATH_MAX], enum reg reg);
-extern int set_sysarg_data(struct tracee_info *tracee, void *tracer_ptr, word_t size, enum reg reg);
+extern int translate_syscall(struct tracee *tracee);
+extern int get_sysarg_path(const struct tracee *tracee, char path[PATH_MAX], enum reg reg);
+extern int set_sysarg_path(struct tracee *tracee, char path[PATH_MAX], enum reg reg);
+extern int set_sysarg_data(struct tracee *tracee, void *tracer_ptr, word_t size, enum reg reg);
 
 #endif /* SYSCALL_H */
