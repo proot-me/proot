@@ -15,7 +15,6 @@ LDFLAGS  =
 OBJECTS = cli.o			\
 	config.o		\
 	notice.o		\
-	execve/args.o		\
 	execve/execve.o		\
 	execve/interp.o		\
 	execve/elf.o		\
@@ -26,6 +25,7 @@ OBJECTS = cli.o			\
 	path/proc.o		\
 	syscall/syscall.o	\
 	tracee/tracee.o		\
+	tracee/array.o		\
 	tracee/mem.o		\
 	tracee/reg.o		\
 	tracee/event.o

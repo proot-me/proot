@@ -22,11 +22,12 @@
 
 #include <stdbool.h> /* bool, true, false, */
 #include <string.h>  /* string(3), */
+#include <stdlib.h>  /* ssize_t, */
+#include <linux/limits.h> /* ARG_MAX, */
 
 #include "config.h"
 #include "notice.h"
 #include "path/binding.h"
-#include "execve/args.h"
 
 static void print_argv(const char *prompt, char **argv)
 {

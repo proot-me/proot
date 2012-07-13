@@ -24,6 +24,7 @@
 #define EXECVE_H
 
 #include "tracee/tracee.h"
+#include "tracee/array.h"
 
 extern int translate_execve(struct tracee *tracee);
 

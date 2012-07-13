@@ -22,7 +22,7 @@
 
 #include <fcntl.h>  /* open(2), */
 #include <unistd.h> /* read(2), close(2), */
-#include <limits.h> /* PATH_MAX, ARG_MAX, */
+#include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
 #include <errno.h>  /* ENAMETOOLONG, */
 #include <string.h> /* strcpy(3), */
 

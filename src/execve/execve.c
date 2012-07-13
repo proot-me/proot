@@ -28,10 +28,10 @@
 #include <errno.h>    /* E*, */
 
 #include "execve/execve.h"
-#include "execve/args.h"
 #include "execve/interp.h"
 #include "execve/elf.h"
 #include "execve/ldso.h"
+#include "tracee/array.h"
 #include "syscall/syscall.h"
 #include "notice.h"
 #include "path/path.h"
@@ -83,7 +83,7 @@ static int expand_interp(struct tracee *tracee,
 			 const char *u_path,
 			 char t_interp[PATH_MAX],
 			 char u_interp[PATH_MAX],
-			 char **argv[],
+			 struct array *argv,
 			 extract_interp_t callback,
 			 bool ignore_interpreter)
 {
@@ -124,8 +124,7 @@ static int expand_interp(struct tracee *tracee,
 
 	/* Sanity check: an interpreter doesn't request an[other]
 	 * interpreter on Linux.  In the case of ELF this check
-	 * ensures the interpreter is in the ELF format.  Note
-	 * 'u_interp' and 'argument' are actually not used. */
+	 * ensures the interpreter is in the ELF format.  */
 	status = callback(tracee, t_interp, dummy_path, dummy_arg);
 	if (status < 0)
 		return status;
@@ -145,15 +144,26 @@ static int expand_interp(struct tracee *tracee,
 	 * in the caller because it depends on the use of a runner.
 	 */
 
-	VERBOSE(3, "expand shebang: %s -> %s %s %s",
-		(*argv)[0], u_interp, argument, u_path);
+	VERBOSE(3, "expand shebang: -> %s %s %s", u_interp, argument, u_path);
 
-	if (argument[0] != '\0')
-		status = push_args(true, argv, 3, u_interp, argument, u_path);
-	else
-		status = push_args(true, argv, 2, u_interp, u_path);
-	if (status < 0)
-		return status;
+	if (argument[0] != '\0') {
+		status = resize_array(argv, 0, 2);
+		if (status < 0)
+			return status;
+
+		status = write_items(argv, 0, 3, u_interp, argument, u_path);
+		if (status < 0)
+			return status;
+	}
+	else {
+		status = resize_array(argv, 0, 1);
+		if (status < 0)
+			return status;
+
+		status = write_items(argv, 0, 2, u_interp, u_path);
+		if (status < 0)
+			return status;
+	}
 
 	/* Remember at this point t_interp is the translation of
 	 * u_interp. */
@@ -162,7 +172,11 @@ static int expand_interp(struct tracee *tracee,
 
 /**
  * Translate the arguments of the execve() syscall made by the @tracee
- * process. This syscall needs a very special treatment for script
+ * process.  This function return -errno if an error occured,
+ * otherwise the number of bytes allocated in the stack to store the
+ * new argv[] and envp[].
+ *
+ * The execve() syscall needs a very special treatment for script
  * files because according to "man 2 execve":
  *
  *     An interpreter script is a text file [...] whose first line is
@@ -200,14 +214,13 @@ int translate_execve(struct tracee *tracee)
 	char t_interp[PATH_MAX];
 	char u_interp[PATH_MAX];
 
-	char **envp = NULL;
-	char **argv = NULL;
+	struct array envp = { 0 };
+	struct array argv = { 0 };
 	char *argv0 = NULL;
 
 	bool ignore_elf_interpreter;
-	bool envp_has_changed = false;
-	bool argv_has_changed = false;
 	bool inhibit_rpath = false;
+	bool is_script;
 	int size = 0;
 	int status;
 
@@ -217,23 +230,34 @@ int translate_execve(struct tracee *tracee)
 	if (status < 0)
 		return status;
 
-	status = get_args(tracee, &argv, SYSARG_2);
+	status = fetch_array(tracee, &argv, peek_reg(tracee, SYSARG_2), 0);
 	if (status < 0)
 		goto end;
-	assert(argv != NULL);
 
-	if(config.qemu)
-		argv0 = strdup(argv[0]);
+	if (config.qemu) {
+		status = read_item_string(&argv, 0, &argv0);
+		if (status < 0)
+			goto end;
 
-	status = get_args(tracee, &envp, SYSARG_3);
+		/* Save the initial argv[0] since it will be replaced
+		 * by config.qemu[0].  */
+		if (argv0 != NULL)
+			argv0 = strdup(argv0);
+
+		status = fetch_array(tracee, &envp, peek_reg(tracee, SYSARG_3), 0);
+		if (status < 0)
+			goto end;
+
+		/* Environment variables should be compared with the
+		 * "name" part in the "name=value" string format.  */
+		envp.compare_item = (compare_item_t)compare_item_env;
+	}
+
+	status = expand_interp(tracee, u_path, t_interp, u_interp, &argv,
+			       extract_script_interp, false);
 	if (status < 0)
 		goto end;
-	assert(envp != NULL);
-
-	status = expand_interp(tracee, u_path, t_interp, u_interp, &argv, extract_script_interp, false);
-	if (status < 0)
-		goto end;
-	argv_has_changed = (status > 0);
+	is_script = (status > 0);
 
 	/* "/proc/self/exe" points to a canonicalized path -- from the
 	 * guest point-of-view --, hence detranslate_path(t_interp).
@@ -248,23 +272,34 @@ int translate_execve(struct tracee *tracee)
 		/* Prepend the QEMU command to the initial argv[] if
 		 * it's a "foreign" binary.  */
 		if (!is_host_elf(t_interp)) {
-			status = push_args(false, &argv, 1, u_interp);
+			int i;
+
+			status = resize_array(&argv, 0, 3);
 			if (status < 0)
 				goto end;
 
-			status = push_args(true, &argv, -1, config.qemu);
+			status = write_items(&argv, 0, 3, config.qemu[0], "-0",
+					!is_script && argv0 != NULL ? argv0 : u_interp);
 			if (status < 0)
 				goto end;
 
-			envp_has_changed = ldso_env_passthru(&envp, &argv, "-E", "-U");
+			status = ldso_env_passthru(&envp, &argv, "-E", "-U");
+			if (status < 0)
+				goto end;
 
-			/* Errors are not fatal here.  */
-			if (!argv_has_changed)
-				push_args(false, &argv, 2, "-0", argv0);
-			else
-				push_args(false, &argv, 2, "-0", u_interp);
+			/* Compute the number of QEMU's arguments and
+			 * add them to the modified argv[].  */
+			for (i = 1; config.qemu[i] != NULL; i++)
+				;
+			status = resize_array(&argv, 1, i - 1);
+			if (status < 0)
+				goto end;
 
-			argv_has_changed = true;
+			for (i--; i > 0; i--) {
+				status = write_item(&argv, i, config.qemu[i]);
+				if (status < 0)
+					goto end;
+			}
 
 			/* Launch the runner actually. */
 			strcpy(t_interp, config.qemu[0]);
@@ -281,7 +316,6 @@ int translate_execve(struct tracee *tracee)
 		if (status < 0)
 			goto end;
 		inhibit_rpath = (status > 0);
-		envp_has_changed = true;
 	}
 
 	/* Dont't use the ELF interpreter as a loader if the host one
@@ -291,18 +325,22 @@ int translate_execve(struct tracee *tracee)
 	ignore_elf_interpreter = strcmp(config.guest_rootfs, "/") == 0
 				 || (config.qemu != NULL && !inhibit_rpath);
 
-	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */, &argv, extract_elf_interp, ignore_elf_interpreter);
+	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */,
+			       &argv, extract_elf_interp, ignore_elf_interpreter);
 	if (status < 0)
 		goto end;
-	argv_has_changed = argv_has_changed || (status > 0);
 
 	if (status > 0 && inhibit_rpath) {
 		/* Tell the dynamic linker to ignore RPATHs specified
 		 * in the *main* program.  To disable the RPATH
 		 * mechanism globally, we have to list all objects
 		 * here (NYI).  Errors are not fatal here.  */
-		status = push_args(false, &argv, 2, "--inhibit-rpath", "''");
-		argv_has_changed = argv_has_changed || (status > 0);
+		status = resize_array(&argv, 1, 2);
+		if (status >= 0) {
+			status = write_items(&argv, 1, 2, "--inhibit-rpath", "''");
+			if (status < 0)
+				goto end;
+		}
 	}
 
 	VERBOSE(4, "execve: %s", t_interp);
@@ -311,27 +349,27 @@ int translate_execve(struct tracee *tracee)
 	if (status < 0)
 		goto end;
 
-	/* Rebuild argv[] only if something has changed. */
-	if (argv_has_changed) {
-		size = set_args(tracee, argv, SYSARG_2);
-		if (size < 0) {
-			status = size;
-			goto end;
-		}
+	status = push_array(&argv);
+	if (status < 0)
+		goto end;
+	if (status > 0) {
+		size += status;
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, STACK_POINTER));
 	}
 
-	/* Rebuild envp[] only if something has changed. */
-	if (envp_has_changed) {
-		size = set_args(tracee, envp, SYSARG_3);
-		if (size < 0) {
-			status = size;
-			goto end;
-		}
+	status = push_array(&envp);
+	if (status < 0)
+		goto end;
+	if (status > 0) {
+		size += status;
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, STACK_POINTER));
 	}
+
+	status = 0;
 
 end:
-	free_args(envp);
-	free_args(argv);
+	free_array(&argv);
+	free_array(&envp);
 
 	if (argv0 != NULL) {
 		free(argv0);
@@ -341,5 +379,5 @@ end:
 	if (status < 0)
 		return status;
 
-	return size + status;
+	return size;
 }

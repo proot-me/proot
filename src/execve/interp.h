@@ -23,10 +23,9 @@
 #ifndef INTERP_H
 #define INTERP_H
 
-#include <limits.h>
+#include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
 
 #include "tracee/tracee.h"
-#include "execve/args.h" /* ARG_MAX, */
 
 typedef int (* extract_interp_t)(const struct tracee *tracee,
 				 const char *t_path,
