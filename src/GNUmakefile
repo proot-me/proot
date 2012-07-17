@@ -84,7 +84,7 @@ build.h: .check_readlinkat
 
 SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
 COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$*.c -o $@
-LINK    = $($(quiet)LD) $(LDFLAGS) -o $@ $^
+LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
 proot: $(OBJECTS)
 	$(LINK)
