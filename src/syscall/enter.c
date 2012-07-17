@@ -490,7 +490,6 @@ case PR_readlink:
 	status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
 	break;
 
-case PR_link:
 case PR_pivot_root:
 	status1 = translate_sysarg(tracee, SYSARG_1, REGULAR);
 	status2 = translate_sysarg(tracee, SYSARG_2, REGULAR);
@@ -539,7 +538,7 @@ case PR_linkat:
 		status1 = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, REGULAR);
 	else
 		status1 = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK);
-	status2 = translate_path2(tracee, newdirfd, newpath, SYSARG_4, REGULAR);
+	status2 = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK);
 
 	if (status1 < 0) {
 		status = status1;
@@ -606,6 +605,7 @@ case PR_readlinkat:
 	status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
 	break;
 
+case PR_link:
 case PR_rename:
 	status1 = translate_sysarg(tracee, SYSARG_1, SYMLINK);
 	status2 = translate_sysarg(tracee, SYSARG_2, SYMLINK);
