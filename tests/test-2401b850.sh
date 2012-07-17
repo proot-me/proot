@@ -10,6 +10,7 @@ chmod +x ${TMP}
 
   ${PROOT} -q true / ${TMP}
 ! ${PROOT} -q false / ${TMP}
+[ $? -eq 0 ]
 
 HOST_LD_LIBRARY_PATH=$(${PROOT} -q echo / env | grep LD_LIBRARY_PATH)
 test ! -z ${HOST_LD_LIBRARY_PATH}
