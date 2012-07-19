@@ -23,7 +23,7 @@ struct option {
 };
 
 #ifndef VERSION
-#define VERSION "2.0.1"
+#define VERSION "2.1"
 #endif
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
@@ -143,16 +143,12 @@ static struct option options[] = {
 		{ .name = "--kernel-release", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_k,
-	  .description = "Force syscall uname to report *string* as kernel release.",
-	  .detail = "\tTechnically the GNU C library relies on syscalls provided by the\n\
-\tkernel that's why it performs a sanity check at each program\n\
-\tstart-up to verify whether the current kernel is known to be\n\
-\tcompatible.  If users are running a GNU C library that expects a\n\
-\tkernel more recent than the one used on their computers, they will\n\
-\tget the error \"FATAL: kernel too old\".  This option allows users\n\
-\tto cheat this sanity check by faking the release number of the\n\
-\tcurrent kernel.  This option should be used with care since it\n\
-\tdoes not improve the compatibility.",
+	  .description = "Set the kernel release and compatibility level to *string*.",
+	  .detail = "\tIf a program is run on a kernel older than the one expected by its\n\
+\tGNU C library, the following error is reported: \"FATAL: kernel too\n\
+\told\".  To be able to run such programs, PRoot can emulate some of\n\
+\tthe syscalls that are available in the kernel release specified by\n\
+\tstring but that are missing in the current kernel.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {

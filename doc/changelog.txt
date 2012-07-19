@@ -1,3 +1,26 @@
+Release v2.1
+============
+
+New features
+------------
+
+* PRoot can now emulate some of the syscalls that are available in the
+  kernel release specified by -k but that are missing in the host
+  kernel.  This allows the execution of guest programs expecting a
+  kernel newer than the actual one, if you encountered the famous
+  "FATAL: kernel too old" or "qemu: Unsupported syscall" messages.
+
+* The current working directory isn't changed anymore if it is still
+  accessible in the guest environment (binding).
+
+Fixes
+-----
+
+* Added support for architectures with no misalignment support (SH4).
+
+* Fix support for: link(2), linkat(2), symlink(2), and symlinkat(2).
+
+
 Release v2.0.1
 ==============
 

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH PROOT 1 "2012-08-26" "2.0.1" ""
+.TH PROOT 1 "2012-07-19" "2.1" ""
 .SH NAME
 PRoot \- chroot, mount --bind, and binfmt_misc without privilege/setup
 .
@@ -129,17 +129,13 @@ arguments. This is why any syscall that PRoot isn\(aqt aware of is
 blocked.  This option disables this default behavior.
 .TP
 .BI \-k \ string, \ \-\-kernel\-release\fB= string
-Force syscall \fBuname\fP to report \fIstring\fP as kernel release.
+Set the kernel release and compatibility level to \fIstring\fP.
 .sp
-Technically the GNU C library relies on syscalls provided by the
-kernel that\(aqs why it performs a sanity check at each program
-start\-up to verify whether the current kernel is known to be
-compatible.  If users are running a GNU C library that expects a
-kernel more recent than the one used on their computers, they will
-get the error "FATAL: kernel too old".  This option allows users
-to cheat this sanity check by faking the release number of the
-current kernel.  This option should be used with care since it
-does not improve the compatibility.
+If a program is run on a kernel older than the one expected by its
+GNU C library, the following error is reported: "FATAL: kernel too
+old".  To be able to run such programs, PRoot can emulate some of
+the syscalls that are available in the kernel release specified by
+\fIstring\fP but that are missing in the current kernel.
 .TP
 .B \-0,  \-\-root\-id
 Force some syscalls to behave as if executed by "root".
@@ -274,10 +270,9 @@ Welcome to Slackware Linux 8.0
 .fi
 .SS \fBmount \-\-bind\fP equivalent
 .sp
-The default rootfs is \fB/\fP when none is specified, this permits to
-use the bind mechanism to relocate host files and directories.  This
-is typically useful to cheat programs that perform access to
-hard\-coded locations, like some installation scripts:
+The bind mechanism permits to relocate files and directories.  This is
+typically useful to cheat programs that perform access to hard\-coded
+locations, like some installation scripts:
 .sp
 .nf
 .ft C
@@ -316,7 +311,7 @@ IP address of google.com is 5.6.7.8
 .fi
 .SS \fBchroot\fP + \fBmount \-\-bind\fP equivalent
 .sp
-The option \fB\-b\fP, short for \fB\-\-bind\fP, makes any file from the host
+The two features above can be combined to make any file from the host
 rootfs accessible in the confined environment just as if it were
 initially part of the guest rootfs.  It is sometimes required to run
 programs that rely on some specific files:
