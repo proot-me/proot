@@ -187,17 +187,11 @@ int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_f
 				goto canon;
 
 			case DONT_CANONICALIZE:
-				/* If final, this symlink shouldn't be
-				 * dereferenced nor canonicalized.  */
-				switch (is_final) {
-				case FINAL_SLASH:
-				case FINAL_DOT:
-					return -ENOTDIR;
-				case FINAL_NORMAL:
+				/* If and only very final, this symlink
+				 * shouldn't be dereferenced nor canonicalized.  */
+				if (is_final == FINAL_NORMAL && recursion_level == 0) {
 					strcpy(guest_path, scratch_path);
 					return 0;
-				default:
-					break;
 				}
 				break;
 

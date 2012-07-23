@@ -22,6 +22,15 @@ int main()
 	if (fd_file < 0)
 		exit(EXIT_FAILURE);
 
+	status = snprintf(path, sizeof(path), "/proc/%d/fd/%d/", getpid(), fd_dir);
+	if (status < 0 || status >= sizeof(path))
+		exit(EXIT_FAILURE);
+
+	fd = open(path, O_RDONLY);
+	if (fd < 0)
+		exit(EXIT_FAILURE);
+	close(fd);
+
 	status = snprintf(path, sizeof(path), "/proc/%d/fd/%d/..", getpid(), fd_dir);
 	if (status < 0 || status >= sizeof(path))
 		exit(EXIT_FAILURE);
