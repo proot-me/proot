@@ -43,10 +43,16 @@ extern int detranslate_path(struct tracee_info *tracee, char path[PATH_MAX], con
 extern bool belongs_to_guestfs(const char *path);
 
 extern int join_paths(int number_paths, char result[PATH_MAX], ...);
-extern int next_component(char component[NAME_MAX], const char **cursor);
 
-#define FINAL_NORMAL    1
-#define FINAL_FORCE_DIR 2
+enum finality {
+	NOT_FINAL = 0,
+	FINAL_NORMAL,
+	FINAL_SLASH,
+	FINAL_DOT
+};
+
+extern enum finality next_component(char component[NAME_MAX], const char **cursor);
+
 extern void pop_component(char *path);
 
 extern int check_fd(pid_t pid);

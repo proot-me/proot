@@ -80,20 +80,21 @@ static inline int unbind_stat(const struct tracee_info * tracee, int is_final,
  * canonicalize could be either absolute or relative to
  * @guest_path. When the last component of @user_path is a link, it is
  * dereferenced only if @deref_final is true -- it is useful for
- * syscalls like lstat(2).  The parameter @nb_readlink should be set
- * to 0 unless you know what you are doing. This function returns
+ * syscalls like lstat(2).  The parameter @recursion_level should be
+ * set to 0 unless you know what you are doing. This function returns
  * -errno if an error occured, otherwise it returns 0.
  */
 int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_final,
-		 char guest_path[PATH_MAX], unsigned int nb_readlink)
+		 char guest_path[PATH_MAX], unsigned int recursion_level)
 {
 	char scratch_path[PATH_MAX];
+	bool pending_dot = false;
+	enum finality is_final;
 	const char *cursor;
-	int is_final;
 	int status;
 
 	/* Avoid infinite loop on circular links.  */
-	if (nb_readlink > MAXSYMLINKS)
+	if (recursion_level > MAXSYMLINKS)
 		return -ELOOP;
 
 	/* Sanity checks.  */
@@ -111,7 +112,7 @@ int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_f
 
 	/* Canonicalize recursely 'user_path' into 'guest_path'.  */
 	cursor = user_path;
-	is_final = 0;
+	is_final = NOT_FINAL;
 	while (!is_final) {
 		enum path_comparison comparison;
 		char component[NAME_MAX];
@@ -120,18 +121,23 @@ int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_f
 		status = next_component(component, &cursor);
 		if (status < 0)
 			return status;
-		is_final = status;
+		if (status == FINAL_SLASH && pending_dot)
+			is_final = FINAL_DOT;
+		else
+			is_final = status;
 
 		if (strcmp(component, ".") == 0) {
 			if (is_final)
-				is_final = FINAL_FORCE_DIR;
+				is_final = FINAL_DOT;
+			pending_dot = true;
 			continue;
 		}
+		pending_dot = false;
 
 		if (strcmp(component, "..") == 0) {
 			pop_component(guest_path);
 			if (is_final)
-				is_final = FINAL_FORCE_DIR;
+				is_final = FINAL_SLASH;
 			continue;
 		}
 
@@ -184,7 +190,8 @@ int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_f
 				/* If final, this symlink shouldn't be
 				 * dereferenced nor canonicalized.  */
 				switch (is_final) {
-				case FINAL_FORCE_DIR:
+				case FINAL_SLASH:
+				case FINAL_DOT:
 					return -ENOTDIR;
 				case FINAL_NORMAL:
 					strcpy(guest_path, scratch_path);
@@ -221,7 +228,7 @@ int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_f
 		 * is/contains a link, moreover if it is not an
 		 * absolute link then it is relative to
 		 * 'guest_path'. */
-		status = canonicalize(tracee, scratch_path, true, guest_path, ++nb_readlink);
+		status = canonicalize(tracee, scratch_path, true, guest_path, recursion_level + 1);
 		if (status < 0)
 			return status;
 
@@ -236,12 +243,32 @@ int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_f
 		assert(status != 1);
 	}
 
-	/* Ensure we are accessing a directory. */
-	if (is_final == FINAL_FORCE_DIR) {
-		strcpy(scratch_path, guest_path);
-		status = join_paths(2, guest_path, scratch_path, "");
-		if (status < 0)
-			return status;
+	/* At the exit stage of the first level of recursion,
+	 * `guest_path` is fully canonicalized but a terminating '/'
+	 * or a terminating '.' may be required to keep the initial
+	 * semantic of `user_path`.  */
+	if (recursion_level == 0) {
+		switch (is_final) {
+		case FINAL_NORMAL:
+			break;
+
+		case FINAL_SLASH:
+			strcpy(scratch_path, guest_path);
+			status = join_paths(2, guest_path, scratch_path, "");
+			if (status < 0)
+				return status;
+			break;
+
+		case FINAL_DOT:
+			strcpy(scratch_path, guest_path);
+			status = join_paths(2, guest_path, scratch_path, ".");
+			if (status < 0)
+				return status;
+			break;
+
+		default:
+			assert(0);
+		}
 	}
 
 	return 0;

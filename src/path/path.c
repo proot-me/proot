@@ -53,18 +53,18 @@ size_t root_length;
  *
  *     - -errno if an error occured.
  *
- *     - FINAL_FORCE_DIR if it the last component of the path but we
+ *     - FINAL_SLASH if it the last component of the path but we
  *       really expect a directory.
  *
  *     - FINAL_NORMAL if it the last component of the path.
  *
  *     - 0 otherwise.
  */
-int next_component(char component[NAME_MAX], const char **cursor)
+enum finality next_component(char component[NAME_MAX], const char **cursor)
 {
 	const char *start;
 	ptrdiff_t length;
-	int want_dir;
+	bool want_dir;
 
 	/* Sanity checks. */
 	assert(component != NULL);
@@ -96,10 +96,10 @@ int next_component(char component[NAME_MAX], const char **cursor)
 
 	if (**cursor == '\0')
 		return (want_dir
-			? FINAL_FORCE_DIR
+			? FINAL_SLASH
 			: FINAL_NORMAL);
 
-	return 0;
+	return NOT_FINAL;
 }
 
 /**

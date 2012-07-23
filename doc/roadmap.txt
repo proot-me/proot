@@ -55,10 +55,6 @@ Not yet scheduled
 Fixes
 -----
 
-* A trailing "." isn't the same as a trailing "/": `rmdir foo/.` shouldn't succeed
-
-* A trailing "./" is the same as a trailing ".": `rmdir foo/./` shouldn't succeed
-
 * Fix the feature "attach on-the-fly"
 
 * Fix support for runners that do execve()
