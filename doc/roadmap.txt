@@ -61,6 +61,8 @@ Fixes
 
 * Add support for the string $ORIGIN (or equivalently ${ORIGIN}) in an rpath specification
 
+* Add support for /etc/ld.so.preload and /etc/ld.so.conf[.d] in mixed-mode.
+
 
 Features
 --------

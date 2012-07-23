@@ -195,6 +195,8 @@ static void handle_option_q(char *value)
 
 	config.host_rootfs = "/host-rootfs";
 	bind_path("/", config.host_rootfs, true);
+
+	bind_path("/dev/null", "/etc/ld.so.preload", false);
 }
 
 static void handle_option_w(char *value)
