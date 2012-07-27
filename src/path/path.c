@@ -24,6 +24,7 @@
 #include <stdarg.h>    /* va_*(3), */
 #include <assert.h>    /* assert(3), */
 #include <stdlib.h>    /* realpath(3), free(3), */
+#include <fcntl.h>     /* AT_*,  */
 #include <unistd.h>    /* readlink*(2), *stat(2), getpid(2), */
 #include <sys/types.h> /* pid_t, */
 #include <sys/stat.h>  /* S_ISDIR, */
@@ -209,7 +210,8 @@ void init_module_path()
  * the current working directory).  See the documentation of
  * canonicalize() for the meaning of @deref_final.
  */
-int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final)
+int translate_path(const struct tracee *tracee, char result[PATH_MAX],
+		   int dir_fd, const char *fake_path, int deref_final)
 {
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	char tmp[PATH_MAX];
@@ -300,7 +302,7 @@ end:
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(struct tracee_info *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
+int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
 	size_t new_length;

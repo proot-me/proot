@@ -20,21 +20,13 @@
  * 02110-1301 USA.
  */
 
-#ifndef UREG_H
-#define UREG_H
+#ifndef TRACEE_EVENT_H
+#define TRACEE_EVENT_H
 
-#include <sys/types.h> /* off_t */
+#include <stdbool.h>
 
-#include "tracee/info.h"
+extern bool launch_process();
+extern bool attach_process(pid_t pid);
+extern int event_loop();
 
-#define UREGS_LENGTH 9
-extern off_t uregs[UREGS_LENGTH];
-
-#if defined(ARCH_X86_64)
-extern off_t uregs2[UREGS_LENGTH];
-#endif
-
-extern word_t peek_ureg(struct tracee_info *tracee, int index);
-extern int poke_ureg(struct tracee_info *tracee, int index, word_t value);
-
-#endif /* UREG_H */
+#endif /* TRACEE_EVENT_H */

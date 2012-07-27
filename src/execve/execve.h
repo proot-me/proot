@@ -23,8 +23,9 @@
 #ifndef EXECVE_H
 #define EXECVE_H
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
+#include "tracee/array.h"
 
-extern int translate_execve(struct tracee_info *tracee);
+extern int translate_execve(struct tracee *tracee);
 
 #endif /* EXECVE_H */

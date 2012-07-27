@@ -49,7 +49,7 @@ case PR_epoll_create1: {
 		.new_sysarg_num   = PR_epoll_create,
 		.shifts		  = {{0}}
 	};
-	poke_ureg(tracee, SYSARG_1, 0); /* Force "size" to 0.  */
+	poke_reg(tracee, SYSARG_1, 0); /* Force "size" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -60,7 +60,7 @@ case PR_epoll_pwait: {
 		.new_sysarg_num   = PR_epoll_wait,
 		.shifts		  = {{0}}
 	};
-	poke_ureg(tracee, SYSARG_5, 0); /* Force "sigmask" to 0.  */
+	poke_reg(tracee, SYSARG_5, 0); /* Force "sigmask" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -71,7 +71,7 @@ case PR_eventfd2: {
 		.new_sysarg_num   = PR_eventfd,
 		.shifts		  = {{0}}
 	};
-	poke_ureg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -86,7 +86,7 @@ case PR_faccessat: {
 				.offset  = -1 }
 		}
 	};
-	poke_ureg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -101,7 +101,7 @@ case PR_fchmodat: {
 				.offset  = -1 }
 		}
 	};
-	poke_ureg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -116,17 +116,12 @@ case PR_fchownat: {
 		}
 	};
 
-	flags = peek_ureg(tracee, SYSARG_5);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
+	flags = peek_reg(tracee, SYSARG_5);
 	modif.new_sysarg_num = ((flags & AT_SYMLINK_NOFOLLOW) != 0
 				? PR_lchown
 				: PR_chown);
 
-	poke_ureg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -142,12 +137,7 @@ case PR_fstatat64: {
 		}
 	};
 
-	flags = peek_ureg(tracee, SYSARG_4);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
+	flags = peek_reg(tracee, SYSARG_4);
 	modif.new_sysarg_num = ((flags & AT_SYMLINK_NOFOLLOW) != 0
 				? PR_lstat
 #if defined(ARCH_X86_64)
@@ -156,7 +146,7 @@ case PR_fstatat64: {
 				: PR_stat64);
 #endif
 
-	poke_ureg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -181,7 +171,7 @@ case PR_inotify_init1: {
 		.new_sysarg_num   = PR_inotify_init,
 		.shifts		  = {{0}}
 	};
-	poke_ureg(tracee, SYSARG_1, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_1, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -200,7 +190,7 @@ case PR_linkat: {
 				.offset  = -2 }
 		}
 	};
-	poke_ureg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -253,7 +243,7 @@ case PR_pipe2: {
 		.new_sysarg_num   = PR_pipe,
 		.shifts		  = {{0}}
 	};
-	poke_ureg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -268,7 +258,7 @@ case PR_pselect6: {
 #endif
 		.shifts		  = {{0}}
 	};
-	poke_ureg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
+	poke_reg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -311,7 +301,7 @@ case PR_signalfd4: {
 		.new_sysarg_num   = PR_signalfd,
 		.shifts		  = {{0}}
 	};
-	poke_ureg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }
@@ -341,17 +331,12 @@ case PR_unlinkat: {
 		}
 	};
 
-	flags = peek_ureg(tracee, SYSARG_3);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
+	flags = peek_reg(tracee, SYSARG_3);
 	modif.new_sysarg_num = ((flags & AT_REMOVEDIR) != 0
 				? PR_rmdir
 				: PR_unlink);
 
-	poke_ureg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
+	poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
 	modify_syscall(tracee, &modif);
 	break;
 }

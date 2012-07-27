@@ -28,7 +28,7 @@
 #include <limits.h> /* PATH_MAX, */
 #include <stdbool.h>
 
-#include "tracee/info.h"
+#include "tracee/tracee.h"
 
 /* Helper macros. */
 #define REGULAR 1
@@ -38,8 +38,8 @@
 #define WEAK    0
 
 extern void init_module_path();
-extern int translate_path(struct tracee_info *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
-extern int detranslate_path(struct tracee_info *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
+extern int translate_path(const struct tracee *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
+extern int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
 extern bool belongs_to_guestfs(const char *path);
 
 extern int join_paths(int number_paths, char result[PATH_MAX], ...);

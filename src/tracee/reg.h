@@ -20,23 +20,32 @@
  * 02110-1301 USA.
  */
 
-#ifndef ARGS_H
-#define ARGS_H
+#ifndef TRACEE_REG_H
+#define TRACEE_REG_H
 
-#include <stdbool.h>
-#include "syscall/syscall.h" /* enum sysarg */
+#include "tracee/tracee.h"
+#include "arch.h"
 
-#ifndef ARG_MAX
-#define ARG_MAX 131072
-#endif
+enum reg {
+	SYSARG_NUM = 0,
+	SYSARG_1,
+	SYSARG_2,
+	SYSARG_3,
+	SYSARG_4,
+	SYSARG_5,
+	SYSARG_6,
+	SYSARG_RESULT,
+	STACK_POINTER,
 
-extern bool check_env_entry_name(const char *variable, const char *name);
-extern char **get_env_entry(char *envp[], const char *name);
-extern int replace_env_entry(char **entry, const char *new_value);
-extern int new_env_entry(char **envp[], const char *name, const char *value);
-extern int push_args(bool replace_argv0, char **argv[], int nb_new_args, ...);
-extern int get_args(struct tracee_info *tracee, char **argv[], enum sysarg sysarg);
-extern int set_args(struct tracee_info *tracee, char *argv[], enum sysarg sysarg);
-extern void free_args(char *argv[]);
+	/* Helpers. */
+	REG_FIRST = SYSARG_NUM,
+	REG_LAST  = STACK_POINTER,
+};
 
-#endif /* ARGS_H */
+extern int fetch_regs(struct tracee *tracee);
+extern int push_regs(struct tracee *tracee);
+extern word_t peek_reg(const struct tracee *tracee, enum reg reg);
+extern void poke_reg(struct tracee *tracee, enum reg reg, word_t value);
+extern word_t resize_stack(struct tracee *tracee, ssize_t size);
+
+#endif /* TRACEE_REG_H */

@@ -26,16 +26,18 @@
 #include <stddef.h>     /* offsetof(), */
 #include <sys/user.h>   /* struct user*, */
 #include <errno.h>      /* errno, */
-#include <limits.h>     /* ULONG_MAX, */
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
 #include <string.h>     /* memcpy(3), */
 #include <stdint.h>     /* uint8_t, */
+#include <sys/uio.h>    /* process_vm_*, */
+#include <unistd.h>     /* sysconf(3), */
 
 #include "tracee/mem.h"
+#include "tracee/reg.h"      /* peek_reg(), poke_reg(), */
+#include "tracee/abi.h"
 #include "arch.h"            /* REG_SYSARG_*, word_t, NO_MISALIGNED_ACCESS */
-#include "syscall/syscall.h" /* USER_REGS_OFFSET, */
-#include "tracee/ureg.h"     /* peek_ureg(), poke_ureg(), */
+#include "build.h"           /* HAVE_PROCESS_VM,  */
 #include "notice.h"
 
 /**
@@ -73,46 +75,12 @@ static inline void store_word(void *address, word_t value)
 }
 
 /**
- * Resize by @size bytes the stack of the @tracee. This function
- * returns 0 if an error occured, otherwise it returns the address of
- * the new stack pointer within the tracee's memory space.
- */
-word_t resize_tracee_stack(struct tracee_info *tracee, ssize_t size)
-{
-	word_t stack_pointer;
-	long status;
-
-	/* Get the current value of the stack pointer from the tracee's
-	 * USER area. */
-	stack_pointer = peek_ureg(tracee, STACK_POINTER);
-	if (errno != 0)
-		return 0;
-
-	/* Sanity check. */
-	if (   (size > 0 && stack_pointer <= size)
-	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-		notice(WARNING, INTERNAL, "integer under/overflow detected in %s", __FUNCTION__);
-		return 0;
-	}
-
-	/* Remember the stack grows downward. */
-	stack_pointer -= size;
-
-	/* Set the new value of the stack pointer in the tracee's USER
-	 * area. */
-	status = poke_ureg(tracee, STACK_POINTER, stack_pointer);
-	if (status < 0)
-		return 0;
-
-	return stack_pointer;
-}
-
-/**
  * Copy @size bytes from the buffer @src_tracer to the address
  * @dest_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *src_tracer, word_t size)
+int write_data(const struct tracee *tracee, word_t dest_tracee,
+	       const void *src_tracer, word_t size)
 {
 	word_t *src  = (word_t *)src_tracer;
 	word_t *dest = (word_t *)dest_tracee;
@@ -124,6 +92,23 @@ int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *s
 
 	uint8_t *last_dest_word;
 	uint8_t *last_src_word;
+
+#if defined(HAVE_PROCESS_VM)
+	struct iovec local;
+	struct iovec remote;
+
+	local.iov_base = src;
+	local.iov_len  = size;
+
+	remote.iov_base = dest;
+	remote.iov_len  = size;
+
+	status = process_vm_writev(tracee->pid, &local, 1, &remote, 1, 0);
+	if (status == size)
+		return 0;
+	/* Fallback to ptrace if something went wrong.  */
+
+#endif /* HAVE_PROCESS_VM */
 
 	nb_trailing_bytes = size % sizeof(word_t);
 	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
@@ -166,7 +151,8 @@ int copy_to_tracee(struct tracee_info *tracee, word_t dest_tracee, const void *s
  * @src_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t size)
+int read_data(const struct tracee *tracee, void *dest_tracer,
+	      word_t src_tracee, word_t size)
 {
 	word_t *src  = (word_t *)src_tracee;
 	word_t *dest = (word_t *)dest_tracer;
@@ -177,6 +163,24 @@ int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_t
 
 	uint8_t *last_src_word;
 	uint8_t *last_dest_word;
+
+#if defined(HAVE_PROCESS_VM)
+	long status;
+	struct iovec local;
+	struct iovec remote;
+
+	local.iov_base = dest;
+	local.iov_len  = size;
+
+	remote.iov_base = src;
+	remote.iov_len  = size;
+
+	status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
+	if (status == size)
+		return 0;
+	/* Fallback to ptrace if something went wrong.  */
+
+#endif /* HAVE_PROCESS_VM */
 
 	nb_trailing_bytes = size % sizeof(word_t);
 	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
@@ -216,7 +220,8 @@ int copy_from_tracee(struct tracee_info *tracee, void *dest_tracer, word_t src_t
  * it returns the number in bytes of the string, including the
  * end-of-string terminator.
  */
-int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_tracee, word_t max_size)
+int read_string(const struct tracee *tracee, char *dest_tracer,
+		word_t src_tracee, word_t max_size)
 {
 	word_t *src  = (word_t *)src_tracee;
 	word_t *dest = (word_t *)dest_tracer;
@@ -227,6 +232,79 @@ int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_
 
 	uint8_t *src_word;
 	uint8_t *dest_word;
+
+#if defined(HAVE_PROCESS_VM)
+	/* [process_vm] system calls do not check the memory regions
+	 * in the remote process until just before doing the
+	 * read/write.  Consequently, a partial read/write [1] may
+	 * result if one of the remote_iov elements points to an
+	 * invalid memory region in the remote process.  No further
+	 * reads/writes will be attempted beyond that point.  Keep
+	 * this in mind when attempting to read data of unknown length
+	 * (such as C strings that are null-terminated) from a remote
+	 * process, by avoiding spanning memory pages (typically 4KiB)
+	 * in a single remote iovec element.  (Instead, split the
+	 * remote read into two remote_iov elements and have them
+	 * merge back into a single write local_iov entry.  The first
+	 * read entry goes up to the page boundary, while the second
+	 * starts on the next page boundary.).
+	 *
+	 * [1] Partial transfers apply at the granularity of iovec
+	 * elements. These system calls won't perform a partial
+	 * transfer that splits a single iovec element.
+	 *
+	 * -- man 2 process_vm_readv
+	 */
+	long status;
+	size_t size;
+	size_t offset;
+	struct iovec local;
+	struct iovec remote;
+	static size_t chunk_size = 0;
+
+	if (chunk_size == 0) {
+		chunk_size = sysconf(_SC_PAGESIZE);
+		chunk_size = (chunk_size > 0 ? chunk_size : 4096);
+	}
+
+	/* Read the string by chunk without crossing a page
+	 * boundary.  */
+	offset = 0;
+	do {
+		uintptr_t chunk_mask   = ~(chunk_size - 1);
+		uintptr_t current_page = (src_tracee + offset) & chunk_mask;
+		uintptr_t next_page    = current_page + chunk_size;
+
+		/* Compute the number of bytes available up to the
+		 * next chunk or up to max_size.  */
+		size = next_page - (src_tracee + offset);
+		size = (size < max_size - offset ? size : max_size - offset);
+
+		local.iov_base = (uint8_t *)dest + offset;
+		local.iov_len  = size;
+
+		remote.iov_base = (uint8_t *)src + offset;
+		remote.iov_len  = size;
+
+		status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
+		if (status < 0)
+			goto fallback;
+
+		assert(status == size);
+		status = strnlen(local.iov_base, size);
+		if (status < size) {
+			size = offset + status + 1;
+			assert(size <= max_size);
+			return size;
+		}
+
+		offset += size;
+	} while (offset < max_size);
+	assert(offset == max_size);
+
+	/* Fallback to ptrace if something went wrong.  */
+fallback:
+#endif /* HAVE_PROCESS_VM */
 
 	nb_trailing_bytes = max_size % sizeof(word_t);
 	nb_full_words     = (max_size - nb_trailing_bytes) / sizeof(word_t);
@@ -263,4 +341,85 @@ int get_tracee_string(struct tracee_info *tracee, void *dest_tracer, word_t src_
 	}
 
 	return i * sizeof(word_t) + j + 1;
+}
+
+/**
+ * Return the value of the word at the given @address in the @tracee's
+ * memory space.  The caller must test errno to check if an error
+ * occured.
+ */
+word_t peek_mem(const struct tracee *tracee, word_t address)
+{
+	word_t result = 0;
+
+#if defined(HAVE_PROCESS_VM)
+	int status;
+	struct iovec local;
+	struct iovec remote;
+
+	local.iov_base = &result;
+	local.iov_len  = sizeof_word(tracee);
+
+	remote.iov_base = (void *)address;
+	remote.iov_len  = sizeof_word(tracee);
+
+	errno = 0;
+	status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
+	if (status > 0)
+		return result;
+	/* Fallback to ptrace if something went wrong.  */
+#endif
+	errno = 0;
+	result = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
+
+	/* Use only the 32 LSB when running a 32-bit process on a
+	 * 64-bit kernel. */
+	if (is_32on64_mode(tracee))
+		result &= 0xFFFFFFFF;
+
+	return result;
+}
+
+/**
+ * Set the word at the given @address in the @tracee's memory space to
+ * the given @value.  The caller must test errno to check if an error
+ * occured.
+ */
+void poke_mem(const struct tracee *tracee, word_t address, word_t value)
+{
+	word_t tmp;
+
+#if defined(HAVE_PROCESS_VM)
+	int status;
+	struct iovec local;
+	struct iovec remote;
+
+	/* Note: &value points to the 32 LSB on 64-bit little-endian
+	 * architecture.  */
+	local.iov_base = &value;
+	local.iov_len  = sizeof_word(tracee);
+
+	remote.iov_base = (void *)address;
+	remote.iov_len  = sizeof_word(tracee);
+
+	errno = 0;
+	status = process_vm_writev(tracee->pid, &local, 1, &remote, 1, 0);
+	if (status > 0)
+		return;
+	/* Fallback to ptrace if something went wrong.  */
+#endif
+	/* Don't overwrite the 32 MSB when running a 32-bit process on
+	 * a 64-bit kernel. */
+	if (is_32on64_mode(tracee)) {
+		errno = 0;
+		tmp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
+		if (errno != 0)
+			return;
+
+		value |= (tmp & 0xFFFFFFFF00000000ULL);
+	}
+
+	errno = 0;
+	(void) ptrace(PTRACE_POKEDATA, tracee->pid, address, value);
+	return;
 }

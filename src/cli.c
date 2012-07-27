@@ -37,9 +37,9 @@
 #include "config.h"
 #include "path/binding.h"
 #include "notice.h"
-#include "trace.h"
 #include "path/path.h"
-#include "tracee/info.h"
+#include "tracee/event.h"
+#include "tracee/tracee.h"
 #include "execve/ldso.h"
 #include "build.h"
 

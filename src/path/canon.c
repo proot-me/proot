@@ -42,7 +42,7 @@
  * (returned value is 1), otherwise it returns -errno (-ENOENT or
  * -ENOTDIR).
  */
-static inline int unbind_stat(const struct tracee_info * tracee, int is_final,
+static inline int unbind_stat(const struct tracee *tracee, int is_final,
 			      char guest_path[PATH_MAX], char host_path[PATH_MAX])
 {
 	struct stat statl;
@@ -84,7 +84,7 @@ static inline int unbind_stat(const struct tracee_info * tracee, int is_final,
  * set to 0 unless you know what you are doing. This function returns
  * -errno if an error occured, otherwise it returns 0.
  */
-int canonicalize(struct tracee_info *tracee, const char *user_path, bool deref_final,
+int canonicalize(const struct tracee *tracee, const char *user_path, bool deref_final,
 		 char guest_path[PATH_MAX], unsigned int recursion_level)
 {
 	char scratch_path[PATH_MAX];

@@ -403,11 +403,7 @@ case PR_utimes:
 	break;
 
 case PR_open:
-	flags = peek_ureg(tracee, SYSARG_2);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	flags = peek_reg(tracee, SYSARG_2);
 
 	if (   ((flags & O_NOFOLLOW) != 0)
 	       || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
@@ -423,23 +419,15 @@ case PR_fstatat64:
 case PR_newfstatat:
 case PR_utimensat:
 case PR_name_to_handle_at:
-	dirfd = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	dirfd = peek_reg(tracee, SYSARG_1);
 
 	status = get_sysarg_path(tracee, path, SYSARG_2);
 	if (status < 0)
 		break;
 
 	flags = (tracee->sysnum == PR_fchownat || tracee->sysnum == PR_name_to_handle_at)
-		? peek_ureg(tracee, SYSARG_5)
-		: peek_ureg(tracee, SYSARG_4);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+		? peek_reg(tracee, SYSARG_5)
+		: peek_reg(tracee, SYSARG_4);
 
 	if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
 		status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
@@ -450,11 +438,7 @@ case PR_name_to_handle_at:
 case PR_futimesat:
 case PR_mkdirat:
 case PR_mknodat:
-	dirfd = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	dirfd = peek_reg(tracee, SYSARG_1);
 
 	status = get_sysarg_path(tracee, path, SYSARG_2);
 	if (status < 0)
@@ -464,11 +448,7 @@ case PR_mknodat:
 	break;
 
 case PR_inotify_add_watch:
-	flags = peek_ureg(tracee, SYSARG_3);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	flags = peek_reg(tracee, SYSARG_3);
 
 	if ((flags & IN_DONT_FOLLOW) != 0)
 		status = translate_sysarg(tracee, SYSARG_2, SYMLINK);
@@ -505,23 +485,9 @@ case PR_pivot_root:
 	break;
 
 case PR_linkat:
-	olddirfd = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
-	newdirfd = peek_ureg(tracee, SYSARG_3);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
-	flags    = peek_ureg(tracee, SYSARG_5);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	olddirfd = peek_reg(tracee, SYSARG_1);
+	newdirfd = peek_reg(tracee, SYSARG_3);
+	flags    = peek_reg(tracee, SYSARG_5);
 
 	status1 = get_sysarg_path(tracee, oldpath, SYSARG_2);
 	status2 = get_sysarg_path(tracee, newpath, SYSARG_4);
@@ -567,17 +533,8 @@ case PR_mount:
 	break;
 
 case PR_openat:
-	dirfd = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
-	flags = peek_ureg(tracee, SYSARG_3);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	dirfd = peek_reg(tracee, SYSARG_1);
+	flags = peek_reg(tracee, SYSARG_3);
 
 	status = get_sysarg_path(tracee, path, SYSARG_2);
 	if (status < 0)
@@ -592,11 +549,7 @@ case PR_openat:
 
 case PR_unlinkat:
 case PR_readlinkat:
-	dirfd = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	dirfd = peek_reg(tracee, SYSARG_1);
 
 	status = get_sysarg_path(tracee, path, SYSARG_2);
 	if (status < 0)
@@ -623,17 +576,8 @@ case PR_rename:
 	break;
 
 case PR_renameat:
-	olddirfd = peek_ureg(tracee, SYSARG_1);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
-
-	newdirfd = peek_ureg(tracee, SYSARG_3);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	olddirfd = peek_reg(tracee, SYSARG_1);
+	newdirfd = peek_reg(tracee, SYSARG_3);
 
 	status1 = get_sysarg_path(tracee, oldpath, SYSARG_2);
 	status2 = get_sysarg_path(tracee, newpath, SYSARG_4);
@@ -665,11 +609,7 @@ case PR_symlink:
 	break;
 
 case PR_symlinkat:
-	newdirfd = peek_ureg(tracee, SYSARG_2);
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	newdirfd = peek_reg(tracee, SYSARG_2);
 
 	status = get_sysarg_path(tracee, newpath, SYSARG_3);
 	if (status < 0)

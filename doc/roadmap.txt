@@ -5,6 +5,8 @@
 Short term
 ==========
 
+* Replace tracee->sysnum with peek_reg(tracee, SYSARG_NUM) + tracee->state.
+
 * Handle /proc/<pid>/(cmdline|cwd|root) where <pid> is a process traced by
   PRoot (i.e not only "self").
 
@@ -33,6 +35,11 @@ Short term
 
 * A host program that launches a guest program shouldn't propagate its
   host LD_LIBRARY_PATH environment variable.
+
+* Allow proot-in-proot: tracee { *config { ref_counter; bindings } },
+  free_bindings(), free_config().
+
+* "#pragma GCC poison ptrace/process_vm_xxx" except for tracee/
 
 
 Middle term
@@ -130,20 +137,13 @@ Completeness
 Performance
 -----------
 
-* Use one PTRACE_[GS]ETREGS instead of several PTRACE_P*K*USER.
+* prefetch_mem(): cache write-through memory access (read_string, fetch_args).
 
-* Use process_vm_read/write instead of /proc/<pid>/mem or PTRACE_P*K*DATA.
+* push_array(): use 1 iovec for the array + 1 iovec per item.
 
-    * Fallback to /proc/<pid>/mem if these two syscalls aren't available.
+* Fallback to /proc/<pid>/mem when process_vm_readv() isn't available.
 
-* Don't move the stack pointer, use a pointer in the struct tracee_info
-
-* Don't canonicalize if the path translation is delayed
-
-    In translate_path(): we don't use the result of the
-    canonicalization if the translation is delayed.  This point
-    depends actually on the input path, so why I don't detect sooner
-    that the canonicalization is useless?
+* Don't move the stack pointer, use a pointer in the struct tracee
 
 * Add a "multi-process" mode where there's one fork of PRoot per monitored process.
 
