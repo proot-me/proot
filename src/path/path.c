@@ -567,9 +567,9 @@ static int check_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
  * the new root directory; it returns -@pid if it is not the case,
  * otherwise 0 (or if an ignored error occured).
  */
-int check_fd(pid_t pid)
+int check_fd(struct tracee *tracee)
 {
-	return foreach_fd(pid, check_fd_callback);
+	return foreach_fd(tracee->pid, check_fd_callback);
 }
 
 /**

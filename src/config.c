@@ -23,11 +23,14 @@
 #include <stdbool.h> /* bool, true, false, */
 #include <string.h>  /* string(3), */
 #include <stdlib.h>  /* ssize_t, */
+#include <malloc.h>  /* free, */
 #include <linux/limits.h> /* ARG_MAX, */
 
 #include "config.h"
 #include "notice.h"
 #include "path/binding.h"
+
+struct config config;
 
 static void print_argv(const char *prompt, char **argv)
 {
@@ -83,4 +86,15 @@ void print_config()
 		notice(INFO, USER, "verbose level = %d", config.verbose_level);
 
 	print_bindings();
+}
+
+void free_config()
+{
+	if (config.guest_rootfs != NULL)
+		free((void *)config.guest_rootfs);
+
+	if (config.qemu != NULL) {
+		free(config.qemu[0]);
+		free(config.qemu);
+	}
 }

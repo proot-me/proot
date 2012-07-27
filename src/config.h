@@ -46,5 +46,6 @@ struct config {
 extern struct config config;
 
 extern void print_config();
+extern void free_config();
 
 #endif /* CONFIG_H */

@@ -1,4 +1,4 @@
-if [ -z `which mcookie` ]  [ -z `which echo` ] || [ -z `which rm` ]  || [ -z `which touch` ] || [ -z `which chmod` ] || [ -z `which grep` ]; then
+if [ -z `which mcookie` ] || [ -z `which echo` ] || [ -z `which rm` ]  || [ -z `which touch` ] || [ -z `which chmod` ] || [ -z `which grep` ]; then
     exit 125;
 fi
 

@@ -43,8 +43,6 @@
 #include "execve/ldso.h"
 #include "build.h"
 
-struct config config;
-
 static void handle_option_r(char *value)
 {
 	config.guest_rootfs = value;

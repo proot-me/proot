@@ -54,9 +54,11 @@ struct tracee {
 	struct tracee *parent; /* Parent of this tracee. */
 };
 
-typedef int (*foreach_tracee_t)(pid_t pid);
+typedef int (*foreach_tracee_t)(struct tracee *tracee);
 
 extern void init_module_tracee(void);
+extern void free_tracees(void);
+
 extern void delete_tracee(struct tracee *tracee);
 extern struct tracee *get_tracee(pid_t pid, bool create);
 extern int foreach_tracee(foreach_tracee_t callback);

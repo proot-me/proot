@@ -38,5 +38,6 @@ extern const char *get_path_binding(enum binding_side side, const char path[PATH
 extern int substitute_binding(enum binding_side side, char path[PATH_MAX]);
 
 extern void init_bindings(void);
+extern void free_bindings(void);
 
 #endif /* BINDING_H */

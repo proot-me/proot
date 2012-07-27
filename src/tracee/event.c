@@ -39,6 +39,7 @@
 #include "tracee/event.h"
 #include "notice.h"
 #include "path/path.h"
+#include "path/binding.h"
 #include "syscall/syscall.h"
 #include "config.h"
 
@@ -199,15 +200,23 @@ bool attach_process(pid_t pid)
 /* Send the KILL signal to all [known] tracees.  */
 static void kill_all_tracees()
 {
-	int kill_tracee(pid_t pid)
+	int kill_tracee(struct tracee *tracee)
 	{
-		kill(pid, SIGKILL);
+		kill(tracee->pid, SIGKILL);
 		return 0;
 	}
 
 	foreach_tracee(kill_tracee);
 
 	notice(INFO, USER, "exited");
+}
+
+/* Free the memory allocated by all modules.  */
+static void free_everything()
+{
+	free_bindings();
+	free_tracees();
+	free_config();
 }
 
 static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
@@ -232,6 +241,11 @@ int event_loop()
 	int signum;
 	int signal;
 	pid_t pid;
+
+	/* Free everything when exiting.  */
+	status = atexit(free_everything);
+	if (status != 0)
+		notice(WARNING, INTERNAL, "atexit() failed");
 
 	/* Kill all tracees when exiting.  */
 	status = atexit(kill_all_tracees);

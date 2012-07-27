@@ -153,7 +153,7 @@ int foreach_tracee(foreach_tracee_t callback)
 			if (pool->entries[i].pid == 0)
 				continue;
 
-			status = callback(pool->entries[i].pid);
+			status = callback(&pool->entries[i]);
 			if (status < 0)
 				return status;
 		}
@@ -225,4 +225,27 @@ void inherit_fs_info(struct tracee *child, struct tracee *parent)
 #endif
 
 	return;
+}
+
+/**
+ * Free all tracees and all pools.
+ */
+void free_tracees()
+{
+	struct pool *pool;
+
+	int delete_tracee2(struct tracee *tracee)
+	{
+		delete_tracee(tracee);
+		return 0;
+	}
+	foreach_tracee(delete_tracee2);
+
+	pool = first_pool;
+	while (pool != NULL) {
+		struct pool *next =  pool->next;
+		free(pool);
+		pool = next;
+	}
+	first_pool = NULL;
 }

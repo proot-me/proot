@@ -543,6 +543,33 @@ static struct binding *insort_binding(enum binding_side side, const struct bindi
 }
 
 /**
+ * Free all the @bindings of the given list.
+ */
+static void free_bindings2(struct binding *bindings)
+{
+	while (bindings != NULL) {
+		struct binding *next =  bindings->next;
+		free(bindings);
+		bindings = next;
+	}
+}
+
+/**
+ * Free all the bindings.
+ */
+void free_bindings()
+{
+	free_bindings2(bindings_guest_order);
+	bindings_guest_order = NULL;
+
+	free_bindings2(bindings_host_order);
+	bindings_host_order = NULL;
+
+	free_bindings2(expected_bindings);
+	expected_bindings = NULL;
+}
+
+/**
  * Initialize internal data of the path translator.
  */
 void init_bindings()
@@ -604,14 +631,8 @@ void init_bindings()
 
 	/* Free the list of expected bindings, it will not be used
 	 * anymore.  */
-	if (expected_bindings != NULL) {
-		struct binding *next;
-
-		for (binding = expected_bindings, next = binding->next;
-		     next != NULL;
-		     binding = next, next = binding->next)
-			free(binding);
-	}
+	free_bindings2(expected_bindings);
+	expected_bindings = NULL;
 
 	initialized = true;
 }

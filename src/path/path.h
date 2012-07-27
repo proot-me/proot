@@ -55,7 +55,7 @@ extern enum finality next_component(char component[NAME_MAX], const char **curso
 
 extern void pop_component(char *path);
 
-extern int check_fd(pid_t pid);
+extern int check_fd(struct tracee *tracee);
 extern int list_open_fd(pid_t pid);
 
 extern char root[PATH_MAX];
