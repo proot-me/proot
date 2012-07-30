@@ -8,6 +8,9 @@ CHECK_TESTS = $(patsubst %,check-%, $(wildcard test-*.sh) $(wildcard test-*.c))
 
 check: | clean_failure check_failure
 
+memcheck: PROOT := $(shell which valgrind) -q --error-exitcode=1 $(PROOT)
+memcheck: check
+
 clean_failure:
 	@rm -f failure
 

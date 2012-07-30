@@ -138,42 +138,42 @@ int ldso_env_passthru(struct array *envp, struct array *argv,
 		if (env == NULL || strncmp(env, "LD_", sizeof("LD_") - 1) != 0)
 			continue;
 
-		bool passthru(const char *name) {
-			if (!is_env_name(env, name))
-				return false;
+#define PASSTHRU(check, name)						\
+		if (is_env_name(env, name)) {				\
+			check |= true;					\
+			/* Errors are not fatal here.  */		\
+			status = resize_array(argv, 1, 2);		\
+			if (status >= 0) {				\
+				status = write_items(argv, 1, 2, define, env); \
+				if (status < 0)				\
+					return status;			\
+			}						\
+			write_item(envp, i, "");			\
+			continue;					\
+		}							\
 
-			/* Errors are not fatal here.  */
-			status = resize_array(argv, 1, 2);
-			if (status >= 0) {
-				status = write_items(argv, 1, 2, define, env);
-				/* TODO: should be fatal here.  */
-			}
-			write_item(envp, i, "");
-			return true;
-		}
-
-		has_seen_library_path |= passthru("LD_LIBRARY_PATH");
-		is_known |= passthru("LD_PRELOAD");
-		is_known |= passthru("LD_BIND_NOW");
-		is_known |= passthru("LD_TRACE_LOADED_OBJECTS");
-		is_known |= passthru("LD_AOUT_LIBRARY_PATH");
-		is_known |= passthru("LD_AOUT_PRELOAD");
-		is_known |= passthru("LD_AUDIT");
-		is_known |= passthru("LD_BIND_NOT");
-		is_known |= passthru("LD_DEBUG");
-		is_known |= passthru("LD_DEBUG_OUTPUT");
-		is_known |= passthru("LD_DYNAMIC_WEAK");
-		is_known |= passthru("LD_HWCAP_MASK");
-		is_known |= passthru("LD_KEEPDIR");
-		is_known |= passthru("LD_NOWARN");
-		is_known |= passthru("LD_ORIGIN_PATH");
-		is_known |= passthru("LD_POINTER_GUARD");
-		is_known |= passthru("LD_PROFILE");
-		is_known |= passthru("LD_PROFILE_OUTPUT");
-		is_known |= passthru("LD_SHOW_AUXV");
-		is_known |= passthru("LD_USE_LOAD_BIAS");
-		is_known |= passthru("LD_VERBOSE");
-		is_known |= passthru("LD_WARN");
+		PASSTHRU(has_seen_library_path, "LD_LIBRARY_PATH");
+		PASSTHRU(is_known, "LD_PRELOAD");
+		PASSTHRU(is_known, "LD_BIND_NOW");
+		PASSTHRU(is_known, "LD_TRACE_LOADED_OBJECTS");
+		PASSTHRU(is_known, "LD_AOUT_LIBRARY_PATH");
+		PASSTHRU(is_known, "LD_AOUT_PRELOAD");
+		PASSTHRU(is_known, "LD_AUDIT");
+		PASSTHRU(is_known, "LD_BIND_NOT");
+		PASSTHRU(is_known, "LD_DEBUG");
+		PASSTHRU(is_known, "LD_DEBUG_OUTPUT");
+		PASSTHRU(is_known, "LD_DYNAMIC_WEAK");
+		PASSTHRU(is_known, "LD_HWCAP_MASK");
+		PASSTHRU(is_known, "LD_KEEPDIR");
+		PASSTHRU(is_known, "LD_NOWARN");
+		PASSTHRU(is_known, "LD_ORIGIN_PATH");
+		PASSTHRU(is_known, "LD_POINTER_GUARD");
+		PASSTHRU(is_known, "LD_PROFILE");
+		PASSTHRU(is_known, "LD_PROFILE_OUTPUT");
+		PASSTHRU(is_known, "LD_SHOW_AUXV");
+		PASSTHRU(is_known, "LD_USE_LOAD_BIAS");
+		PASSTHRU(is_known, "LD_VERBOSE");
+		PASSTHRU(is_known, "LD_WARN");
 
 		if (!is_known && config.verbose_level >= 1)
 			notice(WARNING, INTERNAL, "unknown LD_ environment variable");
