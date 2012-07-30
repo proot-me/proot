@@ -383,7 +383,7 @@ int push_array(struct array *array)
 	/* Store the pointed items (strings, structures, whatever)
 	 * inside the tracee's stack.  */
 	for (i = 0; i < array->length; i++) {
-		size_t size;
+		ssize_t size;
 
 		if (array->_cache[i].local == NULL)
 			continue;
