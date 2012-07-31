@@ -218,12 +218,6 @@ int extract_elf_interp(const struct tracee *tracee,
 	segment_offset = PROGRAM_FIELD(elf_header, program_header, offset);
 	segment_size   = PROGRAM_FIELD(elf_header, program_header, filesz);
 
-	status = (int) lseek(fd, segment_offset, SEEK_SET);
-	if (status < 0) {
-		status = -EACCES;
-		goto end;
-	}
-
 	/* If we are executing a host binary under a QEMUlated
 	 * environment, we have to access its ELF interpreter through
 	 * the "host-rootfs" binding.  Technically it means the host
@@ -242,7 +236,7 @@ int extract_elf_interp(const struct tracee *tracee,
 		goto end;
 	}
 
-	status = read(fd, u_interp + extra_size, segment_size);
+	status = pread(fd, u_interp + extra_size, segment_size, segment_offset);
 	if (status < 0) {
 		status = -EACCES;
 		goto end;
