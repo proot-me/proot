@@ -27,7 +27,8 @@
 #include <strings.h>  /* bzero(3), */
 #include <stdbool.h>  /* bool, true, false, */
 #include <errno.h>    /* E*,  */
-#include <stdarg.h>
+#include <stdarg.h>   /* va_*, */
+#include <stdint.h>   /* uint32_t, */
 
 #define ARRAY_INTERNALS
 #include "tracee/array.h"
@@ -35,6 +36,7 @@
 
 #include "tracee/mem.h"
 #include "tracee/abi.h"
+#include "build.h"
 
 /**
  * Free the item pointed to by the entry in @array at the given
@@ -369,49 +371,106 @@ end:
  */
 int push_array(struct array *array)
 {
-	size_t total_size = 0;
-
-	struct tracee *tracee;
 	word_t stack_pointer;
+	int status;
 	int i;
 
+	struct iovec *local = NULL;
+	size_t local_count;
+	size_t total_size;
+	word_t *pod_array;
+
+	/* Nothing to do, for sure.  */
 	if (array->length == 0)
 		return 0;
 
-	tracee = array->tracee;
+	/* The pointer table is a POD array in the tracee's memory.  */
+	pod_array = calloc(array->length, sizeof_word(array->tracee));
+	if (pod_array == NULL) {
+		status = -ENOMEM;
+		goto end;
+	}
 
-	/* Store the pointed items (strings, structures, whatever)
-	 * inside the tracee's stack.  */
+	/* There's one vector per modified item + one vector for the
+	 * pod array.  */
+	local = calloc(array->length + 1, sizeof(struct iovec));
+	if (local == NULL) {
+		status = -ENOMEM;
+		goto end;
+	}
+
+	/* The pod array is expected to be at the beginning of the
+	 * stack by the caller.  */
+	total_size = array->length * sizeof_word(array->tracee);
+	local[0].iov_base = pod_array;
+	local[0].iov_len  = total_size;
+	local_count = 1;
+
+	/* Create one vector for each modified item.  */
 	for (i = 0; i < array->length; i++) {
 		ssize_t size;
 
 		if (array->_cache[i].local == NULL)
 			continue;
 
+		/* At this moment, we only know the offsets in the
+		 * tracee's stack. */
+		array->_cache[i].remote = total_size;
+
 		size = sizeof_item(array, i);
-		if (size < 0)
-			return size;
+		if (size < 0) {
+			status = size;
+			goto end;
+		}
 		total_size += size;
 
-		stack_pointer = resize_stack(tracee, size);
-		if (stack_pointer == 0)
-			return -E2BIG;
-
-		write_data(tracee, stack_pointer, array->_cache[i].local, size);
-
-		/* Invalidate the locally cached value.  */
-		free_item(array, i);
-		array->_cache[i].remote = stack_pointer;
+		local[local_count].iov_base = array->_cache[i].local;
+		local[local_count].iov_len  = size;
+		local_count++;
 	}
 
-	/* Nothing was changed, don't update anything.  */
-	if (total_size == 0)
-		return 0;
+	/* Nothing has changed, don't update anything.  */
+	if (local_count == 0) {
+		status = 0;
+		goto end;
+	}
+	assert(local_count < array->length + 1);
 
-	/* Store the pointer table inside the tracee's stack.  */
-	stack_pointer = resize_stack(tracee, array->length * sizeof_word(tracee));
-	for (i = 0; i < array->length; i++)
-		poke_mem(tracee, stack_pointer + i * sizeof_word(tracee), array->_cache[i].remote);
+	/* Modified items and the pod array are stored in the tracee's
+	 * stack.  */
+	stack_pointer = resize_stack(array->tracee, total_size);
+	if (stack_pointer == 0) {
+		status = -E2BIG;
+		goto end;
+	}
+
+	/* Now, we know the absolute addresses in the tracee's
+	 * memory.  */
+	for (i = 0; i < array->length; i++) {
+		if (array->_cache[i].local != NULL)
+			array->_cache[i].remote += stack_pointer;
+
+		if (is_32on64_mode(array->tracee))
+			((uint32_t *)pod_array)[i] = array->_cache[i].remote;
+		else
+			pod_array[i] = array->_cache[i].remote;
+	}
+
+	/* Write all the modified items and the pod array at once.  */
+	status = writev_data(array->tracee, stack_pointer, local, local_count);
+	if (status < 0)
+		goto end;
+
+	status = 0;
+end:
+	if (local != NULL)
+		free(local);
+
+	if (pod_array != NULL)
+		free(pod_array);
+
+	if (status < 0)
+		return status;
 
 	return total_size;
 }

@@ -30,13 +30,12 @@
 #include <sys/wait.h>   /* waitpid(2), */
 #include <string.h>     /* memcpy(3), */
 #include <stdint.h>     /* uint8_t, */
-#include <sys/uio.h>    /* process_vm_*, */
+#include <sys/uio.h>    /* process_vm_*, struct iovec, */
 #include <unistd.h>     /* sysconf(3), */
 
 #include "tracee/mem.h"
-#include "tracee/reg.h"      /* peek_reg(), poke_reg(), */
 #include "tracee/abi.h"
-#include "arch.h"            /* REG_SYSARG_*, word_t, NO_MISALIGNED_ACCESS */
+#include "arch.h"            /* word_t, NO_MISALIGNED_ACCESS */
 #include "build.h"           /* HAVE_PROCESS_VM,  */
 #include "notice.h"
 
@@ -141,6 +140,47 @@ int write_data(const struct tracee *tracee, word_t dest_tracee,
 	if (status < 0) {
 		notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
 		return -EFAULT;
+	}
+
+	return 0;
+}
+
+/**
+ * Gather the @src_tracer_count buffers pointed to by @src_tracer to
+ * the address @dest_tracee within the memory space of the @tracee
+ * process.  This function returns -errno if an error occured,
+ * otherwise 0.
+ */
+int writev_data(const struct tracee *tracee, word_t dest_tracee,
+		const struct iovec *src_tracer, int src_tracer_count)
+{
+	size_t size;
+	int status;
+	int i;
+
+#if defined(HAVE_PROCESS_VM)
+	struct iovec remote;
+
+	for (i = 0, size = 0; i < src_tracer_count; i++)
+		size += src_tracer[i].iov_len;
+
+	remote.iov_base = (word_t *)dest_tracee;
+	remote.iov_len  = size;
+
+	status = process_vm_writev(tracee->pid, src_tracer, src_tracer_count, &remote, 1, 0);
+	if (status == size)
+		return 0;
+	/* Fallback to iterative-write if something went wrong.  */
+
+#endif /* HAVE_PROCESS_VM */
+
+	for (i = 0, size = 0; i < src_tracer_count; i++) {
+		status = write_data(tracee, dest_tracee + size,
+				src_tracer[i].iov_base, src_tracer[i].iov_len);
+		if (status < 0)
+			return status;
+
+		size += src_tracer[i].iov_len;
 	}
 
 	return 0;
