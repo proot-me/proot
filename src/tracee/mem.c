@@ -300,24 +300,26 @@ int read_string(const struct tracee *tracee, char *dest_tracer,
 	size_t offset;
 	struct iovec local;
 	struct iovec remote;
-	static size_t chunk_size = 0;
 
+	static size_t chunk_size = 0;
+	static uintptr_t chunk_mask;
+
+	/* A chunk shall not cross a page boundary.  */
 	if (chunk_size == 0) {
 		chunk_size = sysconf(_SC_PAGESIZE);
-		chunk_size = (chunk_size > 0 ? chunk_size : 4096);
+		chunk_size = (chunk_size > 0 && chunk_size < 1024 ? chunk_size : 1024);
+		chunk_mask = ~(chunk_size - 1);
 	}
 
-	/* Read the string by chunk without crossing a page
-	 * boundary.  */
+	/* Read the string by chunk.  */
 	offset = 0;
 	do {
-		uintptr_t chunk_mask   = ~(chunk_size - 1);
-		uintptr_t current_page = (src_tracee + offset) & chunk_mask;
-		uintptr_t next_page    = current_page + chunk_size;
+		uintptr_t current_chunk = (src_tracee + offset) & chunk_mask;
+		uintptr_t next_chunk    = current_chunk + chunk_size;
 
 		/* Compute the number of bytes available up to the
 		 * next chunk or up to max_size.  */
-		size = next_page - (src_tracee + offset);
+		size = next_chunk - (src_tracee + offset);
 		size = (size < max_size - offset ? size : max_size - offset);
 
 		local.iov_base = (uint8_t *)dest + offset;
