@@ -504,19 +504,18 @@ word_t alloc(struct tracee *tracee, ssize_t size)
 	 * area. */
 	poke_reg(tracee, STACK_POINTER, stack_pointer);
 
+	tracee->restore_sp = true;
 	return stack_pointer;
 }
 
 /**
  * Deallocate all the @tracee's memory that were previously allocated
- * by alloc().  If @restore_sp is true, then the @tracee's stack
- * pointer is restored to its original value.
+ * by alloc().
  */
-void dealloc(struct tracee *tracee, bool restore_sp)
+void dealloc(struct tracee *tracee)
 {
-	if (tracee->original_sp != 0) {
-		if (restore_sp)
-			poke_reg(tracee, STACK_POINTER, tracee->original_sp);
-		tracee->original_sp = 0;
-	}
+	if (tracee->restore_sp && tracee->original_sp != 0)
+		poke_reg(tracee, STACK_POINTER, tracee->original_sp);
+	tracee->original_sp = 0;
+	tracee->restore_sp  = false;
 }

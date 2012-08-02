@@ -38,6 +38,6 @@ extern word_t peek_mem(const struct tracee *tracee, word_t address);
 extern void poke_mem(const struct tracee *tracee, word_t address, word_t value);
 
 extern word_t alloc(struct tracee *tracee, ssize_t size);
-extern void dealloc(struct tracee *tracee, bool restore_sp);
+extern void dealloc(struct tracee *tracee);
 
 #endif /* TRACEE_MEM_H */

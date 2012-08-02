@@ -37,6 +37,9 @@ struct tracee {
 	/* Value of the stack pointer before allocations.  */
 	word_t original_sp;
 
+	/* Specify whether the stack pointer should be restored.  */
+	bool restore_sp;
+
 	/* Path to the executable, à la /proc/self/exe. */
 	char *exe;
 

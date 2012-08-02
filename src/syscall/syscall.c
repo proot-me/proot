@@ -242,6 +242,40 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
 }
 
 /**
+ * Specify whether the stack pointer should be restored at the exit
+ * stage.  On x86_64, the stack pointer is already saved and restored
+ * before and after an execve():
+ *
+ *     linux/arch/x86/kernel/entry_64.S:stub_execve
+ */
+static inline bool needs_sp_restoration(struct tracee *tracee)
+{
+#if defined(ARCH_X86_64)
+	/* The following test is reliable enter stage only: execve()
+	 * may change the ABI before the exit stage.  */
+	assert(tracee->status == 0);
+
+	switch (get_abi(tracee)) {
+	case ABI_DEFAULT: {
+		#include SYSNUM_HEADER
+		return peek_reg(tracee, SYSARG_NUM) != PR_execve;
+	}
+    #ifdef SYSNUM_HEADER2
+	case ABI_2: {
+		#include SYSNUM_HEADER2
+		return peek_reg(tracee, SYSARG_NUM) != PR_execve;
+	}
+    #endif
+	default:
+		assert(0);
+	}
+	#include "syscall/sysnum-undefined.h"
+#else
+	return true;
+#endif
+}
+
+/**
  * Translate the input arguments of the current @tracee's syscall in the
  * @tracee->pid process area. This function sets @tracee->status to
  * -errno if an error occured from the tracee's point-of-view (EFAULT
@@ -302,6 +336,10 @@ static int translate_syscall_enter(struct tracee *tracee)
 	}
 	#include "syscall/sysnum-undefined.h"
 
+	/* Specify whether the stack pointer should be restored at the
+	 * exit stage.  */
+	tracee->restore_sp = needs_sp_restoration(tracee);
+
 	/* Remember the tracee status for the "exit" stage and avoid
 	 * the actual syscall if an error occured during the
 	 * translation. */
@@ -313,29 +351,6 @@ static int translate_syscall_enter(struct tracee *tracee)
 		tracee->status = 1;
 
 	return 0;
-}
-
-/**
- * Check if the current syscall of @tracee actually is execve(2)
- * regarding the current ABI.
- */
-static bool is_execve(struct tracee *tracee)
-{
-	switch (get_abi(tracee)) {
-	case ABI_DEFAULT: {
-		#include SYSNUM_HEADER
-		return peek_reg(tracee, SYSARG_NUM) == PR_execve;
-	}
-#ifdef SYSNUM_HEADER2
-	case ABI_2: {
-		#include SYSNUM_HEADER2
-		return peek_reg(tracee, SYSARG_NUM) == PR_execve;
-	}
-#endif
-	default:
-		assert(0);
-	}
-	#include "syscall/sysnum-undefined.h"
 }
 
 /**
@@ -354,14 +369,8 @@ static int translate_syscall_exit(struct tracee *tracee)
 		poke_reg(tracee, SYSARG_RESULT, (word_t) tracee->status);
 
 	/* Deallocate all the tracee's memory used to store translated
-	 * arguments.  On x86_64, the stack is already saved and
-	 * restored before and after an execve(), look at this code:
-	 * linux/arch/x86/kernel/entry_64.S:stub_execve */
-#if defined(ARCH_X86_64)
-	dealloc(tracee, !is_execve(tracee));
-#else
-	dealloc(tracee, true);
-#endif
+	 * arguments.  */
+	dealloc(tracee);
 
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
 		peek_reg(tracee, SYSARG_RESULT),
