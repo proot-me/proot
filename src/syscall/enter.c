@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  */
 
-switch (tracee->sysnum) {
+switch (peek_reg(tracee, SYSARG_NUM)) {
 case PR__llseek:
 case PR__newselect:
 case PR__sysctl:
@@ -417,7 +417,8 @@ case PR_name_to_handle_at:
 	if (status < 0)
 		break;
 
-	flags = (tracee->sysnum == PR_fchownat || tracee->sysnum == PR_name_to_handle_at)
+	flags = (   peek_reg(tracee, SYSARG_NUM) == PR_fchownat
+		 || peek_reg(tracee, SYSARG_NUM) == PR_name_to_handle_at)
 		? peek_reg(tracee, SYSARG_5)
 		: peek_reg(tracee, SYSARG_4);
 
@@ -577,7 +578,7 @@ case PR_symlinkat:
 	break;
 
 default:
-	notice(WARNING, INTERNAL, "unknown syscall %lu", tracee->sysnum);
+	notice(WARNING, INTERNAL, "unknown syscall %lu", peek_reg(tracee, SYSARG_NUM));
 	if (!config.allow_unknown_syscalls)
 		status = -ENOSYS;
 	else

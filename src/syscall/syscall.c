@@ -237,13 +237,12 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
 		}
 	}
 	status = 0;
-	tracee->sysnum = modif->new_sysarg_num;
 
 	return status;
 }
 
 /**
- * Translate the input arguments of the syscall @tracee->sysnum in the
+ * Translate the input arguments of the current @tracee's syscall in the
  * @tracee->pid process area. This function sets @tracee->status to
  * -errno if an error occured from the tracee's point-of-view (EFAULT
  * for instance), otherwise 0. This function returns -errno if an
@@ -262,25 +261,15 @@ static int translate_syscall_enter(struct tracee *tracee)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
-	tracee->sysnum = peek_reg(tracee, SYSARG_NUM);
-
 	if (config.verbose_level >= 3)
 		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
-			tracee->pid, tracee->sysnum,
+			tracee->pid, peek_reg(tracee, SYSARG_NUM),
 			peek_reg(tracee, SYSARG_1), peek_reg(tracee, SYSARG_2),
 			peek_reg(tracee, SYSARG_3), peek_reg(tracee, SYSARG_4),
 			peek_reg(tracee, SYSARG_5), peek_reg(tracee, SYSARG_6),
 			peek_reg(tracee, STACK_POINTER));
 	else
-		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid, (int)tracee->sysnum);
-
-	/* Ensure one is not trying to cheat PRoot by calling an
-	 * unsupported syscall on that architecture. */
-	if ((int)tracee->sysnum < 0) {
-		notice(WARNING, INTERNAL, "forbidden syscall %d", (int)tracee->sysnum);
-		status = -ENOSYS;
-		goto end;
-	}
+		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid, (int)peek_reg(tracee, SYSARG_NUM));
 
 	/* Translate input arguments. */
 	switch (get_abi(tracee)) {
@@ -313,17 +302,15 @@ static int translate_syscall_enter(struct tracee *tracee)
 	}
 	#include "syscall/sysnum-undefined.h"
 
-end:
-
-	/* Remember the tracee status for the "exit" stage. */
-	tracee->status = status;
-
-	/* Avoid the actual syscall if an error occured during the
+	/* Remember the tracee status for the "exit" stage and avoid
+	 * the actual syscall if an error occured during the
 	 * translation. */
 	if (status < 0) {
 		poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
-		tracee->sysnum = SYSCALL_AVOIDER;
+		tracee->status = status;
 	}
+	else
+		tracee->status = 1;
 
 	return 0;
 }
@@ -337,12 +324,12 @@ static bool is_execve(struct tracee *tracee)
 	switch (get_abi(tracee)) {
 	case ABI_DEFAULT: {
 		#include SYSNUM_HEADER
-		return tracee->sysnum == PR_execve;
+		return peek_reg(tracee, SYSARG_NUM) == PR_execve;
 	}
 #ifdef SYSNUM_HEADER2
 	case ABI_2: {
 		#include SYSNUM_HEADER2
-		return tracee->sysnum == PR_execve;
+		return peek_reg(tracee, SYSARG_NUM) == PR_execve;
 	}
 #endif
 	default:
@@ -352,7 +339,7 @@ static bool is_execve(struct tracee *tracee)
 }
 
 /**
- * Translate the output arguments of the syscall @tracee->sysnum in
+ * Translate the output arguments of the current @tracee's syscall in
  * the @tracee->pid process area. This function sets the result of
  * this syscall to @tracee->status if an error occured previously
  * during the translation, that is, if @tracee->status is less than 0.
@@ -406,8 +393,8 @@ end:
 	if (status > 0)
 		status = 0;
 
-	/* Reset the current syscall number. */
-	tracee->sysnum = -1;
+	/* Reset the tracee's status. */
+	tracee->status = 0;
 
 	/* The struct tracee will be freed in
 	 * main_loop() if status < 0. */
@@ -424,7 +411,7 @@ int translate_syscall(struct tracee *tracee)
 		return status;
 
 	/* Check if we are either entering or exiting a syscall. */
-	result = (tracee->sysnum == (word_t) -1
+	result = (tracee->status == 0
 		  ? translate_syscall_enter(tracee)
 		  : translate_syscall_exit(tracee));
 

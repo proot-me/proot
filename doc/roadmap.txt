@@ -5,8 +5,6 @@
 Short term
 ==========
 
-* Replace tracee->sysnum with peek_reg(tracee, SYSARG_NUM) + tracee->state.
-
 * Handle /proc/<pid>/(cmdline|cwd|root) where <pid> is a process traced by
   PRoot (i.e not only "self").
 

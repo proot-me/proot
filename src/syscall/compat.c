@@ -22,7 +22,7 @@
 
 /* Note: syscalls like "openat" can be replaced by "open" since PRoot
  * has canonicalized "fd + path" into "path".  */
-switch (tracee->sysnum) {
+switch (peek_reg(tracee, SYSARG_NUM)) {
 case PR_accept4: {
 	struct syscall_modification modif = {
 		.expected_release = KERNEL_VERSION(2,6,28),

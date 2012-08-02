@@ -52,8 +52,6 @@ void delete_tracee(struct tracee *tracee)
 		free(tracee->exe);
 
 	bzero(tracee, sizeof(struct tracee));
-
-	tracee->sysnum = -1;
 }
 
 /**

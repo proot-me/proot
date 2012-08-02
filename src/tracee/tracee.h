@@ -31,11 +31,20 @@
 
 /* Information related to a tracee process. */
 struct tracee {
-	pid_t  pid;    /* Process identifier. */
-	word_t sysnum; /* Current syscall (-1 if none). */
-	word_t original_sp; /* Value of the stack pointer before allocations.  */
-	int    status; /* -errno if < 0. */
-	char *exe;     /* Path to the executable, à la /proc/self/exe. */
+	/* Process identifier. */
+	pid_t pid;
+
+	/* Value of the stack pointer before allocations.  */
+	word_t original_sp;
+
+	/* Path to the executable, à la /proc/self/exe. */
+	char *exe;
+
+	/* Current status:
+	 *        0: enter syscall
+	 *        1: exit syscall no error
+	 *   -errno: exit syscall with error.  */
+	int status;
 
 	/* Cache for the tracee's general purpose registers.  */
 	struct {

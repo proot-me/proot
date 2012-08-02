@@ -28,7 +28,7 @@
  * - goto end: "status < 0" means the tracee is dead, otherwise do
  *             nothing.
  */
-switch (tracee->sysnum) {
+switch (peek_reg(tracee, SYSARG_NUM)) {
 case PR_getcwd: {
 	char path[PATH_MAX];
 	size_t new_size;
@@ -114,10 +114,10 @@ case PR_readlinkat: {
 
 	old_size = result;
 
-	output = peek_reg(tracee, tracee->sysnum == PR_readlink
+	output = peek_reg(tracee, peek_reg(tracee, SYSARG_NUM) == PR_readlink
 				   ? SYSARG_2 : SYSARG_3);
 
-	max_size = (size_t) peek_reg(tracee, tracee->sysnum == PR_readlink
+	max_size = (size_t) peek_reg(tracee, peek_reg(tracee, SYSARG_NUM) == PR_readlink
 					      ? SYSARG_3 : SYSARG_4);
 
 	if (max_size > PATH_MAX)
@@ -135,7 +135,7 @@ case PR_readlinkat: {
 		goto end;
 	referee[old_size] = '\0';
 
-	input = peek_reg(tracee, tracee->sysnum == PR_readlink
+	input = peek_reg(tracee, peek_reg(tracee, SYSARG_NUM) == PR_readlink
 			        ? SYSARG_1 : SYSARG_2);
 
 	/* Not optimal but safe (path is fully translated).  */
