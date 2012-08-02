@@ -33,7 +33,8 @@
 struct tracee {
 	pid_t  pid;    /* Process identifier. */
 	word_t sysnum; /* Current syscall (-1 if none). */
-	int    status; /* -errno if < 0, otherwise amount of bytes used in the tracee's stack. */
+	word_t original_sp; /* Value of the stack pointer before allocations.  */
+	int    status; /* -errno if < 0. */
 	char *exe;     /* Path to the executable, à la /proc/self/exe. */
 
 	/* Cache for the tracee's general purpose registers.  */
@@ -52,6 +53,7 @@ struct tracee {
 		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
 	} sigstop;
 	struct tracee *parent; /* Parent of this tracee. */
+
 };
 
 typedef int (*foreach_tracee_t)(struct tracee *tracee);

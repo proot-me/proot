@@ -34,6 +34,7 @@ case PR_getcwd: {
 	size_t new_size;
 	size_t size;
 	word_t output;
+	word_t result;
 
 	result = peek_reg(tracee, SYSARG_RESULT);
 
@@ -101,6 +102,7 @@ case PR_readlinkat: {
 	size_t max_size;
 	word_t input;
 	word_t output;
+	word_t result;
 
 	result = peek_reg(tracee, SYSARG_RESULT);
 
@@ -171,6 +173,7 @@ case PR_readlinkat: {
 case PR_uname: {
 	struct utsname utsname;
 	word_t address;
+	word_t result;
 	size_t size;
 
 	bool change_uname;
@@ -243,6 +246,7 @@ case PR_uname: {
 
 case PR_chroot: {
 	char path[PATH_MAX];
+	word_t result;
 	word_t input;
 
 	if (!config.fake_id0) {
@@ -281,7 +285,9 @@ case PR_lchown:
 case PR_chown32:
 case PR_fchown32:
 case PR_lchown32:
-case PR_fchownat:
+case PR_fchownat: {
+	word_t result;
+
 	if (!config.fake_id0) {
 		status = 0;
 		goto end;
@@ -296,6 +302,7 @@ case PR_fchownat:
 	}
 
 	status = 0;
+}
 	break;
 
 case PR_getuid:

@@ -360,14 +360,6 @@ case PR_arm_sync_file_range:
 
 case PR_execve:
 	status = translate_execve(tracee);
-
-	/* The stack is already saved/restored before/after an
-	 * execve() for this architecture, look at this code:
-	 * linux/arch/x86/kernel/entry_64.S:stub_execve */
-#if defined(ARCH_X86_64)
-	if (status > 0)
-		status = 0;
-#endif
 	break;
 
 case PR_access:
@@ -471,17 +463,11 @@ case PR_readlink:
 	break;
 
 case PR_pivot_root:
-	status1 = translate_sysarg(tracee, SYSARG_1, REGULAR);
-	status2 = translate_sysarg(tracee, SYSARG_2, REGULAR);
-	if (status1 < 0) {
-		status = status1;
+	status = translate_sysarg(tracee, SYSARG_1, REGULAR);
+	if (status < 0)
 		break;
-	}
-	if (status2 < 0) {
-		status = status2;
-		break;
-	}
-	status = status1 + status2;
+
+	status = translate_sysarg(tracee, SYSARG_2, REGULAR);
 	break;
 
 case PR_linkat:
@@ -489,32 +475,22 @@ case PR_linkat:
 	newdirfd = peek_reg(tracee, SYSARG_3);
 	flags    = peek_reg(tracee, SYSARG_5);
 
-	status1 = get_sysarg_path(tracee, oldpath, SYSARG_2);
-	status2 = get_sysarg_path(tracee, newpath, SYSARG_4);
-	if (status1 < 0) {
-		status = status1;
+	status = get_sysarg_path(tracee, oldpath, SYSARG_2);
+	if (status < 0)
 		break;
-	}
-	if (status2 < 0) {
-		status = status2;
+
+	status = get_sysarg_path(tracee, newpath, SYSARG_4);
+	if (status < 0)
 		break;
-	}
 
 	if ((flags & AT_SYMLINK_FOLLOW) != 0)
-		status1 = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, REGULAR);
+		status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, REGULAR);
 	else
-		status1 = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK);
-	status2 = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK);
+		status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK);
+	if (status < 0)
+		break;
 
-	if (status1 < 0) {
-		status = status1;
-		break;
-	}
-	if (status2 < 0) {
-		status = status2;
-		break;
-	}
-	status = status1 + status2;
+	status = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK);
 	break;
 
 case PR_mount:
@@ -560,48 +536,30 @@ case PR_readlinkat:
 
 case PR_link:
 case PR_rename:
-	status1 = translate_sysarg(tracee, SYSARG_1, SYMLINK);
-	status2 = translate_sysarg(tracee, SYSARG_2, SYMLINK);
-
-	if (status1 < 0) {
-		status = status1;
+	status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
+	if (status < 0)
 		break;
-	}
-	if (status2 < 0) {
-		status = status2;
-		break;
-	}
-	status = status1 + status2;
 
+	status = translate_sysarg(tracee, SYSARG_2, SYMLINK);
 	break;
 
 case PR_renameat:
 	olddirfd = peek_reg(tracee, SYSARG_1);
 	newdirfd = peek_reg(tracee, SYSARG_3);
 
-	status1 = get_sysarg_path(tracee, oldpath, SYSARG_2);
-	status2 = get_sysarg_path(tracee, newpath, SYSARG_4);
-	if (status1 < 0) {
-		status = status1;
+	status = get_sysarg_path(tracee, oldpath, SYSARG_2);
+	if (status < 0)
 		break;
-	}
-	if (status2 < 0) {
-		status = status2;
-		break;
-	}
 
-	status1 = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK);
-	status2 = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK);
-	if (status1 < 0) {
-		status = status1;
+	status = get_sysarg_path(tracee, newpath, SYSARG_4);
+	if (status < 0)
 		break;
-	}
-	if (status2 < 0) {
-		status = status2;
-		break;
-	}
 
-	status = status1 + status2;
+	status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK);
+	if (status < 0)
+		break;
+
+	status = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK);
 	break;
 
 case PR_symlink:

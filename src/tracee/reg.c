@@ -211,33 +211,3 @@ int push_regs(struct tracee *tracee)
 	tracee->_regs.state = REGS_ARE_INVALID;
 	return 0;
 }
-
-/**
- * Resize by @size bytes the stack of the @tracee. This function
- * returns 0 if an error occured, otherwise it returns the address of
- * the new stack pointer within the tracee's memory space.
- */
-word_t resize_stack(struct tracee *tracee, ssize_t size)
-{
-	word_t stack_pointer;
-
-	/* Get the current value of the stack pointer from the tracee's
-	 * USER area. */
-	stack_pointer = peek_reg(tracee, STACK_POINTER);
-
-	/* Sanity check. */
-	if (   (size > 0 && stack_pointer <= size)
-	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-		notice(WARNING, INTERNAL, "integer under/overflow detected in %s", __FUNCTION__);
-		return 0;
-	}
-
-	/* Remember the stack grows downward. */
-	stack_pointer -= size;
-
-	/* Set the new value of the stack pointer in the tracee's USER
-	 * area. */
-	poke_reg(tracee, STACK_POINTER, stack_pointer);
-
-	return stack_pointer;
-}

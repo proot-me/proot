@@ -80,40 +80,36 @@ int get_sysarg_path(const struct tracee *tracee, char path[PATH_MAX], enum reg r
 }
 
 /**
- * Copy @size bytes of the data pointed to by @tracer_ptr to a
- * @tracee's memory block allocated below its stack and make the
- * @reg argument of the current syscall points to this new block.
- * This function returns -errno if an error occured, otherwise it
- * returns the size in bytes "allocated" into the stack.
+ * Copy @size bytes of the data pointed to by @tracer_ptr into a
+ * @tracee's memory block and make the @reg argument of the current
+ * syscall points to this new block.  This function returns -errno if
+ * an error occured, otherwise 0.
  */
 int set_sysarg_data(struct tracee *tracee, void *tracer_ptr, word_t size, enum reg reg)
 {
 	word_t tracee_ptr;
 	int status;
 
-	/* Allocate space into the tracee's stack to host the new data. */
-	tracee_ptr = resize_stack(tracee, size);
+	/* Allocate space into the tracee's memory to host the new data. */
+	tracee_ptr = alloc(tracee, size);
 	if (tracee_ptr == 0)
 		return -EFAULT;
 
 	/* Copy the new data into the previously allocated space. */
 	status = write_data(tracee, tracee_ptr, tracer_ptr, size);
-	if (status < 0) {
-		(void) resize_stack(tracee, -size);
+	if (status < 0)
 		return status;
-	}
 
 	/* Make this argument point to the new data. */
 	poke_reg(tracee, reg, tracee_ptr);
 
-	return size;
+	return 0;
 }
 
 /**
- * Copy @path to a @tracee's memory block allocated below its stack
- * and make the @reg argument of the current syscall points to this
- * new block.  This function returns -errno if an error occured,
- * otherwise it returns the size in bytes "allocated" into the stack.
+ * Copy @path to a @tracee's memory block and make the @reg argument
+ * of the current syscall points to this new block.  This function
+ * returns -errno if an error occured, otherwise 0.
  */
 int set_sysarg_path(struct tracee *tracee, char path[PATH_MAX], enum reg reg)
 {
@@ -125,8 +121,7 @@ int set_sysarg_path(struct tracee *tracee, char path[PATH_MAX], enum reg reg)
  * space pointed to by the @reg argument of the current
  * syscall. See the documentation of translate_path() about the
  * meaning of @deref_final. This function returns -errno if an error
- * occured, otherwise it returns the size in bytes "allocated" into
- * the stack.
+ * occured, otherwise 0.
  */
 static int translate_path2(struct tracee *tracee, int dir_fd, char path[PATH_MAX], enum reg reg, int deref_final)
 {
@@ -250,11 +245,9 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
 /**
  * Translate the input arguments of the syscall @tracee->sysnum in the
  * @tracee->pid process area. This function sets @tracee->status to
- * -errno if an error occured from the tracee's perspective (EFAULT
- * for instance), otherwise to the amount of bytes "allocated" in the
- * tracee's stack for storing the newly translated paths. This
- * function returns -errno if an error occured from PRoot's
- * perspective, otherwise 0.
+ * -errno if an error occured from the tracee's point-of-view (EFAULT
+ * for instance), otherwise 0. This function returns -errno if an
+ * error occured from PRoot's point-of-view, otherwise 0.
  */
 static int translate_syscall_enter(struct tracee *tracee)
 {
@@ -264,8 +257,6 @@ static int translate_syscall_enter(struct tracee *tracee)
 	int newdirfd;
 
 	int status;
-	int status1;
-	int status2;
 
 	char path[PATH_MAX];
 	char oldpath[PATH_MAX];
@@ -364,34 +355,29 @@ static bool is_execve(struct tracee *tracee)
  * Translate the output arguments of the syscall @tracee->sysnum in
  * the @tracee->pid process area. This function sets the result of
  * this syscall to @tracee->status if an error occured previously
- * during the translation, that is, if @tracee->status is less than 0,
- * otherwise @tracee->status bytes of the tracee's stack are
- * "deallocated" to free the space used to store the previously
- * translated paths.
+ * during the translation, that is, if @tracee->status is less than 0.
  */
 static int translate_syscall_exit(struct tracee *tracee)
 {
-	word_t result;
 	int status;
 
 	/* Set the tracee's errno if an error occured previously during
 	 * the translation. */
 	if (tracee->status < 0)
 		poke_reg(tracee, SYSARG_RESULT, (word_t) tracee->status);
-	result = peek_reg(tracee, SYSARG_RESULT);
 
-	/* De-allocate the space used to store the previously
-	 * translated paths. */
-	if (tracee->status > 0
-	    /* Restore the stack for execve() only if an error occured. */
-	    && (!is_execve(tracee) || (int) result < 0)) {
-		word_t tracee_ptr;
-		tracee_ptr = resize_stack(tracee, -tracee->status);
-		if (tracee_ptr == 0)
-			poke_reg(tracee, SYSARG_RESULT, (word_t) -EFAULT);
-	}
+	/* Deallocate all the tracee's memory used to store translated
+	 * arguments.  On x86_64, the stack is already saved and
+	 * restored before and after an execve(), look at this code:
+	 * linux/arch/x86/kernel/entry_64.S:stub_execve */
+#if defined(ARCH_X86_64)
+	dealloc(tracee, !is_execve(tracee));
+#else
+	dealloc(tracee, true);
+#endif
 
-	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid, result,
+	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
+		peek_reg(tracee, SYSARG_RESULT),
 		peek_reg(tracee, STACK_POINTER));
 
 	/* Translate output arguments. */

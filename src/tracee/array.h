@@ -26,6 +26,7 @@
 #include <stdbool.h>
 
 #include "tracee/tracee.h"
+#include "tracee/reg.h"
 #include "arch.h"
 
 /* XXX shouldn't be instantiated.  */
@@ -83,8 +84,8 @@ static inline int sizeof_item(struct array *array, size_t index)
 
 extern int find_item(struct array *array, const void *reference);
 extern int resize_array(struct array *array, size_t index, ssize_t nb_delta_entries);
-extern int fetch_array(struct tracee *tracee, struct array *array, word_t address, size_t nb_entries);
-extern int push_array(struct array *array);
+extern int fetch_array(struct tracee *tracee, struct array *array, enum reg reg, size_t nb_entries);
+extern int push_array(struct array *array, enum reg reg);
 extern void free_array(struct array *array);
 
 extern int read_item_data(struct array *array, size_t index, void **value);

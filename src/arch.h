@@ -50,23 +50,27 @@ typedef unsigned long word_t;
     #define SYSNUM_HEADER  "syscall/sysnum-x86_64.h"
     #define SYSNUM_HEADER2 "syscall/sysnum-i386.h"
     #define HOST_ELF_MACHINE {62, 3, 6, 0}
+    #define RED_ZONE_SIZE 128
 
 #elif defined(ARCH_ARM_EABI)
 
     #define user_regs_struct user_regs
     #define SYSNUM_HEADER "syscall/sysnum-arm.h"
     #define HOST_ELF_MACHINE {40, 0};
+    #define RED_ZONE_SIZE 0
 
 #elif defined(ARCH_X86)
 
     #define SYSNUM_HEADER "syscall/sysnum-i386.h"
     #define HOST_ELF_MACHINE {3, 6, 0};
+    #define RED_ZONE_SIZE 0
 
 #elif defined(ARCH_SH4)
 
     #define user_regs_struct pt_regs
     #define SYSNUM_HEADER "syscall/sysnum-sh4.h"
     #define HOST_ELF_MACHINE {42, 0};
+    #define RED_ZONE_SIZE 0
     #define NO_MISALIGNED_ACCESS 1
 #else
 

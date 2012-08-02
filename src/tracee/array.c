@@ -313,20 +313,23 @@ int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
 }
 
 /**
- * Copy and cache into @array the pointer table pointed to by @address
+ * Copy and cache into @array the pointer table pointed to by @reg
  * from the @tracee memory space general.  Only the first @nb_entries
  * are copied, unless it is 0 then all the entries up to the NULL
  * pointer are copied.  This function returns -errno when an error
  * occured, otherwise 0.
  */
-int fetch_array(struct tracee *tracee, struct array *array, word_t address, size_t nb_entries)
+int fetch_array(struct tracee *tracee, struct array *array, enum reg reg, size_t nb_entries)
 {
 	word_t pointer = (word_t)-1;
+	word_t address;
 	int status;
 	int i;
 
 	assert(array != NULL);
 	assert(array->_cache == NULL);
+
+	address = peek_reg(tracee, reg);
 
 	for (i = 0; nb_entries != 0 ? i < nb_entries : pointer != 0; i++) {
 		void *tmp = realloc(array->_cache, (i + 1) * sizeof(struct _entry));
@@ -365,13 +368,13 @@ end:
 
 /**
  * Copy -- if needed -- the pointer table and new items cached by
- * @array into the tracee's stack.  This function returns the number
- * of bytes used in tracee's stack, otherwise it returns -errno when
- * an error occured.
+ * @array into the tracee's memory, and make @reg points to the new
+ * pointer table.  This function returns -errno if an error occured,
+ * otherwise 0.
  */
-int push_array(struct array *array)
+int push_array(struct array *array, enum reg reg)
 {
-	word_t stack_pointer;
+	word_t tracee_ptr;
 	int status;
 	int i;
 
@@ -400,7 +403,7 @@ int push_array(struct array *array)
 	}
 
 	/* The pod array is expected to be at the beginning of the
-	 * stack by the caller.  */
+	 * allocated memory by the caller.  */
 	total_size = array->length * sizeof_word(array->tracee);
 	local[0].iov_base = pod_array;
 	local[0].iov_len  = total_size;
@@ -414,7 +417,7 @@ int push_array(struct array *array)
 			continue;
 
 		/* At this moment, we only know the offsets in the
-		 * tracee's stack. */
+		 * tracee's memory block. */
 		array->_cache[i].remote = total_size;
 
 		size = sizeof_item(array, i);
@@ -436,10 +439,10 @@ int push_array(struct array *array)
 	}
 	assert(local_count < array->length + 1);
 
-	/* Modified items and the pod array are stored in the tracee's
-	 * stack.  */
-	stack_pointer = resize_stack(array->tracee, total_size);
-	if (stack_pointer == 0) {
+	/* Modified items and the pod array are stored in a tracee's
+	 * memory block.  */
+	tracee_ptr = alloc(array->tracee, total_size);
+	if (tracee_ptr == 0) {
 		status = -E2BIG;
 		goto end;
 	}
@@ -448,7 +451,7 @@ int push_array(struct array *array)
 	 * memory.  */
 	for (i = 0; i < array->length; i++) {
 		if (array->_cache[i].local != NULL)
-			array->_cache[i].remote += stack_pointer;
+			array->_cache[i].remote += tracee_ptr;
 
 		if (is_32on64_mode(array->tracee))
 			((uint32_t *)pod_array)[i] = array->_cache[i].remote;
@@ -457,7 +460,7 @@ int push_array(struct array *array)
 	}
 
 	/* Write all the modified items and the pod array at once.  */
-	status = writev_data(array->tracee, stack_pointer, local, local_count);
+	status = writev_data(array->tracee, tracee_ptr, local, local_count);
 	if (status < 0)
 		goto end;
 
@@ -472,7 +475,8 @@ end:
 	if (status < 0)
 		return status;
 
-	return total_size;
+	poke_reg(array->tracee, reg, tracee_ptr);
+	return 0;
 }
 
 /**

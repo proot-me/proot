@@ -465,3 +465,58 @@ void poke_mem(const struct tracee *tracee, word_t address, word_t value)
 	(void) ptrace(PTRACE_POKEDATA, tracee->pid, address, value);
 	return;
 }
+
+/**
+ * Allocate @size bytes in the @tracee's memory space.  This function
+ * returns the address of the allocated memory in the @tracee's memory
+ * space, otherwise 0 if an error occured.
+ */
+word_t alloc(struct tracee *tracee, ssize_t size)
+{
+	word_t stack_pointer;
+
+	/* Get the current value of the stack pointer from the tracee's
+	 * USER area. */
+	stack_pointer = peek_reg(tracee, STACK_POINTER);
+
+	if (tracee->original_sp == 0) {
+		/* The stack pointer have to be restored in
+		 * translate_syscall_exit().  */
+		tracee->original_sp = stack_pointer;
+
+		/* Some ABIs specify an amount of bytes after the
+		 * stack pointer that shall not be used by anytthing
+		 * but the compiler (for optimization purpose).  */
+		size += RED_ZONE_SIZE;
+	}
+
+	/* Sanity check. */
+	if (   (size > 0 && stack_pointer <= size)
+	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
+		notice(WARNING, INTERNAL, "integer under/overflow detected in %s", __FUNCTION__);
+		return 0;
+	}
+
+	/* Remember the stack grows downward. */
+	stack_pointer -= size;
+
+	/* Set the new value of the stack pointer in the tracee's USER
+	 * area. */
+	poke_reg(tracee, STACK_POINTER, stack_pointer);
+
+	return stack_pointer;
+}
+
+/**
+ * Deallocate all the @tracee's memory that were previously allocated
+ * by alloc().  If @restore_sp is true, then the @tracee's stack
+ * pointer is restored to its original value.
+ */
+void dealloc(struct tracee *tracee, bool restore_sp)
+{
+	if (tracee->original_sp != 0) {
+		if (restore_sp)
+			poke_reg(tracee, STACK_POINTER, tracee->original_sp);
+		tracee->original_sp = 0;
+	}
+}

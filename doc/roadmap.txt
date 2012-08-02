@@ -143,8 +143,6 @@ Performance
 
 * Fallback to /proc/<pid>/mem when process_vm_readv() isn't available.
 
-* Don't move the stack pointer, use a pointer in the struct tracee
-
 * Add a "multi-process" mode where there's one fork of PRoot per monitored process.
 
     Each time a new_tracee structure is created, PRoot forks itself.

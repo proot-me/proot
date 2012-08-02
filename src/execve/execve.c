@@ -173,8 +173,7 @@ static int expand_interp(struct tracee *tracee,
 /**
  * Translate the arguments of the execve() syscall made by the @tracee
  * process.  This function return -errno if an error occured,
- * otherwise the number of bytes allocated in the stack to store the
- * new argv[] and envp[].
+ * otherwise 0.
  *
  * The execve() syscall needs a very special treatment for script
  * files because according to "man 2 execve":
@@ -221,7 +220,6 @@ int translate_execve(struct tracee *tracee)
 	bool ignore_elf_interpreter;
 	bool inhibit_rpath = false;
 	bool is_script;
-	int size = 0;
 	int status;
 
 	assert(tracee != NULL);
@@ -230,7 +228,7 @@ int translate_execve(struct tracee *tracee)
 	if (status < 0)
 		return status;
 
-	status = fetch_array(tracee, &argv, peek_reg(tracee, SYSARG_2), 0);
+	status = fetch_array(tracee, &argv, SYSARG_2, 0);
 	if (status < 0)
 		goto end;
 
@@ -244,7 +242,7 @@ int translate_execve(struct tracee *tracee)
 		if (argv0 != NULL)
 			argv0 = strdup(argv0);
 
-		status = fetch_array(tracee, &envp, peek_reg(tracee, SYSARG_3), 0);
+		status = fetch_array(tracee, &envp, SYSARG_3, 0);
 		if (status < 0)
 			goto end;
 
@@ -349,21 +347,13 @@ int translate_execve(struct tracee *tracee)
 	if (status < 0)
 		goto end;
 
-	status = push_array(&argv);
+	status = push_array(&argv, SYSARG_2);
 	if (status < 0)
 		goto end;
-	if (status > 0) {
-		size += status;
-		poke_reg(tracee, SYSARG_2, peek_reg(tracee, STACK_POINTER));
-	}
 
-	status = push_array(&envp);
+	status = push_array(&envp, SYSARG_3);
 	if (status < 0)
 		goto end;
-	if (status > 0) {
-		size += status;
-		poke_reg(tracee, SYSARG_3, peek_reg(tracee, STACK_POINTER));
-	}
 
 	status = 0;
 
@@ -379,5 +369,5 @@ end:
 	if (status < 0)
 		return status;
 
-	return size;
+	return 0;
 }
