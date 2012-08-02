@@ -20,13 +20,16 @@
  * 02110-1301 USA.
  */
 
-#include <sys/stat.h> /* lstat(2), */
-#include <unistd.h>   /* lstat(2), */
-#include <stdlib.h>   /* realpath(3), calloc(3), free(3), */
+#include <sys/types.h> /* mkdir(2), */
+#include <sys/stat.h> /* lstat(2), mkdir(2), chmod(2), */
+#include <fcntl.h>    /* mknod(2), */
+#include <unistd.h>   /* getcwd(2), lstat(2), mknod(2), symlink(2), */
+#include <stdlib.h>   /* realpath(3), calloc(3), free(3), mktemp(3), */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
 #include <errno.h>    /* errno, E* */
+#include <stdio.h>    /* sprintf(3), */
 
 #include "path/binding.h"
 #include "path/path.h"
@@ -51,18 +54,8 @@ struct binding {
 
 static struct binding *bindings_guest_order = NULL;
 static struct binding *bindings_host_order = NULL;
-static struct binding *expected_bindings = NULL;
+static struct binding *user_bindings = NULL;
 static bool initialized = false;
-
-/**
- * Add @binding to the list of expected bindings, used in
- * init_bindings() to feed the list of actual @bindings.
- */
-static void expect_binding(struct binding *binding)
-{
-	binding->next = expected_bindings;
-	expected_bindings = binding;
-}
 
 /**
  * Save @path in the list of paths that are bound for the
@@ -99,7 +92,10 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	 * init_module_path(). */
 	binding->guest.length = 0;
 
-	expect_binding(binding);
+	/* Add this binding to the list of user bindings, this latter
+	 * is converted in init_bindings().  */
+	binding->next = user_bindings;
+	user_bindings = binding;
 
 	return;
 
@@ -318,89 +314,151 @@ too_long:
 }
 
 /**
- * Create a "dummy" path up to the canonicalized guest path @c_path,
- * it cheats programs that walk up to it.
+ * Create a "fake" filesystem branch for components of
+ * binding->guest.path that are not in the guest rootfs (for instance
+ * "-b /etc/motd:/this/does/not/exists").  This function returns NULL
+ * on error, otherwse it returns a binding used as a glue between the
+ * parent of the first missing component and the "fake" filesystem
+ * branch.
  */
-static void create_dummy(char c_path[PATH_MAX], const char *real_path)
+static struct binding *create_missing_components(const struct binding *binding)
 {
-	char t_current_path[PATH_MAX];
-	char t_path[PATH_MAX];
-	struct stat statl;
-	int status;
-	int is_final;
+	struct binding *new_binding = NULL;
+	enum finality is_final;
+	char parent[PATH_MAX];
+	char path[PATH_MAX];
 	const char *cursor;
-	int type;
+	int status;
 
-	/* Determine the type of the element to be bound:
-	   1: file
-	   0: directory
-	*/
-	status = stat(real_path, &statl);
-	if (status != 0)
-		goto error;
-
-	type = (S_ISREG(statl.st_mode));
-
-	status = join_paths(2, t_path, root, c_path);
+	/* Remember that "binding->guest.path" is canonicalized and
+	 * that substitute_binding() will not work until this module
+	 * is initialized.  That's why we can safely concatenate
+	 * "root" and "binding->guest.path" here.  */
+	status = join_paths(2, path, root, binding->guest.path);
 	if (status < 0)
 		goto error;
 
-	status = lstat(t_path, &statl);
-	if (status == 0)
-		return;
+	/* Start after the guest root since this latter is known to
+	 * exist, obviously.  */
+	cursor = path + root_length;
+	strcpy(parent, root);
 
-	if (errno != ENOENT)
-		goto error;
-
-	/* Skip the "root" part since we know it exists. */
-	strcpy(t_current_path, root);
-	cursor = t_path + root_length;
-
-	is_final = 0;
+	is_final = NOT_FINAL;
 	while (!is_final) {
 		char component[NAME_MAX];
 		char tmp[PATH_MAX];
+		struct stat statl;
+		size_t size;
 
 		status = next_component(component, &cursor);
 		if (status < 0)
 			goto error;
 		is_final = status;
 
-		strcpy(tmp, t_current_path);
-		status = join_paths(2, t_current_path, tmp, component);
-		if (status < 0)
-			goto error;
+		/* Copy up to the current component.  */
+		size = cursor - path - 1;
+		assert(size < PATH_MAX);
 
-		/* Note that the final component can't always be a
-		 * directory, actually its type matters since not only
-		 * the entry in the parent directory is important for
-		 * some tools like 'find'.  */
-		if (is_final) {
-			if (type) {
-				status = open(t_current_path, O_CREAT, 0766);
-				if (status < 0)
-					goto error;
-				close(status);
+		memcpy(tmp, path, size);
+		tmp[size] = '\0';
+
+		/* Nothing to do if this path exists.  */
+		status = lstat(tmp, &statl);
+		if (status == 0) {
+			strcpy(parent, tmp);
+			continue;
+		}
+
+		/* The path does not exist, so let's create the
+		 * missing components in a dedicated bindings.  */
+		if (new_binding == NULL) {
+			/* End of the story.  */
+			if (is_final)
+				break;
+
+			/* This shall be freed by the caller after
+			 * being "insorted".  */
+			new_binding = malloc(sizeof(struct binding));
+			if (!new_binding) {
+				notice(WARNING, SYSTEM, "malloc()");
+				goto error;
 			}
-			else {
-				status = mkdir(t_current_path, 0777);
-				if (status < 0 && errno != EEXIST)
-					goto error;
-			}
+
+			/* Create a binding that connect the parent of
+			 * the first missing component to a fake
+			 * filesystem branch.  The purpose of this
+			 * branch is to avoid a black hole.  */
+
+			status = detranslate_path(NULL, tmp, NULL);
+			if (status < 0)
+				goto error;
+
+			strcpy(new_binding->guest.path, tmp);
+			new_binding->guest.length = strlen(new_binding->guest.path);
+
+			sprintf(new_binding->host.path, "/tmp/proot-%d-XXXXXX", getpid());
+			new_binding->host.length = strlen(new_binding->host.path);
+
+			new_binding->need_substitution = true;
+
+			/* Get a temporary name for the fake
+			 * filesystem branch.  */
+			mktemp(new_binding->host.path);
+			if (new_binding->host.path[0] == '\0')
+				goto error;
+
+			/* Compute the component to be created.  */
+			strcpy(tmp, new_binding->host.path);
 		}
 		else {
-			status = mkdir(t_current_path, 0777);
-			if (status < 0 && errno != EEXIST)
+			/* Compute the component to be created.  */
+			status = join_paths(2, tmp, parent, component);
+			if (status < 0)
 				goto error;
 		}
-	}
 
-	notice(INFO, USER, "create the guest path (binding) \"%s\"", c_path);
-	return;
+		if (is_final) {
+			/* Compute the kind of component.  Note:
+			 * devices are created as regular files
+			 * because it would require privileges
+			 * otherwise.  */
+			status = lstat(binding->host.path, &statl);
+			if (status < 0 || S_ISCHR(statl.st_mode) || S_ISBLK(statl.st_mode))
+				statl.st_mode = S_IFREG;
+		}
+		else
+			/* A non-final component has to be directory.  */
+			statl.st_mode = S_IFDIR;
+
+		/* Create the component.  */
+		switch (statl.st_mode & S_IFMT) {
+		case S_IFDIR:
+			status = mkdir(tmp, 0777);
+			break;
+					
+		case S_IFLNK:
+			status = symlink("nowhere", tmp);
+			break;
+
+		default:
+			status = mknod(tmp, 0777 | statl.st_mode, 0);
+			break;
+		}
+		if (status < 0) {
+			notice(WARNING, SYSTEM, "mkdir/symlink/mknod '%d'", tmp);
+			goto error;
+		}
+
+		/* Ensure the parent is not writable anymore.  */
+		(void) chmod(parent, 0555);
+		strcpy(parent, tmp);
+	}
+	return new_binding;
 
 error:
 	notice(WARNING, USER,
-		"can't create the guest path (binding) \"%s\": you can still access it *directly*, without seeing it though", c_path);
+		"can't create the guest path (binding) \"%s\": you can still access it directly", binding->guest.path);
+	return NULL;
 }
 
 /**
@@ -565,8 +623,8 @@ void free_bindings()
 	free_bindings2(bindings_host_order);
 	bindings_host_order = NULL;
 
-	free_bindings2(expected_bindings);
-	expected_bindings = NULL;
+	free_bindings2(user_bindings);
+	user_bindings = NULL;
 }
 
 /**
@@ -575,11 +633,11 @@ void free_bindings()
 void init_bindings()
 {
 	struct binding *binding;
-	struct binding *new_binding;
+	struct binding *dirent_binding;
 
 	/* Now the module is initialized so we can call
 	 * canonicalize() safely. */
-	for (binding = expected_bindings; binding != NULL; binding = binding->next) {
+	for (binding = user_bindings; binding != NULL; binding = binding->next) {
 		char tmp[PATH_MAX];
 		int status;
 
@@ -618,21 +676,22 @@ void init_bindings()
 			binding->guest.length--;
 		}
 
-		new_binding = insort_binding(GUEST_SIDE, binding);
-		if (!new_binding)
-			continue;
+		(void) insort_binding(GUEST_SIDE, binding);
+		(void) insort_binding(HOST_SIDE, binding);
 
-		new_binding = insort_binding(HOST_SIDE, new_binding);
-		if (!new_binding)
-			continue;
-
-		create_dummy(new_binding->guest.path, new_binding->host.path);
+		/* Ensure there's no black hole in the file-system hierarchy.  */
+		dirent_binding = create_missing_components(binding);
+		if (dirent_binding != NULL) {
+			(void) insort_binding(GUEST_SIDE, dirent_binding);
+			(void) insort_binding(HOST_SIDE, dirent_binding);
+			free(dirent_binding);
+		}
 	}
 
-	/* Free the list of expected bindings, it will not be used
+	/* Free the list of user bindings, they will not be used
 	 * anymore.  */
-	free_bindings2(expected_bindings);
-	expected_bindings = NULL;
+	free_bindings2(user_bindings);
+	user_bindings = NULL;
 
 	initialized = true;
 }

@@ -1,3 +1,41 @@
+Release v2.2
+============
+
+Highlights
+----------
+
+* PRoot can now mount/bind files to any location in the guest rootfs,
+  even if the mount point has no parent directory and the user can't
+  create it.  With previous versions of PRoot, that would created
+  kinda blackhole in the filesystem hierarchy that might bug some
+  programs like "cpio" or "rpm".
+
+  For example, with the previous version of PRoot::
+
+       $ proot -b /etc/motd:/black/holes/and/revelations
+       proot warning: can't create the guest path (binding) ...
+       proot info: started
+
+       $ find /black
+       find: `/black: No such file or directory
+
+       $ cat /black/holes/and/revelations
+       Time has come to make things right -- Matthew Bellamy
+
+  And now::
+
+       $ proot -b /etc/motd:/black/holes/and/revelations
+       proot info: started
+
+       $ find /black
+       /black
+       /black/holes
+       /black/holes/and
+       /black/holes/and/revelations
+
+       $ cat /black/holes/and/revelations
+       Time has come to make things right -- Matthew Bellamy
+
 Release v2.1
 ============
 

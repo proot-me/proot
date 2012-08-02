@@ -15,12 +15,22 @@ ${PROOT} / bash -c 'readlink /proc/1/../$$/exe'   | grep ^${WHICH_READLINK}$
 ${PROOT} -b /proc ${ROOTFS} readlink /proc/1/../self/exe | grep ^/bin/readlink$
 
 ! ${PROOT} / readlink /proc/self/exe/
+[ $? -eq 0 ]
+
 ! ${PROOT} / readlink /proc/self/exe/..
+[ $? -eq 0 ]
+
 ! ${PROOT} / readlink /proc/self/exe/../exe
+[ $? -eq 0 ]
 
 ! ${PROOT} -b /proc / readlink /proc/self/exe/
+[ $? -eq 0 ]
+
 ! ${PROOT} -b /proc / readlink /proc/self/exe/..
+[ $? -eq 0 ]
+
 ! ${PROOT} -b /proc / readlink /proc/self/exe/../exe
+[ $? -eq 0 ]
 
 TEST=$(${PROOT} / readlink /proc/self/fd/0 | grep -E "^/proc/[[:digit:]]+/fd/0$" | true)
 test -z $TEST

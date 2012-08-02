@@ -50,7 +50,7 @@ check = case "$$?" in					\
 setup: $(ROOTFS)/bin/true $(ROOTFS)/bin/false    \
        $(ROOTFS)/bin/pwd  $(ROOTFS)/bin/readlink $(ROOTFS)/bin/symlink \
        $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true $(ROOTFS)/bin/echo \
-       $(ROOTFS)/bin/argv0
+       $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat
 
 $(ROOTFS)/bin/abs-true:
 	@ln -fs /bin/true $@

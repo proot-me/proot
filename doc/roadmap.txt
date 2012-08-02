@@ -21,16 +21,6 @@ Short term
   * for /proc/<pid>/root: allow one root per tracee, then add support
     for the chroot syscall under PRoot.
 
-* Emulate stat/getdents-like syscalls for "dummy" path that can't be created.
-
-  It should fix this kind of scenario::
-
-      host$ proot -m /etc:/does_not_exist/etc /
-      proot warning: can't create the binding location "/does_not_exist/etc": [...]
-
-      guest$ cd /does_not_exist/etc
-      sh: cd: /does_not_exist/etc: No such file or directory
-
 * A host program that launches a guest program shouldn't propagate its
   host LD_LIBRARY_PATH environment variable.
 
@@ -38,6 +28,8 @@ Short term
   free_bindings(), free_config().
 
 * "#pragma GCC poison ptrace/process_vm_xxx" except for tracee/
+
+* Merge bind_path() and init_bindings() -> no need for "user_bindings".
 
 
 Middle term
@@ -90,6 +82,9 @@ Features
 * Emulate get*id() and set*id() accurately when -0 is activated.
 
 * Allow a per-module verbose level
+
+* Emulate getdents in order to glue the "fake" branches with their
+  parent directories, c.f. create_missing_components().
 
 
 Documentation
