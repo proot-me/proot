@@ -312,10 +312,6 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 
 	assert(initialized);
 
-#if BENCHMARK_TRACEE_HANDLING
-	return 0;
-#endif
-
 	/* Don't try to detranslate relative paths (typically the
 	 * target of a relative symbolic link). */
 	if (path[0] != '/')

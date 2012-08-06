@@ -62,13 +62,8 @@ static int translate_n_check(struct tracee *tracee, char t_path[PATH_MAX], const
 		return -EACCES;
 
 	status = lstat(t_path, &statl);
-#ifdef BENCHMARK_TRACEE_HANDLING
-	if (status < 0 || !S_ISREG(statl.st_mode))
-		return -EPERM;
-#else
 	if (status < 0)
 		return -EPERM;
-#endif
 
 	return 0;
 }
