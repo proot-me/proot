@@ -113,7 +113,7 @@ $(USE_BUILD_H): build.h
 .DELETE_ON_ERROR:
 $(OBJECTS) build.h: $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d) .check_readlinkat.d
+DEPS = $(OBJECTS:.o=.d) .check_readlinkat.d .check_process_vm.d
 -include $(DEPS)
 
 ######################################################################
