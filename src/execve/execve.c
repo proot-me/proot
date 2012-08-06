@@ -271,8 +271,12 @@ int translate_execve(struct tracee *tracee)
 			if (status < 0)
 				goto end;
 
-			status = write_items(&argv, 0, 3, config.qemu[0], "-0",
-					!is_script && argv0 != NULL ? argv0 : u_interp);
+			/* For example, the second argument of:
+			 *     execve("/bin/true", { "true", NULL }, ...)
+			 * becomes:
+			 *     { "/usr/bin/qemu", "-0", "true", "/bin/true"}  */
+			status = write_items(&argv, 0, 4, config.qemu[0], "-0",
+					!is_script && argv0 != NULL ? argv0 : u_interp, u_interp);
 			if (status < 0)
 				goto end;
 
