@@ -43,6 +43,7 @@ static char *recommended_bindings[] = {
 	"/etc/nsswitch.conf",
 	"/etc/resolv.conf",
 	"/etc/localtime",
+	"/run/",
 	"/dev/",
 	"/sys/",
 	"/proc/",
@@ -222,6 +223,7 @@ static struct option options[] = {
 \t    * /etc/nsswitch.conf\n\
 \t    * /etc/resolv.conf\n\
 \t    * /etc/localtime\n\
+\t    * /run/\n\
 \t    * /dev/\n\
 \t    * /sys/\n\
 \t    * /proc/\n\
