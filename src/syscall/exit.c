@@ -313,6 +313,14 @@ case PR_getuid32:
 case PR_getgid32:
 case PR_geteuid32:
 case PR_getegid32:
+case PR_setuid:
+case PR_setgid:
+case PR_setfsuid:
+case PR_setfsgid:
+case PR_setuid32:
+case PR_setgid32:
+case PR_setfsuid32:
+case PR_setfsgid32:
 	status = 0;
 	if (config.fake_id0)
 		break;

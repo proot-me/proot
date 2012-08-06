@@ -87,7 +87,7 @@ Features
 
 * Emulate ptrace() so as to allow a ptraced GDB on another ptraced process.
 
-* Add two new options: --user-id & --group-id, and make -0 an alias to these options
+* Emulate get*id() and set*id() accurately when -0 is activated.
 
 * Allow a per-module verbose level
 
