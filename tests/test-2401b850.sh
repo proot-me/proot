@@ -9,16 +9,16 @@ rm -f ${TMP}
 touch ${TMP}
 chmod +x ${TMP}
 
-# Valgrind prepends "/bin/sh" in front of foreign binaries and use
+# Valgrind prepends "/bin/sh" in front of foreign binaries and uses
 # LD_PRELOAD.
 if $(echo ${PROOT} | grep -q valgrind); then
     PROOT2=${PROOT}
     PROOT="env PROOT_FORCE_FOREIGN_BINARY=1 ${PROOT}"
     COMMAND1="-E LD_PRELOAD=.* -0 /bin/sh /bin/sh ${TMP}"
-    TEST1="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env env LD_LIBRARY_PATH=test1 ${TMP}"
+    TEST1="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env /usr/bin/env LD_LIBRARY_PATH=test1 ${TMP}"
     TEST2="-- -E LD_PRELOAD=.* -E LD_LIBRARY_PATH=test2 -0 /bin/sh /bin/sh ${TMP}"
-    TEST3="-- -E LD_PRELOAD=.* -E LD_LIBRARY_PATH=test2 -0 env env LD_LIBRARY_PATH=test1 ${TMP}"
-    TEST4="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env env LD_TRACE_LOADED_OBJECTS=1 ${TMP}"
+    TEST3="-- -E LD_PRELOAD=.* -E LD_LIBRARY_PATH=test2 -0 env /usr/bin/env LD_LIBRARY_PATH=test1 ${TMP}"
+    TEST4="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env /usr/bin/env LD_TRACE_LOADED_OBJECTS=1 ${TMP}"
     COMMAND2="-E LD_PRELOAD=.* -0 ${TMP} ${TMP} ${TMP2}"
 else
     PROOT2=${PROOT}
