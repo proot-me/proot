@@ -443,7 +443,6 @@ int main(int argc, char *argv[])
 		config.command = default_command;
 
 	/* TODO: remove the need for initialization.  */
-	init_module_ldso();
 	init_bindings();
 
 	if (config.verbose_level)

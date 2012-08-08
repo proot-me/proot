@@ -27,7 +27,6 @@
 
 #include "tracee/array.h"
 
-extern void init_module_ldso(void);
 extern int ldso_env_passthru(struct array *envp, struct array *argv,
 			     const char *define, const char *undefine);
 extern int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp);

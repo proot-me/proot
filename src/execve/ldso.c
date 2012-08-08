@@ -35,27 +35,6 @@
 #include "notice.h"
 #include "config.h"
 
-/* The value of LD_LIBRARY_PATH is saved at initialization time to
- * ensure host programs (the runner for instance) will not be affected
- * by the future values of LD_LIBRARY_PATH as defined in the guest
- * environment.  */
-static char *initial_ldso_paths = NULL;
-
-/* TODO: do the same for LD_PRELOAD?  */
-
-void init_module_ldso()
-{
-	initial_ldso_paths = getenv("LD_LIBRARY_PATH");
-	if (!initial_ldso_paths)
-		return;
-
-	initial_ldso_paths = strdup(initial_ldso_paths);
-	if (!initial_ldso_paths)  {
-		notice(WARNING, SYSTEM, "can't allocate memory");
-		return;
-	}
-}
-
 /**
  * Check if the environment @variable has the given @name.
  */
@@ -254,6 +233,7 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
  */
 int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp)
 {
+	static char *initial_ldso_paths = NULL;
 	union elf_header elf_header;
 
 	char host_ldso_paths[ARG_MAX] = "";
@@ -287,9 +267,10 @@ int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp)
 		inhibit_rpath = true;
 	}
 
-
 	/* 2. LD_LIBRARY_PATH  */
-	if (initial_ldso_paths) {
+	if (initial_ldso_paths == NULL)
+		initial_ldso_paths = strdup(getenv("LD_LIBRARY_PATH") ?: "/");
+	if (initial_ldso_paths != NULL && initial_ldso_paths[0] != '\0') {
 		status = add_host_ldso_paths(host_ldso_paths, initial_ldso_paths);
 		if (status < 0) {
 			status = 0; /* Not fatal.  */
