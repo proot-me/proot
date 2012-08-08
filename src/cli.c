@@ -48,6 +48,33 @@ static void handle_option_r(char *value)
 	config.guest_rootfs = value;
 }
 
+struct binding {
+	const char *host;
+	const char *guest;
+	bool must_exist;
+
+	struct binding *next;
+};
+
+static struct binding *bindings = NULL;
+
+static void new_binding2(const char *host, const char *guest, bool must_exist)
+{
+	struct binding *binding;
+
+	binding = malloc(sizeof (struct binding));
+	if (binding == NULL) {
+		notice(WARNING, SYSTEM, "malloc()");
+		return;
+	}
+
+	binding->host  = host;
+	binding->guest = guest;
+	binding->must_exist = must_exist;
+	binding->next = bindings;
+	bindings = binding;
+}
+
 static void new_binding(char *value, bool must_exist)
 {
 	char *ptr = strchr(value, ':');
@@ -60,7 +87,7 @@ static void new_binding(char *value, bool must_exist)
 	if (value[0] == '$' && getenv(&value[1]))
 		value = getenv(&value[1]);
 
-	bind_path(value, ptr, must_exist);
+	new_binding2(value, ptr, must_exist);
 }
 
 static void handle_option_b(char *value)
@@ -192,9 +219,8 @@ static void handle_option_q(char *value)
 	config.qemu[nb_args] = NULL;
 
 	config.host_rootfs = "/host-rootfs";
-	bind_path("/", config.host_rootfs, true);
-
-	bind_path("/dev/null", "/etc/ld.so.preload", false);
+	new_binding2("/", config.host_rootfs, true);
+	new_binding2("/dev/null", "/etc/ld.so.preload", false);
 }
 
 static void handle_option_w(char *value)
@@ -437,13 +463,22 @@ int main(int argc, char *argv[])
 	if (config.guest_rootfs == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", config.guest_rootfs);
 
+	/* Bindings can be registered once config.guest_rootfs is
+	 * correctly initialized.  */
+	while (bindings != NULL) {
+		struct binding *next;
+
+		bind_path(bindings->host, bindings->guest, bindings->must_exist);
+
+		next = bindings->next;
+		free(bindings);
+		bindings = next;
+	}
+
 	if (i < argc)
 		config.command = &argv[i];
 	else
 		config.command = default_command;
-
-	/* TODO: remove the need for initialization.  */
-	init_bindings();
 
 	if (config.verbose_level)
 		print_config();
@@ -458,5 +493,3 @@ int main(int argc, char *argv[])
 
 	exit(event_loop());
 }
-
-

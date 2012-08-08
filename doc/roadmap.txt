@@ -27,10 +27,6 @@ Short term
 * Allow proot-in-proot: tracee { *config { ref_counter; bindings } },
   free_bindings(), free_config().
 
-* "#pragma GCC poison ptrace/process_vm_xxx" except for tracee/
-
-* Merge bind_path() and init_bindings() -> no need for "user_bindings".
-
 
 Middle term
 ===========

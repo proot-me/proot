@@ -54,56 +54,7 @@ struct binding {
 
 static struct binding *bindings_guest_order = NULL;
 static struct binding *bindings_host_order = NULL;
-static struct binding *user_bindings = NULL;
-static bool initialized = false;
-
-/**
- * Save @path in the list of paths that are bound for the
- * translation mechanism.
- */
-void bind_path(const char *host_path, const char *guest_path, bool must_exist)
-{
-	struct binding *binding;
-	const char *tmp;
-
-	binding = calloc(1, sizeof(struct binding));
-	if (binding == NULL) {
-		notice(WARNING, SYSTEM, "calloc()");
-		return;
-	}
-
-	if (realpath(host_path, binding->host.path) == NULL) {
-		if (must_exist)
-			notice(WARNING, SYSTEM, "realpath(\"%s\")", host_path);
-		goto error;
-	}
-
-	binding->host.length = strlen(binding->host.path);
-
-	tmp = guest_path ? guest_path : host_path;
-	if (strlen(tmp) >= PATH_MAX) {
-		notice(ERROR, INTERNAL, "guest path (binding) \"%s\" is too long", tmp);
-		goto error;
-	}
-
-	strcpy(binding->guest.path, tmp);
-
-	/* The sanitization of binding->guest is delayed until
-	 * init_module_path(). */
-	binding->guest.length = 0;
-
-	/* Add this binding to the list of user bindings, this latter
-	 * is converted in init_bindings().  */
-	binding->next = user_bindings;
-	user_bindings = binding;
-
-	return;
-
-error:
-	free(binding);
-	binding = NULL;
-	return;
-}
+static bool initializing_binding = false;
 
 /**
  * Print all bindings (verbose purpose).
@@ -113,9 +64,7 @@ void print_bindings()
 	struct binding *binding;
 
 	for (binding = bindings_guest_order; binding != NULL; binding = binding->next) {
-		if (compare_paths2(binding->host.path, binding->host.length,
-				   binding->guest.path, binding->guest.length)
-			== PATHS_ARE_EQUAL)
+		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
 			notice(INFO, USER, "binding = %s", binding->host.path);
 		else
 			notice(INFO, USER, "binding = %s:%s",
@@ -231,7 +180,9 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 	size_t path_length;
 	size_t new_length;
 
-	if (!initialized)
+	/* This function can't be called during the initialization of
+	 * a binding.  */
+	if (initializing_binding)
 		return -1;
 
 	binding = get_binding(side, path);
@@ -314,14 +265,155 @@ too_long:
 }
 
 /**
+ * Insert @binding into the list of @bindings, in a sorted manner so
+ * as to make the substitution of nested bindings determistic, ex.:
+ *
+ *     -b /bin:/foo/bin -b /usr/bin/more:/foo/bin/more
+ *
+ * Note: "nested" from the @side point-of-view.
+ */
+static void insort_binding(enum binding_side side, struct binding *binding)
+{
+	struct binding *bindings;
+	struct binding *previous = NULL;
+	struct binding *next = NULL;
+	struct binding *iterator;
+
+	switch (side) {
+	case GUEST_SIDE:
+		next = bindings = bindings_guest_order;
+		break;
+
+	case HOST_SIDE:
+		next = bindings = bindings_host_order;
+		break;
+
+	default:
+		assert(0);
+		return;
+	}
+
+	/* Find where it should be added in the list.  */
+	for (iterator = bindings; iterator != NULL; iterator = iterator->next) {
+		enum path_comparison comparison;
+		const struct binding_path *binding_path;
+		const struct binding_path *iterator_path;
+
+		switch (side) {
+		case GUEST_SIDE:
+			binding_path = &binding->guest;
+			iterator_path = &iterator->guest;
+			break;
+
+		case HOST_SIDE:
+			binding_path = &binding->host;
+			iterator_path = &iterator->host;
+			break;
+
+		default:
+			assert(0);
+			return;
+		}
+
+		comparison = compare_paths2(binding_path->path, binding_path->length,
+					    iterator_path->path, iterator_path->length);
+		switch (comparison) {
+		case PATHS_ARE_EQUAL:
+			if (side == HOST_SIDE) {
+				previous = iterator;
+				break;
+			}
+
+			notice(WARNING, USER,
+				"both '%s' and '%s' are bound to '%s', only the last binding is active.",
+				binding->host.path, iterator->host.path, binding->guest.path);
+			return;
+
+		case PATH1_IS_PREFIX:
+			/* The new binding contains the iterator.  */
+			previous = iterator;
+			break;
+
+		case PATH2_IS_PREFIX:
+			/* The iterator contains the new binding.
+			 * Use the deepest container.  */
+			if (next == NULL)
+				next = iterator;
+			break;
+
+		case PATHS_ARE_NOT_COMPARABLE:
+			break;
+
+		default:
+			assert(0);
+			return;
+		}
+	}
+
+	/* Insert this copy in the list.  */
+	if (previous != NULL) {
+		binding->previous = previous;
+		binding->next     = previous->next;
+		if (previous->next != NULL)
+			previous->next->previous = binding;
+		previous->next        = binding;
+	}
+	else if (next != NULL) {
+		binding->next     = next;
+		binding->previous = next->previous;
+		if (next->previous != NULL)
+			next->previous->next = binding;
+		next->previous        = binding;
+
+		/* Ensure the head points to the first binding.  */
+		if (next == bindings)
+			bindings = binding;
+	}
+	else {
+		/* First item in this list.  */
+		binding->next     = NULL;
+		binding->previous = NULL;
+		bindings              = binding;
+	}
+
+	switch (side) {
+	case GUEST_SIDE:
+		bindings_guest_order = bindings;
+		break;
+
+	case HOST_SIDE:
+		bindings_host_order = bindings;
+		break;
+
+	default:
+		assert(0);
+		return;
+	}
+}
+
+/**
+ * c.f. function above.
+ */
+static void insort_binding2(struct binding *binding)
+{
+	struct binding *new_binding = malloc(sizeof(struct binding));
+	if (new_binding == NULL)
+		return;
+
+	insort_binding(GUEST_SIDE, binding);
+
+	/* TODO: do not duplicate the structure, use two sets of links
+	 * (one for the guest order, one for the host order).  */
+	memcpy(new_binding, binding, sizeof(struct binding));
+	insort_binding(HOST_SIDE, new_binding);
+}
+
+/**
  * Create a "fake" filesystem branch for components of
  * binding->guest.path that are not in the guest rootfs (for instance
- * "-b /etc/motd:/this/does/not/exists").  This function returns NULL
- * on error, otherwse it returns a binding used as a glue between the
- * parent of the first missing component and the "fake" filesystem
- * branch.
+ * "-b /etc/motd:/this/does/not/exists").
  */
-static struct binding *create_missing_components(const struct binding *binding)
+static void create_missing_components(const struct binding *binding)
 {
 	struct binding *new_binding = NULL;
 	enum finality is_final;
@@ -376,8 +468,6 @@ static struct binding *create_missing_components(const struct binding *binding)
 			if (is_final)
 				break;
 
-			/* This shall be freed by the caller after
-			 * being "insorted".  */
 			new_binding = malloc(sizeof(struct binding));
 			if (!new_binding) {
 				notice(WARNING, SYSTEM, "malloc()");
@@ -406,6 +496,8 @@ static struct binding *create_missing_components(const struct binding *binding)
 			mktemp(new_binding->host.path);
 			if (new_binding->host.path[0] == '\0')
 				goto error;
+
+			insort_binding2(new_binding);
 
 			/* Compute the component to be created.  */
 			strcpy(tmp, new_binding->host.path);
@@ -453,151 +545,12 @@ static struct binding *create_missing_components(const struct binding *binding)
 		(void) chmod(parent, 0555);
 		strcpy(parent, tmp);
 	}
-	return new_binding;
+	return;
 
 error:
 	notice(WARNING, USER,
 		"can't create the guest path (binding) \"%s\": you can still access it directly", binding->guest.path);
-	return NULL;
-}
-
-/**
- * Insert @binding into the list of @bindings, in a sorted manner so
- * as to make the substitution of nested bindings determistic, ex.:
- *
- *     -b /bin:/foo/bin -b /usr/bin/more:/foo/bin/more
- *
- * Note: "nested" from the @side point-of-view.
- */
-static struct binding *insort_binding(enum binding_side side, const struct binding *binding)
-{
-	struct binding *bindings;
-	struct binding *previous = NULL;
-	struct binding *next = NULL;
-	struct binding *iterator;
-	struct binding *new_binding;
-
-	switch (side) {
-	case GUEST_SIDE:
-		next = bindings = bindings_guest_order;
-		break;
-
-	case HOST_SIDE:
-		next = bindings = bindings_host_order;
-		break;
-
-	default:
-		assert(0);
-		return NULL;
-	}
-
-	/* Find where it should be added in the list.  */
-	for (iterator = bindings; iterator != NULL; iterator = iterator->next) {
-		enum path_comparison comparison;
-		const struct binding_path *binding_path;
-		const struct binding_path *iterator_path;
-
-		switch (side) {
-		case GUEST_SIDE:
-			binding_path = &binding->guest;
-			iterator_path = &iterator->guest;
-			break;
-
-		case HOST_SIDE:
-			binding_path = &binding->host;
-			iterator_path = &iterator->host;
-			break;
-
-		default:
-			assert(0);
-			return NULL;
-		}
-
-		comparison = compare_paths2(binding_path->path, binding_path->length,
-					    iterator_path->path, iterator_path->length);
-		switch (comparison) {
-		case PATHS_ARE_EQUAL:
-			if (side == HOST_SIDE) {
-				previous = iterator;
-				break;
-			}
-
-			notice(WARNING, USER,
-				"both '%s' and '%s' are bound to '%s', only the last binding is active.",
-				binding->host.path, iterator->host.path, binding->guest.path);
-			return NULL;
-
-		case PATH1_IS_PREFIX:
-			/* The new binding contains the iterator.  */
-			previous = iterator;
-			break;
-
-		case PATH2_IS_PREFIX:
-			/* The iterator contains the new binding.
-			 * Use the deepest container.  */
-			if (next == NULL)
-				next = iterator;
-			break;
-
-		case PATHS_ARE_NOT_COMPARABLE:
-			break;
-
-		default:
-			assert(0);
-			return NULL;
-		}
-	}
-
-	/* Work an a copy, the original will be freed by
-	 * init_bindings() later.  */
-	new_binding = malloc(sizeof(struct binding));
-	if (!new_binding) {
-		notice(WARNING, SYSTEM, "malloc()");
-		return NULL;
-	}
-	memcpy(new_binding, binding, sizeof(struct binding));
-
-	/* Insert this copy in the list.  */
-	if (previous != NULL) {
-		new_binding->previous = previous;
-		new_binding->next     = previous->next;
-		if (previous->next != NULL)
-			previous->next->previous = new_binding;
-		previous->next        = new_binding;
-	}
-	else if (next != NULL) {
-		new_binding->next     = next;
-		new_binding->previous = next->previous;
-		if (next->previous != NULL)
-			next->previous->next = new_binding;
-		next->previous        = new_binding;
-
-		/* Ensure the head points to the first binding.  */
-		if (next == bindings)
-			bindings = new_binding;
-	}
-	else {
-		/* First item in this list.  */
-		new_binding->next     = NULL;
-		new_binding->previous = NULL;
-		bindings              = new_binding;
-	}
-
-	switch (side) {
-	case GUEST_SIDE:
-		bindings_guest_order = bindings;
-		break;
-
-	case HOST_SIDE:
-		bindings_host_order = bindings;
-		break;
-
-	default:
-		assert(0);
-		return NULL;
-	}
-
-	return new_binding;
+	return;
 }
 
 /**
@@ -622,76 +575,77 @@ void free_bindings()
 
 	free_bindings2(bindings_host_order);
 	bindings_host_order = NULL;
-
-	free_bindings2(user_bindings);
-	user_bindings = NULL;
 }
 
 /**
- * Initialize internal data of the path translator.
+ * Save @path in the list of paths that are bound for the
+ * translation mechanism.
  */
-void init_bindings()
+void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 {
-	struct binding *binding;
-	struct binding *dirent_binding;
+	struct binding *binding = NULL;
+	int status;
 
-	/* Now the module is initialized so we can call
-	 * canonicalize() safely. */
-	for (binding = user_bindings; binding != NULL; binding = binding->next) {
-		char tmp[PATH_MAX];
-		int status;
+	initializing_binding = true;
 
-		strcpy(tmp, binding->guest.path);
-
-		/* In case binding->guest.path is relative.  */
-		if (!getcwd(binding->guest.path, PATH_MAX)) {
-			notice(WARNING, SYSTEM, "can't sanitize path (binding) \"%s\", getcwd()", tmp);
-			continue;
-		}
-
-		/* Sanitize the guest path of the binding within the
-		   alternate rootfs since it is assumed by
-		   substitute_binding().  Note the host path is already
-		   sanitized in bind_path().  */
-		status = canonicalize(0, tmp, true, binding->guest.path, 0);
-		if (status < 0) {
-			notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
-			       tmp, strerror(-status));
-			continue;
-		}
-
-		if (strcmp(binding->guest.path, "/") == 0) {
-			notice(WARNING, USER, "can't create a binding in \"/\"");
-			continue;
-		}
-
-		binding->guest.length = strlen(binding->guest.path);
-		binding->need_substitution =
-			compare_paths(binding->host.path,
-				binding->guest.path) != PATHS_ARE_EQUAL;
-
-		/* Remove the trailing slash as expected by substitute_binding(). */
-		if (binding->guest.path[binding->guest.length - 1] == '/') {
-			binding->guest.path[binding->guest.length - 1] = '\0';
-			binding->guest.length--;
-		}
-
-		(void) insort_binding(GUEST_SIDE, binding);
-		(void) insort_binding(HOST_SIDE, binding);
-
-		/* Ensure there's no black hole in the file-system hierarchy.  */
-		dirent_binding = create_missing_components(binding);
-		if (dirent_binding != NULL) {
-			(void) insort_binding(GUEST_SIDE, dirent_binding);
-			(void) insort_binding(HOST_SIDE, dirent_binding);
-			free(dirent_binding);
-		}
+	binding = calloc(1, sizeof(struct binding));
+	if (binding == NULL) {
+		notice(WARNING, SYSTEM, "calloc()");
+		goto error;
 	}
 
-	/* Free the list of user bindings, they will not be used
-	 * anymore.  */
-	free_bindings2(user_bindings);
-	user_bindings = NULL;
+	if (realpath(host_path, binding->host.path) == NULL) {
+		if (must_exist)
+			notice(WARNING, SYSTEM, "realpath(\"%s\")", host_path);
+		goto error;
+	}
+	binding->host.length = strlen(binding->host.path);
 
-	initialized = true;
+	/* In case binding->guest.path is relative.  */
+	if (!getcwd(binding->guest.path, PATH_MAX)) {
+		notice(WARNING, SYSTEM, "can't sanitize path (binding) \"%s\", getcwd()", binding->guest.path);
+		goto error;
+	}
+
+	/* Sanitize the guest path of the binding within the alternate
+	   rootfs since it is assumed by substitute_binding().  */
+	status = canonicalize(0, guest_path ? guest_path : host_path, true, binding->guest.path, 0);
+	if (status < 0) {
+		notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
+			guest_path ? guest_path : host_path, strerror(-status));
+		goto error;
+	}
+	binding->guest.length = strlen(binding->guest.path);
+
+	/* Sanity check.  */
+	if (strcmp(binding->guest.path, "/") == 0) {
+		notice(WARNING, USER, "can't create a binding in \"/\"");
+		goto error;
+	}
+
+	binding->need_substitution =
+		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
+
+	/* Remove the trailing "/" or "/." as expected by substitute_binding(). */
+	if (binding->guest.path[binding->guest.length - 1] == '.') {
+		binding->guest.path[binding->guest.length - 2] = '\0';
+		binding->guest.length -= 2;
+	}
+	else if (binding->guest.path[binding->guest.length - 1] == '/') {
+		binding->guest.path[binding->guest.length - 1] = '\0';
+		binding->guest.length -= 1;
+	}
+
+	insort_binding2(binding);
+
+	/* Ensure there's no black hole in the file-system hierarchy.  */
+	create_missing_components(binding);
+
+	initializing_binding = false;
+	return;
+
+error:
+	initializing_binding = false;
+	if (binding != NULL)
+		free(binding);
 }

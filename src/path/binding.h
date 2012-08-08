@@ -26,8 +26,9 @@
 #include <limits.h> /* PATH_MAX, */
 #include <stdbool.h>
 
-extern void bind_path(const char *path, const char *location, bool must_exist);
+extern void bind_path(const char *host_path, const char *guest_path, bool must_exist);
 extern void print_bindings(void);
+extern void free_bindings(void);
 
 enum binding_side {
 	GUEST_SIDE = 1,
@@ -37,7 +38,5 @@ enum binding_side {
 extern const char *get_path_binding(enum binding_side side, const char path[PATH_MAX]);
 extern int substitute_binding(enum binding_side side, char path[PATH_MAX]);
 
-extern void init_bindings(void);
-extern void free_bindings(void);
 
 #endif /* BINDING_H */
