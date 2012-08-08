@@ -37,7 +37,6 @@
 #define STRONG  1
 #define WEAK    0
 
-extern void init_module_path();
 extern int translate_path(const struct tracee *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
 extern int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
 extern bool belongs_to_guestfs(const char *path);
@@ -57,9 +56,6 @@ extern void pop_component(char *path);
 
 extern int check_fd(struct tracee *tracee);
 extern int list_open_fd(pid_t pid);
-
-extern char root[PATH_MAX];
-extern size_t root_length;
 
 enum path_comparison {
 	PATHS_ARE_EQUAL = 0,

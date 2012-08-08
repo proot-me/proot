@@ -269,7 +269,7 @@ case PR_chroot: {
 		goto end;
 
 	/* Succeed only if the new rootfs == current rootfs.  */
-	status = compare_paths2(root, root_length, path, strlen(path));
+	status = compare_paths(config.guest_rootfs, path);
 	if (status != PATHS_ARE_EQUAL) {
 		status = 0;
 		goto end;

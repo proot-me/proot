@@ -176,7 +176,7 @@ static const struct binding *get_binding(enum binding_side side, const char path
 		 *     proot -m /usr:/location /usr/local/slackware
 		 */
 		if (   side == HOST_SIDE
-		    && root_length != 1
+		    && config.guest_rootfs[1] != '\0'
 		    && belongs_to_guestfs(path))
 				continue;
 
@@ -334,14 +334,14 @@ static struct binding *create_missing_components(const struct binding *binding)
 	 * that substitute_binding() will not work until this module
 	 * is initialized.  That's why we can safely concatenate
 	 * "root" and "binding->guest.path" here.  */
-	status = join_paths(2, path, root, binding->guest.path);
+	status = join_paths(2, path, config.guest_rootfs, binding->guest.path);
 	if (status < 0)
 		goto error;
 
 	/* Start after the guest root since this latter is known to
 	 * exist, obviously.  */
-	cursor = path + root_length;
-	strcpy(parent, root);
+	cursor = path + strlen(config.guest_rootfs);
+	strcpy(parent, config.guest_rootfs);
 
 	is_final = NOT_FINAL;
 	while (!is_final) {

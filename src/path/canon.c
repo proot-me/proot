@@ -33,6 +33,7 @@
 #include "path/path.h"
 #include "path/binding.h"
 #include "path/proc.h"
+#include "config.h"
 #include "notice.h"
 
 /**
@@ -52,7 +53,7 @@ static inline int unbind_stat(const struct tracee *tracee, int is_final,
 		strcpy(host_path, guest_path);
 	}
 	else {
-		status = join_paths(2, host_path, root, guest_path);
+		status = join_paths(2, host_path, config.guest_rootfs, guest_path);
 		if (status < 0)
 			return status;
 	}

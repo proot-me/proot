@@ -43,10 +43,6 @@
 
 #include "compat.h"
 
-static bool initialized = false;
-char root[PATH_MAX];
-size_t root_length;
-
 /**
  * Copy in @component the first path component pointed to by @cursor,
  * this later is updated to point to the next component for a further
@@ -190,20 +186,6 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 }
 
 /**
- * Initialize internal data of the path translator.
- */
-void init_module_path()
-{
-	assert(strlen(config.guest_rootfs) < PATH_MAX);
-	strcpy(root, config.guest_rootfs);
-
-	root_length = strlen(root);
-	initialized = true;
-
-	init_bindings();
-}
-
-/**
  * Copy in @result the equivalent of @root + canonicalize(@dir_fd +
  * @fake_path).  If @fake_path is not absolute then it is relative to
  * the directory referred by the descriptor @dir_fd (AT_FDCWD is for
@@ -217,8 +199,6 @@ int translate_path(const struct tracee *tracee, char result[PATH_MAX],
 	char tmp[PATH_MAX];
 	int status;
 	pid_t pid;
-
-	assert(initialized);
 
 	pid = (tracee != NULL ? tracee->pid : getpid());
 
@@ -278,7 +258,7 @@ int translate_path(const struct tracee *tracee, char result[PATH_MAX],
 		goto end;
 
 	strcpy(tmp, result);
-	status = join_paths(2, result, root, tmp);
+	status = join_paths(2, result, config.guest_rootfs, tmp);
 	if (status < 0)
 		return status;
 
@@ -309,8 +289,6 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 
 	bool sanity_check;
 	bool follow_binding;
-
-	assert(initialized);
 
 	/* Don't try to detranslate relative paths (typically the
 	 * target of a relative symbolic link). */
@@ -381,12 +359,14 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 		}
 	}
 
-	switch (compare_paths2(root, root_length, path, strlen(path))) {
+	switch (compare_paths(config.guest_rootfs, path)) {
 	case PATH1_IS_PREFIX:
 		/* Remove the leading part, that is, the "root".  */
+		prefix_length = strlen(config.guest_rootfs);
 
 		/* Special case when path to the guest rootfs == "/". */
-		prefix_length = (root_length == 1 ? 0 : root_length);
+		if (prefix_length == 1)
+			prefix_length = 0;
 
 		new_length = strlen(path) - prefix_length;
 		memmove(path, path + prefix_length, new_length);
@@ -415,11 +395,11 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
  * Check if the translated @t_path belongs to the guest rootfs, that
  * is, isn't from a binding.
  */
-bool belongs_to_guestfs(const char *t_path)
+bool belongs_to_guestfs(const char *host_path)
 {
 	enum path_comparison comparison;
 
-	comparison = compare_paths2(root, root_length, t_path, strlen(t_path));
+	comparison = compare_paths(config.guest_rootfs, host_path);
 	return (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
 }
 
@@ -552,7 +532,7 @@ static int check_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
 	/* XXX TODO: don't warn for files that were open before the attach. */
 	if (!belongs_to_guestfs(path)) {
 		notice(WARNING, INTERNAL, "tracee %d is out of my control (3)", pid);
-		notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, root);
+		notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, config.guest_rootfs);
 		return -pid;
 	}
 	return 0;
