@@ -371,12 +371,10 @@ case PR_chown32:
 case PR_chroot:
 case PR_getxattr:
 case PR_listxattr:
-case PR_mkdir:
 case PR_mknod:
 case PR_oldstat:
 case PR_creat:
 case PR_removexattr:
-case PR_rmdir:
 case PR_setxattr:
 case PR_stat:
 case PR_stat64:
@@ -429,7 +427,6 @@ case PR_name_to_handle_at:
 	break;
 
 case PR_futimesat:
-case PR_mkdirat:
 case PR_mknodat:
 	dirfd = peek_reg(tracee, SYSARG_1);
 
@@ -460,6 +457,8 @@ case PR_lstat64:
 case PR_oldlstat:
 case PR_unlink:
 case PR_readlink:
+case PR_rmdir:
+case PR_mkdir:
 	status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
 	break;
 
@@ -526,6 +525,7 @@ case PR_openat:
 
 case PR_unlinkat:
 case PR_readlinkat:
+case PR_mkdirat:
 	dirfd = peek_reg(tracee, SYSARG_1);
 
 	status = get_sysarg_path(tracee, path, SYSARG_2);

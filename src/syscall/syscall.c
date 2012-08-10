@@ -372,10 +372,6 @@ static int translate_syscall_exit(struct tracee *tracee)
 	 * arguments.  */
 	dealloc(tracee);
 
-	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
-		peek_reg(tracee, SYSARG_RESULT),
-		peek_reg(tracee, STACK_POINTER));
-
 	/* Translate output arguments. */
 	switch (get_abi(tracee)) {
 	case ABI_DEFAULT: {
@@ -394,6 +390,10 @@ static int translate_syscall_exit(struct tracee *tracee)
 		assert(0);
 	}
 	#include "syscall/sysnum-undefined.h"
+
+	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
+		peek_reg(tracee, SYSARG_RESULT),
+		peek_reg(tracee, STACK_POINTER));
 
 	/* "status" was updated in syscall/exit.c.  */
 	poke_reg(tracee, SYSARG_RESULT, (word_t) status);
