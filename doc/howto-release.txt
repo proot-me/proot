@@ -1,0 +1,58 @@
+How to Make a Release of PRoot?
+===============================
+
+This document summarizes the required checks that shall be done before
+releasing PRoot.
+
+
+Sanity Checks
+-------------
+
+The PRoot's testsuite (`make -C test`) shall suffer no failure on:
+
+- x86_64 (all OBS distros + Slackware64)
+- x86    (all OBS distros)
+- arm    (STLinux)
+- sh4    (STLinux)
+
+The PRoot's testsuite under Valgrind/Memcheck (`make -C tests
+memcheck`) shall suffer no failure on:
+
+- x86_64 (Slackware64)
+
+
+Use-Case Checks
+---------------
+
+The GNU CoreUtils package (`./configure; make; make check`) shall
+suffer no regression on:
+
+- x86_64
+- x86_64 with a ARM rootfs (QEMU)
+
+The Perl package (`./Configure -de; make; make check`) shall suffer no
+regression on:
+
+- x86_64
+- x86_64 with a x86 rootfs
+- x86_64 with a ARM rootfs (QEMU)
+
+
+Performance Checks
+------------------
+
+The following command shall suffer no non-undestood performance
+regression::
+
+    perl -e 'system("/usr/bin/true") for (1..10000)';
+
+where "/usr/bin/true" is a symlink to "/bin/true".
+
+
+Documentation Update
+--------------------
+
+1. update the release number in "doc/manual.txt"
+2. regenerate the documentation: `make -C doc`
+3. regenerate the command-line interface: `cp doc/cli.h src/cli.h;
+   $EDITOR src/cli.h`

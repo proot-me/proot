@@ -21,11 +21,35 @@ Short term
   * for /proc/<pid>/root: allow one root per tracee, then add support
     for the chroot syscall under PRoot.
 
-* A host program that launches a guest program shouldn't propagate its
-  host LD_LIBRARY_PATH environment variable.
-
 * Allow proot-in-proot: tracee { *config { ref_counter; bindings } },
   free_bindings(), free_config().
+
+* Use talloc to implement the new memory model::
+
+                           PRoot
+                             |
+        ---------------------+---------------------
+        |                                         |
+        v                (parent link)            v
+     tracee 1 <------------------------------- tracee 2
+        |                                         |
+        +----------> shared ressources <----------+
+        |
+        +---> private ressources
+        |
+        +---> temporary ressources
+ 
+  Shared ressources can be:
+    * /proc/self/exe (fork)
+    * /proc/self/cwd (CLONE_FS)
+    * /proc/self/root (CLONE_FS)
+
+  Private ressources can be:
+    * /proc/self/exe (execve)
+    * /proc/self/cwd (!CLONE_FS)
+    * /proc/self/root (!CLONE_FS)
+
+  Temporary ressources are freed at the end of translate_syscall().
 
 
 Middle term
@@ -40,6 +64,9 @@ Middle term
 * Add support for a special environment variable to add paths
   dynamically to the host LD_LIBRARY_PATH
   ("EXTRA_HOST_LD_LIBRARY_PATH").
+
+* A host program that launches a guest program shouldn't propagate its
+  host LD_LIBRARY_PATH environment variable.
 
 
 Not yet scheduled
