@@ -5,24 +5,25 @@
 Short term
 ==========
 
-* Handle /proc/<pid>/(cmdline|cwd|root) where <pid> is a process traced by
-  PRoot (i.e not only "self").
+* Make `-r $ROOTFS` kinda special `-b $ROOTFS:/`.
 
-  * for /proc/<pid>/cwd: the detranslation isn't a state machine,
-    hence it doesn't know how to detranslate correctly when there are
-    several bindings with the same host-side::
+* Don't duplicate bindings, use two sets of links (one for the guest
+  order, one for the host order).
 
-      $ proot -w /a -m /tmp:/a -m /tmp:/b ../tests/rootfs /bin/pwd
-      /b
+* For /proc/<pid>/cwd: the detranslation isn't a state machine, hence
+  it doesn't know how to detranslate correctly when there are several
+  bindings with the same host-side::
 
-      $ proot -w /a -m /tmp:/b -m /tmp:/a ../tests/rootfs /bin/pwd
-      /a
+    $ proot -w /a -m /tmp:/a -m /tmp:/b ../tests/rootfs /bin/pwd
+    /b
 
-  * for /proc/<pid>/root: allow one root per tracee, then add support
-    for the chroot syscall under PRoot.
+    $ proot -w /a -m /tmp:/b -m /tmp:/a ../tests/rootfs /bin/pwd
+    /a
 
-* Allow proot-in-proot: tracee { *config { ref_counter; bindings } },
-  free_bindings(), free_config().
+* For /proc/<pid>/root: allow one root per tracee, then add support
+  for the chroot syscall under PRoot.
+
+* Allow proot-in-proot: tracee { *bindings, ... }.
 
 * Use talloc to implement the new memory model::
 
@@ -74,6 +75,8 @@ Not yet scheduled
 
 Fixes
 -----
+
+* Fix path comparison: /foo and /foo/. are equal.
 
 * Fix the feature "attach on-the-fly"
 

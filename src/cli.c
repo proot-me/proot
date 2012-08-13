@@ -367,6 +367,7 @@ static void error_separator(struct argument *argument)
 int main(int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
+	char *tmp;
 	int i, j, k;
 	int status;
 	pid_t pid = 0;
@@ -459,9 +460,10 @@ int main(int argc, char *argv[])
 			config.guest_rootfs = "/";
 	}
 
-	config.guest_rootfs = realpath(config.guest_rootfs, NULL);
-	if (config.guest_rootfs == NULL)
+	tmp = realpath(config.guest_rootfs, NULL);
+	if (tmp == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", config.guest_rootfs);
+	config.guest_rootfs = tmp;
 
 	/* Bindings can be registered once config.guest_rootfs is
 	 * correctly initialized.  */

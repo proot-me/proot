@@ -421,6 +421,8 @@ enum path_comparison compare_paths2(const char *path1, size_t length1,
 	assert(length(path1) == length1);
 	assert(length(path2) == length2);
 #endif
+	assert(length1 > 0);
+	assert(length2 > 0);
 
 	if (!length1 || !length2) {
 		return PATHS_ARE_NOT_COMPARABLE;
