@@ -32,7 +32,6 @@ typedef unsigned long word_t;
 #        define ARCH_X86_64 1
 #    elif defined(__ARM_EABI__)
 #        define ARCH_ARM_EABI 1
-#        warning "Untested architecture"
 #    elif defined(__arm__)
 #        error "Only EABI is currently supported for ARM"
 #    elif defined(__i386__)

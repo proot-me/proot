@@ -303,7 +303,6 @@
 #define PR_symlink  83
 #define PR_symlinkat 331
 #define PR_sync  36
-#define PR_sync_file_range2 PR_arm_sync_file_range
 #define PR_syncfs 373
 #define PR_sysfs 135
 #define PR_sysinfo 116
@@ -414,3 +413,4 @@
 #define PR_vm86 -62
 #define PR_vm86old -63
 #define PR_waitpid -64
+#define PR_sync_file_range2 -65
