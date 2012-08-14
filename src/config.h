@@ -28,6 +28,8 @@
 struct config {
 	const char *guest_rootfs;
 	const char *host_rootfs;
+	char *glue_rootfs;
+
 	const char *initial_cwd;
 	const char *kernel_release;
 

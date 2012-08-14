@@ -20,10 +20,12 @@
  * 02110-1301 USA.
  */
 
+#define _GNU_SOURCE  /* asprintf(3), */
+#include <stdio.h>   /* asprintf(3), */
 #include <stdbool.h> /* bool, true, false, */
 #include <string.h>  /* string(3), */
 #include <stdlib.h>  /* ssize_t, */
-#include <malloc.h>  /* free, */
+#include <malloc.h>  /* free(3), */
 #include <linux/limits.h> /* ARG_MAX, */
 
 #include "config.h"
@@ -68,6 +70,12 @@ void print_config()
 {
 	notice(INFO, USER, "guest rootfs = %s", config.guest_rootfs);
 
+	if (config.host_rootfs)
+		notice(INFO, USER, "host rootfs = %s", config.host_rootfs);
+
+	if (config.glue_rootfs)
+		notice(INFO, USER, "glue rootfs = %s", config.glue_rootfs);
+
 	print_argv("command", config.command);
 	print_argv("qemu", config.qemu);
 
@@ -93,8 +101,27 @@ void free_config()
 	if (config.guest_rootfs != NULL)
 		free((void *)config.guest_rootfs);
 
+	if (config.glue_rootfs != NULL) {
+		char *command;
+		int status;
+
+		/* Delete only empty files and directories: the files
+		 * created by the user inside this glue are kept.  */
+		status = asprintf(&command, "find %s -empty -delete", config.glue_rootfs);
+		if (status > 0) {
+			status = system(command);
+			if (status != 0)
+				notice(INFO, USER, "can't delete '%s'", config.glue_rootfs);
+			free(command);
+		}
+
+		free((void *)config.glue_rootfs);
+	}
+
 	if (config.qemu != NULL) {
 		free(config.qemu[0]);
 		free(config.qemu);
 	}
+
+
 }

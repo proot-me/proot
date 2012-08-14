@@ -43,13 +43,15 @@
  * (returned value is 1), otherwise it returns -errno (-ENOENT or
  * -ENOTDIR).
  */
-static inline int unbind_stat(const struct tracee *tracee, int is_final,
+static inline int unbind_stat(const struct tracee *tracee, enum finality is_final,
 			      char guest_path[PATH_MAX], char host_path[PATH_MAX])
 {
 	struct stat statl;
 	int status;
 
-	if (substitute_binding(GUEST_SIDE, guest_path) >= 0) {
+	/* substitute_binding() shouldn't be called when initializing
+	 * a binding (tracee == NULL).  */
+	if (tracee != NULL && substitute_binding(GUEST_SIDE, guest_path) >= 0) {
 		strcpy(host_path, guest_path);
 	}
 	else {
@@ -61,15 +63,19 @@ static inline int unbind_stat(const struct tracee *tracee, int is_final,
 	statl.st_mode = 0;
 	status = lstat(host_path, &statl);
 
+	/* Build the glue between the hostfs and the guestfs during
+	 * the initialization of a binding.  */
+	if (tracee == NULL) {
+		statl.st_mode = build_glue_rootfs(host_path, is_final, statl.st_mode != 0);
+		if (statl.st_mode == 0)
+			status = -1;
+	}
+
 	/* Return an error if a non-final component isn't a
 	 * directory nor a symlink.  The error is "No such
 	 * file or directory" if this component doesn't exist,
-	 * otherwise the error is "Not a directory".  This
-	 * sanity check is bypassed if the canonicalization is
-	 * made in the name of PRoot itself (!tracee) since
-	 * this would return a spurious error during the
-	 * creation of "deep" guest binding paths.  */
-	if (!is_final && tracee != NULL && !S_ISDIR(statl.st_mode) && !S_ISLNK(statl.st_mode))
+	 * otherwise the error is "Not a directory".  */
+	if (!is_final && !S_ISDIR(statl.st_mode) && !S_ISLNK(statl.st_mode))
 		return (status < 0 ? -ENOENT : -ENOTDIR);
 
 	return (S_ISLNK(statl.st_mode) ? 1 : 0);

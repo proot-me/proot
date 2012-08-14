@@ -20,6 +20,8 @@
  * 02110-1301 USA.
  */
 
+#define _GNU_SOURCE   /* asprintf(3), */
+#include <stdio.h>    /* asprintf(3), */
 #include <sys/types.h> /* mkdir(2), */
 #include <sys/stat.h> /* lstat(2), mkdir(2), chmod(2), */
 #include <fcntl.h>    /* mknod(2), */
@@ -54,7 +56,6 @@ struct binding {
 
 static struct binding *bindings_guest_order = NULL;
 static struct binding *bindings_host_order = NULL;
-static bool initializing_binding = false;
 
 /**
  * Print all bindings (verbose purpose).
@@ -161,6 +162,13 @@ const char *get_path_binding(enum binding_side side, const char path[PATH_MAX])
 }
 
 /**
+ * Specify the type of the final component during the initialization
+ * of a binding.  This variable is defined in bind_path() but it is
+ * used later in build_glue_rootfs()...
+ */
+static mode_t final_type;
+
+/**
  * Substitute the guest path (if any) with the host path in @path.
  * This function returns:
  *
@@ -182,8 +190,7 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 
 	/* This function can't be called during the initialization of
 	 * a binding.  */
-	if (initializing_binding)
-		return -1;
+	assert(final_type == 0);
 
 	binding = get_binding(side, path);
 	if (!binding)
@@ -409,148 +416,128 @@ static void insort_binding2(struct binding *binding)
 }
 
 /**
- * Create a "fake" filesystem branch for components of
- * binding->guest.path that are not in the guest rootfs (for instance
- * "-b /etc/motd:/this/does/not/exists").
+ * Build in a temporary filesystem the glue between the guest part and
+ * the host part of the @binding_path.  This function returns the type
+ * of the bound path, otherwise 0 if an error occured.
+ *
+ * For example, assuming the host path "/opt" is mounted/bound to the
+ * guest path "/black/holes/and/revelations", and assuming this path
+ * can't be created in the guest rootfs (eg. permission denied), then
+ * it is created in a temporary rootfs and all these paths are glued
+ * that way:
+ *
+ *   $GUEST/black/ --> $GLUE/black/
+ *                               ./holes
+ *                               ./holes/and
+ *                               ./holes/and/revelations --> $HOST/opt/
+ *
+ * This glue allows operations on paths that do not exist in the guest
+ * rootfs but that were specified as the guest part of a binding.
  */
-static void create_missing_components(const struct binding *binding)
+mode_t build_glue_rootfs(char binding_path[PATH_MAX], enum finality is_final, bool exist)
 {
-	struct binding *new_binding = NULL;
-	enum finality is_final;
-	char parent[PATH_MAX];
-	char path[PATH_MAX];
-	const char *cursor;
+	size_t offset, delta, size;
+	struct binding *binding;
+	mode_t type;
 	int status;
 
-	/* Remember that "binding->guest.path" is canonicalized and
-	 * that substitute_binding() will not work until this module
-	 * is initialized.  That's why we can safely concatenate
-	 * "root" and "binding->guest.path" here.  */
-	status = join_paths(2, path, config.guest_rootfs, binding->guest.path);
-	if (status < 0)
-		goto error;
-
-	/* Start after the guest root since this latter is known to
-	 * exist, obviously.  */
-	cursor = path + strlen(config.guest_rootfs);
-	strcpy(parent, config.guest_rootfs);
-
-	is_final = NOT_FINAL;
-	while (!is_final) {
-		char component[NAME_MAX];
-		char tmp[PATH_MAX];
-		struct stat statl;
-		size_t size;
-
-		status = next_component(component, &cursor);
+	/* Create the temporary directory where the "glue" rootfs will
+	 * lie.  */
+	if (config.glue_rootfs == NULL) {
+		status = asprintf(&config.glue_rootfs, "/tmp/proot-%d-XXXXXX", getpid());
 		if (status < 0)
-			goto error;
-		is_final = status;
+			goto end1;
 
-		/* Copy up to the current component.  */
-		size = cursor - path - 1;
-		assert(size < PATH_MAX);
+		mktemp(config.glue_rootfs);
+		if (config.glue_rootfs[0] == '\0')
+			goto end2;
 
-		memcpy(tmp, path, size);
-		tmp[size] = '\0';
-
-		/* Nothing to do if this path exists.  */
-		status = lstat(tmp, &statl);
-		if (status == 0) {
-			strcpy(parent, tmp);
-			continue;
+		status = mkdir(config.glue_rootfs, 0777);
+		if (status < 0) {
+		end2:
+			free(config.glue_rootfs);
+		end1:
+			config.glue_rootfs = NULL;
+			return 0;
 		}
+	}
 
-		/* The path does not exist, so let's create the
-		 * missing components in a dedicated bindings.  */
-		if (new_binding == NULL) {
-			/* End of the story.  */
-			if (is_final)
-				break;
+	/* Remember: substitute_binding() was not called on
+	 * binding_path, that means the host part of the binding still
+	 * points into the guest rootfs.  From the example,
+	 * "$GUEST/black".  */
+	offset = strlen(config.guest_rootfs);
+	if (offset == 1) /* Special case: guest rootfs == "/".  */
+		offset = 0;
 
-			new_binding = malloc(sizeof(struct binding));
-			if (!new_binding) {
-				notice(WARNING, SYSTEM, "malloc()");
-				goto error;
-			}
-
-			/* Create a binding that connect the parent of
-			 * the first missing component to a fake
-			 * filesystem branch.  The purpose of this
-			 * branch is to avoid a black hole.  */
-
-			status = detranslate_path(NULL, tmp, NULL);
-			if (status < 0)
-				goto error;
-
-			strcpy(new_binding->guest.path, tmp);
-			new_binding->guest.length = strlen(new_binding->guest.path);
-
-			sprintf(new_binding->host.path, "/tmp/proot-%d-XXXXXX", getpid());
-			new_binding->host.length = strlen(new_binding->host.path);
-
-			new_binding->need_substitution = true;
-
-			/* Get a temporary name for the fake
-			 * filesystem branch.  */
-			mktemp(new_binding->host.path);
-			if (new_binding->host.path[0] == '\0')
-				goto error;
-
-			insort_binding2(new_binding);
-
-			/* Compute the component to be created.  */
-			strcpy(tmp, new_binding->host.path);
+	/* Check if a new directory entry should be added.  Currently
+	 * we just create the path in the guest rootfs but this latter
+	 * might be not writable.  A better approach would be the
+	 * emulation of getdents(parent(binding_path)).  */
+	binding = (struct binding *) get_binding(GUEST_SIDE, binding_path + offset);
+	if (binding == NULL) {
+		if (!is_final || S_ISDIR(final_type)) {
+			(void) mkdir(binding_path, 0777);
+			type = S_IFDIR;
 		}
 		else {
-			/* Compute the component to be created.  */
-			status = join_paths(2, tmp, parent, component);
-			if (status < 0)
-				goto error;
+			assert(final_type != 0);
+			(void) mknod(binding_path, 0777 | final_type, 0);
+			type = final_type;
 		}
-
-		if (is_final) {
-			/* Compute the kind of component.  Note:
-			 * devices are created as regular files
-			 * because it would require privileges
-			 * otherwise.  */
-			status = lstat(binding->host.path, &statl);
-			if (status < 0 || S_ISCHR(statl.st_mode) || S_ISBLK(statl.st_mode))
-				statl.st_mode = S_IFREG;
-		}
-		else
-			/* A non-final component has to be directory.  */
-			statl.st_mode = S_IFDIR;
-
-		/* Create the component.  */
-		switch (statl.st_mode & S_IFMT) {
-		case S_IFDIR:
-			status = mkdir(tmp, 0777);
-			break;
-					
-		case S_IFLNK:
-			status = symlink("nowhere", tmp);
-			break;
-
-		default:
-			status = mknod(tmp, 0777 | statl.st_mode, 0);
-			break;
-		}
-		if (status < 0) {
-			notice(WARNING, SYSTEM, "mkdir/symlink/mknod '%d'", tmp);
-			goto error;
-		}
-
-		/* Ensure the parent is not writable anymore.  */
-		(void) chmod(parent, 0555);
-		strcpy(parent, tmp);
 	}
-	return;
 
-error:
-	notice(WARNING, USER,
-		"can't create the guest path (binding) \"%s\": you can still access it directly", binding->guest.path);
-	return;
+	/* From the example, substitute "$GUEST/black" with
+	 * "$GLUE/black".  */
+	delta = strlen(config.glue_rootfs) - offset;
+	size  = strlen(binding_path + offset) + 1;
+	if (offset + delta + size >= PATH_MAX)
+		return 0;
+
+	memmove(binding_path + offset + delta, binding_path + offset, size);
+	memcpy(binding_path, config.glue_rootfs, strlen(config.glue_rootfs));
+
+	/* Create this missing path into the glue rootfs.  */
+	if (!is_final || S_ISDIR(final_type)) {
+		status = mkdir(binding_path, 0777);
+		type = S_IFDIR;
+	}
+	else {
+		status = mknod(binding_path, 0777 | final_type, 0);
+		type = final_type;
+	}
+	if (status < 0 && errno != EEXIST) {
+		notice(WARNING, SYSTEM, "mkdir/mknod '%s' (binding)", binding_path);
+		return 0;
+	}
+
+	/* Nothing else to do if the path component already exists in
+	 * the guest rootfs or if it is the final component since it
+	 * will be pointed to by the binding being initialized (from
+	 * the example, "$GUEST/black/holes/and/revelations" ->
+	 * "$HOST/opt").  */
+	if (exist || is_final || binding != NULL)
+		return type;
+
+	/*  From the example, create the binding "/black" ->
+	 *  "$GLUE/black".  */
+	binding = malloc(sizeof(struct binding));
+	if (!binding) {
+		notice(WARNING, SYSTEM, "malloc()");
+		return 0;
+	}
+
+	strcpy(binding->host.path, binding_path);
+	binding->host.length = strlen(binding->host.path);
+
+	strcpy(binding->guest.path, binding_path + strlen(config.glue_rootfs));
+	binding->guest.length = strlen(binding->guest.path);
+
+	binding->need_substitution = true;
+
+	insort_binding2(binding);
+
+	return type;
 }
 
 /**
@@ -584,9 +571,8 @@ void free_bindings()
 void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 {
 	struct binding *binding = NULL;
+	struct stat statl;
 	int status;
-
-	initializing_binding = true;
 
 	binding = calloc(1, sizeof(struct binding));
 	if (binding == NULL) {
@@ -601,6 +587,12 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	}
 	binding->host.length = strlen(binding->host.path);
 
+	/* Remember the type of the final component, it will be used
+	 * in build_glue_rootfs() later.  */
+	status = lstat(binding->host.path, &statl);
+	final_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
+		     ? S_IFREG : statl.st_mode & S_IFMT);
+
 	/* In case binding->guest.path is relative.  */
 	if (!getcwd(binding->guest.path, PATH_MAX)) {
 		notice(WARNING, SYSTEM, "can't sanitize path (binding) \"%s\", getcwd()", binding->guest.path);
@@ -609,7 +601,8 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 
 	/* Sanitize the guest path of the binding within the alternate
 	   rootfs since it is assumed by substitute_binding().  */
-	status = canonicalize(0, guest_path ? guest_path : host_path, true, binding->guest.path, 0);
+	status = canonicalize(NULL, guest_path ? guest_path : host_path, true, binding->guest.path, 0);
+	final_type = 0;
 	if (status < 0) {
 		notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
 			guest_path ? guest_path : host_path, strerror(-status));
@@ -638,14 +631,9 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 
 	insort_binding2(binding);
 
-	/* Ensure there's no black hole in the file-system hierarchy.  */
-	create_missing_components(binding);
-
-	initializing_binding = false;
 	return;
 
 error:
-	initializing_binding = false;
 	if (binding != NULL)
 		free(binding);
 }
