@@ -26,7 +26,7 @@
 #include <sys/stat.h> /* lstat(2), mkdir(2), chmod(2), */
 #include <fcntl.h>    /* mknod(2), */
 #include <unistd.h>   /* getcwd(2), lstat(2), mknod(2), symlink(2), */
-#include <stdlib.h>   /* realpath(3), calloc(3), free(3), mktemp(3), */
+#include <stdlib.h>   /* realpath(3), calloc(3), free(3), mkdtemp(3), */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -446,17 +446,11 @@ mode_t build_glue_rootfs(char binding_path[PATH_MAX], enum finality is_final, bo
 	if (config.glue_rootfs == NULL) {
 		status = asprintf(&config.glue_rootfs, "/tmp/proot-%d-XXXXXX", getpid());
 		if (status < 0)
-			goto end1;
+			goto end;
 
-		mktemp(config.glue_rootfs);
-		if (config.glue_rootfs[0] == '\0')
-			goto end2;
-
-		status = mkdir(config.glue_rootfs, 0777);
-		if (status < 0) {
-		end2:
+		if (mkdtemp(config.glue_rootfs) == NULL) {
 			free(config.glue_rootfs);
-		end1:
+		end:
 			config.glue_rootfs = NULL;
 			return 0;
 		}
