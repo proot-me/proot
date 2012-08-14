@@ -4,11 +4,14 @@ Release v2.2
 Highlights
 ----------
 
-* PRoot can now mount/bind files to any location in the guest rootfs,
-  even if the mount point has no parent directory and the user can't
-  create it.  With previous versions of PRoot, that would created
-  kinda blackhole in the filesystem hierarchy that might bug some
-  programs like "cpio" or "rpm".
+* PRoot is now faster than ever: the speed-up can be up to 60%
+  depending on the kind of application.
+
+* PRoot can now mount/bind files anywhere in the guest rootfs, even if
+  the mount point has no parent directory (and/or can't be created).
+  With previous versions of PRoot, that would created kinda black hole
+  in the filesystem hierarchy that might bug some programs like "cpio"
+  or "rpm".
 
   For example, with the previous version of PRoot::
 
@@ -35,6 +38,23 @@ Highlights
 
        $ cat /black/holes/and/revelations
        Time has come to make things right -- Matthew Bellamy
+
+Miscellaneous
+-------------
+
+* "/run" was added to the list of recommended bindings (-B/-Q).
+
+* Many fixes (particularly on "rmdir", "mkdir", and "mkdirat").
+
+Thanks
+------
+
+Huge thanks to Rémi DURAFFORT for all the tests, bug reports, fixes,
+and for hosting http://proot.me.
+
+Thanks to Thomas P. HIGDON for the advanced investigation on a really
+tricky bug (red zone corruption).
+
 
 Release v2.1
 ============

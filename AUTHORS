@@ -4,6 +4,9 @@ developed in the Compilation Expertise Center by:
 Cédric VINCENT <cedric.vincent@st.com>
         Original author, maintainer.
 
+Rémi DURAFFORT <remi.duraffort@st.com>
+        Many experiments, bug reports, fixes, and articles.
+
 Yves JANIN <yves.janin@st.com>
         Support for the i386 architecture, many experiments and bug reports.
 
@@ -15,9 +18,6 @@ Clément BAZIN <clement@bazin-fr.org>
 
 Christophe GUILLON <christophe.guillon@st.com>
         Relocatable build directory, plugin experiments, and bug reports.
-
-Rémi DURAFFORT <remi.duraffort@st.com>
-        Bug reports.
 
 Christian BERTIN <christian.bertin@st.com>
         Valuable support.

@@ -5,6 +5,8 @@
 Short term
 ==========
 
+* Replace internal implementation of -0 with the use of fakeroot.
+
 * Make `-r $ROOTFS` kinda special `-b $ROOTFS:/`.
 
 * Don't duplicate bindings, use two sets of links (one for the guest
@@ -77,6 +79,11 @@ Fixes
 -----
 
 * Fix path comparison: /foo and /foo/. are equal.
+
+* Forbid rename/unlink on a mount point:
+
+    $ mv mount_point elsewhere
+    mv: cannot move "mount_point" to "elsewhere": Device or resource busy
 
 * Fix the feature "attach on-the-fly"
 

@@ -44,7 +44,7 @@ Performance Checks
 The following command shall suffer no non-undestood performance
 regression::
 
-    perl -e 'system("/usr/bin/true") for (1..10000)';
+    time proot -B perl -e 'system("/usr/bin/true") for (1..10000)'
 
 where "/usr/bin/true" is a symlink to "/bin/true".
 
