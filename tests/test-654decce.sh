@@ -1,4 +1,8 @@
-if [ ! -x ${ROOTFS}/bin/readdir ] || [ ! -x ${ROOTFS}/bin/cat ] || [ -z `which mcookie` ] || [ -z `which mkdir` ] || [ -z `which chmod` ]  || [ -z `which grep` ] || [ -z `which rm` ]; then
+if [ ! -x ${ROOTFS}/bin/readdir ] || [ ! -x ${ROOTFS}/bin/cat ] || [ -z `which mcookie` ] || [ -z `which mkdir` ] || [ -z `which chmod` ]  || [ -z `which grep` ] || [ -z `which rm` ] || [ -z `which id` ]; then
+    exit 125;
+fi
+
+if [ `id -u` == 0 ]; then
     exit 125;
 fi
 

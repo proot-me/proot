@@ -1,4 +1,8 @@
-if [ ! -x ${ROOTFS}/bin/true ]; then
+if [ ! -x ${ROOTFS}/bin/true ] || [ -z `which id` ]; then
+    exit 125;
+fi
+
+if [ `id -u` == 0 ]; then
     exit 125;
 fi
 

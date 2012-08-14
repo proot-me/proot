@@ -250,7 +250,7 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
  */
 static inline bool needs_sp_restoration(struct tracee *tracee)
 {
-#if defined(ARCH_X86_64)
+#if defined(ARCH_X86_64) || defined(ARCH_SH4)
 	/* The following test is reliable enter stage only: execve()
 	 * may change the ABI before the exit stage.  */
 	assert(tracee->status == 0);
@@ -391,14 +391,15 @@ static int translate_syscall_exit(struct tracee *tracee)
 	}
 	#include "syscall/sysnum-undefined.h"
 
+	/* "status" was updated in syscall/exit.c.  */
+	poke_reg(tracee, SYSARG_RESULT, (word_t) status);
+	status = 0;
+
+end:
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
 		peek_reg(tracee, SYSARG_RESULT),
 		peek_reg(tracee, STACK_POINTER));
 
-	/* "status" was updated in syscall/exit.c.  */
-	poke_reg(tracee, SYSARG_RESULT, (word_t) status);
-	status = 0;
-end:
 	if (status > 0)
 		status = 0;
 

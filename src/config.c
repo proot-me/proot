@@ -107,7 +107,7 @@ void free_config()
 
 		/* Delete only empty files and directories: the files
 		 * created by the user inside this glue are kept.  */
-		status = asprintf(&command, "find %s -empty -delete", config.glue_rootfs);
+		status = asprintf(&command, "find %s -empty -delete 2>/dev/null", config.glue_rootfs);
 		if (status > 0) {
 			status = system(command);
 			if (status != 0)

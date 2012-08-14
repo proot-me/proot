@@ -20,6 +20,7 @@
  * 02110-1301 USA.
  */
 
+#define _XOPEN_SOURCE 500 /* pread(2), */
 #include <fcntl.h>  /* open(2), */
 #include <unistd.h> /* read(2), close(2), */
 #include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
@@ -237,7 +238,7 @@ int extract_elf_interp(const struct tracee *tracee,
 	}
 
 	status = pread(fd, u_interp + extra_size, segment_size, segment_offset);
-	if (status < 0) {
+	if (status != segment_size) {
 		status = -EACCES;
 		goto end;
 	}
