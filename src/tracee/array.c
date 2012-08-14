@@ -433,7 +433,7 @@ int push_array(struct array *array, enum reg reg)
 	}
 
 	/* Nothing has changed, don't update anything.  */
-	if (local_count == 0) {
+	if (local_count == 1) {
 		status = 0;
 		goto end;
 	}
@@ -464,7 +464,7 @@ int push_array(struct array *array, enum reg reg)
 	if (status < 0)
 		goto end;
 
-	status = 0;
+	status = 1;
 end:
 	if (local != NULL)
 		free(local);
@@ -472,7 +472,7 @@ end:
 	if (pod_array != NULL)
 		free(pod_array);
 
-	if (status < 0)
+	if (status <= 0)
 		return status;
 
 	poke_reg(array->tracee, reg, tracee_ptr);
