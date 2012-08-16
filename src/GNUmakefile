@@ -60,7 +60,8 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 		then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
 		fi;
 
-.SILENT .IGNORE .INTERMEDIATE: .check_readlinkat .check_readlinkat.o .check_process_vm .check_process_vm.o
+CHECK_OBJECTS = .check_readlinkat .check_readlinkat.o .check_process_vm .check_process_vm.o
+.SILENT .IGNORE .INTERMEDIATE: $(CHECK_OBJECTS)
 
 .check_readlinkat.o: .check_readlinkat.c
 	$(COMPILE:echo=false) $(silently) || true
@@ -124,7 +125,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install uninstall
 clean distclean:
-	-$(RM) -f $(OBJECTS) proot $(DEPS) build.h
+	-$(RM) -f $(CHECK_OBJECTS) $(OBJECTS) proot $(DEPS) build.h
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<

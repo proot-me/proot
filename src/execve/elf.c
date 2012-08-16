@@ -55,14 +55,10 @@ int open_elf(const char *t_path, union elf_header *elf_header)
 	if (fd < 0)
 		return -errno;
 
-	status = read(fd, elf_header, sizeof(union elf_header));
-	if (status != sizeof(union elf_header)) {
-		status = -EACCES;
-		goto end;
-	}
-
 	/* Check if it is an ELF file.  */
-	if (   ELF_IDENT(*elf_header, 0) != 0x7f
+	status = read(fd, elf_header, sizeof(union elf_header));
+	if (status < sizeof(union elf_header)
+	    || ELF_IDENT(*elf_header, 0) != 0x7f
 	    || ELF_IDENT(*elf_header, 1) != 'E'
 	    || ELF_IDENT(*elf_header, 2) != 'L'
 	    || ELF_IDENT(*elf_header, 3) != 'F') {

@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 
 int main()
 {
@@ -26,6 +27,6 @@ int main()
 		exit(EXIT_FAILURE);
 
 	status = lutimes(tmp, times);
-	exit(status < 0 ? EXIT_FAILURE : EXIT_SUCCESS);
+	exit(status < 0 && errno != ENOSYS ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 

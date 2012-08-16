@@ -29,22 +29,13 @@
 #include "tracee/reg.h"
 #include "arch.h"
 
-/* XXX shouldn't be instantiated.  */
-#if defined(ARRAY_INTERNALS)
-struct _entry {
-	word_t remote;  /* XXX if @local != NULL.  */
-	void *local;    /* XXX.  */
-};
-#else
-struct _entry;
-#endif
-
 struct array;
 typedef int (*read_item_t)(struct array *array, size_t index, void **value);
 typedef int (*write_item_t)(struct array *array, size_t index, const void *value);
 typedef int (*compare_item_t)(struct array *array, size_t index, const void *reference);
 typedef int (*sizeof_item_t)(struct array *array, size_t index);
 
+struct _entry;
 struct array {
 	struct _entry *_cache;
 	size_t length;

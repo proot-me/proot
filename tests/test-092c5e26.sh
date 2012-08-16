@@ -22,6 +22,8 @@ if $(echo ${PROOT} | grep -q valgrind); then
     EXTRA='-E LD_PRELOAD=.*'
 fi
 
+unset LD_LIBRARY_PATH
+
 env PROOT_FORCE_FOREIGN_BINARY=1 PATH=/tmp:/bin:/usr/bin ${PROOT} -r ${ROOTFS} -q echo ${TMP} | grep "^-U LD_LIBRARY_PATH ${EXTRA}-0 /bin/argv0 /bin/argv0 ${TMP_ABS}$"
 env PROOT_FORCE_FOREIGN_BINARY=1 ${PROOT} -r ${ROOTFS} -q echo ${TMP_ABS} | grep "^-U LD_LIBRARY_PATH ${EXTRA}-0 /bin/argv0 /bin/argv0 ${TMP_ABS}$"
 

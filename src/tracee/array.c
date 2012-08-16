@@ -30,10 +30,19 @@
 #include <stdarg.h>   /* va_*, */
 #include <stdint.h>   /* uint32_t, */
 
-#define ARRAY_INTERNALS
-#include "tracee/array.h"
-#undef ARRAY_INTERNALS
+#include "arch.h"
 
+struct _entry {
+	/* Pointer (tracee's address space) to the current value, if
+	 * local == NULL.  */
+	word_t remote;
+
+	/* Pointer (tracer's address space) to the current value, if
+	 * local != NULL.  */
+	void *local;
+};
+
+#include "tracee/array.h"
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "build.h"

@@ -30,6 +30,7 @@ ${PROOT} -v -1 -r ${ROOTFS} -b ${TMP1}:${TMP2}/${TMP3}/${TMP4} -b /etc/fstab:${T
 ${PROOT} -v -1 -r ${ROOTFS} -b ${TMP1}:${TMP2}/${TMP3}/${TMP4}/motd -b /etc/fstab:${TMP2}/${TMP3}/motd cat ${TMP2}/${TMP3}/${TMP4}/motd | grep "^content of ${TMP1}$"
 ${PROOT} -v -1 -r ${ROOTFS} -b /etc/fstab:${TMP2}/${TMP3}/motd -b ${TMP1}:${TMP2}/${TMP3}/${TMP4}/motd cat ${TMP2}/${TMP3}/${TMP4}/motd | grep "^content of ${TMP1}$"
 
+! chmod +rw ${ROOTFS}/${TMP2}
 rm -fr ${ROOTFS}/${TMP2}
 
 mkdir -p ${TMP2}
@@ -54,4 +55,5 @@ ${PROOT} -b /bin:/this1/does/not/exist -b /tmp:/this2/does/not/exist ${ROOTFS}/b
 ${PROOT} -b /tmp:/this1/does/not/exist -b /bin:/this2/does/not/exist ${ROOTFS}/bin/readdir /this1/
 ${PROOT} -b /tmp:/this1/does/not/exist -b /bin:/this2/does/not/exist ${ROOTFS}/bin/readdir /this2/
 
+! chmod +rw ${TMP1} ${TMP2}
 rm -fr ${TMP1} ${TMP2}
