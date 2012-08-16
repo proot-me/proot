@@ -22,7 +22,7 @@
 
 /* Note: syscalls like "openat" can be replaced by "open" since PRoot
  * has canonicalized "fd + path" into "path".  */
-switch (peek_reg(tracee, SYSARG_NUM)) {
+switch (peek_reg(tracee, CURRENT, SYSARG_NUM)) {
 case PR_accept4: {
 	struct syscall_modification modif = {
 		.expected_release = KERNEL_VERSION(2,6,28),
@@ -116,7 +116,7 @@ case PR_fchownat: {
 		}
 	};
 
-	flags = peek_reg(tracee, SYSARG_5);
+	flags = peek_reg(tracee, CURRENT, SYSARG_5);
 	modif.new_sysarg_num = ((flags & AT_SYMLINK_NOFOLLOW) != 0
 				? PR_lchown
 				: PR_chown);
@@ -137,7 +137,7 @@ case PR_fstatat64: {
 		}
 	};
 
-	flags = peek_reg(tracee, SYSARG_4);
+	flags = peek_reg(tracee, CURRENT, SYSARG_4);
 	modif.new_sysarg_num = ((flags & AT_SYMLINK_NOFOLLOW) != 0
 				? PR_lstat
 #if defined(ARCH_X86_64)
@@ -331,7 +331,7 @@ case PR_unlinkat: {
 		}
 	};
 
-	flags = peek_reg(tracee, SYSARG_3);
+	flags = peek_reg(tracee, CURRENT, SYSARG_3);
 	modif.new_sysarg_num = ((flags & AT_REMOVEDIR) != 0
 				? PR_rmdir
 				: PR_unlink);

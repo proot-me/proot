@@ -329,7 +329,7 @@ int fetch_array(struct tracee *tracee, struct array *array, enum reg reg, size_t
 	assert(array != NULL);
 	assert(array->_cache == NULL);
 
-	address = peek_reg(tracee, reg);
+	address = peek_reg(tracee, CURRENT, reg);
 
 	for (i = 0; nb_entries != 0 ? i < nb_entries : pointer != 0; i++) {
 		void *tmp = realloc(array->_cache, (i + 1) * sizeof(struct _entry));
@@ -441,7 +441,7 @@ int push_array(struct array *array, enum reg reg)
 
 	/* Modified items and the pod array are stored in a tracee's
 	 * memory block.  */
-	tracee_ptr = alloc(array->tracee, total_size);
+	tracee_ptr = alloc_mem(array->tracee, total_size);
 	if (tracee_ptr == 0) {
 		status = -E2BIG;
 		goto end;

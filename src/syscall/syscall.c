@@ -58,7 +58,7 @@ int get_sysarg_path(const struct tracee *tracee, char path[PATH_MAX], enum reg r
 	int size;
 	word_t src;
 
-	src = peek_reg(tracee, reg);
+	src = peek_reg(tracee, CURRENT, reg);
 
 	/* Check if the parameter is not NULL. Technically we should
 	 * not return an -EFAULT for this special value since it is
@@ -91,7 +91,7 @@ int set_sysarg_data(struct tracee *tracee, void *tracer_ptr, word_t size, enum r
 	int status;
 
 	/* Allocate space into the tracee's memory to host the new data. */
-	tracee_ptr = alloc(tracee, size);
+	tracee_ptr = alloc_mem(tracee, size);
 	if (tracee_ptr == 0)
 		return -EFAULT;
 
@@ -232,47 +232,13 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
 		int offset         = modif->shifts[i].offset;
 
 		for (j = 0; j < nb_args; j++) {
-			word_t arg = peek_reg(tracee, sysarg + j);
+			word_t arg = peek_reg(tracee, CURRENT, sysarg + j);
 			poke_reg(tracee, sysarg + j + offset, arg);
 		}
 	}
 	status = 0;
 
 	return status;
-}
-
-/**
- * Specify whether the stack pointer should be restored at the exit
- * stage.  On x86_64, the stack pointer is already saved and restored
- * before and after an execve():
- *
- *     linux/arch/x86/kernel/entry_64.S:stub_execve
- */
-static inline bool needs_sp_restoration(struct tracee *tracee)
-{
-#if defined(ARCH_X86_64) || defined(ARCH_SH4)
-	/* The following test is reliable enter stage only: execve()
-	 * may change the ABI before the exit stage.  */
-	assert(tracee->status == 0);
-
-	switch (get_abi(tracee)) {
-	case ABI_DEFAULT: {
-		#include SYSNUM_HEADER
-		return peek_reg(tracee, SYSARG_NUM) != PR_execve;
-	}
-    #ifdef SYSNUM_HEADER2
-	case ABI_2: {
-		#include SYSNUM_HEADER2
-		return peek_reg(tracee, SYSARG_NUM) != PR_execve;
-	}
-    #endif
-	default:
-		assert(0);
-	}
-	#include "syscall/sysnum-undefined.h"
-#else
-	return true;
-#endif
 }
 
 /**
@@ -297,13 +263,13 @@ static int translate_syscall_enter(struct tracee *tracee)
 
 	if (config.verbose_level >= 3)
 		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
-			tracee->pid, peek_reg(tracee, SYSARG_NUM),
-			peek_reg(tracee, SYSARG_1), peek_reg(tracee, SYSARG_2),
-			peek_reg(tracee, SYSARG_3), peek_reg(tracee, SYSARG_4),
-			peek_reg(tracee, SYSARG_5), peek_reg(tracee, SYSARG_6),
-			peek_reg(tracee, STACK_POINTER));
+			tracee->pid, peek_reg(tracee, CURRENT, SYSARG_NUM),
+			peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
+			peek_reg(tracee, CURRENT, SYSARG_3), peek_reg(tracee, CURRENT, SYSARG_4),
+			peek_reg(tracee, CURRENT, SYSARG_5), peek_reg(tracee, CURRENT, SYSARG_6),
+			peek_reg(tracee, CURRENT, STACK_POINTER));
 	else
-		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid, (int)peek_reg(tracee, SYSARG_NUM));
+		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid, (int)peek_reg(tracee, CURRENT, SYSARG_NUM));
 
 	/* Translate input arguments. */
 	switch (get_abi(tracee)) {
@@ -336,10 +302,6 @@ static int translate_syscall_enter(struct tracee *tracee)
 	}
 	#include "syscall/sysnum-undefined.h"
 
-	/* Specify whether the stack pointer should be restored at the
-	 * exit stage.  */
-	tracee->restore_sp = needs_sp_restoration(tracee);
-
 	/* Remember the tracee status for the "exit" stage and avoid
 	 * the actual syscall if an error occured during the
 	 * translation. */
@@ -361,16 +323,16 @@ static int translate_syscall_enter(struct tracee *tracee)
  */
 static int translate_syscall_exit(struct tracee *tracee)
 {
+	bool restore_original_sp = true;
 	int status;
 
 	/* Set the tracee's errno if an error occured previously during
 	 * the translation. */
-	if (tracee->status < 0)
+	if (tracee->status < 0) {
 		poke_reg(tracee, SYSARG_RESULT, (word_t) tracee->status);
-
-	/* Deallocate all the tracee's memory used to store translated
-	 * arguments.  */
-	dealloc(tracee);
+		status = 0;
+		goto end;
+	}
 
 	/* Translate output arguments. */
 	switch (get_abi(tracee)) {
@@ -396,9 +358,13 @@ static int translate_syscall_exit(struct tracee *tracee)
 	status = 0;
 
 end:
+	/* "restore_original_sp" was updated in syscall/exit.c.  */
+	if (restore_original_sp)
+		poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
+
 	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
-		peek_reg(tracee, SYSARG_RESULT),
-		peek_reg(tracee, STACK_POINTER));
+		peek_reg(tracee, CURRENT, SYSARG_RESULT),
+		peek_reg(tracee, CURRENT, STACK_POINTER));
 
 	if (status > 0)
 		status = 0;
@@ -407,7 +373,7 @@ end:
 	tracee->status = 0;
 
 	/* The struct tracee will be freed in
-	 * main_loop() if status < 0. */
+	 * event_loop() if status < 0. */
 	return status;
 }
 

@@ -28,6 +28,7 @@
 #include <stddef.h>     /* offsetof(), */
 #include <stdint.h>     /* *int*_t(), */
 #include <limits.h>     /* ULONG_MAX, */
+#include <string.h>     /* memcpy(3), */
 
 #include "tracee/reg.h"
 #include "tracee/abi.h"
@@ -65,13 +66,13 @@
 	[SYSARG_5]      = USER_REGS_OFFSET(rdi),
 	[SYSARG_6]      = USER_REGS_OFFSET(rbp),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
-	[STACK_POINTER] = USER_REGS_OFFSET(rsp)
+	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
     };
 
-    #define REG(tracee, index)							\
-	(*(word_t*) (tracee->_regs.cache.cs == 0x23				\
-	     ? (((uint8_t *) &tracee->_regs.cache) + reg_offset_x86[index])	\
-	     : (((uint8_t *) &tracee->_regs.cache) + reg_offset[index])))
+    #define REG(tracee, version, index)					\
+	(*(word_t*) (tracee->_regs[ORIGINAL].cs == 0x23			\
+		? (((uint8_t *) &tracee->_regs[version]) + reg_offset_x86[index]) \
+		: (((uint8_t *) &tracee->_regs[version]) + reg_offset[index])))
 
 #elif defined(ARCH_ARM_EABI)
 
@@ -122,24 +123,20 @@
 #endif
 
 #if !defined(REG)
-    #define REG(tracee, index) \
-	(*(word_t*) (((uint8_t *) &tracee->_regs.cache) + reg_offset[index]))
+    #define REG(tracee, version, index)					\
+	(*(word_t*) (((uint8_t *) &tracee->_regs[version]) + reg_offset[index]))
 #endif
 
 /**
  * Return the *cached* value of the given @tracees' @reg.
  */
-word_t peek_reg(const struct tracee *tracee, enum reg reg)
+word_t peek_reg(const struct tracee *tracee, enum reg_version version, enum reg reg)
 {
 	word_t result;
 
-	/* Sanity checks. */
-	assert(reg >= REG_FIRST);
-	assert(reg <= REG_LAST);
-	assert(   tracee->_regs.state == REGS_ARE_VALID
-	       || tracee->_regs.state == REGS_HAVE_CHANGED);
+	assert(version < NB_REG_VERSION);
 
-	result = REG(tracee, reg);
+	result = REG(tracee, version, reg);
 
 	/* Use only the 32 least significant bits (LSB) when running
 	 * 32-bit processes on a 64-bit kernel.  */
@@ -154,14 +151,11 @@ word_t peek_reg(const struct tracee *tracee, enum reg reg)
  */
 void poke_reg(struct tracee *tracee, enum reg reg, word_t value)
 {
-	/* Sanity checks. */
-	assert(reg >= REG_FIRST);
-	assert(reg <= REG_LAST);
-	assert(   tracee->_regs.state == REGS_ARE_VALID
-	       || tracee->_regs.state == REGS_HAVE_CHANGED);
+	if (peek_reg(tracee, CURRENT, reg) == value)
+		return;
 
-	REG(tracee, reg) = value;
-	tracee->_regs.state = REGS_HAVE_CHANGED;
+	REG(tracee, CURRENT, reg) = value;
+	tracee->_regs_have_changed = true;
 }
 
 /**
@@ -173,13 +167,14 @@ int fetch_regs(struct tracee *tracee)
 {
 	int status;
 
-	assert(tracee->_regs.state == REGS_ARE_INVALID);
-
-	status = ptrace(PTRACE_GETREGS, tracee->pid, NULL, &tracee->_regs.cache);
+	status = ptrace(PTRACE_GETREGS, tracee->pid, NULL, &tracee->_regs[CURRENT]);
 	if (status < 0)
 		return status;
+	tracee->_regs_have_changed = false;
 
-	tracee->_regs.state = REGS_ARE_VALID;
+	if (tracee->status == 0)
+		memcpy(&tracee->_regs[ORIGINAL], &tracee->_regs[CURRENT], sizeof(struct user_regs_struct));
+
 	return 0;
 }
 
@@ -192,22 +187,14 @@ int push_regs(struct tracee *tracee)
 {
 	int status;
 
-	switch(tracee->_regs.state) {
-	case REGS_ARE_INVALID:
-		assert(0);
-		break;
-
-	case REGS_ARE_VALID:
-		/* Nothing to do.  */
-		break;
-
-	case REGS_HAVE_CHANGED:
-		status = ptrace(PTRACE_SETREGS, tracee->pid, NULL, &tracee->_regs.cache);
+	if (tracee->_regs_have_changed) {
+		status = ptrace(PTRACE_SETREGS, tracee->pid, NULL, &tracee->_regs[CURRENT]);
 		if (status < 0)
 			return status;
-		break;
 	}
 
-	tracee->_regs.state = REGS_ARE_INVALID;
+	if (tracee->status != 0)
+		memcpy(&tracee->_regs[MODIFIED], &tracee->_regs[CURRENT], sizeof(struct user_regs_struct));
+
 	return 0;
 }

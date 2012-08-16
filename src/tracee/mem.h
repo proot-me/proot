@@ -36,8 +36,6 @@ extern int read_data(const struct tracee *tracee, void *dest_tracer, word_t src_
 extern int read_string(const struct tracee *tracee, char *dest_tracer, word_t src_tracee, word_t max_size);
 extern word_t peek_mem(const struct tracee *tracee, word_t address);
 extern void poke_mem(const struct tracee *tracee, word_t address, word_t value);
-
-extern word_t alloc(struct tracee *tracee, ssize_t size);
-extern void dealloc(struct tracee *tracee);
+extern word_t alloc_mem(struct tracee *tracee, ssize_t size);
 
 #endif /* TRACEE_MEM_H */

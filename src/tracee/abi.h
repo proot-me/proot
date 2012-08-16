@@ -42,7 +42,10 @@ enum abi {
 static inline enum abi get_abi(const struct tracee *tracee)
 {
 #if defined(ARCH_X86_64)
-	switch (tracee->_regs.cache.cs) {
+	/* The ABI can be changed by a syscall ("execve" typically),
+	 * however the change is only effective once the syscall has
+	 * *fully* returned, hence the use of _regs[ORIGINAL].  */
+	switch (tracee->_regs[ORIGINAL].cs) {
 	case 0x23:
 		return ABI_2;
 	case 0x33:

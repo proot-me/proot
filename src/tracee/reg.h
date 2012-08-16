@@ -36,15 +36,13 @@ enum reg {
 	SYSARG_6,
 	SYSARG_RESULT,
 	STACK_POINTER,
-
-	/* Helpers. */
-	REG_FIRST = SYSARG_NUM,
-	REG_LAST  = STACK_POINTER,
+	CS,
 };
 
 extern int fetch_regs(struct tracee *tracee);
 extern int push_regs(struct tracee *tracee);
-extern word_t peek_reg(const struct tracee *tracee, enum reg reg);
+
+extern word_t peek_reg(const struct tracee *tracee, enum reg_version version, enum reg reg);
 extern void poke_reg(struct tracee *tracee, enum reg reg, word_t value);
 
 #endif /* TRACEE_REG_H */

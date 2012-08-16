@@ -29,16 +29,17 @@
 
 #include "arch.h" /* word_t, user_regs_struct, */
 
+enum reg_version {
+	CURRENT  = 0,
+	ORIGINAL = 1,
+	MODIFIED = 2,
+	NB_REG_VERSION
+};
+
 /* Information related to a tracee process. */
 struct tracee {
 	/* Process identifier. */
 	pid_t pid;
-
-	/* Value of the stack pointer before allocations.  */
-	word_t original_sp;
-
-	/* Specify whether the stack pointer should be restored.  */
-	bool restore_sp;
 
 	/* Path to the executable, à la /proc/self/exe. */
 	char *exe;
@@ -49,15 +50,9 @@ struct tracee {
 	 *   -errno: exit syscall with error.  */
 	int status;
 
-	/* Cache for the tracee's general purpose registers.  */
-	struct {
-		struct user_regs_struct cache;
-		enum {
-			REGS_ARE_INVALID = 0,
-			REGS_ARE_VALID,
-			REGS_HAVE_CHANGED,
-		} state;
-	} _regs;
+	/* Value of the tracee's general purpose registers.  */
+	struct user_regs_struct _regs[NB_REG_VERSION];
+	bool _regs_have_changed;
 
 	enum {         /* State for the special handling of SIGSTOP.  */
 		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */
@@ -65,7 +60,6 @@ struct tracee {
 		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
 	} sigstop;
 	struct tracee *parent; /* Parent of this tracee. */
-
 };
 
 typedef int (*foreach_tracee_t)(struct tracee *tracee);
