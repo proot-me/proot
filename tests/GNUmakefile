@@ -18,7 +18,7 @@ check_failure: $(CHECK_TESTS)
 	@bash -c '! test -e failure'
 
 check-%.sh: %.sh setup
-	$(Q)env PROOT="$(PROOT)" ROOTFS=$(ROOTFS) sh -e $< $(silently); $(call check,$*)
+	$(Q)env PROOT="$(PROOT)" ROOTFS=$(ROOTFS) sh -ex $< $(silently); $(call check,$*)
 
 check-%.c: $(ROOTFS)/bin/% setup
 	$(call check_c,$*,$(PROOT) -b /proc $(ROOTFS) /bin/$*)
