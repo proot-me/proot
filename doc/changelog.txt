@@ -1,11 +1,11 @@
 Release v2.2
 ============
 
-Highlights
-----------
+* This release brings some critical fixes so an upgrade is highly
+  recommended, especially on x86_64 and Ubuntu.
 
-* PRoot is now faster than ever: the speed-up can be up to 60%
-  depending on the kind of application.
+* PRoot is now a lot faster: the speed-up can be up to 50% depending
+  on the kind of application.
 
 * PRoot can now mount/bind files anywhere in the guest rootfs, even if
   the mount point has no parent directory (and/or can't be created).
@@ -39,12 +39,9 @@ Highlights
        $ cat /black/holes/and/revelations
        Time has come to make things right -- Matthew Bellamy
 
-Miscellaneous
--------------
-
 * "/run" was added to the list of recommended bindings (-B/-Q).
 
-* Many fixes (particularly on "rmdir", "mkdir", and "mkdirat").
+* SH4 and ARM architectures are now officially supported.
 
 Thanks
 ------
