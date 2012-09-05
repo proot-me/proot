@@ -50,21 +50,42 @@ struct binding {
 
 	bool need_substitution;
 
-	struct binding *previous;
-	struct binding *next;
+	struct side {
+		struct binding *previous;
+		struct binding *next;
+	} guest_side;
+	struct side host_side;
 };
 
-static struct binding *bindings_guest_order = NULL;
-static struct binding *bindings_host_order = NULL;
+static struct binding *bindings_guest_side = NULL;
+static struct binding *bindings_host_side = NULL;
+
+/**
+ * Access (lvalue) the list of bindings for the given @side.
+ */
+#define BINDINGS(side) (*(side == GUEST_SIDE	\
+			? &bindings_guest_side	\
+			: &bindings_host_side))
+
+/**
+ * Access (lvalue) the next/previous item of @binding for the given @side.
+ */
+#define NEXT(side, binding) (*(side == GUEST_SIDE		\
+				? &binding->guest_side.next	\
+				: &binding->host_side.next))
+#define PREV(side, binding) (*(side == GUEST_SIDE		\
+				? &binding->guest_side.previous	\
+				: &binding->host_side.previous))
 
 /**
  * Print all bindings (verbose purpose).
  */
 void print_bindings()
 {
-	struct binding *binding;
+	const struct binding *binding;
+	const enum binding_side side = GUEST_SIDE;
 
-	for (binding = bindings_guest_order; binding != NULL; binding = binding->next) {
+	for (binding = BINDINGS(side); binding != NULL; binding = NEXT(side, binding)) {
 		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
 			notice(INFO, USER, "binding = %s", binding->host.path);
 		else
@@ -79,25 +100,10 @@ void print_bindings()
  */
 static const struct binding *get_binding(enum binding_side side, const char path[PATH_MAX])
 {
-	const struct binding *bindings;
 	const struct binding *binding;
 	size_t path_length = strlen(path);
 
-	switch (side) {
-	case GUEST_SIDE:
-		bindings = bindings_guest_order;
-		break;
-
-	case HOST_SIDE:
-		bindings = bindings_host_order;
-		break;
-
-	default:
-		assert(0);
-		return NULL;
-	}
-
-	for (binding = bindings; binding != NULL; binding = binding->next) {
+	for (binding = BINDINGS(side); binding != NULL; binding = NEXT(side, binding)) {
 		enum path_comparison comparison;
 		const struct binding_path *ref;
 
@@ -281,27 +287,13 @@ too_long:
  */
 static void insort_binding(enum binding_side side, struct binding *binding)
 {
-	struct binding *bindings;
-	struct binding *previous = NULL;
-	struct binding *next = NULL;
 	struct binding *iterator;
-
-	switch (side) {
-	case GUEST_SIDE:
-		next = bindings = bindings_guest_order;
-		break;
-
-	case HOST_SIDE:
-		next = bindings = bindings_host_order;
-		break;
-
-	default:
-		assert(0);
-		return;
-	}
+	struct binding *previous = NULL;
+	struct binding *next = BINDINGS(side);
+	struct binding *head = BINDINGS(side);
 
 	/* Find where it should be added in the list.  */
-	for (iterator = bindings; iterator != NULL; iterator = iterator->next) {
+	for (iterator = BINDINGS(side); iterator != NULL; iterator = NEXT(side, iterator)) {
 		enum path_comparison comparison;
 		const struct binding_path *binding_path;
 		const struct binding_path *iterator_path;
@@ -359,43 +351,31 @@ static void insort_binding(enum binding_side side, struct binding *binding)
 
 	/* Insert this copy in the list.  */
 	if (previous != NULL) {
-		binding->previous = previous;
-		binding->next     = previous->next;
-		if (previous->next != NULL)
-			previous->next->previous = binding;
-		previous->next        = binding;
+		PREV(side, binding) = previous;
+		NEXT(side, binding) = NEXT(side, previous);
+		if (NEXT(side, previous) != NULL)
+			PREV(side, NEXT(side, previous)) = binding;
+		NEXT(side, previous) = binding;
 	}
 	else if (next != NULL) {
-		binding->next     = next;
-		binding->previous = next->previous;
-		if (next->previous != NULL)
-			next->previous->next = binding;
-		next->previous        = binding;
+		NEXT(side, binding) = next;
+		PREV(side, binding) = PREV(side, next);
+		if (PREV(side, next) != NULL)
+			NEXT(side, PREV(side, next)) = binding;
+		PREV(side, next) = binding;
 
 		/* Ensure the head points to the first binding.  */
-		if (next == bindings)
-			bindings = binding;
+		if (next == head)
+			head = binding;
 	}
 	else {
 		/* First item in this list.  */
-		binding->next     = NULL;
-		binding->previous = NULL;
-		bindings              = binding;
+		PREV(side, binding) = NULL;
+		PREV(side, binding) = NULL;
+		head = binding;
 	}
 
-	switch (side) {
-	case GUEST_SIDE:
-		bindings_guest_order = bindings;
-		break;
-
-	case HOST_SIDE:
-		bindings_host_order = bindings;
-		break;
-
-	default:
-		assert(0);
-		return;
-	}
+	BINDINGS(side) = head;
 }
 
 /**
@@ -403,16 +383,8 @@ static void insort_binding(enum binding_side side, struct binding *binding)
  */
 static void insort_binding2(struct binding *binding)
 {
-	struct binding *new_binding = malloc(sizeof(struct binding));
-	if (new_binding == NULL)
-		return;
-
 	insort_binding(GUEST_SIDE, binding);
-
-	/* TODO: do not duplicate the structure, use two sets of links
-	 * (one for the guest order, one for the host order).  */
-	memcpy(new_binding, binding, sizeof(struct binding));
-	insort_binding(HOST_SIDE, new_binding);
+	insort_binding(HOST_SIDE, binding);
 }
 
 /**
@@ -515,7 +487,7 @@ mode_t build_glue_rootfs(char binding_path[PATH_MAX], enum finality is_final, bo
 
 	/*  From the example, create the binding "/black" ->
 	 *  "$GLUE/black".  */
-	binding = malloc(sizeof(struct binding));
+	binding = calloc(1, sizeof(struct binding));
 	if (!binding) {
 		notice(WARNING, SYSTEM, "malloc()");
 		return 0;
@@ -535,27 +507,18 @@ mode_t build_glue_rootfs(char binding_path[PATH_MAX], enum finality is_final, bo
 }
 
 /**
- * Free all the @bindings of the given list.
- */
-static void free_bindings2(struct binding *bindings)
-{
-	while (bindings != NULL) {
-		struct binding *next =  bindings->next;
-		free(bindings);
-		bindings = next;
-	}
-}
-
-/**
  * Free all the bindings.
  */
 void free_bindings()
 {
-	free_bindings2(bindings_guest_order);
-	bindings_guest_order = NULL;
+	const enum binding_side side = GUEST_SIDE;
+	struct binding *binding = BINDINGS(side);
 
-	free_bindings2(bindings_host_order);
-	bindings_host_order = NULL;
+	while (binding != NULL) {
+		struct binding *next = NEXT(side, binding);
+		free(binding);
+		binding = next;
+	}
 }
 
 /**

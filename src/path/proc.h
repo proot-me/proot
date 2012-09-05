@@ -30,7 +30,7 @@
 
 /* Action to do after a call to readlink_proc().  */
 enum action {
-	DEFAULT        = 0,    /* Nothing special to do, threat it as a regular link.  */
+	DEFAULT        = 0,    /* Nothing special to do, treat it as a regular link.  */
 	CANONICALIZE   = 1,    /* The symlink was dereferenced, now canonicalize it.  */
 	DONT_CANONICALIZE = 2, /* The symlink shouldn't be dereferenced nor canonicalized.  */
 };

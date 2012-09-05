@@ -9,9 +9,6 @@ Short term
 
 * Make `-r $ROOTFS` kinda special `-b $ROOTFS:/`.
 
-* Don't duplicate bindings, use two sets of links (one for the guest
-  order, one for the host order).
-
 * For /proc/<pid>/cwd: the detranslation isn't a state machine, hence
   it doesn't know how to detranslate correctly when there are several
   bindings with the same host-side::
