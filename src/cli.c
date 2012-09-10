@@ -465,8 +465,13 @@ int main(int argc, char *argv[])
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", config.guest_rootfs);
 	config.guest_rootfs = tmp;
 
-	/* Bindings can be registered once config.guest_rootfs is
-	 * correctly initialized.  */
+	/* The binding to "/" has to be initialized before other
+	 * bindings since this former is required to sanitize these
+	 * latters (c.f. bind_path() for details).  */
+	status = bind_path(config.guest_rootfs, "/", true);
+	if (status < 0)
+		notice(ERROR, USER, "fatal");
+
 	while (bindings != NULL) {
 		struct binding *next;
 

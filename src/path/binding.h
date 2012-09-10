@@ -28,7 +28,7 @@
 
 #include "path.h"
 
-extern void bind_path(const char *host_path, const char *guest_path, bool must_exist);
+extern int bind_path(const char *host_path, const char *guest_path, bool must_exist);
 extern mode_t build_glue_rootfs(char host_path[PATH_MAX], enum finality is_final, bool exist);
 extern void print_bindings(void);
 extern void free_bindings(void);

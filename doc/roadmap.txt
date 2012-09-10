@@ -7,8 +7,6 @@ Short term
 
 * Replace internal implementation of -0 with the use of fakeroot.
 
-* Make `-r $ROOTFS` kinda special `-b $ROOTFS:/`.
-
 * For /proc/<pid>/cwd: the detranslation isn't a state machine, hence
   it doesn't know how to detranslate correctly when there are several
   bindings with the same host-side::

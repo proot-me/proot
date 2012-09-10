@@ -196,7 +196,6 @@ int translate_path(const struct tracee *tracee, char result[PATH_MAX],
 		   int dir_fd, const char *fake_path, int deref_final)
 {
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
-	char tmp[PATH_MAX];
 	int status;
 	pid_t pid;
 
@@ -251,26 +250,13 @@ int translate_path(const struct tracee *tracee, char result[PATH_MAX],
 	if (status < 0)
 		return status;
 
-	/* Don't prepend the new root to the result of the
-	 * canonicalization if it is a binding, instead substitute the
-	 * binding location (leading part) with the real path.*/
-	if (substitute_binding(GUEST_SIDE, result) >= 0)
-		goto end;
-
-	strcpy(tmp, result);
-	status = join_paths(2, result, config.guest_rootfs, tmp);
+	/* Final binding substitution to convert "result" into a host
+	 * path, since canonicalize() works from the guest
+	 * point-of-view.  */
+	status = substitute_binding(GUEST_SIDE, result);
 	if (status < 0)
 		return status;
 
-	/* Small sanity check. */
-	if (deref_final != 0
-	    && realpath(result, tmp) != NULL
-	    && !belongs_to_guestfs(tmp)) {
-		notice(WARNING, INTERNAL, "tracee %d is out of my control (2)", pid);
-		return -EPERM;
-	}
-
-end:
 	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
 	return 0;
 }

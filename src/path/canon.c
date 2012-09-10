@@ -43,22 +43,17 @@
  * (returned value is 1), otherwise it returns -errno (-ENOENT or
  * -ENOTDIR).
  */
-static inline int unbind_stat(const struct tracee *tracee, enum finality is_final,
-			      char guest_path[PATH_MAX], char host_path[PATH_MAX])
+static inline int substitute_binding_stat(const struct tracee *tracee, enum finality is_final,
+					  char guest_path[PATH_MAX], char host_path[PATH_MAX])
 {
 	struct stat statl;
 	int status;
 
-	/* substitute_binding() shouldn't be called when initializing
-	 * a binding (tracee == NULL).  */
-	if (tracee != NULL && substitute_binding(GUEST_SIDE, guest_path) >= 0) {
-		strcpy(host_path, guest_path);
-	}
-	else {
-		status = join_paths(2, host_path, config.guest_rootfs, guest_path);
-		if (status < 0)
-			return status;
-	}
+	status = substitute_binding(GUEST_SIDE, guest_path);
+	if (status < 0)
+		return status;
+
+	strcpy(host_path, guest_path);
 
 	statl.st_mode = 0;
 	status = lstat(host_path, &statl);
@@ -157,7 +152,7 @@ int canonicalize(const struct tracee *tracee, const char *user_path, bool deref_
 		 * symlink.  For this latter case, we check that the
 		 * symlink points to a directory once it is
 		 * canonicalized, at the end of this loop.  */
-		status = unbind_stat(tracee, is_final, scratch_path, host_path);
+		status = substitute_binding_stat(tracee, is_final, scratch_path, host_path);
 		if (status < 0)
 			return status;
 
@@ -236,7 +231,7 @@ int canonicalize(const struct tracee *tracee, const char *user_path, bool deref_
 		/* Check that a non-final canonicalized/dereferenced
 		 * symlink exists and is a directory.  */
 		strcpy(scratch_path, guest_path);
-		status = unbind_stat(tracee, is_final, scratch_path, host_path);
+		status = substitute_binding_stat(tracee, is_final, scratch_path, host_path);
 		if (status < 0)
 			return status;
 

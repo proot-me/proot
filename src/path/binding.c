@@ -103,6 +103,9 @@ static const struct binding *get_binding(enum binding_side side, const char path
 	const struct binding *binding;
 	size_t path_length = strlen(path);
 
+	/* Sanity checks.  */
+	assert(path != NULL && path[0] == '/');
+
 	for (binding = BINDINGS(side); binding != NULL; binding = NEXT(side, binding)) {
 		enum path_comparison comparison;
 		const struct binding_path *ref;
@@ -178,7 +181,7 @@ static mode_t final_type;
  * Substitute the guest path (if any) with the host path in @path.
  * This function returns:
  *
- *     * -1 if it is not a binding location
+ *     * -errno if an error occured
  *
  *     * 0 if it is a binding location but no substitution is needed
  *       ("symetric" binding)
@@ -194,13 +197,9 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 	size_t path_length;
 	size_t new_length;
 
-	/* This function can't be called during the initialization of
-	 * a binding.  */
-	assert(final_type == 0);
-
 	binding = get_binding(side, path);
 	if (!binding)
-		return -1;
+		return -ENOENT;
 
 	/* Is it a "symetric" binding?  */
 	if (!binding->need_substitution)
@@ -221,14 +220,13 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 
 	default:
 		assert(0);
-		return -1;
+		return -EACCES;
 	}
 
 	/* Substitute the leading ref' with reverse_ref'.  */
 	if (reverse_ref->length == 1) {
 		/* Special case when "-b /:/foo".  Substitute
 		 * "/foo/bin" with "/bin" not "//bin".  */
-		assert(side == GUEST_SIDE);
 
 		new_length = path_length - ref->length;
 		if (new_length != 0)
@@ -242,7 +240,6 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 	else if (ref->length == 1) {
 		/* Special case when "-b /:/foo". Substitute
 		 * "/bin" with "/foo/bin" not "/foobin".  */
-		assert(side == HOST_SIDE);
 
 		new_length = reverse_ref->length + path_length;
 		if (new_length >= PATH_MAX)
@@ -274,7 +271,7 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 	return 1;
 
 too_long:
-	return -1;
+	return -ENAMETOOLONG;
 }
 
 /**
@@ -522,10 +519,11 @@ void free_bindings()
 }
 
 /**
- * Save @path in the list of paths that are bound for the
- * translation mechanism.
+ * Save @path in the list of paths that are bound for the translation
+ * mechanism.  This function returns -1 if an error occured, 0
+ * otherwise.
  */
-void bind_path(const char *host_path, const char *guest_path, bool must_exist)
+int bind_path(const char *host_path, const char *guest_path, bool must_exist)
 {
 	struct binding *binding = NULL;
 	struct stat statl;
@@ -544,34 +542,40 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	}
 	binding->host.length = strlen(binding->host.path);
 
-	/* Remember the type of the final component, it will be used
-	 * in build_glue_rootfs() later.  */
-	status = lstat(binding->host.path, &statl);
-	final_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
-		     ? S_IFREG : statl.st_mode & S_IFMT);
+	if (guest_path != NULL && compare_paths(guest_path, "/") == PATHS_ARE_EQUAL) {
+		if (BINDINGS(HOST_SIDE) != NULL)
+			notice(ERROR, USER,
+				"explicit binding to \"/\" isn't allowed, "
+				"use the -r option instead");
+		strcpy(binding->guest.path, "/");
+	}
+	else {
+		/* Remember the type of the final component, it will be used
+		 * in build_glue_rootfs() later.  */
+		status = lstat(binding->host.path, &statl);
+		final_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
+			? S_IFREG : statl.st_mode & S_IFMT);
 
-	/* In case binding->guest.path is relative.  */
-	if (!getcwd(binding->guest.path, PATH_MAX)) {
-		notice(WARNING, SYSTEM, "can't sanitize path (binding) \"%s\", getcwd()", binding->guest.path);
-		goto error;
+		/* In case binding->guest.path is relative.  */
+		if (!getcwd(binding->guest.path, PATH_MAX)) {
+			notice(WARNING, SYSTEM, "can't sanitize path (binding) \"%s\", getcwd()",
+				binding->guest.path);
+			goto error;
+		}
+
+		/* Sanitize the guest path of the binding within the alternate
+		   rootfs since it is assumed by substitute_binding().  */
+		status = canonicalize(NULL, guest_path ? guest_path : host_path,
+				true, binding->guest.path, 0);
+		final_type = 0;
+		if (status < 0) {
+			notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
+				guest_path ? guest_path : host_path, strerror(-status));
+			goto error;
+		}
 	}
 
-	/* Sanitize the guest path of the binding within the alternate
-	   rootfs since it is assumed by substitute_binding().  */
-	status = canonicalize(NULL, guest_path ? guest_path : host_path, true, binding->guest.path, 0);
-	final_type = 0;
-	if (status < 0) {
-		notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
-			guest_path ? guest_path : host_path, strerror(-status));
-		goto error;
-	}
 	binding->guest.length = strlen(binding->guest.path);
-
-	/* Sanity check.  */
-	if (strcmp(binding->guest.path, "/") == 0) {
-		notice(WARNING, USER, "can't create a binding in \"/\"");
-		goto error;
-	}
 
 	binding->need_substitution =
 		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
@@ -581,16 +585,18 @@ void bind_path(const char *host_path, const char *guest_path, bool must_exist)
 		binding->guest.path[binding->guest.length - 2] = '\0';
 		binding->guest.length -= 2;
 	}
-	else if (binding->guest.path[binding->guest.length - 1] == '/') {
+	else if (binding->guest.path[binding->guest.length - 1] == '/'
+		&& binding->guest.length > 1 /* Special case for "/".  */) {
 		binding->guest.path[binding->guest.length - 1] = '\0';
 		binding->guest.length -= 1;
 	}
 
 	insort_binding2(binding);
 
-	return;
+	return 0;
 
 error:
 	if (binding != NULL)
 		free(binding);
+	return -1;
 }
