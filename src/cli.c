@@ -32,6 +32,7 @@
 #include <sys/stat.h>  /* stat(2), */
 #include <unistd.h>    /* stat(2), */
 #include <errno.h>     /* errno(3), */
+#include <sys/queue.h> /* SLIST_*, */
 
 #include "cli.h"
 #include "config.h"
@@ -53,10 +54,10 @@ struct binding {
 	const char *guest;
 	bool must_exist;
 
-	struct binding *next;
+	SLIST_ENTRY(binding) link;
 };
 
-static struct binding *bindings = NULL;
+static SLIST_HEAD(bindings, binding) bindings;
 
 static void new_binding2(const char *host, const char *guest, bool must_exist)
 {
@@ -71,8 +72,8 @@ static void new_binding2(const char *host, const char *guest, bool must_exist)
 	binding->host  = host;
 	binding->guest = guest;
 	binding->must_exist = must_exist;
-	binding->next = bindings;
-	bindings = binding;
+
+	SLIST_INSERT_HEAD(&bindings, binding, link);
 }
 
 static void new_binding(char *value, bool must_exist)
@@ -367,6 +368,7 @@ static void error_separator(struct argument *argument)
 int main(int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
+	struct binding *binding;
 	char *tmp;
 	int i, j, k;
 	int status;
@@ -472,14 +474,12 @@ int main(int argc, char *argv[])
 	if (status < 0)
 		notice(ERROR, USER, "fatal");
 
-	while (bindings != NULL) {
-		struct binding *next;
-
-		bind_path(bindings->host, bindings->guest, bindings->must_exist);
-
-		next = bindings->next;
-		free(bindings);
-		bindings = next;
+	binding = SLIST_FIRST(&bindings);
+	while (binding != NULL) {
+		struct binding *next = SLIST_NEXT(binding, link);
+		bind_path(binding->host, binding->guest, binding->must_exist);
+		free(binding);
+		binding = next;
 	}
 
 	if (i < argc)

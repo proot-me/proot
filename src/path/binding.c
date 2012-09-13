@@ -32,6 +32,7 @@
 #include <limits.h>   /* PATH_MAX, */
 #include <errno.h>    /* errno, E* */
 #include <stdio.h>    /* sprintf(3), */
+#include <sys/queue.h> /* LIST_*, */
 
 #include "path/binding.h"
 #include "path/path.h"
@@ -50,32 +51,45 @@ struct binding {
 
 	bool need_substitution;
 
-	struct side {
-		struct binding *previous;
-		struct binding *next;
-	} guest_side;
-	struct side host_side;
+	LIST_ENTRY(binding) guest_side;
+	LIST_ENTRY(binding) host_side;
 };
 
-static struct binding *bindings_guest_side = NULL;
-static struct binding *bindings_host_side = NULL;
+LIST_HEAD(bindings, binding);
 
-/**
- * Access (lvalue) the list of bindings for the given @side.
- */
-#define BINDINGS(side) (*(side == GUEST_SIDE	\
-			? &bindings_guest_side	\
-			: &bindings_host_side))
+static struct bindings bindings_guest_side;
+static struct bindings bindings_host_side;
 
-/**
- * Access (lvalue) the next/previous item of @binding for the given @side.
- */
-#define NEXT(side, binding) (*(side == GUEST_SIDE		\
-				? &binding->guest_side.next	\
-				: &binding->host_side.next))
-#define PREV(side, binding) (*(side == GUEST_SIDE		\
-				? &binding->guest_side.previous	\
-				: &binding->host_side.previous))
+#define FIELD(side) (side == GUEST_SIDE ? guest_side : host_side)
+#define HEAD(side)  (side == GUEST_SIDE ? &bindings_guest_side : &bindings_host_side)
+
+#define LIST_FOREACH_(binding, side)					\
+	for (binding = LIST_FIRST(HEAD(side));				\
+	     binding != NULL;						\
+	     binding = (side == GUEST_SIDE				\
+		     ? LIST_NEXT(binding, guest_side)			\
+		     : LIST_NEXT(binding, host_side)))
+
+#define LIST_INSERT_AFTER_(previous, binding, side) do {	\
+	if (side == GUEST_SIDE)					\
+		LIST_INSERT_AFTER(previous, binding, guest_side); \
+	else							\
+		LIST_INSERT_AFTER(previous, binding, host_side); \
+} while (0)
+
+#define LIST_INSERT_BEFORE_(next, binding, side) do {		\
+	if (side == GUEST_SIDE)					\
+		LIST_INSERT_BEFORE(next, binding, guest_side);	\
+	else							\
+		LIST_INSERT_BEFORE(next, binding, host_side);	\
+} while (0)
+
+#define LIST_INSERT_HEAD_(binding, side) do {			\
+	if (side == GUEST_SIDE)					\
+		LIST_INSERT_HEAD(HEAD(side), binding, guest_side); \
+	else							\
+		LIST_INSERT_HEAD(HEAD(side), binding, host_side); \
+} while (0)
 
 /**
  * Print all bindings (verbose purpose).
@@ -83,9 +97,8 @@ static struct binding *bindings_host_side = NULL;
 void print_bindings()
 {
 	const struct binding *binding;
-	const enum binding_side side = GUEST_SIDE;
 
-	for (binding = BINDINGS(side); binding != NULL; binding = NEXT(side, binding)) {
+	LIST_FOREACH_(binding, GUEST_SIDE) {
 		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
 			notice(INFO, USER, "binding = %s", binding->host.path);
 		else
@@ -106,7 +119,7 @@ static const struct binding *get_binding(enum binding_side side, const char path
 	/* Sanity checks.  */
 	assert(path != NULL && path[0] == '/');
 
-	for (binding = BINDINGS(side); binding != NULL; binding = NEXT(side, binding)) {
+	LIST_FOREACH_(binding, side) {
 		enum path_comparison comparison;
 		const struct binding_path *ref;
 
@@ -279,11 +292,10 @@ static void insort_binding(enum binding_side side, struct binding *binding)
 {
 	struct binding *iterator;
 	struct binding *previous = NULL;
-	struct binding *next = BINDINGS(side);
-	struct binding *head = BINDINGS(side);
+	struct binding *next = LIST_FIRST(HEAD(side));
 
 	/* Find where it should be added in the list.  */
-	for (iterator = BINDINGS(side); iterator != NULL; iterator = NEXT(side, iterator)) {
+	LIST_FOREACH_(iterator, side) {
 		enum path_comparison comparison;
 		const struct binding_path *binding_path;
 		const struct binding_path *iterator_path;
@@ -341,32 +353,12 @@ static void insort_binding(enum binding_side side, struct binding *binding)
 	}
 
 	/* Insert this copy in the list.  */
-	if (previous != NULL) {
-		PREV(side, binding) = previous;
-		NEXT(side, binding) = NEXT(side, previous);
-		if (NEXT(side, previous) != NULL)
-			PREV(side, NEXT(side, previous)) = binding;
-		NEXT(side, previous) = binding;
-	}
-	else if (next != NULL) {
-		NEXT(side, binding) = next;
-		PREV(side, binding) = PREV(side, next);
-		if (PREV(side, next) != NULL)
-			NEXT(side, PREV(side, next)) = binding;
-		PREV(side, next) = binding;
-
-		/* Ensure the head points to the first binding.  */
-		if (next == head)
-			head = binding;
-	}
-	else {
-		/* First item in this list.  */
-		PREV(side, binding) = NULL;
-		PREV(side, binding) = NULL;
-		head = binding;
-	}
-
-	BINDINGS(side) = head;
+	if (previous != NULL)
+		LIST_INSERT_AFTER_(previous, binding, side);
+	else if (next != NULL)
+		LIST_INSERT_BEFORE_(next, binding, side);
+	else
+		LIST_INSERT_HEAD_(binding, side);
 }
 
 /**
@@ -490,11 +482,10 @@ mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX], enum 
  */
 void free_bindings()
 {
-	const enum binding_side side = GUEST_SIDE;
-	struct binding *binding = BINDINGS(side);
+	struct binding *binding = LIST_FIRST(HEAD(GUEST_SIDE));
 
 	while (binding != NULL) {
-		struct binding *next = NEXT(side, binding);
+		struct binding *next = LIST_NEXT(binding, guest_side);
 		free(binding);
 		binding = next;
 	}
@@ -507,7 +498,7 @@ void free_bindings()
  */
 int bind_path(const char *host_path, const char *guest_path, bool must_exist)
 {
-	struct binding *binding = NULL;
+	struct binding *binding;
 	int status;
 
 	binding = calloc(1, sizeof(struct binding));
@@ -524,7 +515,7 @@ int bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	binding->host.length = strlen(binding->host.path);
 
 	if (guest_path != NULL && compare_paths(guest_path, "/") == PATHS_ARE_EQUAL) {
-		if (BINDINGS(HOST_SIDE) != NULL)
+		if (LIST_FIRST(HEAD(HOST_SIDE)) != NULL)
 			notice(ERROR, USER,
 				"explicit binding to \"/\" isn't allowed, "
 				"use the -r option instead");

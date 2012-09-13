@@ -26,6 +26,7 @@
 #include <sys/types.h> /* pid_t, size_t, */
 #include <sys/user.h>  /* struct user*, */
 #include <stdbool.h>
+#include <sys/queue.h> /* LIST_*, */
 
 #include "arch.h" /* word_t, user_regs_struct, */
 
@@ -38,6 +39,9 @@ enum reg_version {
 
 /* Information related to a tracee process. */
 struct tracee {
+	/* Link for the list of all tracees.  */
+	LIST_ENTRY(tracee) link;
+
 	/* Process identifier. */
 	pid_t pid;
 
@@ -59,17 +63,16 @@ struct tracee {
 		SIGSTOP_ALLOWED,      /* Allow SIGSTOP (once the parent is known).   */
 		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
 	} sigstop;
-	struct tracee *parent; /* Parent of this tracee. */
 };
 
-typedef int (*foreach_tracee_t)(struct tracee *tracee);
+LIST_HEAD(tracees, tracee);
 
-extern void init_module_tracee(void);
+extern struct tracees tracees;
+
 extern void free_tracees(void);
 
 extern void delete_tracee(struct tracee *tracee);
 extern struct tracee *get_tracee(pid_t pid, bool create);
-extern int foreach_tracee(foreach_tracee_t callback);
 extern void inherit_fs_info(struct tracee *child, struct tracee *parent);
 
 #endif /* TRACEE_H */

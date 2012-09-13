@@ -25,21 +25,12 @@
 #include <assert.h>     /* assert(3), */
 #include <string.h>     /* bzero(3), */
 #include <stdbool.h>    /* bool, true, false, */
+#include <sys/queue.h>  /* LIST_*,  */
 
 #include "tracee/tracee.h"
 #include "notice.h"
 
- /* Don't use too many entries since they are all parsed when
-  * searching for a new tracee.  */
-#define POOL_MAX_ENTRIES 16
-
-struct pool {
-	struct tracee entries[POOL_MAX_ENTRIES];
-	size_t nb_entries;
-	struct pool *next;
-};
-
-static struct pool *first_pool = NULL;
+struct tracees tracees;
 
 /**
  * Reset the default values for the given @tracee.
@@ -48,45 +39,31 @@ void delete_tracee(struct tracee *tracee)
 {
 	assert(tracee != NULL);
 
+	LIST_REMOVE(tracee, link);
+
 	if (tracee->exe != NULL)
 		free(tracee->exe);
 
-	bzero(tracee, sizeof(struct tracee));
+	free(tracee);
 }
 
 /**
- * Allocate a new pool and initialize an entry for the tracee @pid.
+ * Allocate a new entry for the tracee @pid.
  */
 static struct tracee *new_tracee(pid_t pid)
 {
-	struct pool *last_pool;
-	struct pool *new_pool;
-	size_t i;
+	struct tracee *tracee;
 
-	/* Search for the last pool.  */
-	for (last_pool = first_pool; last_pool != NULL; last_pool = last_pool->next)
-		if (last_pool->next == NULL)
-			break;
-
-	new_pool = calloc(1, sizeof(struct pool));
-	if (new_pool == NULL) {
+	tracee = calloc(1, sizeof(struct tracee));
+	if (tracee == NULL) {
 		notice(WARNING, SYSTEM, "calloc()");
 		return NULL;
 	}
 
-	if (last_pool != NULL)
-		last_pool->next = new_pool;
-	else {
-		assert(first_pool == NULL);
-		first_pool = new_pool;
-	}
+	tracee->pid = pid;
+	LIST_INSERT_HEAD(&tracees, tracee, link);
 
-	/* Set the default values for each new entry. */
-	for(i = 0; i < POOL_MAX_ENTRIES; i++)
-		delete_tracee(&new_pool->entries[i]);
-
-	new_pool->entries[0].pid = pid;
-	return &new_pool->entries[0];
+	return tracee;
 }
 
 /**
@@ -97,67 +74,18 @@ static struct tracee *new_tracee(pid_t pid)
 struct tracee *get_tracee(pid_t pid, bool create)
 {
 	struct tracee *tracee;
-	struct pool *pool;
-	size_t i;
 
-	/* Remember what the first free slot is in the first free
-	 * pool, if we have to @create a new entry.  */
-	struct pool *free_pool = NULL;
-	size_t free_slot = 0;
-
-	for (pool = first_pool; pool != NULL; pool = pool->next) {
-		for(i = 0; i < POOL_MAX_ENTRIES; i++) {
-			if (pool->entries[i].pid == pid)
-				return &pool->entries[i];
-
-			if (!create
-			    || free_pool != NULL
-			    || pool->entries[i].pid != 0)
-				continue;
-
-			free_pool = pool;
-			free_slot = i;
-		}
+	LIST_FOREACH(tracee, &tracees, link) {
+		if (tracee->pid == pid)
+			return tracee;
 	}
 
 	if (!create)
 		return NULL;
 
-	if (free_pool != NULL) {
-		tracee = &free_pool->entries[free_slot];
-		tracee->pid = pid;
-		return tracee;
-	}
-	else {
-		tracee = new_tracee(pid);
-		assert(tracee != NULL);
-		return tracee;
-	}
-}
-
-/**
- * Call @callback on each tracees.  This function returns the status
- * of the first failure, that is, if @callback returned something
- * lesser than 0, otherwise 0.
- */
-int foreach_tracee(foreach_tracee_t callback)
-{
-	struct pool *pool;
-	int status;
-	size_t i;
-
-	for (pool = first_pool; pool != NULL; pool = pool->next) {
-		for(i = 0; i < POOL_MAX_ENTRIES; i++) {
-			if (pool->entries[i].pid == 0)
-				continue;
-
-			status = callback(&pool->entries[i]);
-			if (status < 0)
-				return status;
-		}
-	}
-
-	return 0;
+	tracee = new_tracee(pid);
+	assert(tracee != NULL);
+	return tracee;
 }
 
 /**
@@ -167,8 +95,6 @@ int foreach_tracee(foreach_tracee_t callback)
  */
 void inherit_fs_info(struct tracee *child, struct tracee *parent)
 {
-	child->parent = parent;
-
 	assert(child->exe  == NULL);
 	// assert(child->root == NULL);
 	// assert(child->cwd  == NULL);
@@ -177,8 +103,7 @@ void inherit_fs_info(struct tracee *child, struct tracee *parent)
 	 * call to execve(2), thus child->exe will be automatically
 	 * updated later.  */
 	if (parent == NULL) {
-		child->parent = (void *)-1;
-		child->exe = NULL;
+		child->exe = strdup("<dummy>");
 		// child->root = strdup(config.guest_rootfs);
 		// child->cwd  = strdup(config.initial_cwd);
 		return;
@@ -226,24 +151,12 @@ void inherit_fs_info(struct tracee *child, struct tracee *parent)
 }
 
 /**
- * Free all tracees and all pools.
+ * Free all tracees.
  */
 void free_tracees()
 {
-	struct pool *pool;
+	struct tracee *tracee;
 
-	int delete_tracee2(struct tracee *tracee)
-	{
+	LIST_FOREACH(tracee, &tracees, link)
 		delete_tracee(tracee);
-		return 0;
-	}
-	foreach_tracee(delete_tracee2);
-
-	pool = first_pool;
-	while (pool != NULL) {
-		struct pool *next =  pool->next;
-		free(pool);
-		pool = next;
-	}
-	first_pool = NULL;
 }

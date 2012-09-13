@@ -35,6 +35,7 @@
 #include <stdbool.h>    /* bool, true, false, */
 #include <assert.h>     /* assert(3), */
 #include <stdlib.h>     /* atexit(3), */
+#include <sys/queue.h>  /* LIST_*, */
 
 #include "tracee/event.h"
 #include "notice.h"
@@ -200,13 +201,10 @@ bool attach_process(pid_t pid)
 /* Send the KILL signal to all [known] tracees.  */
 static void kill_all_tracees()
 {
-	int kill_tracee(struct tracee *tracee)
-	{
-		kill(tracee->pid, SIGKILL);
-		return 0;
-	}
+	struct tracee *tracee;
 
-	foreach_tracee(kill_tracee);
+	LIST_FOREACH(tracee, &tracees, link)
+		kill(tracee->pid, SIGKILL);
 
 	notice(INFO, USER, "exited");
 }
@@ -309,8 +307,11 @@ int event_loop()
 		}
 
 		/* Check every tracee file descriptors. */
-		if (config.check_fd)
-			foreach_tracee(check_fd);
+		if (config.check_fd) {
+			struct tracee *tracee;
+			LIST_FOREACH(tracee, &tracees, link)
+				check_fd(tracee);
+		}
 
 		/* Get the information about this tracee. */
 		tracee = get_tracee(pid, true);
@@ -366,7 +367,7 @@ int event_loop()
 					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 				/* Fall through. */
 			case SIGTRAP | 0x80:
-				assert(tracee->parent != NULL);
+				assert(tracee->exe != NULL);
 				status = translate_syscall(tracee);
 				if (status < 0) {
 					/* The process died in a syscall. */
@@ -418,7 +419,7 @@ int event_loop()
 
 				/* Stop this tracee until PRoot has received
 				 * the EVENT_*FORK|CLONE notification.  */
-				if (tracee->parent == NULL) {
+				if (tracee->exe == NULL) {
 					tracee->sigstop = SIGSTOP_PENDING;
 					continue;
 				}
