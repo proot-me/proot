@@ -23,9 +23,9 @@
 #include <sys/stat.h> /* lstat(2), S_ISREG(), */
 #include <unistd.h>   /* access(2), lstat(2), */
 #include <string.h>   /* string(3), */
-#include <stdlib.h>   /* realpath(3), getenv(3),  */
 #include <assert.h>   /* assert(3), */
 #include <errno.h>    /* E*, */
+#include <talloc.h>   /* talloc_, */
 
 #include "execve/execve.h"
 #include "execve/interp.h"
@@ -208,8 +208,8 @@ int translate_execve(struct tracee *tracee)
 	char t_interp[PATH_MAX];
 	char u_interp[PATH_MAX];
 
-	struct array envp = { 0 };
-	struct array argv = { 0 };
+	struct array *envp = NULL;
+	struct array *argv = NULL;
 	char *argv0 = NULL;
 
 	bool ignore_elf_interpreter;
@@ -223,33 +223,41 @@ int translate_execve(struct tracee *tracee)
 	if (status < 0)
 		return status;
 
-	status = fetch_array(tracee, &argv, SYSARG_2, 0);
+	argv = talloc_zero(tracee->tmp, struct array);
+	if (argv == NULL)
+		return -ENOMEM;
+
+	status = fetch_array(argv, SYSARG_2, 0);
 	if (status < 0)
-		goto end;
+		return status;
 
 	if (config.qemu) {
-		status = read_item_string(&argv, 0, &argv0);
+		status = read_item_string(argv, 0, &argv0);
 		if (status < 0)
-			goto end;
+			return status;
 
 		/* Save the initial argv[0] since it will be replaced
-		 * by config.qemu[0].  */
+		 * by config.qemu[0].  Errors are not fatal here.  */
 		if (argv0 != NULL)
-			argv0 = strdup(argv0);
+			argv0 = talloc_strdup(tracee->tmp, argv0);
 
-		status = fetch_array(tracee, &envp, SYSARG_3, 0);
+		envp = talloc_zero(tracee->tmp, struct array);
+		if (envp == NULL)
+			return -ENOMEM;
+
+		status = fetch_array(envp, SYSARG_3, 0);
 		if (status < 0)
-			goto end;
+			return status;
 
 		/* Environment variables should be compared with the
 		 * "name" part in the "name=value" string format.  */
-		envp.compare_item = (compare_item_t)compare_item_env;
+		envp->compare_item = (compare_item_t)compare_item_env;
 	}
 
-	status = expand_interp(tracee, u_path, t_interp, u_interp, &argv,
+	status = expand_interp(tracee, u_path, t_interp, u_interp, argv,
 			       extract_script_interp, false);
 	if (status < 0)
-		goto end;
+		return status;
 	is_script = (status > 0);
 
 	/* "/proc/self/exe" points to a canonicalized path -- from the
@@ -257,9 +265,9 @@ int translate_execve(struct tracee *tracee)
 	 * We can re-use u_path since it is not useful anymore.  */
 	strcpy(u_path, t_interp);
 	(void) detranslate_path(tracee, u_path, NULL);
-	if (tracee->exe != NULL)
-		free(tracee->exe);
-	tracee->exe = strdup(u_path);
+
+	talloc_unlink(tracee, tracee->exe);
+	tracee->exe = talloc_strdup(tracee, u_path);
 
 	if (config.qemu) {
 		/* Prepend the QEMU command to the initial argv[] if
@@ -267,51 +275,51 @@ int translate_execve(struct tracee *tracee)
 		if (!is_host_elf(t_interp)) {
 			int i;
 
-			status = resize_array(&argv, 0, 3);
+			status = resize_array(argv, 0, 3);
 			if (status < 0)
-				goto end;
+				return status;
 
 			/* For example, the second argument of:
 			 *     execve("/bin/true", { "true", NULL }, ...)
 			 * becomes:
 			 *     { "/usr/bin/qemu", "-0", "true", "/bin/true"}  */
-			status = write_items(&argv, 0, 4, config.qemu[0], "-0",
+			status = write_items(argv, 0, 4, config.qemu[0], "-0",
 					!is_script && argv0 != NULL ? argv0 : u_interp, u_interp);
 			if (status < 0)
-				goto end;
+				return status;
 
-			status = ldso_env_passthru(&envp, &argv, "-E", "-U");
+			status = ldso_env_passthru(envp, argv, "-E", "-U");
 			if (status < 0)
-				goto end;
+				return status;
 
 			/* Compute the number of QEMU's arguments and
 			 * add them to the modified argv[].  */
 			for (i = 1; config.qemu[i] != NULL; i++)
 				;
-			status = resize_array(&argv, 1, i - 1);
+			status = resize_array(argv, 1, i - 1);
 			if (status < 0)
-				goto end;
+				return status;
 
 			for (i--; i > 0; i--) {
-				status = write_item(&argv, i, config.qemu[i]);
+				status = write_item(argv, i, config.qemu[i]);
 				if (status < 0)
-					goto end;
+					return status;
 			}
 
 			/* Launch the runner actually. */
 			strcpy(t_interp, config.qemu[0]);
 			status = join_paths(2, u_interp, config.host_rootfs, config.qemu[0]);
 			if (status < 0)
-				goto end;
+				return status;
 		}
 
 		/* Provide information to the host dynamic linker to
 		 * find host libraries (remember the guest root
 		 * file-system contains libraries for the guest
 		 * architecture only).  */
-		status = rebuild_host_ldso_paths(t_interp, &envp);
+		status = rebuild_host_ldso_paths(tracee, t_interp, envp);
 		if (status < 0)
-			goto end;
+			return status;
 		inhibit_rpath = (status > 0);
 	}
 
@@ -323,20 +331,20 @@ int translate_execve(struct tracee *tracee)
 				 || (config.qemu != NULL && !inhibit_rpath);
 
 	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */,
-			       &argv, extract_elf_interp, ignore_elf_interpreter);
+			       argv, extract_elf_interp, ignore_elf_interpreter);
 	if (status < 0)
-		goto end;
+		return status;
 
 	if (status > 0 && inhibit_rpath) {
 		/* Tell the dynamic linker to ignore RPATHs specified
 		 * in the *main* program.  To disable the RPATH
 		 * mechanism globally, we have to list all objects
 		 * here (NYI).  Errors are not fatal here.  */
-		status = resize_array(&argv, 1, 2);
+		status = resize_array(argv, 1, 2);
 		if (status >= 0) {
-			status = write_items(&argv, 1, 2, "--inhibit-rpath", "''");
+			status = write_items(argv, 1, 2, "--inhibit-rpath", "''");
 			if (status < 0)
-				goto end;
+				return status;
 		}
 	}
 
@@ -344,27 +352,13 @@ int translate_execve(struct tracee *tracee)
 
 	status = set_sysarg_path(tracee, t_interp, SYSARG_1);
 	if (status < 0)
-		goto end;
+		return status;
 
-	status = push_array(&argv, SYSARG_2);
+	status = push_array(argv, SYSARG_2);
 	if (status < 0)
-		goto end;
+		return status;
 
-	status = push_array(&envp, SYSARG_3);
-	if (status < 0)
-		goto end;
-
-	status = 0;
-
-end:
-	free_array(&argv);
-	free_array(&envp);
-
-	if (argv0 != NULL) {
-		free(argv0);
-		argv0 = NULL;
-	}
-
+	status = push_array(envp, SYSARG_3);
 	if (status < 0)
 		return status;
 

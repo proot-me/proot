@@ -47,8 +47,6 @@ Short term
     * /proc/self/cwd (!CLONE_FS)
     * /proc/self/root (!CLONE_FS)
 
-  Temporary ressources are freed at the end of translate_syscall().
-
 
 Middle term
 ===========

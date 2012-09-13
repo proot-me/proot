@@ -22,7 +22,7 @@
 
 #include <stdbool.h> /* bool, true, false, */
 #include <string.h>  /* strlen(3), strcpy(3), strcat(3), strcmp(3), */
-#include <stdlib.h>  /* getenv(3), calloc(3), */
+#include <stdlib.h>  /* getenv(3), */
 #include <assert.h>  /* assert(3), */
 #include <errno.h>   /* ENOMEM, */
 #include <unistd.h>  /* close(2), */
@@ -31,6 +31,7 @@
 #include "execve/ldso.h"
 #include "execve/execve.h"
 #include "execve/elf.h"
+#include "tracee/tracee.h"
 #include "tracee/array.h"
 #include "notice.h"
 #include "config.h"
@@ -231,7 +232,8 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
  * This function returns -errno if an error occured, 1 if
  * RPATH/RUNPATH entries were found, 0 otherwise.
  */
-int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp)
+int rebuild_host_ldso_paths(const struct tracee *tracee,
+			const char t_program[PATH_MAX], struct array *envp)
 {
 	static char *initial_ldso_paths = NULL;
 	union elf_header elf_header;
@@ -253,17 +255,16 @@ int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp)
 	if (fd < 0)
 		return fd;
 
-	status = read_ldso_rpaths(fd, &elf_header, &rpaths, &runpaths);
+	status = read_ldso_rpaths(tracee, fd, &elf_header, &rpaths, &runpaths);
+	close(fd);
 	if (status < 0)
-		goto end;
+		return status;
 
 	/* 1. DT_RPATH  */
 	if (rpaths && !runpaths) {
 		status = add_host_ldso_paths(host_ldso_paths, rpaths);
-		if (status < 0) {
-			status = 0; /* Not fatal.  */
-			goto end;
-		}
+		if (status < 0)
+			return 0; /* Not fatal.  */
 		inhibit_rpath = true;
 	}
 
@@ -272,19 +273,15 @@ int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp)
 		initial_ldso_paths = strdup(getenv("LD_LIBRARY_PATH") ?: "/");
 	if (initial_ldso_paths != NULL && initial_ldso_paths[0] != '\0') {
 		status = add_host_ldso_paths(host_ldso_paths, initial_ldso_paths);
-		if (status < 0) {
-			status = 0; /* Not fatal.  */
-			goto end;
-		}
+		if (status < 0)
+			return 0; /* Not fatal.  */
 	}
 
 	/* 3. DT_RUNPATH  */
 	if (runpaths) {
 		status = add_host_ldso_paths(host_ldso_paths, runpaths);
-		if (status < 0) {
-			status = 0; /* Not fatal.  */
-			goto end;
-		}
+		if (status < 0)
+			return 0; /* Not fatal.  */
 		inhibit_rpath = true;
 	}
 
@@ -306,16 +303,13 @@ int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp)
 #endif
 					"/lib64:/usr/lib64:/usr/local/lib64"
 					":/lib:/usr/lib:/usr/local/lib");
-	if (status < 0) {
-		status = 0; /* Not fatal.  */
-		goto end;
-	}
+	if (status < 0)
+		return 0; /* Not fatal.  */
 
 	index = find_item(envp, "LD_LIBRARY_PATH");
-	if (index < 0) {
-		status = 0; /* Not fatal.  */
-		goto end;
-	}
+	if (index < 0)
+		return 0; /* Not fatal.  */
+
 	/* Allocate a new entry at the end of envp[] if
 	 * LD_LIBRARY_PATH was not found.  */
 	if (index == envp->length) {
@@ -327,28 +321,13 @@ int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp)
 	 * host_ldso_paths.  */
 	length1 = strlen("LD_LIBRARY_PATH=");
 	length2 = strlen(host_ldso_paths);
-	if (ARG_MAX - length2 - 1 < length1) {
-		status = 0; /* Not fatal.  */
-		goto end;
-	}
+	if (ARG_MAX - length2 - 1 < length1)
+		return 0; /* Not fatal.  */
+
 	memmove(host_ldso_paths + length1, host_ldso_paths, length2 + 1);
 	memcpy(host_ldso_paths, "LD_LIBRARY_PATH=" , length1);
 
 	write_item(envp, index, host_ldso_paths);
-	status = 0;
-
-end:
-	close(fd);
-
-	if (rpaths)
-		free(rpaths);
-
-	if (runpaths)
-		free(runpaths);
-
-	/* Delayed error handling.  */
-	if (status < 0)
-		return status;
 
 	return (int) inhibit_rpath;
 }

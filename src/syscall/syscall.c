@@ -33,6 +33,7 @@
 #include <sys/utsname.h> /* struct utsname, */
 #include <stdarg.h>      /* va_*, */
 #include <linux/version.h> /* KERNEL_VERSION, */
+#include <talloc.h>      /* talloc_*, */
 
 #include "syscall/syscall.h"
 #include "arch.h"
@@ -386,10 +387,14 @@ int translate_syscall(struct tracee *tracee)
 	if (status < 0)
 		return status;
 
+	tracee->tmp = talloc_new(tracee);
+
 	/* Check if we are either entering or exiting a syscall. */
 	result = (tracee->status == 0
 		  ? translate_syscall_enter(tracee)
 		  : translate_syscall_exit(tracee));
+
+	TALLOC_FREE(tracee->tmp);
 
 	status = push_regs(tracee);
 	if (status < 0)

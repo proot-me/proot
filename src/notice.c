@@ -56,6 +56,9 @@ void notice(enum notice_severity severity, enum notice_origin origin, const char
 		break;
 	}
 
+	if (origin == TALLOC)
+		fprintf(stderr, "talloc: ");
+
 	va_start(extra_params, message);
 	vfprintf(stderr, message, extra_params);
 	va_end(extra_params);
@@ -64,6 +67,9 @@ void notice(enum notice_severity severity, enum notice_origin origin, const char
 	case SYSTEM:
 		fprintf(stderr, ": ");
 		perror(NULL);
+		break;
+
+	case TALLOC:
 		break;
 
 	case INTERNAL:

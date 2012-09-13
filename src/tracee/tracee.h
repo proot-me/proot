@@ -28,6 +28,9 @@
 #include <stdbool.h>
 #include <sys/queue.h> /* LIST_*, */
 
+#include <sys/queue.h> /* LIST_*, */
+#include <talloc.h>    /* talloc_*, */
+
 #include "arch.h" /* word_t, user_regs_struct, */
 
 enum reg_version {
@@ -58,20 +61,24 @@ struct tracee {
 	struct user_regs_struct _regs[NB_REG_VERSION];
 	bool _regs_have_changed;
 
-	enum {         /* State for the special handling of SIGSTOP.  */
+	/* State for the special handling of SIGSTOP.  */
+	enum {
 		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */
 		SIGSTOP_ALLOWED,      /* Allow SIGSTOP (once the parent is known).   */
 		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
 	} sigstop;
+
+	/* Context used to collect all the temporary memory required
+	 * during the tranlation of a syscall (enter and exit
+	 * stages).  */
+	TALLOC_CTX *tmp;
 };
 
-LIST_HEAD(tracees, tracee);
+#define TRACEE(a) talloc_parent(talloc_parent(a))
 
+LIST_HEAD(tracees, tracee);
 extern struct tracees tracees;
 
-extern void free_tracees(void);
-
-extern void delete_tracee(struct tracee *tracee);
 extern struct tracee *get_tracee(pid_t pid, bool create);
 extern void inherit_fs_info(struct tracee *child, struct tracee *parent);
 

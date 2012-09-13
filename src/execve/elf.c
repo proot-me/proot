@@ -27,10 +27,11 @@
 #include <limits.h> /* PATH_MAX, */
 #include <string.h> /* strnlen(3), strcat(3), strcpy(3), */
 #include <assert.h> /* assert(3), */
-#include <stdlib.h> /* realloc(3), */
 #include <string.h> /* strnlen(3), */
+#include <talloc.h> /* talloc_*, */
 
 #include "execve/elf.h"
+#include "tracee/tracee.h"
 #include "notice.h"
 #include "arch.h"
 #include "config.h"
@@ -254,7 +255,7 @@ static int foreach_dynamic_entry(int fd,
  * referenced by @fd at the given @offset.  This function returns
  * -errno if an error occured, otherwise 0.
  */
-static int add_xpaths(int fd, uint64_t offset, char **xpaths)
+static int add_xpaths(const struct tracee *tracee, int fd, uint64_t offset, char **xpaths)
 {
 	char *paths = NULL;
 	char *tmp;
@@ -264,10 +265,8 @@ static int add_xpaths(int fd, uint64_t offset, char **xpaths)
 	int status;
 
 	status = (int) lseek(fd, offset, SEEK_SET);
-	if (status < 0) {
-		status = -errno;
-		goto end;
-	}
+	if (status < 0)
+		return -errno;
 
 	/* Read the complete list of paths.  */
 	length = 0;
@@ -275,27 +274,23 @@ static int add_xpaths(int fd, uint64_t offset, char **xpaths)
 	do {
 		size = length + 1024;
 
-		tmp = realloc(paths, size);
-		if (!tmp) {
-			status = -ENOMEM;
-			goto end;
-		}
+		tmp = talloc_realloc(tracee->tmp, paths, char, size);
+		if (!tmp)
+			return -ENOMEM;
 		paths = tmp;
 
 		status = read(fd, paths + length, 1024);
 		if (status < 0)
-			goto end;
+			return status;
 
 		length += strnlen(paths + length, 1024);
 	} while (length == size);
 
 	/* Concatene this list of paths to xpaths.  */
 	if (!*xpaths) {
-		*xpaths = malloc(length + 1);
-		if (!*xpaths) {
-			status = -ENOMEM;
-			goto end;
-		}
+		*xpaths = talloc_array(tracee->tmp, char, length + 1);
+		if (!*xpaths)
+			return -ENOMEM;
 
 		strcpy(*xpaths, paths);
 	}
@@ -303,23 +298,14 @@ static int add_xpaths(int fd, uint64_t offset, char **xpaths)
 		length += strlen(*xpaths);
 		length++; /* ":" separator */
 
-		tmp = realloc(*xpaths, length + 1);
-		if (!tmp) {
-			status = -ENOMEM;
-			goto end;
-		}
+		tmp = talloc_realloc(tracee->tmp, *xpaths, char, length + 1);
+		if (!tmp)
+			return -ENOMEM;
 		*xpaths = tmp;
 
 		strcat(*xpaths, ":");
 		strcat(*xpaths, paths);
 	}
-
-end:
-	if (paths)
-		free(paths);
-
-	if (status < 0)
-		return status;
 
 	/* I don't know if DT_R*PATH entries are unique.  In
 	 * doubt I support multiple entries.  */
@@ -332,8 +318,8 @@ end:
  * @runpaths respectively.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-int read_ldso_rpaths(int fd, const union elf_header *elf_header,
-		char **rpaths, char **runpaths)
+int read_ldso_rpaths(const struct tracee* tracee, int fd,
+		const union elf_header *elf_header, char **rpaths, char **runpaths)
 {
 	union program_header dynamic;
 	union program_header strtab_segment;
@@ -374,14 +360,14 @@ int read_ldso_rpaths(int fd, const union elf_header *elf_header,
 	{
 		if (strtab_offset > UINT64_MAX - index)
 			return -ENOEXEC;
-		return add_xpaths(fd, strtab_offset + index, rpaths);
+		return add_xpaths(tracee, fd, strtab_offset + index, rpaths);
 	}
 
 	int add_runpaths(uint64_t index)
 	{
 		if (strtab_offset > UINT64_MAX - index)
 			return -ENOEXEC;
-		return add_xpaths(fd, strtab_offset + index, runpaths);
+		return add_xpaths(tracee, fd, strtab_offset + index, runpaths);
 	}
 
 	status = foreach_dynamic_entry(fd, elf_header, &dynamic, DT_RPATH, add_rpaths);

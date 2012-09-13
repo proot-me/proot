@@ -25,7 +25,6 @@
 
 #include <stdbool.h>
 
-#include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "arch.h"
 
@@ -39,8 +38,6 @@ struct _entry;
 struct array {
 	struct _entry *_cache;
 	size_t length;
-
-	struct tracee *tracee;
 
 	read_item_t    read_item;
 	write_item_t   write_item;
@@ -75,9 +72,8 @@ static inline int sizeof_item(struct array *array, size_t index)
 
 extern int find_item(struct array *array, const void *reference);
 extern int resize_array(struct array *array, size_t index, ssize_t nb_delta_entries);
-extern int fetch_array(struct tracee *tracee, struct array *array, enum reg reg, size_t nb_entries);
+extern int fetch_array(struct array *array, enum reg reg, size_t nb_entries);
 extern int push_array(struct array *array, enum reg reg);
-extern void free_array(struct array *array);
 
 extern int read_item_data(struct array *array, size_t index, void **value);
 extern int read_item_string(struct array *array, size_t index, char **value);

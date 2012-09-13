@@ -9,8 +9,8 @@ INSTALL  = install
 CC       = gcc
 LD       = $(CC)
 CPPFLAGS = -I. -I$(VPATH)
-CFLAGS   = -Wall -O2
-LDFLAGS  = 
+CFLAGS   = -Wall -O2 $(shell pkg-config --cflags talloc)
+LDFLAGS  = $(shell pkg-config --libs talloc)
 
 OBJECTS = cli.o			\
 	config.o		\

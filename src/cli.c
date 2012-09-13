@@ -33,6 +33,7 @@
 #include <unistd.h>    /* stat(2), */
 #include <errno.h>     /* errno(3), */
 #include <sys/queue.h> /* SLIST_*, */
+#include <talloc.h>    /* talloc_*, */
 
 #include "cli.h"
 #include "config.h"
@@ -63,9 +64,9 @@ static void new_binding2(const char *host, const char *guest, bool must_exist)
 {
 	struct binding *binding;
 
-	binding = malloc(sizeof (struct binding));
+	binding = talloc_zero(NULL, struct binding);
 	if (binding == NULL) {
-		notice(WARNING, SYSTEM, "malloc()");
+		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return;
 	}
 
@@ -97,16 +98,15 @@ static void handle_option_b(char *value)
 }
 
 /**
- * Return a calloc-ed buffer that contains the full path to @command.
+ * Put in @result the absolute path of the given @command.
  *
  * This function always returns something consistent or die trying.
  */
-static char *which(char *const command)
+static void which(char *const command, char result[PATH_MAX])
 {
 	char *const argv[3] = { "which", command, NULL };
 	char which_output[PATH_MAX];
 	int pipe_fd[2];
-	char *path;
 	int status;
 	pid_t pid;
 
@@ -153,15 +153,13 @@ static char *which(char *const command)
 		break;
 	}
 
-	path = realpath(which_output, NULL);
-	if (!path)
+	if (realpath(which_output, result) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", which_output);
-
-	return path;
 }
 
 static void handle_option_q(char *value)
 {
+	char path[PATH_MAX];
 	size_t nb_args;
 	char *ptr;
 	int i;
@@ -188,9 +186,9 @@ static void handle_option_q(char *value)
 			break;
 	}
 
-	config.qemu = calloc(nb_args + 1, sizeof(char *));
+	config.qemu = talloc_zero_array(NULL, char *, nb_args + 1);
 	if (!config.qemu)
-		notice(ERROR, SYSTEM, "calloc()");
+		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
 
 	i = 0;
 	ptr = value;
@@ -216,8 +214,8 @@ static void handle_option_q(char *value)
 	}
 	assert(i == nb_args);
 
-	config.qemu[0] = which(config.qemu[0]);
-	config.qemu[nb_args] = NULL;
+	which(config.qemu[0], path);
+	config.qemu[0] = talloc_strdup(config.qemu, path);
 
 	config.host_rootfs = "/host-rootfs";
 	new_binding2("/", config.host_rootfs, true);
@@ -365,14 +363,23 @@ static void error_separator(struct argument *argument)
 			argument->separator);
 }
 
+static void tallog(const char *message)
+{
+	notice(WARNING, TALLOC, message);
+}
+
 int main(int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
 	struct binding *binding;
-	char *tmp;
+	char tmp[PATH_MAX];
 	int i, j, k;
 	int status;
 	pid_t pid = 0;
+
+	/* Configure the memory allocator.  */
+	talloc_enable_leak_report();
+	talloc_set_log_fn(tallog);
 
 	if (argc == 1) {
 		print_usage(false);
@@ -462,10 +469,9 @@ int main(int argc, char *argv[])
 			config.guest_rootfs = "/";
 	}
 
-	tmp = realpath(config.guest_rootfs, NULL);
-	if (tmp == NULL)
+	if (realpath(config.guest_rootfs, tmp) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", config.guest_rootfs);
-	config.guest_rootfs = tmp;
+	config.guest_rootfs = talloc_strdup(NULL, tmp);
 
 	/* The binding to "/" has to be initialized before other
 	 * bindings since this former is required to sanitize these
@@ -478,7 +484,7 @@ int main(int argc, char *argv[])
 	while (binding != NULL) {
 		struct binding *next = SLIST_NEXT(binding, link);
 		bind_path(binding->host, binding->guest, binding->must_exist);
-		free(binding);
+		TALLOC_FREE(binding);
 		binding = next;
 	}
 

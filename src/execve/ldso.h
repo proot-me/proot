@@ -29,7 +29,8 @@
 
 extern int ldso_env_passthru(struct array *envp, struct array *argv,
 			     const char *define, const char *undefine);
-extern int rebuild_host_ldso_paths(const char t_program[PATH_MAX], struct array *envp);
+extern int rebuild_host_ldso_paths(const struct tracee *tracee,
+				const char t_program[PATH_MAX], struct array *envp);
 extern int compare_item_env(struct array *array, size_t index, const char *name);
 
 #endif /* LDSO_H */

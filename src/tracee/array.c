@@ -23,12 +23,12 @@
 #include <linux/limits.h> /* ARG_MAX, */
 #include <assert.h>   /* assert(3), */
 #include <string.h>   /* strlen(3), memcmp(3), memcpy(3), */
-#include <stdlib.h>   /* malloc(3), free(3), realloc(3), */
 #include <strings.h>  /* bzero(3), */
 #include <stdbool.h>  /* bool, true, false, */
 #include <errno.h>    /* E*,  */
 #include <stdarg.h>   /* va_*, */
 #include <stdint.h>   /* uint32_t, */
+#include <talloc.h>   /* talloc_*, */
 
 #include "arch.h"
 
@@ -42,24 +42,11 @@ struct _entry {
 	void *local;
 };
 
+#include "tracee/tracee.h"
 #include "tracee/array.h"
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "build.h"
-
-/**
- * Free the item pointed to by the entry in @array at the given
- * @index, then nullify this entry.
- */
-static inline void free_item(struct array *array, size_t index)
-{
-	assert(index < array->length);
-
-	if (array->_cache[index].local != NULL)
-		free(array->_cache[index].local);
-	array->_cache[index].remote = 0;
-	array->_cache[index].local = NULL;
-}
 
 /**
  * Set *@value to the address of the data pointed to by the entry in
@@ -79,7 +66,7 @@ int read_item_data(struct array *array, size_t index, void **value)
 
 	/* Remote NULL is mapped to local NULL.  */
 	if (array->_cache[index].remote == 0) {
-		free_item(array, index);
+		array->_cache[index].local = NULL;
 		goto end;
 	}
 
@@ -87,15 +74,15 @@ int read_item_data(struct array *array, size_t index, void **value)
 	if (size < 0)
 		return size;
 
-	array->_cache[index].local = malloc(size);
+	array->_cache[index].local = talloc_size(array, size);
 	if (array->_cache[index].local == NULL)
 		return -ENOMEM;
 
 	/* Copy locally the remote data.  */
-	status = read_data(array->tracee, array->_cache[index].local,
+	status = read_data(TRACEE(array), array->_cache[index].local,
 			   array->_cache[index].remote, size);
 	if (status < 0) {
-		free(array->_cache[index].local);
+		array->_cache[index].local = NULL;
 		return status;
 	}
 
@@ -122,19 +109,19 @@ int read_item_string(struct array *array, size_t index, char **value)
 
 	/* Remote NULL is mapped to local NULL.  */
 	if (array->_cache[index].remote == 0) {
-		free_item(array, index);
+		array->_cache[index].local = NULL;
 		goto end;
 	}
 
 	/* Copy locally the remote string into a temporary buffer.  */
-	status = read_string(array->tracee, tmp, array->_cache[index].remote, ARG_MAX);
+	status = read_string(TRACEE(array), tmp, array->_cache[index].remote, ARG_MAX);
 	if (status < 0)
 		return status;
 	if (status >= ARG_MAX)
 		return -ENOMEM;
 
 	/* Save the local string in a "persistent" buffer.  */
-	array->_cache[index].local = strdup(tmp);
+	array->_cache[index].local = talloc_strdup(array, tmp);
 	if (array->_cache[index].local == NULL)
 		return -ENOMEM;
 
@@ -227,18 +214,11 @@ int find_item(struct array *array, const void *reference)
  */
 int write_item_string(struct array *array, size_t index, const char *value)
 {
-	int size;
-
 	assert(index < array->length);
 
-	free_item(array, index);
-
-	size = strlen(value) + 1;
-	array->_cache[index].local = malloc(size);
+	array->_cache[index].local = talloc_strdup(array, value);
 	if (array->_cache[index].local == NULL)
 		return -ENOMEM;
-
-	memcpy(array->_cache[index].local, value, size);
 
 	return 0;
 }
@@ -293,7 +273,7 @@ int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
 	nb_moved_entries = array->length - index;
 
 	if (delta_nb_entries > 0) {
-		tmp = realloc(array->_cache, new_length * sizeof(struct _entry));
+		tmp = talloc_realloc(array, array->_cache, struct _entry, new_length);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_cache = tmp;
@@ -311,7 +291,7 @@ int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
 		memmove(array->_cache + index + delta_nb_entries, array->_cache + index,
 			nb_moved_entries * sizeof(struct _entry));
 
-		tmp = realloc(array->_cache, new_length * sizeof(struct _entry));
+		tmp = talloc_realloc(array, array->_cache, struct _entry, new_length);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_cache = tmp;
@@ -328,31 +308,26 @@ int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
  * pointer are copied.  This function returns -errno when an error
  * occured, otherwise 0.
  */
-int fetch_array(struct tracee *tracee, struct array *array, enum reg reg, size_t nb_entries)
+int fetch_array(struct array *array, enum reg reg, size_t nb_entries)
 {
 	word_t pointer = (word_t)-1;
 	word_t address;
-	int status;
 	int i;
 
 	assert(array != NULL);
 	assert(array->_cache == NULL);
 
-	address = peek_reg(tracee, CURRENT, reg);
+	address = peek_reg(TRACEE(array), CURRENT, reg);
 
 	for (i = 0; nb_entries != 0 ? i < nb_entries : pointer != 0; i++) {
-		void *tmp = realloc(array->_cache, (i + 1) * sizeof(struct _entry));
-		if (tmp == NULL) {
-			status = -ENOMEM;
-			goto end;
-		}
+		void *tmp = talloc_realloc(array, array->_cache, struct _entry, i + 1);
+		if (tmp == NULL)
+			return -ENOMEM;
 		array->_cache = tmp;
 
-		pointer = peek_mem(tracee, address + i * sizeof_word(tracee));
-		if (errno != 0) {
-			status = -EFAULT;
-			goto end;
-		}
+		pointer = peek_mem(TRACEE(array), address + i * sizeof_word(TRACEE(array)));
+		if (errno != 0)
+			return -EFAULT;
 
 		array->_cache[i].remote = pointer;
 		array->_cache[i].local = NULL;
@@ -368,11 +343,7 @@ int fetch_array(struct tracee *tracee, struct array *array, enum reg reg, size_t
 	 * array->read_item() and array->sizeof_item().  */
 	array->compare_item = compare_item_generic;
 
-	array->tracee = tracee;
-	status = 0;
-
-end:
-	return status;
+	return 0;
 }
 
 /**
@@ -383,37 +354,35 @@ end:
  */
 int push_array(struct array *array, enum reg reg)
 {
+	struct tracee *tracee;
+	struct iovec *local;
+	size_t local_count;
+	size_t total_size;
+	word_t *pod_array;
 	word_t tracee_ptr;
 	int status;
 	int i;
 
-	struct iovec *local = NULL;
-	size_t local_count;
-	size_t total_size;
-	word_t *pod_array;
-
 	/* Nothing to do, for sure.  */
-	if (array->length == 0)
+	if (array == NULL)
 		return 0;
 
+	tracee = TRACEE(array);
+
 	/* The pointer table is a POD array in the tracee's memory.  */
-	pod_array = calloc(array->length, sizeof_word(array->tracee));
-	if (pod_array == NULL) {
-		status = -ENOMEM;
-		goto end;
-	}
+	pod_array = talloc_zero_size(tracee->tmp, array->length * sizeof_word(TRACEE(array)));
+	if (pod_array == NULL)
+		return -ENOMEM;
 
 	/* There's one vector per modified item + one vector for the
 	 * pod array.  */
-	local = calloc(array->length + 1, sizeof(struct iovec));
-	if (local == NULL) {
-		status = -ENOMEM;
-		goto end;
-	}
+	local = talloc_zero_array(tracee->tmp, struct iovec, array->length + 1);
+	if (local == NULL)
+		return -ENOMEM;
 
 	/* The pod array is expected to be at the beginning of the
 	 * allocated memory by the caller.  */
-	total_size = array->length * sizeof_word(array->tracee);
+	total_size = array->length * sizeof_word(TRACEE(array));
 	local[0].iov_base = pod_array;
 	local[0].iov_len  = total_size;
 	local_count = 1;
@@ -430,10 +399,8 @@ int push_array(struct array *array, enum reg reg)
 		array->_cache[i].remote = total_size;
 
 		size = sizeof_item(array, i);
-		if (size < 0) {
-			status = size;
-			goto end;
-		}
+		if (size < 0)
+			return size;
 		total_size += size;
 
 		local[local_count].iov_base = array->_cache[i].local;
@@ -442,19 +409,15 @@ int push_array(struct array *array, enum reg reg)
 	}
 
 	/* Nothing has changed, don't update anything.  */
-	if (local_count == 1) {
-		status = 0;
-		goto end;
-	}
+	if (local_count == 1)
+		return 0;
 	assert(local_count < array->length + 1);
 
 	/* Modified items and the pod array are stored in a tracee's
 	 * memory block.  */
-	tracee_ptr = alloc_mem(array->tracee, total_size);
-	if (tracee_ptr == 0) {
-		status = -E2BIG;
-		goto end;
-	}
+	tracee_ptr = alloc_mem(TRACEE(array), total_size);
+	if (tracee_ptr == 0)
+		return -E2BIG;
 
 	/* Now, we know the absolute addresses in the tracee's
 	 * memory.  */
@@ -462,47 +425,17 @@ int push_array(struct array *array, enum reg reg)
 		if (array->_cache[i].local != NULL)
 			array->_cache[i].remote += tracee_ptr;
 
-		if (is_32on64_mode(array->tracee))
+		if (is_32on64_mode(TRACEE(array)))
 			((uint32_t *)pod_array)[i] = array->_cache[i].remote;
 		else
 			pod_array[i] = array->_cache[i].remote;
 	}
 
 	/* Write all the modified items and the pod array at once.  */
-	status = writev_data(array->tracee, tracee_ptr, local, local_count);
+	status = writev_data(TRACEE(array), tracee_ptr, local, local_count);
 	if (status < 0)
-		goto end;
-
-	status = 1;
-end:
-	if (local != NULL)
-		free(local);
-
-	if (pod_array != NULL)
-		free(pod_array);
-
-	if (status <= 0)
 		return status;
 
-	poke_reg(array->tracee, reg, tracee_ptr);
+	poke_reg(TRACEE(array), reg, tracee_ptr);
 	return 0;
-}
-
-/**
- * Free all the memory allocated for @array's internals (cache and
- * items).
- */
-void free_array(struct array *array)
-{
-	int i;
-
-	if (array == NULL || array->_cache == NULL)
-		return;
-
-	for (i = 0; i < array->length; i++)
-		free_item(array, i);
-
-	free(array->_cache);
-	array->_cache = NULL;
-	array->length = 0;
 }

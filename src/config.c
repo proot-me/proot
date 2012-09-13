@@ -20,13 +20,11 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE  /* asprintf(3), */
-#include <stdio.h>   /* asprintf(3), */
 #include <stdbool.h> /* bool, true, false, */
 #include <string.h>  /* string(3), */
 #include <stdlib.h>  /* ssize_t, */
-#include <malloc.h>  /* free(3), */
 #include <linux/limits.h> /* ARG_MAX, */
+#include <talloc.h>  /* talloc_*, */
 
 #include "config.h"
 #include "notice.h"
@@ -99,7 +97,7 @@ void print_config()
 void free_config()
 {
 	if (config.guest_rootfs != NULL)
-		free((void *)config.guest_rootfs);
+		TALLOC_FREE(config.guest_rootfs);
 
 	if (config.glue_rootfs != NULL) {
 		char *command;
@@ -107,21 +105,18 @@ void free_config()
 
 		/* Delete only empty files and directories: the files
 		 * created by the user inside this glue are kept.  */
-		status = asprintf(&command, "find %s -empty -delete 2>/dev/null", config.glue_rootfs);
-		if (status > 0) {
+		command = talloc_asprintf(NULL, "find %s -empty -delete 2>/dev/null",
+					config.glue_rootfs);
+		if (command != NULL) {
 			status = system(command);
 			if (status != 0)
 				notice(INFO, USER, "can't delete '%s'", config.glue_rootfs);
-			free(command);
+			TALLOC_FREE(command);
 		}
 
-		free((void *)config.glue_rootfs);
+		TALLOC_FREE(config.glue_rootfs);
 	}
 
-	if (config.qemu != NULL) {
-		free(config.qemu[0]);
-		free(config.qemu);
-	}
-
-
+	if (config.qemu != NULL)
+		TALLOC_FREE(config.qemu);
 }

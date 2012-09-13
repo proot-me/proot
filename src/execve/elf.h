@@ -149,6 +149,9 @@ enum dynamic_type {
 	(   (IS_CLASS32(header) && (size) == sizeof(struct program_header32)) \
 	 || (IS_CLASS64(header) && (size) == sizeof(struct program_header64)))
 
+
+#include "tracee/tracee.h"
+
 extern int open_elf(const char *t_path, union elf_header *elf_header);
 
 extern bool is_host_elf(const char *t_path);
@@ -158,7 +161,7 @@ extern int find_program_header(int fd,
 			union program_header *program_header,
 			enum segment_type type, uint64_t address);
 
-extern int read_ldso_rpaths(int fd, const union elf_header *elf_header,
-			char **rpath, char **runpath);
+extern int read_ldso_rpaths(const struct tracee *tracee, int fd,
+			const union elf_header *elf_header, char **rpath, char **runpath);
 
 #endif /* ELF_H */

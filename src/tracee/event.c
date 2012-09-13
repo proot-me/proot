@@ -36,6 +36,7 @@
 #include <assert.h>     /* assert(3), */
 #include <stdlib.h>     /* atexit(3), */
 #include <sys/queue.h>  /* LIST_*, */
+#include <talloc.h>     /* talloc_*, */
 
 #include "tracee/event.h"
 #include "notice.h"
@@ -213,7 +214,6 @@ static void kill_all_tracees()
 static void free_everything()
 {
 	free_bindings();
-	free_tracees();
 	free_config();
 }
 
@@ -321,13 +321,13 @@ int event_loop()
 			VERBOSE(1, "pid %d: exited with status %d",
 			           pid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
-			delete_tracee(tracee);
+			TALLOC_FREE(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(tracee_status)) {
 			VERBOSE(1, "pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
-			delete_tracee(tracee);
+			TALLOC_FREE(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFCONTINUED(tracee_status)) {
@@ -371,7 +371,7 @@ int event_loop()
 				status = translate_syscall(tracee);
 				if (status < 0) {
 					/* The process died in a syscall. */
-					delete_tracee(tracee);
+					TALLOC_FREE(tracee);
 					continue; /* Skip the call to ptrace(SYSCALL). */
 				}
 				signal = 0;
@@ -403,7 +403,7 @@ int event_loop()
 					status = ptrace(PTRACE_SYSCALL, child_pid, NULL, 0);
 					if (status < 0) {
 						notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d) [1]", child_pid);
-						delete_tracee(tracee);
+						TALLOC_FREE(tracee);
 					}
 				}
 			}
@@ -445,7 +445,7 @@ int event_loop()
 		if (status < 0) {
 			 /* The process died in a syscall.  */
 			notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d) [2]", tracee->pid);
-			delete_tracee(tracee);
+			TALLOC_FREE(tracee);
 		}
 	}
 

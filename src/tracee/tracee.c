@@ -26,6 +26,7 @@
 #include <string.h>     /* bzero(3), */
 #include <stdbool.h>    /* bool, true, false, */
 #include <sys/queue.h>  /* LIST_*,  */
+#include <talloc.h>     /* talloc_*, */
 
 #include "tracee/tracee.h"
 #include "notice.h"
@@ -33,18 +34,13 @@
 struct tracees tracees;
 
 /**
- * Reset the default values for the given @tracee.
+ * Remove @tracee from the list of tracees.
  */
-void delete_tracee(struct tracee *tracee)
+static int remove_tracee(struct tracee *tracee)
 {
 	assert(tracee != NULL);
-
 	LIST_REMOVE(tracee, link);
-
-	if (tracee->exe != NULL)
-		free(tracee->exe);
-
-	free(tracee);
+	return 0;
 }
 
 /**
@@ -54,11 +50,11 @@ static struct tracee *new_tracee(pid_t pid)
 {
 	struct tracee *tracee;
 
-	tracee = calloc(1, sizeof(struct tracee));
-	if (tracee == NULL) {
-		notice(WARNING, SYSTEM, "calloc()");
-		return NULL;
-	}
+	tracee = talloc_zero(NULL, struct tracee);
+	if (tracee == NULL)
+		notice(ERROR, INTERNAL, "talloc_zero() failed");
+
+	talloc_set_destructor(tracee, remove_tracee);
 
 	tracee->pid = pid;
 	LIST_INSERT_HEAD(&tracees, tracee, link);
@@ -75,17 +71,11 @@ struct tracee *get_tracee(pid_t pid, bool create)
 {
 	struct tracee *tracee;
 
-	LIST_FOREACH(tracee, &tracees, link) {
+	LIST_FOREACH(tracee, &tracees, link)
 		if (tracee->pid == pid)
 			return tracee;
-	}
 
-	if (!create)
-		return NULL;
-
-	tracee = new_tracee(pid);
-	assert(tracee != NULL);
-	return tracee;
+	return (create ? new_tracee(pid) : NULL);
 }
 
 /**
@@ -103,9 +93,9 @@ void inherit_fs_info(struct tracee *child, struct tracee *parent)
 	 * call to execve(2), thus child->exe will be automatically
 	 * updated later.  */
 	if (parent == NULL) {
-		child->exe = strdup("<dummy>");
-		// child->root = strdup(config.guest_rootfs);
-		// child->cwd  = strdup(config.initial_cwd);
+		child->exe = talloc_strdup(child, "<dummy>");
+		//child->root = talloc_strdup(config.guest_rootfs);
+		//child->cwd  = talloc_strdup(config.initial_cwd);
 		return;
 	}
 
@@ -113,9 +103,9 @@ void inherit_fs_info(struct tracee *child, struct tracee *parent)
 	// assert(parent->root != NULL);
 	// assert(parent->cwd  != NULL);
 
-	/* The path to the executable is updated if the process does a
-	 * call to execve(2).  */
-	child->exe = strdup(parent->exe);
+	/* The path to the executable is unshared only once the child
+	 * process does a call to execve(2).  */
+	child->exe = talloc_reference(child, parent->exe);
 
 #if 0
 	/* If CLONE_FS is set, the parent and the child process share
@@ -135,28 +125,15 @@ void inherit_fs_info(struct tracee *child, struct tracee *parent)
 	 */
 	if ((parent->clone_flags & CLONE_FS) != 0) {
 		/* File-system information is shared.  */
-		child->root = parent->root;
-		child->cwd  = parent->cwd;
-		/* TODO: use a reference counter to release the memory
-		   only once no tracee uses it.  */
+		child->root = talloc_reference(child, parent->root);
+		child->cwd  = talloc_reference(child, parent->cwd);
 	}
 	else {
 		/* File-system information is copied.  */
-		child->root = strdup(parent->root);
-		child->cwd  = strdup(parent->cwd);
+		child->root = talloc_strdup(child, parent->root);
+		child->cwd  = talloc_strdup(child, parent->cwd);
 	}
 #endif
 
 	return;
-}
-
-/**
- * Free all tracees.
- */
-void free_tracees()
-{
-	struct tracee *tracee;
-
-	LIST_FOREACH(tracee, &tracees, link)
-		delete_tracee(tracee);
 }

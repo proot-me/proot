@@ -29,6 +29,7 @@ enum notice_origin
 	SYSTEM,
 	INTERNAL,
 	USER,
+	TALLOC,
 };
 
 /* Specify the severity of a notice. */

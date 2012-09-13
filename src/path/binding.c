@@ -20,19 +20,18 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE   /* asprintf(3), */
-#include <stdio.h>    /* asprintf(3), */
 #include <sys/types.h> /* mkdir(2), */
 #include <sys/stat.h> /* lstat(2), mkdir(2), chmod(2), */
 #include <fcntl.h>    /* mknod(2), */
 #include <unistd.h>   /* getcwd(2), lstat(2), mknod(2), symlink(2), */
-#include <stdlib.h>   /* realpath(3), calloc(3), free(3), mkdtemp(3), */
+#include <stdlib.h>   /* realpath(3), mkdtemp(3), */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
 #include <errno.h>    /* errno, E* */
 #include <stdio.h>    /* sprintf(3), */
 #include <sys/queue.h> /* LIST_*, */
+#include <talloc.h>   /* talloc_*, */
 
 #include "path/binding.h"
 #include "path/path.h"
@@ -249,7 +248,7 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 
 		new_length = reverse_ref->length + path_length;
 		if (new_length >= PATH_MAX)
-			goto too_long;
+			return -ENAMETOOLONG;
 
 		if (path_length > 1) {
 			memmove(path + reverse_ref->length, path, path_length);
@@ -266,7 +265,7 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 
 		new_length = path_length - ref->length + reverse_ref->length;
 		if (new_length >= PATH_MAX)
-			goto too_long;
+			return -ENAMETOOLONG;
 
 		memmove(path + reverse_ref->length,
 			path + ref->length,
@@ -275,9 +274,6 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 	}
 	path[new_length] = '\0';
 	return 1;
-
-too_long:
-	return -ENAMETOOLONG;
 }
 
 /**
@@ -406,14 +402,12 @@ mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX], enum 
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
 	if (config.glue_rootfs == NULL) {
-		status = asprintf(&config.glue_rootfs, "/tmp/proot-%d-XXXXXX", getpid());
-		if (status < 0)
-			goto end;
+		config.glue_rootfs = talloc_asprintf(NULL, "/tmp/proot-%d-XXXXXX", getpid());
+		if (config.glue_rootfs == NULL)
+			return 0;
 
 		if (mkdtemp(config.glue_rootfs) == NULL) {
-			free(config.glue_rootfs);
-		end:
-			config.glue_rootfs = NULL;
+			TALLOC_FREE(config.glue_rootfs);
 			return 0;
 		}
 	}
@@ -455,9 +449,9 @@ mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX], enum 
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */
-	binding = calloc(1, sizeof(struct binding));
+	binding = talloc_zero(NULL, struct binding);
 	if (!binding) {
-		notice(WARNING, SYSTEM, "malloc()");
+		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return 0;
 	}
 
@@ -486,7 +480,7 @@ void free_bindings()
 
 	while (binding != NULL) {
 		struct binding *next = LIST_NEXT(binding, guest_side);
-		free(binding);
+		TALLOC_FREE(binding);
 		binding = next;
 	}
 }
@@ -501,9 +495,9 @@ int bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	struct binding *binding;
 	int status;
 
-	binding = calloc(1, sizeof(struct binding));
+	binding = talloc_zero(NULL, struct binding);
 	if (binding == NULL) {
-		notice(WARNING, SYSTEM, "calloc()");
+		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		goto error;
 	}
 
@@ -569,7 +563,6 @@ int bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	return 0;
 
 error:
-	if (binding != NULL)
-		free(binding);
+	TALLOC_FREE(binding);
 	return -1;
 }
