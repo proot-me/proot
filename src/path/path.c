@@ -512,43 +512,15 @@ end:
 }
 
 /**
- * Helper for check_fd().
- */
-static int check_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
-{
-	/* XXX TODO: don't warn for files that were open before the attach. */
-	if (!belongs_to_guestfs(path)) {
-		notice(WARNING, INTERNAL, "tracee %d is out of my control (3)", pid);
-		notice(WARNING, INTERNAL, "\"%s\" is not inside the new root (\"%s\")", path, config.guest_rootfs);
-		return -pid;
-	}
-	return 0;
-}
-
-/**
- * Check if the file descriptors open by the process @pid point into
- * the new root directory; it returns -@pid if it is not the case,
- * otherwise 0 (or if an ignored error occured).
- */
-int check_fd(struct tracee *tracee)
-{
-	return foreach_fd(tracee->pid, check_fd_callback);
-}
-
-/**
- * Helper for list_open_fd().
- */
-static int list_open_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
-{
-	VERBOSE(1, "pid %d: access to \"%s\" (fd %d) won't be translated until closed", pid, path, fd);
-	return 0;
-}
-
-/**
  * Warn for files that are open. It is useful right after PRoot has
  * attached a process.
  */
 int list_open_fd(pid_t pid)
 {
+	int list_open_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
+	{
+		VERBOSE(1, "pid %d: access to \"%s\" (fd %d) won't be translated until closed", pid, path, fd);
+		return 0;
+	}
 	return foreach_fd(pid, list_open_fd_callback);
 }

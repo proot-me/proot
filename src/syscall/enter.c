@@ -579,9 +579,6 @@ case PR_symlinkat:
 
 default:
 	notice(WARNING, INTERNAL, "unknown syscall %ld", peek_reg(tracee, CURRENT, SYSARG_NUM));
-	if (!config.allow_unknown_syscalls)
-		status = -ENOSYS;
-	else
-		status = 0;
+	status = 0;
 	break;
 }

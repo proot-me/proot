@@ -27,7 +27,6 @@
 
 struct config {
 	char *guest_rootfs;
-	char *host_rootfs;
 	char *glue_rootfs;
 
 	const char *initial_cwd;
@@ -36,11 +35,7 @@ struct config {
 	char **qemu;
 	char **command;
 
-	bool allow_unknown_syscalls;
-	bool disable_aslr;
 	bool fake_id0;
-
-	bool check_fd;
 
 	int verbose_level;
 };
@@ -49,5 +44,7 @@ extern struct config config;
 
 extern void print_config();
 extern void free_config();
+
+#define HOST_ROOTFS "/host-rootfs"
 
 #endif /* CONFIG_H */

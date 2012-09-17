@@ -26,7 +26,6 @@
 #include <stdbool.h>
 
 extern bool launch_process();
-extern bool attach_process(pid_t pid);
 extern int event_loop();
 
 #endif /* TRACEE_EVENT_H */

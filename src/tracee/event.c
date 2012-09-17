@@ -166,37 +166,12 @@ bool launch_process()
 			return false;
 
 		/* This tracee has no traced parent.  */
-		inherit_fs_info(tracee, NULL);
+		inherit(tracee, NULL);
 		return true;
 	}
 
 	/* Never reached.  */
 	return false;
-}
-
-bool attach_process(pid_t pid)
-{
-	long status;
-	struct tracee *tracee;
-
-	notice(WARNING, USER, "attaching a process on-the-fly is still experimental");
-
-	status = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-	if (status < 0)
-		notice(ERROR, SYSTEM, "ptrace(ATTACH, %d)", pid);
-
-	/* Warn about open file descriptors. They won't be translated
-	 * until they are closed. */
-	list_open_fd(pid);
-
-	/* Allocate its tracee structure.  */
-	tracee = get_tracee(pid, true);
-	if (tracee == NULL)
-		return false;
-
-	/* This tracee has no traced parent.  */
-	inherit_fs_info(tracee, NULL);
-	return true;
 }
 
 /* Send the KILL signal to all [known] tracees.  */
@@ -306,13 +281,6 @@ int event_loop()
 				break;
 		}
 
-		/* Check every tracee file descriptors. */
-		if (config.check_fd) {
-			struct tracee *tracee;
-			LIST_FOREACH(tracee, &tracees, link)
-				check_fd(tracee);
-		}
-
 		/* Get the information about this tracee. */
 		tracee = get_tracee(pid, true);
 		assert(tracee != NULL);
@@ -394,7 +362,7 @@ int event_loop()
 
 				/* Declare the parent of this new tracee.  */
 				child_tracee = get_tracee(child_pid, true);
-				inherit_fs_info(child_tracee, tracee);
+				inherit(child_tracee, tracee);
 
 				/* Restart the child tracee if it was started
 				 * before this notification event.  */

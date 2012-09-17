@@ -56,7 +56,6 @@ static void handle_option_r(char *value);
 static void handle_option_b(char *value);
 static void handle_option_q(char *value);
 static void handle_option_w(char *value);
-static void handle_option_u(char *value);
 static void handle_option_k(char *value);
 static void handle_option_0(char *value);
 static void handle_option_v(char *value);
@@ -126,17 +125,6 @@ static struct option options[] = {
 \trunning a shell and then entering the directory manually.\n\
 \t\n\
 \tSee the -W option.",
-	},
-	{ .class = "Regular options",
-	  .arguments = {
-		{ .name = "-u", .separator = '\0', .value = NULL },
-		{ .name = "--allow-unknown-syscalls", .separator = '\0', .value = NULL },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_u,
-	  .description = "Allow the execution of unknown syscalls.",
-	  .detail = "\tPRoot has to know the semantics of a syscall to translate its\n\
-\targuments. This is why any syscall that PRoot isn't aware of is\n\
-\tblocked.  This option disables this default behavior.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {

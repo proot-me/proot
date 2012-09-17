@@ -68,8 +68,8 @@ void print_config()
 {
 	notice(INFO, USER, "guest rootfs = %s", config.guest_rootfs);
 
-	if (config.host_rootfs)
-		notice(INFO, USER, "host rootfs = %s", config.host_rootfs);
+	if (config.qemu)
+		notice(INFO, USER, "host rootfs = %s", HOST_ROOTFS);
 
 	if (config.glue_rootfs)
 		notice(INFO, USER, "glue rootfs = %s", config.glue_rootfs);
@@ -83,10 +83,7 @@ void print_config()
 	if (config.kernel_release)
 		notice(INFO, USER, "kernel release = %s", config.kernel_release);
 
-	print_bool("allow_unknown_syscalls", config.allow_unknown_syscalls);
-	print_bool("disable_aslr", config.disable_aslr);
 	print_bool("fake_id0", config.fake_id0);
-	print_bool("check_fd", config.check_fd);
 
 	if (config.verbose_level)
 		notice(INFO, USER, "verbose level = %d", config.verbose_level);

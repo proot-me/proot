@@ -193,7 +193,7 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
 
 		length1 = 1 + length2;
 		if (is_absolute)
-			length1 += strlen(config.host_rootfs);
+			length1 += strlen(HOST_ROOTFS);
 
 		/* Check there's enough room.  */
 		if (cursor1 + length1 >= host_ldso_paths + ARG_MAX)
@@ -208,11 +208,11 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
 		 * QEMUlated environment, we have to access its
 		 * library paths through the "host-rootfs" binding.
 		 * Technically it means a path like "/lib" is accessed
-		 * as "${host_rootfs}/lib" to avoid conflict with the
+		 * as "${HOST_ROOTFS}/lib" to avoid conflict with the
 		 * guest "/lib".  */
 		if (is_absolute) {
-			strcpy(cursor1, config.host_rootfs);
-			cursor1 += strlen(config.host_rootfs);
+			strcpy(cursor1, HOST_ROOTFS);
+			cursor1 += strlen(HOST_ROOTFS);
 		}
 
 		strncpy(cursor1, cursor2, length2);

@@ -223,11 +223,11 @@ int extract_elf_interp(const struct tracee *tracee,
 	 * environment, we have to access its ELF interpreter through
 	 * the "host-rootfs" binding.  Technically it means the host
 	 * ELF interpreter "/lib/ld-linux.so.2" is accessed as
-	 * "${host_rootfs}/lib/ld-linux.so.2" to avoid conflict with
+	 * "${HOST_ROOTFS}/lib/ld-linux.so.2" to avoid conflict with
 	 * the guest "/lib/ld-linux.so.2".  */
 	if (config.qemu) {
-		strcpy(u_interp, config.host_rootfs);
-		extra_size = strlen(config.host_rootfs);
+		strcpy(u_interp, HOST_ROOTFS);
+		extra_size = strlen(HOST_ROOTFS);
 	}
 	else
 		extra_size = 0;

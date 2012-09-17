@@ -308,7 +308,7 @@ int translate_execve(struct tracee *tracee)
 
 			/* Launch the runner actually. */
 			strcpy(t_interp, config.qemu[0]);
-			status = join_paths(2, u_interp, config.host_rootfs, config.qemu[0]);
+			status = join_paths(2, u_interp, HOST_ROOTFS, config.qemu[0]);
 			if (status < 0)
 				return status;
 		}

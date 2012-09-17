@@ -79,11 +79,10 @@ struct tracee *get_tracee(pid_t pid, bool create)
 }
 
 /**
- * Make the @child tracee inherit filesystem information from the
- * @parent tracee.  Depending on the @parent->clone_flags, some
- * information are copied or shared.
+ * Make the @child tracee inherit from the @parent tracee.  Depending
+ * on the @parent->clone_flags, some information are copied or shared.
  */
-void inherit_fs_info(struct tracee *child, struct tracee *parent)
+void inherit(struct tracee *child, struct tracee *parent)
 {
 	assert(child->exe  == NULL);
 	// assert(child->root == NULL);

@@ -217,19 +217,13 @@ static void handle_option_q(char *value)
 	which(config.qemu[0], path);
 	config.qemu[0] = talloc_strdup(config.qemu, path);
 
-	config.host_rootfs = "/host-rootfs";
-	new_binding2("/", config.host_rootfs, true);
+	new_binding2("/", HOST_ROOTFS, true);
 	new_binding2("/dev/null", "/etc/ld.so.preload", false);
 }
 
 static void handle_option_w(char *value)
 {
 	config.initial_cwd = value;
-}
-
-static void handle_option_u(char *value)
-{
-	config.allow_unknown_syscalls = true;
 }
 
 static void handle_option_k(char *value)
@@ -375,7 +369,6 @@ int main(int argc, char *argv[])
 	char tmp[PATH_MAX];
 	int i, j, k;
 	int status;
-	pid_t pid = 0;
 
 	/* Configure the memory allocator.  */
 	talloc_enable_leak_report();
@@ -496,9 +489,7 @@ int main(int argc, char *argv[])
 	if (config.verbose_level)
 		print_config();
 
-	status = pid
-		? attach_process(pid)
-		: launch_process();
+	status = launch_process();
 	if (!status) {
 		print_execve_help(config.command[0]);
 		exit(EXIT_FAILURE);

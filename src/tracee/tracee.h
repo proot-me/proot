@@ -80,6 +80,6 @@ LIST_HEAD(tracees, tracee);
 extern struct tracees tracees;
 
 extern struct tracee *get_tracee(pid_t pid, bool create);
-extern void inherit_fs_info(struct tracee *child, struct tracee *parent);
+extern void inherit(struct tracee *child, struct tracee *parent);
 
 #endif /* TRACEE_H */

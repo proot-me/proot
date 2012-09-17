@@ -173,7 +173,7 @@ bool is_host_elf(const char *t_path)
 	if (force_foreign < 0)
 		force_foreign = (getenv("PROOT_FORCE_FOREIGN_BINARY") != NULL);
 
-	if (force_foreign > 0 || !config.host_rootfs)
+	if (force_foreign > 0 || !config.qemu)
 		return false;
 
 	fd = open_elf(t_path, &elf_header);

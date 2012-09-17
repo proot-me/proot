@@ -111,13 +111,6 @@ Regular options
 
     See the ``-W`` option.
 
--u, --allow-unknown-syscalls
-    Allow the execution of unknown syscalls.
-
-    PRoot has to know the semantics of a syscall to translate its
-    arguments. This is why any syscall that PRoot isn't aware of is
-    blocked.  This option disables this default behavior.
-
 -k string, --kernel-release=string
     Set the kernel release and compatibility level to *string*.
 
