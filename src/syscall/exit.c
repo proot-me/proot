@@ -308,7 +308,7 @@ case PR_fchownat: {
 	break;
 
 case PR_execve:
-	if (peek_reg(tracee, CURRENT, SYSARG_RESULT) >= 0) {
+	if ((int) peek_reg(tracee, CURRENT, SYSARG_RESULT) >= 0) {
 case PR_rt_sigreturn:
 case PR_sigreturn:
 		restore_original_sp = false;

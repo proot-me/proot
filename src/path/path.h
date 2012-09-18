@@ -33,7 +33,7 @@
 /* File type.  */
 typedef enum {
 	REGULAR,
-	SYMLINK
+	SYMLINK,
 } Type;
 
 /* Path point-of-view.  */

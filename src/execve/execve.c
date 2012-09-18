@@ -48,7 +48,7 @@ static int translate_n_check(Tracee *tracee, char t_path[PATH_MAX], const char *
 	struct stat statl;
 	int status;
 
-	status = translate_path(tracee, t_path, AT_FDCWD, u_path, REGULAR);
+	status = translate_path(tracee, t_path, AT_FDCWD, u_path, true);
 	if (status < 0)
 		return status;
 
