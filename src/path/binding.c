@@ -408,7 +408,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	mode_t type;
 	int status;
 
-	assert(tracee->binding_type != 0);
+	assert(tracee->glue_type != 0);
 
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
@@ -429,10 +429,8 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	 * definitively hate how the type of the final component is
 	 * propagated from bind_path() down to here, sadly there's no
 	 * elegant way to know its type at this stage.  */
-	if (is_final) {
-		type = tracee->binding_type;
-		tracee->binding_type = 0;
-	}
+	if (is_final)
+		type = tracee->glue_type;
 	else
 		type = S_IFDIR;
 
@@ -507,6 +505,8 @@ int bind_path(Tracee *tracee, const char *host_path, const char *guest_path, boo
 	Binding *binding;
 	int status;
 
+	assert(host_path != NULL);
+
 	binding = talloc_zero(NULL, Binding);
 	if (binding == NULL) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
@@ -520,41 +520,54 @@ int bind_path(Tracee *tracee, const char *host_path, const char *guest_path, boo
 	}
 	binding->host.length = strlen(binding->host.path);
 
+	/* Initial state before canonicalization.  */
+	strcpy(binding->guest.path, "/");
+
 	if (guest_path != NULL && compare_paths(guest_path, "/") == PATHS_ARE_EQUAL) {
 		if (LIST_FIRST(HEAD(HOST)) != NULL)
 			notice(ERROR, USER,
 				"explicit binding to \"/\" isn't allowed, "
 				"use the -r option instead");
-		strcpy(binding->guest.path, "/");
 	}
 	else {
 		struct stat statl;
+		char path[PATH_MAX];
+
+		/* Symetric binding?  */
+		guest_path = guest_path ?: host_path;
+
+		/* When not absolute, assume the guest_path is
+		 * relative to the host cwd (eg. ``-b .``).  */
+		if (guest_path[0] != '/') {
+			char cwd[PATH_MAX];
+			if (getcwd(cwd, PATH_MAX) == NULL) {
+				notice(WARNING, SYSTEM, "can't sanitize binding \"%s\", getcwd()",
+					binding->guest.path);
+				goto error;
+			}
+			join_paths(2, path, cwd, guest_path);
+		}
+		else
+			strcpy(path, guest_path);
 
 		/* Remember the type of the final component, it will be used
 		 * in build_glue() later.  */
 		status = lstat(binding->host.path, &statl);
-		tracee->binding_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
-					? S_IFREG : statl.st_mode & S_IFMT);
-
-		/* In case binding->guest.path is relative.  */
-		if (!getcwd(binding->guest.path, PATH_MAX)) {
-			notice(WARNING, SYSTEM,	"can't sanitize path (binding) \"%s\", getcwd()",
-				binding->guest.path);
-			goto error;
-		}
+		tracee->glue_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
+				? S_IFREG : statl.st_mode & S_IFMT);
 
 		/* Sanitize the guest path of the binding within the alternate
 		   rootfs since it is assumed by substitute_binding().  */
-		status = canonicalize(tracee, guest_path ? guest_path : host_path,
-				true, binding->guest.path, 0);
+		status = canonicalize(tracee, path, true, binding->guest.path, 0);
 		if (status < 0) {
 			notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
-				guest_path ? guest_path : host_path, strerror(-status));
+				path, strerror(-status));
 			goto error;
 		}
 
-		/* Check this state variable was unset.  */
-		assert(tracee->binding_type == 0);
+		/* Disable definitively the creation of the glue for
+		 * this binding.  */
+		tracee->glue_type = 0;
 	}
 
 	binding->guest.length = strlen(binding->guest.path);

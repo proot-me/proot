@@ -77,7 +77,7 @@ typedef struct tracee {
 	/* Specify the type of the final component during the
 	 * initialization of a binding.  This variable is first
 	 * defined in bind_path() then used in build_glue().  */
-	mode_t binding_type;
+	mode_t glue_type;
 
 
 	/**********************************************************************

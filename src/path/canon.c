@@ -55,7 +55,7 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality is_final,
 
 	/* Build the glue between the hostfs and the guestfs during
 	 * the initialization of a binding.  */
-	if (tracee->binding_type != 0) {
+	if (tracee->glue_type != 0) {
 		statl.st_mode = build_glue(tracee, guest_path, host_path, is_final);
 		if (statl.st_mode == 0)
 			status = -1;
