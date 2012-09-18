@@ -212,8 +212,6 @@ int translate_execve(Tracee *tracee)
 	bool is_script;
 	int status;
 
-	assert(tracee != NULL);
-
 	status = get_sysarg_path(tracee, u_path, SYSARG_1);
 	if (status < 0)
 		return status;

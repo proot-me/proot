@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
 	talloc_enable_leak_report();
 	talloc_set_log_stderr();
 
-	/* Pre-create the first tracee.  */
+	/* Pre-create the first tracee (pid == 0).  */
 	tracee = get_tracee(0, true);
 
 	/* Pre-configure the first tracee.  */

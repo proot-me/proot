@@ -38,7 +38,6 @@ Tracees tracees;
  */
 static int remove_tracee(Tracee *tracee)
 {
-	assert(tracee != NULL);
 	LIST_REMOVE(tracee, link);
 	return 0;
 }

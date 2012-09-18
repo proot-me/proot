@@ -197,7 +197,8 @@ int translate_path(Tracee *tracee, char result[PATH_MAX],
 	int status;
 	pid_t pid;
 
-	pid = (tracee != NULL ? tracee->pid : getpid());
+	/* tracee->pid == 0 until the first tracee has started.  */
+	pid = (tracee->pid ?: getpid());
 
 	/* Use "/" as the base if it is an absolute [fake] path. */
 	if (fake_path[0] == '/') {

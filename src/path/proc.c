@@ -51,7 +51,8 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 
 	assert(comparison == compare_paths("/proc", base));
 
-	pid = (tracee != NULL ? tracee->pid : getpid());
+	/* tracee->pid == 0 until the first tracee has started.  */
+	pid = (tracee->pid ?: getpid());
 
 	/* Remember: comparison = compare_paths("/proc", base)  */
 	switch (comparison) {
