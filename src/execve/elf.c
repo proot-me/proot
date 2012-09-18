@@ -34,7 +34,6 @@
 #include "tracee/tracee.h"
 #include "notice.h"
 #include "arch.h"
-#include "config.h"
 
 #include "compat.h"
 
@@ -161,7 +160,7 @@ int find_program_header(int fd,
 /**
  * Check if @t_path is an ELF file for the host architecture.
  */
-bool is_host_elf(const char *t_path)
+bool is_host_elf(const struct tracee *tracee, const char *t_path)
 {
 	int host_elf_machine[] = HOST_ELF_MACHINE;
 	static int force_foreign = -1;
@@ -173,7 +172,7 @@ bool is_host_elf(const char *t_path)
 	if (force_foreign < 0)
 		force_foreign = (getenv("PROOT_FORCE_FOREIGN_BINARY") != NULL);
 
-	if (force_foreign > 0 || !config.qemu)
+	if (force_foreign > 0 || !tracee->qemu)
 		return false;
 
 	fd = open_elf(t_path, &elf_header);

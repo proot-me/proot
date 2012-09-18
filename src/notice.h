@@ -23,6 +23,8 @@
 #ifndef NOTICE_H
 #define NOTICE_H
 
+#include "tracee/tracee.h"
+
 /* Specify where a notice is coming from. */
 enum notice_origin
 {
@@ -40,8 +42,15 @@ enum notice_severity
 	INFO,
 };
 
-#define VERBOSE(level, message, args...) do { if (config.verbose_level >= (level)) notice(INFO, INTERNAL, (message), ## args); } while (0)
+/* Verbose level, < 0 means quiet.  */
+extern int verbose_level;
 
-extern void notice(enum notice_severity severity, enum notice_origin origin, const char *message, ...);
+#define VERBOSE(level, message, args...) do {				\
+		if (verbose_level >= (level))				\
+			notice(INFO, INTERNAL, (message), ## args);	\
+	} while (0)
+
+extern void notice(enum notice_severity severity, enum notice_origin origin,
+		const char *message, ...);
 
 #endif /* NOTICE_H */

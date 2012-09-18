@@ -4,6 +4,7 @@
 #define CLI_H
 
 #include <stddef.h>
+#include "tracee/tracee.h"
 #include "build.h"
 
 struct argument {
@@ -12,7 +13,7 @@ struct argument {
 	const char *value;
 };
 
-typedef void (*option_handler_t)(char *value);
+typedef void (*option_handler_t)(struct tracee *tracee, char *value);
 
 struct option {
 	const char *class;
@@ -52,18 +53,18 @@ static char *recommended_bindings[] = {
 	NULL,
 };
 
-static void handle_option_r(char *value);
-static void handle_option_b(char *value);
-static void handle_option_q(char *value);
-static void handle_option_w(char *value);
-static void handle_option_k(char *value);
-static void handle_option_0(char *value);
-static void handle_option_v(char *value);
-static void handle_option_V(char *value);
-static void handle_option_h(char *value);
-static void handle_option_B(char *value);
-static void handle_option_Q(char *value);
-static void handle_option_W(char *value);
+static void handle_option_r(struct tracee *tracee, char *value);
+static void handle_option_b(struct tracee *tracee, char *value);
+static void handle_option_q(struct tracee *tracee, char *value);
+static void handle_option_w(struct tracee *tracee, char *value);
+static void handle_option_k(struct tracee *tracee, char *value);
+static void handle_option_0(struct tracee *tracee, char *value);
+static void handle_option_v(struct tracee *tracee, char *value);
+static void handle_option_V(struct tracee *tracee, char *value);
+static void handle_option_h(struct tracee *tracee, char *value);
+static void handle_option_B(struct tracee *tracee, char *value);
+static void handle_option_Q(struct tracee *tracee, char *value);
+static void handle_option_W(struct tracee *tracee, char *value);
 
 static struct option options[] = {
 	{ .class = "Regular options",

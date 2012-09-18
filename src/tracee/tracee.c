@@ -51,8 +51,10 @@ static struct tracee *new_tracee(pid_t pid)
 	struct tracee *tracee;
 
 	tracee = talloc_zero(NULL, struct tracee);
-	if (tracee == NULL)
-		notice(ERROR, INTERNAL, "talloc_zero() failed");
+	if (tracee == NULL) {
+		notice(WARNING, INTERNAL, "talloc_zero() failed");
+		return NULL;
+	}
 
 	talloc_set_destructor(tracee, remove_tracee);
 
@@ -93,7 +95,7 @@ void inherit(struct tracee *child, struct tracee *parent)
 	 * updated later.  */
 	if (parent == NULL) {
 		child->exe = talloc_strdup(child, "<dummy>");
-		//child->root = talloc_strdup(config.guest_rootfs);
+		//child->root = talloc_strdup(guest_rootfs);
 		//child->cwd  = talloc_strdup(config.initial_cwd);
 		return;
 	}
@@ -132,6 +134,12 @@ void inherit(struct tracee *child, struct tracee *parent)
 		child->root = talloc_strdup(child, parent->root);
 		child->cwd  = talloc_strdup(child, parent->cwd);
 	}
+#else
+	child->root = talloc_reference(child, parent->root);
+	child->qemu = talloc_reference(child, parent->qemu);
+	child->glue = talloc_reference(child, parent->glue);
+	child->kernel_release = talloc_reference(child, parent->kernel_release);
+	child->fake_id0 = parent->fake_id0;
 #endif
 
 	return;

@@ -35,7 +35,6 @@
 #include "syscall/syscall.h"
 #include "notice.h"
 #include "path/path.h"
-#include "config.h"
 
 #include "compat.h"
 
@@ -231,13 +230,13 @@ int translate_execve(struct tracee *tracee)
 	if (status < 0)
 		return status;
 
-	if (config.qemu) {
+	if (tracee->qemu) {
 		status = read_item_string(argv, 0, &argv0);
 		if (status < 0)
 			return status;
 
 		/* Save the initial argv[0] since it will be replaced
-		 * by config.qemu[0].  Errors are not fatal here.  */
+		 * by tracee->qemu[0].  Errors are not fatal here.  */
 		if (argv0 != NULL)
 			argv0 = talloc_strdup(tracee->tmp, argv0);
 
@@ -269,10 +268,10 @@ int translate_execve(struct tracee *tracee)
 	talloc_unlink(tracee, tracee->exe);
 	tracee->exe = talloc_strdup(tracee, u_path);
 
-	if (config.qemu) {
+	if (tracee->qemu != NULL) {
 		/* Prepend the QEMU command to the initial argv[] if
 		 * it's a "foreign" binary.  */
-		if (!is_host_elf(t_interp)) {
+		if (!is_host_elf(tracee, t_interp)) {
 			int i;
 
 			status = resize_array(argv, 0, 3);
@@ -283,7 +282,7 @@ int translate_execve(struct tracee *tracee)
 			 *     execve("/bin/true", { "true", NULL }, ...)
 			 * becomes:
 			 *     { "/usr/bin/qemu", "-0", "true", "/bin/true"}  */
-			status = write_items(argv, 0, 4, config.qemu[0], "-0",
+			status = write_items(argv, 0, 4, tracee->qemu[0], "-0",
 					!is_script && argv0 != NULL ? argv0 : u_interp, u_interp);
 			if (status < 0)
 				return status;
@@ -294,21 +293,21 @@ int translate_execve(struct tracee *tracee)
 
 			/* Compute the number of QEMU's arguments and
 			 * add them to the modified argv[].  */
-			for (i = 1; config.qemu[i] != NULL; i++)
+			for (i = 1; tracee->qemu[i] != NULL; i++)
 				;
 			status = resize_array(argv, 1, i - 1);
 			if (status < 0)
 				return status;
 
 			for (i--; i > 0; i--) {
-				status = write_item(argv, i, config.qemu[i]);
+				status = write_item(argv, i, tracee->qemu[i]);
 				if (status < 0)
 					return status;
 			}
 
 			/* Launch the runner actually. */
-			strcpy(t_interp, config.qemu[0]);
-			status = join_paths(2, u_interp, HOST_ROOTFS, config.qemu[0]);
+			strcpy(t_interp, tracee->qemu[0]);
+			status = join_paths(2, u_interp, HOST_ROOTFS, tracee->qemu[0]);
 			if (status < 0)
 				return status;
 		}
@@ -327,8 +326,8 @@ int translate_execve(struct tracee *tracee)
 	 * is compatible (currently the test is only "guest rootfs ==
 	 * host rootfs") or if there's no need for RPATH inhibition in
 	 * mixed-mode.  */
-	ignore_elf_interpreter = strcmp(config.guest_rootfs, "/") == 0
-				 || (config.qemu != NULL && !inhibit_rpath);
+	ignore_elf_interpreter = (strcmp(tracee->root, "/") == 0
+				  || (tracee->qemu != NULL && !inhibit_rpath));
 
 	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */,
 			       argv, extract_elf_interp, ignore_elf_interpreter);

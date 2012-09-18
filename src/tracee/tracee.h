@@ -42,14 +42,15 @@ enum reg_version {
 
 /* Information related to a tracee process. */
 struct tracee {
+	/**********************************************************************
+	 * Private resources                                                  *
+	 **********************************************************************/
+
 	/* Link for the list of all tracees.  */
 	LIST_ENTRY(tracee) link;
 
 	/* Process identifier. */
 	pid_t pid;
-
-	/* Path to the executable, à la /proc/self/exe. */
-	char *exe;
 
 	/* Current status:
 	 *        0: enter syscall
@@ -69,10 +70,54 @@ struct tracee {
 	} sigstop;
 
 	/* Context used to collect all the temporary memory required
-	 * during the tranlation of a syscall (enter and exit
+	 * during the translation of a syscall (enter and exit
 	 * stages).  */
 	TALLOC_CTX *tmp;
+
+	/* Specify the type of the final component during the
+	 * initialization of a binding.  This variable is first
+	 * defined in bind_path() then used in build_glue().  */
+	mode_t binding_type;
+
+
+	/**********************************************************************
+	 * Shared resources until the tracees makes a call to execve().       *
+	 **********************************************************************/
+
+	/* Path to the executable, à la /proc/self/exe.  */
+	char *exe;
+
+	/* Initial command-line, à la /proc/self/cmdline.  */
+	char **cmdline;
+
+
+	/**********************************************************************
+	 * Shared or private resources, depending on the CLONE_FS flag.       *
+	 **********************************************************************/
+
+	/* Current working directory, à la /proc/self/pwd.  */
+	char *cwd;
+
+	/* Path to the root file-system, à la /proc/self/root.  */
+	char *root;
+
+
+	/**********************************************************************
+	 * Shared or private resources, depending on the (re-)configuration   *
+	 **********************************************************************/
+
+	/* Runner command-line.  */
+	char **qemu;
+
+	/* Path to glue between the guest rootfs and the host rootfs.  */
+	char *glue;
+
+	/* Extra configuration (will be handled by dedicated extensions soon).  */
+	const char *kernel_release;
+	bool fake_id0;
 };
+
+#define HOST_ROOTFS "/host-rootfs"
 
 #define TRACEE(a) talloc_parent(talloc_parent(a))
 

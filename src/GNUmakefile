@@ -13,7 +13,6 @@ CFLAGS   = -Wall -O2 $(shell pkg-config --cflags talloc)
 LDFLAGS  = $(shell pkg-config --libs talloc)
 
 OBJECTS = cli.o			\
-	config.o		\
 	notice.o		\
 	execve/execve.o		\
 	execve/interp.o		\

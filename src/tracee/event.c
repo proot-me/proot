@@ -43,13 +43,11 @@
 #include "path/path.h"
 #include "path/binding.h"
 #include "syscall/syscall.h"
-#include "config.h"
 
 #include "compat.h"
 
-bool launch_process()
+bool launch_process(struct tracee *tracee)
 {
-	struct tracee *tracee;
 	struct rlimit rlimit;
 	long status;
 	pid_t pid;
@@ -68,7 +66,8 @@ bool launch_process()
 
 		/* Warn about open file descriptors. They won't be
 		 * translated until they are closed. */
-		list_open_fd(getpid());
+		if (verbose_level > 0)
+			list_open_fd(getpid());
 
 		/* RHEL4 uses an ASLR mechanism that creates conflicts
 		 * between the layout of QEMU and the layout of the
@@ -137,33 +136,32 @@ bool launch_process()
 		/* Now process is ptraced, so the current rootfs is
 		 * already the guest rootfs. */
 
-		if (config.initial_cwd) {
-			status = chdir(config.initial_cwd);
+		if (tracee->cwd != NULL) {
+			status = chdir(tracee->cwd);
 			if (status < 0) {
-				notice(WARNING, SYSTEM, "chdir('%s/)", config.initial_cwd);
+				notice(WARNING, SYSTEM, "chdir('%s/)", tracee->cwd);
 				chdir("/");
 			}
 		}
 		else {
 			status = chdir(".");
 			if (status < 0) {
-				notice(INFO, USER, "the current working directory isn't "
-					           "accessible anymore, changing to \"/\"");
+				notice(INFO, USER,
+					"the current working directory isn't "
+					"accessible anymore, changing to \"/\"");
 				chdir("/");
 			}
 		}
 
 		notice(INFO, INTERNAL, "started");
 
-		execvp(config.command[0], config.command);
+		execvp(tracee->cmdline[0], tracee->cmdline);
 
 		return false;
 
 	default: /* parent */
-		/* Allocate its tracee structure.  */
-		tracee = get_tracee(pid, true);
-		if (tracee == NULL)
-			return false;
+		/* We know the pid of the first tracee now.  */
+		tracee->pid = pid;
 
 		/* This tracee has no traced parent.  */
 		inherit(tracee, NULL);
@@ -183,13 +181,6 @@ static void kill_all_tracees()
 		kill(tracee->pid, SIGKILL);
 
 	notice(INFO, USER, "exited");
-}
-
-/* Free the memory allocated by all modules.  */
-static void free_everything()
-{
-	free_bindings();
-	free_config();
 }
 
 static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
@@ -216,7 +207,7 @@ int event_loop()
 	pid_t pid;
 
 	/* Free everything when exiting.  */
-	status = atexit(free_everything);
+	status = atexit(free_bindings);
 	if (status != 0)
 		notice(WARNING, INTERNAL, "atexit() failed");
 
@@ -287,7 +278,7 @@ int event_loop()
 
 		if (WIFEXITED(tracee_status)) {
 			VERBOSE(1, "pid %d: exited with status %d",
-			           pid, WEXITSTATUS(tracee_status));
+				pid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
 			TALLOC_FREE(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
@@ -370,7 +361,8 @@ int event_loop()
 					tracee->sigstop = SIGSTOP_ALLOWED;
 					status = ptrace(PTRACE_SYSCALL, child_pid, NULL, 0);
 					if (status < 0) {
-						notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d) [1]", child_pid);
+						notice(WARNING, SYSTEM,
+							"ptrace(SYSCALL, %d) [1]", child_pid);
 						TALLOC_FREE(tracee);
 					}
 				}

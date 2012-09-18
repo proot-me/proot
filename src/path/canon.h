@@ -28,7 +28,7 @@
 
 #include "tracee/tracee.h"
 
-extern int canonicalize(const struct tracee *tracee, const char *user_path, bool deref_final,
+extern int canonicalize(struct tracee *tracee, const char *user_path, bool deref_final,
 			char guest_path[PATH_MAX], unsigned int nb_recursion);
 
 #endif /* CANON_H */

@@ -33,7 +33,6 @@
 #include "path/path.h"
 #include "path/binding.h"
 #include "path/proc.h"
-#include "config.h"
 #include "notice.h"
 
 /**
@@ -43,21 +42,21 @@
  * (returned value is 1), otherwise it returns -errno (-ENOENT or
  * -ENOTDIR).
  */
-static inline int substitute_binding_stat(const struct tracee *tracee, enum finality is_final,
+static inline int substitute_binding_stat(struct tracee *tracee, enum finality is_final,
 					const char guest_path[PATH_MAX], char host_path[PATH_MAX])
 {
 	struct stat statl;
 	int status;
 
 	strcpy(host_path, guest_path);
-	status = substitute_binding(GUEST_SIDE, host_path);
+	status = substitute_binding(tracee, GUEST_SIDE, host_path);
 	if (status < 0)
 		return status;
 
 	/* Build the glue between the hostfs and the guestfs during
 	 * the initialization of a binding.  */
-	if (tracee == NULL) {
-		statl.st_mode = build_glue_rootfs(guest_path, host_path, is_final);
+	if (tracee->binding_type != 0) {
+		statl.st_mode = build_glue(tracee, guest_path, host_path, is_final);
 		if (statl.st_mode == 0)
 			status = -1;
 	}
@@ -78,15 +77,15 @@ static inline int substitute_binding_stat(const struct tracee *tracee, enum fina
 
 /**
  * Copy in @guest_path the canonicalization (see `man 3 realpath`) of
- * @user_path regarding to config.guest_root.  The path to
- * canonicalize could be either absolute or relative to
- * @guest_path. When the last component of @user_path is a link, it is
- * dereferenced only if @deref_final is true -- it is useful for
- * syscalls like lstat(2).  The parameter @recursion_level should be
- * set to 0 unless you know what you are doing. This function returns
- * -errno if an error occured, otherwise it returns 0.
+ * @user_path regarding to @tracee->root.  The path to canonicalize
+ * could be either absolute or relative to @guest_path. When the last
+ * component of @user_path is a link, it is dereferenced only if
+ * @deref_final is true -- it is useful for syscalls like lstat(2).
+ * The parameter @recursion_level should be set to 0 unless you know
+ * what you are doing. This function returns -errno if an error
+ * occured, otherwise it returns 0.
  */
-int canonicalize(const struct tracee *tracee, const char *user_path, bool deref_final,
+int canonicalize(struct tracee *tracee, const char *user_path, bool deref_final,
 		 char guest_path[PATH_MAX], unsigned int recursion_level)
 {
 	char scratch_path[PATH_MAX];

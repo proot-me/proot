@@ -28,9 +28,10 @@
 
 #include "path.h"
 
-extern int bind_path(const char *host_path, const char *guest_path, bool must_exist);
-extern mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX],
-				enum finality is_final);
+extern int bind_path(struct tracee *tracee, const char *host_path,
+		const char *guest_path,	bool must_exist);
+extern mode_t build_glue(struct tracee *tracee, const char *guest_path,
+			 char host_path[PATH_MAX], enum finality is_final);
 extern void print_bindings(void);
 extern void free_bindings(void);
 
@@ -39,8 +40,9 @@ enum binding_side {
 	HOST_SIDE = 2,
 };
 
-extern const char *get_path_binding(enum binding_side side, const char path[PATH_MAX]);
-extern int substitute_binding(enum binding_side side, char path[PATH_MAX]);
-
+extern const char *get_path_binding(const struct tracee* tracee, enum binding_side side,
+				const char path[PATH_MAX]);
+extern int substitute_binding(const struct tracee* tracee, enum binding_side side,
+			char path[PATH_MAX]);
 
 #endif /* BINDING_H */

@@ -32,22 +32,23 @@
 #include <sys/stat.h>  /* stat(2), */
 #include <unistd.h>    /* stat(2), */
 #include <errno.h>     /* errno(3), */
+#include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
 #include <sys/queue.h> /* SLIST_*, */
 #include <talloc.h>    /* talloc_*, */
 
 #include "cli.h"
-#include "config.h"
 #include "path/binding.h"
 #include "notice.h"
 #include "path/path.h"
+#include "tracee/tracee.h"
 #include "tracee/event.h"
 #include "tracee/tracee.h"
 #include "execve/ldso.h"
 #include "build.h"
 
-static void handle_option_r(char *value)
+static void handle_option_r(struct tracee *tracee, char *value)
 {
-	config.guest_rootfs = value;
+	tracee->root = value;
 }
 
 struct binding {
@@ -92,7 +93,7 @@ static void new_binding(char *value, bool must_exist)
 	new_binding2(value, ptr, must_exist);
 }
 
-static void handle_option_b(char *value)
+static void handle_option_b(struct tracee *tracee, char *value)
 {
 	new_binding(value, true);
 }
@@ -157,7 +158,7 @@ static void which(char *const command, char result[PATH_MAX])
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", which_output);
 }
 
-static void handle_option_q(char *value)
+static void handle_option_q(struct tracee *tracee, char *value)
 {
 	char path[PATH_MAX];
 	size_t nb_args;
@@ -186,14 +187,14 @@ static void handle_option_q(char *value)
 			break;
 	}
 
-	config.qemu = talloc_zero_array(NULL, char *, nb_args + 1);
-	if (!config.qemu)
+	tracee->qemu = talloc_zero_array(tracee, char *, nb_args + 1);
+	if (!tracee->qemu)
 		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
 
 	i = 0;
 	ptr = value;
 	while (1) {
-		config.qemu[i] = ptr;
+		tracee->qemu[i] = ptr;
 		i++;
 
 		/* Keep consecutive non-space characters.  */
@@ -214,39 +215,39 @@ static void handle_option_q(char *value)
 	}
 	assert(i == nb_args);
 
-	which(config.qemu[0], path);
-	config.qemu[0] = talloc_strdup(config.qemu, path);
+	which(tracee->qemu[0], path);
+	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
 
 	new_binding2("/", HOST_ROOTFS, true);
 	new_binding2("/dev/null", "/etc/ld.so.preload", false);
 }
 
-static void handle_option_w(char *value)
+static void handle_option_w(struct tracee *tracee, char *value)
 {
-	config.initial_cwd = value;
+	tracee->cwd = value;
 }
 
-static void handle_option_k(char *value)
+static void handle_option_k(struct tracee *tracee, char *value)
 {
-	config.kernel_release = value;
+	tracee->kernel_release = value;
 }
 
-static void handle_option_0(char *value)
+static void handle_option_0(struct tracee *tracee, char *value)
 {
-	config.fake_id0 = true;
+	tracee->fake_id0 = true;
 }
 
-static void handle_option_v(char *value)
+static void handle_option_v(struct tracee *tracee, char *value)
 {
 	char *end_ptr = NULL;
 
 	errno = 0;
-	config.verbose_level = strtol(value, &end_ptr, 10);
+	verbose_level = strtol(value, &end_ptr, 10);
 	if (errno != 0 || end_ptr == value)
 		notice(ERROR, USER, "option `-v` expects an integer value.");
 }
 
-static void handle_option_V(char *value)
+static void handle_option_V(struct tracee *tracee, char *value)
 {
 	printf("PRoot %s: %s.\n", version, subtitle);
 	printf("%s\n", colophon);
@@ -254,29 +255,29 @@ static void handle_option_V(char *value)
 }
 
 static void print_usage(bool);
-static void handle_option_h(char *value)
+static void handle_option_h(struct tracee *tracee, char *value)
 {
 	print_usage(true);
 	exit(EXIT_SUCCESS);
 }
 
-static void handle_option_B(char *value)
+static void handle_option_B(struct tracee *tracee, char *value)
 {
 	int i;
 	for (i = 0; recommended_bindings[i] != NULL; i++)
 		new_binding(recommended_bindings[i], false);
 }
 
-static void handle_option_Q(char *value)
+static void handle_option_Q(struct tracee *tracee, char *value)
 {
-	handle_option_q(value);
-	handle_option_B(NULL);
+	handle_option_q(tracee, value);
+	handle_option_B(tracee, NULL);
 }
 
-static void handle_option_W(char *value)
+static void handle_option_W(struct tracee *tracee, char *value)
 {
-	handle_option_w(".");
-	handle_option_b(".");
+	handle_option_w(tracee, ".");
+	handle_option_b(tracee, ".");
 }
 
 #define NB_OPTIONS (sizeof(options) / sizeof(struct option))
@@ -357,22 +358,70 @@ static void error_separator(struct argument *argument)
 			argument->separator);
 }
 
-static void tallog(const char *message)
+static void print_argv(const char *prompt, char **argv)
 {
-	notice(WARNING, TALLOC, message);
+	int i;
+	char string[ARG_MAX] = "";
+
+	if (!argv)
+		return;
+
+	void append(const char *post) {
+		ssize_t length = sizeof(string) - (strlen(string) + strlen(post));
+		if (length <= 0)
+			return;
+		strncat(string, post, length);
+	}
+
+	append(prompt);
+	append(" =");
+	for (i = 0; argv[i] != NULL; i++) {
+		append(" ");
+		append(argv[i]);
+	}
+	string[sizeof(string) - 1] = '\0';
+
+	notice(INFO, USER, "%s", string);
 }
 
-int main(int argc, char *argv[])
+static void print_config(const struct tracee *tracee)
+{
+	notice(INFO, USER, "guest rootfs = %s", tracee->root);
+
+	if (tracee->qemu)
+		notice(INFO, USER, "host rootfs = %s", HOST_ROOTFS);
+
+	if (tracee->glue)
+		notice(INFO, USER, "glue rootfs = %s", tracee->glue);
+
+	print_argv("command", tracee->cmdline);
+	print_argv("qemu", tracee->qemu);
+
+	if (tracee->cwd)
+		notice(INFO, USER, "initial cwd = %s", tracee->cwd);
+
+	if (tracee->kernel_release)
+		notice(INFO, USER, "kernel release = %s", tracee->kernel_release);
+
+	if (tracee->fake_id0)
+		notice(INFO, USER, "fake root id = true");
+
+	notice(INFO, USER, "verbose level = %d", verbose_level);
+
+	print_bindings();
+}
+
+/**
+ * Configure @tracee according to the command-line arguments stored in
+ * @argv[].  This function succeed or die trying.
+ */
+static void parse_cli(struct tracee *tracee, int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
 	struct binding *binding;
 	char tmp[PATH_MAX];
 	int i, j, k;
 	int status;
-
-	/* Configure the memory allocator.  */
-	talloc_enable_leak_report();
-	talloc_set_log_fn(tallog);
 
 	if (argc == 1) {
 		print_usage(false);
@@ -384,7 +433,7 @@ int main(int argc, char *argv[])
 
 		/* The current argument is the value of a short option.  */
 		if (handler != NULL) {
-			handler(arg);
+			handler(tracee, arg);
 			handler = NULL;
 			continue;
 		}
@@ -417,14 +466,14 @@ int main(int argc, char *argv[])
 
 				/* No option value.  */
 				if (!argument->value) {
-					option->handler(arg);
+					option->handler(tracee, arg);
 					goto known_option;
 				}
 
 				/* Value coalesced with to its option.  */
 				if (argument->separator == arg[length]) {
 					assert(strlen(arg) >= length);
-					option->handler(&arg[length + 1]);
+					option->handler(tracee, &arg[length + 1]);
 					goto known_option;
 				}
 
@@ -452,48 +501,67 @@ int main(int argc, char *argv[])
 	 * the new command-line interface where the default guest
 	 * rootfs is "/".
 	 */
-	if (config.guest_rootfs == NULL) {
+	if (tracee->root == NULL) {
 		struct stat buf;
 
 		status = stat(argv[i], &buf);
 		if (status == 0 && S_ISDIR(buf.st_mode))
-			config.guest_rootfs = argv[i++];
+			tracee->root = argv[i++];
 		else
-			config.guest_rootfs = "/";
+			tracee->root = "/";
 	}
 
-	if (realpath(config.guest_rootfs, tmp) == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", config.guest_rootfs);
-	config.guest_rootfs = talloc_strdup(NULL, tmp);
+	if (realpath(tracee->root, tmp) == NULL)
+		notice(ERROR, SYSTEM, "realpath(\"%s\")", tracee->root);
+	tracee->root = talloc_strdup(tracee, tmp);
 
 	/* The binding to "/" has to be initialized before other
 	 * bindings since this former is required to sanitize these
 	 * latters (c.f. bind_path() for details).  */
-	status = bind_path(config.guest_rootfs, "/", true);
+	status = bind_path(tracee, tracee->root, "/", true);
 	if (status < 0)
 		notice(ERROR, USER, "fatal");
 
 	binding = SLIST_FIRST(&bindings);
 	while (binding != NULL) {
 		struct binding *next = SLIST_NEXT(binding, link);
-		bind_path(binding->host, binding->guest, binding->must_exist);
+		bind_path(tracee, binding->host, binding->guest, binding->must_exist);
 		TALLOC_FREE(binding);
 		binding = next;
 	}
 
 	if (i < argc)
-		config.command = &argv[i];
+		tracee->cmdline = &argv[i];
 	else
-		config.command = default_command;
+		tracee->cmdline = default_command;
 
-	if (config.verbose_level)
-		print_config();
+	if (verbose_level > 0)
+		print_config(tracee);
 
-	status = launch_process();
+}
+
+int main(int argc, char *argv[])
+{
+	struct tracee *tracee;
+	int status;
+
+	/* Configure the memory allocator.  */
+	talloc_enable_leak_report();
+	talloc_set_log_stderr();
+
+	/* Pre-create the first tracee.  */
+	tracee = get_tracee(0, true);
+
+	/* Pre-configure the first tracee.  */
+	parse_cli(tracee, argc, argv);
+
+	/* Start the first tracee.  */
+	status = launch_process(tracee);
 	if (!status) {
-		print_execve_help(config.command[0]);
+		print_execve_help(tracee->cmdline[0]);
 		exit(EXIT_FAILURE);
 	}
 
+	/* Start tracing the first tracee and all its children.  */
 	exit(event_loop());
 }

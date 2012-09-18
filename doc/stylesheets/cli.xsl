@@ -10,6 +10,7 @@
 #define CLI_H
 
 #include &lt;stddef.h&gt;
+#include "tracee/tracee.h"
 #include "build.h"
 
 struct argument {
@@ -18,7 +19,7 @@ struct argument {
 	const char *value;
 };
 
-typedef void (*option_handler_t)(char *value);
+typedef void (*option_handler_t)(struct tracee *tracee, char *value);
 
 struct option {
 	const char *class;
@@ -165,7 +166,7 @@ static struct option options[] = {
   <xsl:template match="option_group" mode="handlers">
     <xsl:text>static void handle_option_</xsl:text>
     <xsl:value-of select="substring(option[1]/option_string, 2, 1)" />
-    <xsl:text>(char *value);
+    <xsl:text>(struct tracee *tracee, char *value);
 </xsl:text>
   </xsl:template>
 

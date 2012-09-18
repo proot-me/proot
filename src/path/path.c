@@ -37,7 +37,6 @@
 #include "path/canon.h"
 #include "path/proc.h"
 #include "notice.h"
-#include "config.h"
 #include "build.h"
 
 #include "compat.h"
@@ -191,7 +190,7 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
  * the current working directory).  See the documentation of
  * canonicalize() for the meaning of @deref_final.
  */
-int translate_path(const struct tracee *tracee, char result[PATH_MAX],
+int translate_path(struct tracee *tracee, char result[PATH_MAX],
 		   int dir_fd, const char *fake_path, int deref_final)
 {
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
@@ -252,7 +251,7 @@ int translate_path(const struct tracee *tracee, char result[PATH_MAX],
 	/* Final binding substitution to convert "result" into a host
 	 * path, since canonicalize() works from the guest
 	 * point-of-view.  */
-	status = substitute_binding(GUEST_SIDE, result);
+	status = substitute_binding(tracee, GUEST_SIDE, result);
 	if (status < 0)
 		return status;
 
@@ -306,12 +305,12 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 			 * file-system namespace by design. */
 			follow_binding = true;
 		}
-		else if (!belongs_to_guestfs(t_referrer)) {
+		else if (!belongs_to_guestfs(tracee, t_referrer)) {
 			const char *binding_referree;
 			const char *binding_referrer;
 
-			binding_referree = get_path_binding(HOST_SIDE, path);
-			binding_referrer = get_path_binding(HOST_SIDE, t_referrer);
+			binding_referree = get_path_binding(tracee, HOST_SIDE, path);
+			binding_referrer = get_path_binding(tracee, HOST_SIDE, t_referrer);
 			assert(binding_referrer != NULL);
 
 			/* Resolve bindings for symlinks that belong
@@ -334,7 +333,7 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 	}
 
 	if (follow_binding) {
-		switch (substitute_binding(HOST_SIDE, path)) {
+		switch (substitute_binding(tracee, HOST_SIDE, path)) {
 		case 0:
 			return 0;
 		case 1:
@@ -344,10 +343,10 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 		}
 	}
 
-	switch (compare_paths(config.guest_rootfs, path)) {
+	switch (compare_paths(tracee->root, path)) {
 	case PATH1_IS_PREFIX:
 		/* Remove the leading part, that is, the "root".  */
-		prefix_length = strlen(config.guest_rootfs);
+		prefix_length = strlen(tracee->root);
 
 		/* Special case when path to the guest rootfs == "/". */
 		if (prefix_length == 1)
@@ -380,11 +379,11 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
  * Check if the translated @t_path belongs to the guest rootfs, that
  * is, isn't from a binding.
  */
-bool belongs_to_guestfs(const char *host_path)
+bool belongs_to_guestfs(const struct tracee *tracee, const char *host_path)
 {
 	enum path_comparison comparison;
 
-	comparison = compare_paths(config.guest_rootfs, host_path);
+	comparison = compare_paths(tracee->root, host_path);
 	return (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
 }
 

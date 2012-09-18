@@ -44,7 +44,6 @@
 #include "path/path.h"
 #include "execve/execve.h"
 #include "notice.h"
-#include "config.h"
 
 #include "compat.h"
 
@@ -203,10 +202,10 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
 	int i;
 	int j;
 
-	assert(config.kernel_release != NULL);
+	assert(tracee->kernel_release != NULL);
 
 	if (emulated_release < 0)
-		emulated_release = parse_kernel_release(config.kernel_release);
+		emulated_release = parse_kernel_release(tracee->kernel_release);
 
 	if (actual_release < 0) {
 		struct utsname utsname;
@@ -262,15 +261,17 @@ static int translate_syscall_enter(struct tracee *tracee)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
-	if (config.verbose_level >= 3)
-		VERBOSE(3, "pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
+	if (verbose_level >= 3)
+		VERBOSE(3,
+			"pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
 			tracee->pid, peek_reg(tracee, CURRENT, SYSARG_NUM),
 			peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
 			peek_reg(tracee, CURRENT, SYSARG_3), peek_reg(tracee, CURRENT, SYSARG_4),
 			peek_reg(tracee, CURRENT, SYSARG_5), peek_reg(tracee, CURRENT, SYSARG_6),
 			peek_reg(tracee, CURRENT, STACK_POINTER));
 	else
-		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid, (int)peek_reg(tracee, CURRENT, SYSARG_NUM));
+		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid,
+			(int)peek_reg(tracee, CURRENT, SYSARG_NUM));
 
 	/* Translate input arguments. */
 	switch (get_abi(tracee)) {
@@ -279,7 +280,7 @@ static int translate_syscall_enter(struct tracee *tracee)
 
 		#include "syscall/enter.c"
 
-		if (config.kernel_release != NULL && status >= 0) {
+		if (tracee->kernel_release != NULL && status >= 0) {
 			/* Errors are ignored.  */
 			#include "syscall/compat.c"
 		}
@@ -291,7 +292,7 @@ static int translate_syscall_enter(struct tracee *tracee)
 
 		#include "syscall/enter.c"
 
-		if (config.kernel_release != NULL && status >= 0) {
+		if (tracee->kernel_release != NULL && status >= 0) {
 			/* Errors are ignored.  */
 			#include "syscall/compat.c"
 		}

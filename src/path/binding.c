@@ -37,7 +37,6 @@
 #include "path/path.h"
 #include "path/canon.h"
 #include "notice.h"
-#include "config.h"
 
 struct binding_path {
 	char path[PATH_MAX];
@@ -110,7 +109,8 @@ void print_bindings()
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-static const struct binding *get_binding(enum binding_side side, const char path[PATH_MAX])
+static const struct binding *get_binding(const struct tracee *tracee, enum binding_side side,
+					const char path[PATH_MAX])
 {
 	const struct binding *binding;
 	size_t path_length = strlen(path);
@@ -147,8 +147,8 @@ static const struct binding *get_binding(enum binding_side side, const char path
 		 *     proot -m /usr:/location /usr/local/slackware
 		 */
 		if (   side == HOST_SIDE
-		    && config.guest_rootfs[1] != '\0'
-		    && belongs_to_guestfs(path))
+		    && tracee->root[1] != '\0'
+		    && belongs_to_guestfs(tracee, path))
 				continue;
 
 		return binding;
@@ -161,11 +161,12 @@ static const struct binding *get_binding(enum binding_side side, const char path
  * Get the binding path for the given @path (relatively to the given
  * binding @side).
  */
-const char *get_path_binding(enum binding_side side, const char path[PATH_MAX])
+const char *get_path_binding(const struct tracee *tracee, enum binding_side side,
+			const char path[PATH_MAX])
 {
 	const struct binding *binding;
 
-	binding = get_binding(side, path);
+	binding = get_binding(tracee, side, path);
 	if (!binding)
 		return NULL;
 
@@ -194,7 +195,7 @@ const char *get_path_binding(enum binding_side side, const char path[PATH_MAX])
  *     * 1 if it is a binding location and a substitution was performed
  *       ("asymmetric" binding)
  */
-int substitute_binding(enum binding_side side, char path[PATH_MAX])
+int substitute_binding(const struct tracee *tracee, enum binding_side side, char path[PATH_MAX])
 {
 	const struct binding_path *reverse_ref;
 	const struct binding_path *ref;
@@ -202,7 +203,7 @@ int substitute_binding(enum binding_side side, char path[PATH_MAX])
 	size_t path_length;
 	size_t new_length;
 
-	binding = get_binding(side, path);
+	binding = get_binding(tracee, side, path);
 	if (!binding)
 		return -ENOENT;
 
@@ -367,11 +368,26 @@ static void insort_binding2(struct binding *binding)
 }
 
 /**
- * Specify the type of the final component during the initialization
- * of a binding.  This variable is defined in bind_path() but it is
- * used later in build_glue_rootfs()...
+ * Delete only empty files and directories from the glue: the files
+ * created by the user inside this glue are left.
  */
-static mode_t final_type;
+static int remove_glue(char *path)
+{
+	char *command;
+
+	command = talloc_asprintf(NULL, "find %s -empty -delete 2>/dev/null", path);
+	if (command != NULL) {
+		int status;
+
+		status = system(command);
+		if (status != 0)
+			notice(INFO, USER, "can't delete '%s'", path);
+	}
+
+	TALLOC_FREE(command);
+
+	return 0;
+}
 
 /**
  * Build in a temporary filesystem the glue between the guest part and
@@ -392,24 +408,29 @@ static mode_t final_type;
  * This glue allows operations on paths that do not exist in the guest
  * rootfs but that were specified as the guest part of a binding.
  */
-mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX], enum finality is_final)
+mode_t build_glue(struct tracee *tracee, const char *guest_path, char host_path[PATH_MAX],
+		enum finality is_final)
 {
 	enum path_comparison comparison;
 	struct binding *binding;
 	mode_t type;
 	int status;
 
+	assert(tracee->binding_type != 0);
+
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
-	if (config.glue_rootfs == NULL) {
-		config.glue_rootfs = talloc_asprintf(NULL, "/tmp/proot-%d-XXXXXX", getpid());
-		if (config.glue_rootfs == NULL)
+	if (tracee->glue == NULL) {
+		tracee->glue = talloc_asprintf(tracee, "/tmp/proot-%d-XXXXXX", getpid());
+		if (tracee->glue == NULL)
 			return 0;
 
-		if (mkdtemp(config.glue_rootfs) == NULL) {
-			TALLOC_FREE(config.glue_rootfs);
+		if (mkdtemp(tracee->glue) == NULL) {
+			TALLOC_FREE(tracee->glue);
 			return 0;
 		}
+
+		talloc_set_destructor(tracee->glue, remove_glue);
 	}
 
 	/* If it's not a final component then it is a directory.  I
@@ -417,9 +438,8 @@ mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX], enum 
 	 * propagated from bind_path() down to here, sadly there's no
 	 * elegant way to know its type at this stage.  */
 	if (is_final) {
-		assert(final_type != 0);
-		type = final_type;
-		final_type = 0;
+		type = tracee->binding_type;
+		tracee->binding_type = 0;
 	}
 	else
 		type = S_IFDIR;
@@ -439,8 +459,8 @@ mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX], enum 
 		return type;
 
 	/* mkdir/mknod are supposed to always succeed in
-	 * config.glue_rootfs.  */
-	comparison = compare_paths(config.glue_rootfs, host_path);
+	 * tracee->glue.  */
+	comparison = compare_paths(tracee->glue, host_path);
 	if (   comparison == PATHS_ARE_EQUAL
 	    || comparison == PATH1_IS_PREFIX) {
 		notice(WARNING, SYSTEM, "mkdir/mknod");
@@ -455,7 +475,7 @@ mode_t build_glue_rootfs(const char *guest_path, char host_path[PATH_MAX], enum 
 		return 0;
 	}
 
-	strcpy(binding->host.path, config.glue_rootfs);
+	strcpy(binding->host.path, tracee->glue);
 	binding->host.length = strlen(binding->host.path);
 
 	strcpy(binding->guest.path, guest_path);
@@ -486,11 +506,12 @@ void free_bindings()
 }
 
 /**
- * Save @path in the list of paths that are bound for the translation
- * mechanism.  This function returns -1 if an error occured, 0
- * otherwise.
+ * Save @host_path:@guest_path in the list of bindings for the
+ * translation mechanism.  This function returns -1 if an error
+ * occured, 0 otherwise.
  */
-int bind_path(const char *host_path, const char *guest_path, bool must_exist)
+int bind_path(struct tracee *tracee, const char *host_path, const char *guest_path,
+	bool must_exist)
 {
 	struct binding *binding;
 	int status;
@@ -519,27 +540,30 @@ int bind_path(const char *host_path, const char *guest_path, bool must_exist)
 		struct stat statl;
 
 		/* Remember the type of the final component, it will be used
-		 * in build_glue_rootfs() later.  */
+		 * in build_glue() later.  */
 		status = lstat(binding->host.path, &statl);
-		final_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
-			? S_IFREG : statl.st_mode & S_IFMT);
+		tracee->binding_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
+					? S_IFREG : statl.st_mode & S_IFMT);
 
 		/* In case binding->guest.path is relative.  */
 		if (!getcwd(binding->guest.path, PATH_MAX)) {
-			notice(WARNING, SYSTEM, "can't sanitize path (binding) \"%s\", getcwd()",
+			notice(WARNING, SYSTEM,	"can't sanitize path (binding) \"%s\", getcwd()",
 				binding->guest.path);
 			goto error;
 		}
 
 		/* Sanitize the guest path of the binding within the alternate
 		   rootfs since it is assumed by substitute_binding().  */
-		status = canonicalize(NULL, guest_path ? guest_path : host_path,
+		status = canonicalize(tracee, guest_path ? guest_path : host_path,
 				true, binding->guest.path, 0);
 		if (status < 0) {
 			notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
 				guest_path ? guest_path : host_path, strerror(-status));
 			goto error;
 		}
+
+		/* Check this state variable was unset.  */
+		assert(tracee->binding_type == 0);
 	}
 
 	binding->guest.length = strlen(binding->guest.path);
@@ -559,7 +583,6 @@ int bind_path(const char *host_path, const char *guest_path, bool must_exist)
 	}
 
 	insort_binding2(binding);
-
 	return 0;
 
 error:

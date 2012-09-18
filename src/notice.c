@@ -26,8 +26,10 @@
 #include <stdarg.h> /* va_*, */
 #include <stdio.h>  /* vfprintf(3), */
 
-#include "config.h"
 #include "notice.h"
+#include "tracee/tracee.h"
+
+int verbose_level = 0;
 
 /**
  * Print @message to the standard error stream according to its
@@ -38,7 +40,7 @@ void notice(enum notice_severity severity, enum notice_origin origin, const char
 {
 	va_list extra_params;
 
-	if (config.verbose_level < 0 && severity != ERROR)
+	if (verbose_level < 0 && severity != ERROR)
 		return;
 
 	switch (severity) {

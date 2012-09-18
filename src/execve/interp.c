@@ -29,7 +29,6 @@
 
 #include "execve/interp.h"
 #include "execve/elf.h"
-#include "config.h"
 
 #include "compat.h"
 
@@ -225,7 +224,7 @@ int extract_elf_interp(const struct tracee *tracee,
 	 * ELF interpreter "/lib/ld-linux.so.2" is accessed as
 	 * "${HOST_ROOTFS}/lib/ld-linux.so.2" to avoid conflict with
 	 * the guest "/lib/ld-linux.so.2".  */
-	if (config.qemu) {
+	if (tracee->qemu != NULL) {
 		strcpy(u_interp, HOST_ROOTFS);
 		extra_size = strlen(HOST_ROOTFS);
 	}

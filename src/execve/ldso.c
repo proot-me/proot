@@ -34,7 +34,6 @@
 #include "tracee/tracee.h"
 #include "tracee/array.h"
 #include "notice.h"
-#include "config.h"
 
 /**
  * Check if the environment @variable has the given @name.
@@ -155,7 +154,7 @@ int ldso_env_passthru(struct array *envp, struct array *argv,
 		PASSTHRU(is_known, "LD_VERBOSE");
 		PASSTHRU(is_known, "LD_WARN");
 
-		if (!is_known && config.verbose_level >= 1)
+		if (!is_known && verbose_level >= 1)
 			notice(WARNING, INTERNAL, "unknown LD_ environment variable");
 	}
 

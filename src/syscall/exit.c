@@ -180,7 +180,7 @@ case PR_uname: {
 
 	bool change_uname;
 
-	change_uname = config.kernel_release != NULL
+	change_uname = tracee->kernel_release != NULL
 		       || get_abi(tracee) != ABI_DEFAULT;
 
 	if (!change_uname) {
@@ -209,10 +209,10 @@ case PR_uname: {
 	 * layout.
 	 */
 
-	if (config.kernel_release) {
+	if (tracee->kernel_release) {
 		size = sizeof(utsname.release);
 
-		strncpy(utsname.release, config.kernel_release, size);
+		strncpy(utsname.release, tracee->kernel_release, size);
 		utsname.release[size - 1] = '\0';
 	}
 
@@ -251,7 +251,7 @@ case PR_chroot: {
 	word_t result;
 	word_t input;
 
-	if (!config.fake_id0) {
+	if (!tracee->fake_id0) {
 		status = 0;
 		goto end;
 	}
@@ -271,7 +271,7 @@ case PR_chroot: {
 		goto end;
 
 	/* Succeed only if the new rootfs == current rootfs.  */
-	status = compare_paths(config.guest_rootfs, path);
+	status = compare_paths(tracee->root, path);
 	if (status != PATHS_ARE_EQUAL) {
 		status = 0;
 		goto end;
@@ -290,7 +290,7 @@ case PR_lchown32:
 case PR_fchownat: {
 	word_t result;
 
-	if (!config.fake_id0) {
+	if (!tracee->fake_id0) {
 		status = 0;
 		goto end;
 	}
@@ -333,7 +333,7 @@ case PR_setgid32:
 case PR_setfsuid32:
 case PR_setfsgid32:
 	status = 0;
-	if (config.fake_id0)
+	if (tracee->fake_id0)
 		break;
 	goto end;
 

@@ -154,7 +154,7 @@ enum dynamic_type {
 
 extern int open_elf(const char *t_path, union elf_header *elf_header);
 
-extern bool is_host_elf(const char *t_path);
+extern bool is_host_elf(const struct tracee *tracee, const char *t_path);
 
 extern int find_program_header(int fd,
 			const union elf_header *elf_header,
