@@ -36,7 +36,7 @@ int verbose_level = 0;
  * @severity and @origin.  This function exits if the @severity is
  * ERROR.
  */
-void notice(enum notice_severity severity, enum notice_origin origin, const char *message, ...)
+void notice(Severity severity, Origin origin, const char *message, ...)
 {
 	va_list extra_params;
 

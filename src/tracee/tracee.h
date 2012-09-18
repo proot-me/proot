@@ -33,15 +33,15 @@
 
 #include "arch.h" /* word_t, user_regs_struct, */
 
-enum reg_version {
+typedef enum {
 	CURRENT  = 0,
 	ORIGINAL = 1,
 	MODIFIED = 2,
 	NB_REG_VERSION
-};
+} RegVersion;
 
 /* Information related to a tracee process. */
-struct tracee {
+typedef struct tracee {
 	/**********************************************************************
 	 * Private resources                                                  *
 	 **********************************************************************/
@@ -115,16 +115,16 @@ struct tracee {
 	/* Extra configuration (will be handled by dedicated extensions soon).  */
 	const char *kernel_release;
 	bool fake_id0;
-};
+} Tracee;
 
 #define HOST_ROOTFS "/host-rootfs"
 
 #define TRACEE(a) talloc_parent(talloc_parent(a))
 
-LIST_HEAD(tracees, tracee);
-extern struct tracees tracees;
+typedef LIST_HEAD(tracees, tracee) Tracees;
+extern Tracees tracees;
 
-extern struct tracee *get_tracee(pid_t pid, bool create);
-extern void inherit(struct tracee *child, struct tracee *parent);
+extern Tracee *get_tracee(pid_t pid, bool create);
+extern void inherit(Tracee *child, Tracee *parent);
 
 #endif /* TRACEE_H */

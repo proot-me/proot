@@ -26,7 +26,7 @@
 #include "tracee/tracee.h"
 #include "arch.h"
 
-enum reg {
+typedef enum {
 	SYSARG_NUM = 0,
 	SYSARG_1,
 	SYSARG_2,
@@ -37,12 +37,12 @@ enum reg {
 	SYSARG_RESULT,
 	STACK_POINTER,
 	CS,
-};
+} Reg;
 
-extern int fetch_regs(struct tracee *tracee);
-extern int push_regs(struct tracee *tracee);
+extern int fetch_regs(Tracee *tracee);
+extern int push_regs(Tracee *tracee);
 
-extern word_t peek_reg(const struct tracee *tracee, enum reg_version version, enum reg reg);
-extern void poke_reg(struct tracee *tracee, enum reg reg, word_t value);
+extern word_t peek_reg(const Tracee *tracee, RegVersion version, Reg reg);
+extern void poke_reg(Tracee *tracee, Reg reg, word_t value);
 
 #endif /* TRACEE_REG_H */

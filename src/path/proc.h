@@ -29,17 +29,16 @@
 #include "path/path.h"
 
 /* Action to do after a call to readlink_proc().  */
-enum action {
-	DEFAULT        = 0,    /* Nothing special to do, treat it as a regular link.  */
-	CANONICALIZE   = 1,    /* The symlink was dereferenced, now canonicalize it.  */
-	DONT_CANONICALIZE = 2, /* The symlink shouldn't be dereferenced nor canonicalized.  */
-};
+typedef enum {
+	DEFAULT,           /* Nothing special to do, treat it as a regular link.  */
+	CANONICALIZE,      /* The symlink was dereferenced, now canonicalize it.  */
+	DONT_CANONICALIZE, /* The symlink shouldn't be dereferenced nor canonicalized.  */
+} Action;
 
 
-extern enum action readlink_proc(const struct tracee *tracee, char result[PATH_MAX],
-				const char path[PATH_MAX], const char component[NAME_MAX],
-				enum path_comparison comparison);
+extern Action readlink_proc(const Tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX],
+			const char component[NAME_MAX],	Comparison comparison);
 
-extern size_t readlink_proc2(const struct tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
+extern size_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
 
 #endif /* PROC_H */

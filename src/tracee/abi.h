@@ -30,16 +30,16 @@
 #include "arch.h"
 #include "notice.h"
 
-enum abi {
+typedef enum {
 	ABI_DEFAULT,
 	ABI_2, /* x86_32 on x86_64.  */
 	ABI_3, /* x32 on x86_64.  */
-};
+} Abi;
 
 /**
  * Return the ABI currently used by the given @tracee.
  */
-static inline enum abi get_abi(const struct tracee *tracee)
+static inline Abi get_abi(const Tracee *tracee)
 {
 #if defined(ARCH_X86_64)
 	/* The ABI can be changed by a syscall ("execve" typically),
@@ -61,7 +61,7 @@ static inline enum abi get_abi(const struct tracee *tracee)
  * Return true if @tracee is a 32-bit process running on a 64-bit
  * kernel.
  */
-static inline bool is_32on64_mode(const struct tracee *tracee)
+static inline bool is_32on64_mode(const Tracee *tracee)
 {
 	return (get_abi(tracee) != ABI_DEFAULT);
 }
@@ -70,7 +70,7 @@ static inline bool is_32on64_mode(const struct tracee *tracee)
  * Return the size of a word according to the ABI currently used by
  * the given @tracee.
  */
-static inline size_t sizeof_word(const struct tracee *tracee)
+static inline size_t sizeof_word(const Tracee *tracee)
 {
 	return (is_32on64_mode(tracee)
 		? sizeof(word_t) / 2

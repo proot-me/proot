@@ -31,12 +31,12 @@
 #include "tracee/tracee.h"
 #include "notice.h"
 
-struct tracees tracees;
+Tracees tracees;
 
 /**
  * Remove @tracee from the list of tracees.
  */
-static int remove_tracee(struct tracee *tracee)
+static int remove_tracee(Tracee *tracee)
 {
 	assert(tracee != NULL);
 	LIST_REMOVE(tracee, link);
@@ -46,11 +46,11 @@ static int remove_tracee(struct tracee *tracee)
 /**
  * Allocate a new entry for the tracee @pid.
  */
-static struct tracee *new_tracee(pid_t pid)
+static Tracee *new_tracee(pid_t pid)
 {
-	struct tracee *tracee;
+	Tracee *tracee;
 
-	tracee = talloc_zero(NULL, struct tracee);
+	tracee = talloc_zero(NULL, Tracee);
 	if (tracee == NULL) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return NULL;
@@ -69,9 +69,9 @@ static struct tracee *new_tracee(pid_t pid)
  * found, a new one is created if @create is true, otherwise NULL is
  * returned.
  */
-struct tracee *get_tracee(pid_t pid, bool create)
+Tracee *get_tracee(pid_t pid, bool create)
 {
-	struct tracee *tracee;
+	Tracee *tracee;
 
 	LIST_FOREACH(tracee, &tracees, link)
 		if (tracee->pid == pid)
@@ -84,7 +84,7 @@ struct tracee *get_tracee(pid_t pid, bool create)
  * Make the @child tracee inherit from the @parent tracee.  Depending
  * on the @parent->clone_flags, some information are copied or shared.
  */
-void inherit(struct tracee *child, struct tracee *parent)
+void inherit(Tracee *child, Tracee *parent)
 {
 	assert(child->exe  == NULL);
 	// assert(child->root == NULL);

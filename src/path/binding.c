@@ -38,55 +38,50 @@
 #include "path/canon.h"
 #include "notice.h"
 
-struct binding_path {
-	char path[PATH_MAX];
-	size_t length;
-};
-
-struct binding {
-	struct binding_path host;
-	struct binding_path guest;
+typedef struct binding {
+	Path host;
+	Path guest;
 
 	bool need_substitution;
 
-	LIST_ENTRY(binding) guest_side;
-	LIST_ENTRY(binding) host_side;
-};
+	LIST_ENTRY(binding) guest_link;
+	LIST_ENTRY(binding) host_link;
+} Binding;
 
-LIST_HEAD(bindings, binding);
+typedef LIST_HEAD(bindings, binding) Bindings;
 
-static struct bindings bindings_guest_side;
-static struct bindings bindings_host_side;
+static Bindings bindings_guest;
+static Bindings bindings_host;
 
-#define FIELD(side) (side == GUEST_SIDE ? guest_side : host_side)
-#define HEAD(side)  (side == GUEST_SIDE ? &bindings_guest_side : &bindings_host_side)
+#define FIELD(side) (side == GUEST ? guest_link : host_link)
+#define HEAD(side)  (side == GUEST ? &bindings_guest : &bindings_host)
 
 #define LIST_FOREACH_(binding, side)					\
 	for (binding = LIST_FIRST(HEAD(side));				\
 	     binding != NULL;						\
-	     binding = (side == GUEST_SIDE				\
-		     ? LIST_NEXT(binding, guest_side)			\
-		     : LIST_NEXT(binding, host_side)))
+	     binding = (side == GUEST				\
+		     ? LIST_NEXT(binding, guest_link)			\
+		     : LIST_NEXT(binding, host_link)))
 
 #define LIST_INSERT_AFTER_(previous, binding, side) do {	\
-	if (side == GUEST_SIDE)					\
-		LIST_INSERT_AFTER(previous, binding, guest_side); \
+	if (side == GUEST)					\
+		LIST_INSERT_AFTER(previous, binding, guest_link); \
 	else							\
-		LIST_INSERT_AFTER(previous, binding, host_side); \
+		LIST_INSERT_AFTER(previous, binding, host_link); \
 } while (0)
 
 #define LIST_INSERT_BEFORE_(next, binding, side) do {		\
-	if (side == GUEST_SIDE)					\
-		LIST_INSERT_BEFORE(next, binding, guest_side);	\
+	if (side == GUEST)					\
+		LIST_INSERT_BEFORE(next, binding, guest_link);	\
 	else							\
-		LIST_INSERT_BEFORE(next, binding, host_side);	\
+		LIST_INSERT_BEFORE(next, binding, host_link);	\
 } while (0)
 
 #define LIST_INSERT_HEAD_(binding, side) do {			\
-	if (side == GUEST_SIDE)					\
-		LIST_INSERT_HEAD(HEAD(side), binding, guest_side); \
+	if (side == GUEST)					\
+		LIST_INSERT_HEAD(HEAD(side), binding, guest_link); \
 	else							\
-		LIST_INSERT_HEAD(HEAD(side), binding, host_side); \
+		LIST_INSERT_HEAD(HEAD(side), binding, host_link); \
 } while (0)
 
 /**
@@ -94,9 +89,9 @@ static struct bindings bindings_host_side;
  */
 void print_bindings()
 {
-	const struct binding *binding;
+	const Binding *binding;
 
-	LIST_FOREACH_(binding, GUEST_SIDE) {
+	LIST_FOREACH_(binding, GUEST) {
 		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
 			notice(INFO, USER, "binding = %s", binding->host.path);
 		else
@@ -109,25 +104,24 @@ void print_bindings()
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-static const struct binding *get_binding(const struct tracee *tracee, enum binding_side side,
-					const char path[PATH_MAX])
+static const Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 {
-	const struct binding *binding;
+	const Binding *binding;
 	size_t path_length = strlen(path);
 
 	/* Sanity checks.  */
 	assert(path != NULL && path[0] == '/');
 
 	LIST_FOREACH_(binding, side) {
-		enum path_comparison comparison;
-		const struct binding_path *ref;
+		Comparison comparison;
+		const Path *ref;
 
 		switch (side) {
-		case GUEST_SIDE:
+		case GUEST:
 			ref = &binding->guest;
 			break;
 
-		case HOST_SIDE:
+		case HOST:
 			ref = &binding->host;
 			break;
 
@@ -146,7 +140,7 @@ static const struct binding *get_binding(const struct tracee *tracee, enum bindi
 		 *
 		 *     proot -m /usr:/location /usr/local/slackware
 		 */
-		if (   side == HOST_SIDE
+		if (   side == HOST
 		    && tracee->root[1] != '\0'
 		    && belongs_to_guestfs(tracee, path))
 				continue;
@@ -161,20 +155,19 @@ static const struct binding *get_binding(const struct tracee *tracee, enum bindi
  * Get the binding path for the given @path (relatively to the given
  * binding @side).
  */
-const char *get_path_binding(const struct tracee *tracee, enum binding_side side,
-			const char path[PATH_MAX])
+const char *get_path_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 {
-	const struct binding *binding;
+	const Binding *binding;
 
 	binding = get_binding(tracee, side, path);
 	if (!binding)
 		return NULL;
 
 	switch (side) {
-	case GUEST_SIDE:
+	case GUEST:
 		return binding->guest.path;
 
-	case HOST_SIDE:
+	case HOST:
 		return binding->host.path;
 
 	default:
@@ -195,11 +188,11 @@ const char *get_path_binding(const struct tracee *tracee, enum binding_side side
  *     * 1 if it is a binding location and a substitution was performed
  *       ("asymmetric" binding)
  */
-int substitute_binding(const struct tracee *tracee, enum binding_side side, char path[PATH_MAX])
+int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
 {
-	const struct binding_path *reverse_ref;
-	const struct binding_path *ref;
-	const struct binding *binding;
+	const Path *reverse_ref;
+	const Path *ref;
+	const Binding *binding;
 	size_t path_length;
 	size_t new_length;
 
@@ -214,12 +207,12 @@ int substitute_binding(const struct tracee *tracee, enum binding_side side, char
 	path_length = strlen(path);
 
 	switch (side) {
-	case GUEST_SIDE:
+	case GUEST:
 		ref = &binding->guest;
 		reverse_ref = &binding->host;
 		break;
 
-	case HOST_SIDE:
+	case HOST:
 		ref = &binding->host;
 		reverse_ref = &binding->guest;
 		break;
@@ -285,25 +278,25 @@ int substitute_binding(const struct tracee *tracee, enum binding_side side, char
  *
  * Note: "nested" from the @side point-of-view.
  */
-static void insort_binding(enum binding_side side, struct binding *binding)
+static void insort_binding(Side side, Binding *binding)
 {
-	struct binding *iterator;
-	struct binding *previous = NULL;
-	struct binding *next = LIST_FIRST(HEAD(side));
+	Binding *iterator;
+	Binding *previous = NULL;
+	Binding *next = LIST_FIRST(HEAD(side));
 
 	/* Find where it should be added in the list.  */
 	LIST_FOREACH_(iterator, side) {
-		enum path_comparison comparison;
-		const struct binding_path *binding_path;
-		const struct binding_path *iterator_path;
+		Comparison comparison;
+		const Path *binding_path;
+		const Path *iterator_path;
 
 		switch (side) {
-		case GUEST_SIDE:
+		case GUEST:
 			binding_path = &binding->guest;
 			iterator_path = &iterator->guest;
 			break;
 
-		case HOST_SIDE:
+		case HOST:
 			binding_path = &binding->host;
 			iterator_path = &iterator->host;
 			break;
@@ -317,7 +310,7 @@ static void insort_binding(enum binding_side side, struct binding *binding)
 					    iterator_path->path, iterator_path->length);
 		switch (comparison) {
 		case PATHS_ARE_EQUAL:
-			if (side == HOST_SIDE) {
+			if (side == HOST) {
 				previous = iterator;
 				break;
 			}
@@ -361,10 +354,10 @@ static void insort_binding(enum binding_side side, struct binding *binding)
 /**
  * c.f. function above.
  */
-static void insort_binding2(struct binding *binding)
+static void insort_binding2(Binding *binding)
 {
-	insort_binding(GUEST_SIDE, binding);
-	insort_binding(HOST_SIDE, binding);
+	insort_binding(GUEST, binding);
+	insort_binding(HOST, binding);
 }
 
 /**
@@ -408,11 +401,10 @@ static int remove_glue(char *path)
  * This glue allows operations on paths that do not exist in the guest
  * rootfs but that were specified as the guest part of a binding.
  */
-mode_t build_glue(struct tracee *tracee, const char *guest_path, char host_path[PATH_MAX],
-		enum finality is_final)
+mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final)
 {
-	enum path_comparison comparison;
-	struct binding *binding;
+	Comparison comparison;
+	Binding *binding;
 	mode_t type;
 	int status;
 
@@ -469,7 +461,7 @@ mode_t build_glue(struct tracee *tracee, const char *guest_path, char host_path[
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */
-	binding = talloc_zero(NULL, struct binding);
+	binding = talloc_zero(NULL, Binding);
 	if (!binding) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return 0;
@@ -496,10 +488,10 @@ mode_t build_glue(struct tracee *tracee, const char *guest_path, char host_path[
  */
 void free_bindings()
 {
-	struct binding *binding = LIST_FIRST(HEAD(GUEST_SIDE));
+	Binding *binding = LIST_FIRST(HEAD(GUEST));
 
 	while (binding != NULL) {
-		struct binding *next = LIST_NEXT(binding, guest_side);
+		Binding *next = LIST_NEXT(binding, guest_link);
 		TALLOC_FREE(binding);
 		binding = next;
 	}
@@ -510,13 +502,12 @@ void free_bindings()
  * translation mechanism.  This function returns -1 if an error
  * occured, 0 otherwise.
  */
-int bind_path(struct tracee *tracee, const char *host_path, const char *guest_path,
-	bool must_exist)
+int bind_path(Tracee *tracee, const char *host_path, const char *guest_path, bool must_exist)
 {
-	struct binding *binding;
+	Binding *binding;
 	int status;
 
-	binding = talloc_zero(NULL, struct binding);
+	binding = talloc_zero(NULL, Binding);
 	if (binding == NULL) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		goto error;
@@ -530,7 +521,7 @@ int bind_path(struct tracee *tracee, const char *host_path, const char *guest_pa
 	binding->host.length = strlen(binding->host.path);
 
 	if (guest_path != NULL && compare_paths(guest_path, "/") == PATHS_ARE_EQUAL) {
-		if (LIST_FIRST(HEAD(HOST_SIDE)) != NULL)
+		if (LIST_FIRST(HEAD(HOST)) != NULL)
 			notice(ERROR, USER,
 				"explicit binding to \"/\" isn't allowed, "
 				"use the -r option instead");

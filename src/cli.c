@@ -46,26 +46,26 @@
 #include "execve/ldso.h"
 #include "build.h"
 
-static void handle_option_r(struct tracee *tracee, char *value)
+static void handle_option_r(Tracee *tracee, char *value)
 {
 	tracee->root = value;
 }
 
-struct binding {
+typedef struct binding {
 	const char *host;
 	const char *guest;
 	bool must_exist;
 
 	SLIST_ENTRY(binding) link;
-};
+} Binding;
 
 static SLIST_HEAD(bindings, binding) bindings;
 
 static void new_binding2(const char *host, const char *guest, bool must_exist)
 {
-	struct binding *binding;
+	Binding *binding;
 
-	binding = talloc_zero(NULL, struct binding);
+	binding = talloc_zero(NULL, Binding);
 	if (binding == NULL) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return;
@@ -93,7 +93,7 @@ static void new_binding(char *value, bool must_exist)
 	new_binding2(value, ptr, must_exist);
 }
 
-static void handle_option_b(struct tracee *tracee, char *value)
+static void handle_option_b(Tracee *tracee, char *value)
 {
 	new_binding(value, true);
 }
@@ -158,7 +158,7 @@ static void which(char *const command, char result[PATH_MAX])
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", which_output);
 }
 
-static void handle_option_q(struct tracee *tracee, char *value)
+static void handle_option_q(Tracee *tracee, char *value)
 {
 	char path[PATH_MAX];
 	size_t nb_args;
@@ -222,22 +222,22 @@ static void handle_option_q(struct tracee *tracee, char *value)
 	new_binding2("/dev/null", "/etc/ld.so.preload", false);
 }
 
-static void handle_option_w(struct tracee *tracee, char *value)
+static void handle_option_w(Tracee *tracee, char *value)
 {
 	tracee->cwd = value;
 }
 
-static void handle_option_k(struct tracee *tracee, char *value)
+static void handle_option_k(Tracee *tracee, char *value)
 {
 	tracee->kernel_release = value;
 }
 
-static void handle_option_0(struct tracee *tracee, char *value)
+static void handle_option_0(Tracee *tracee, char *value)
 {
 	tracee->fake_id0 = true;
 }
 
-static void handle_option_v(struct tracee *tracee, char *value)
+static void handle_option_v(Tracee *tracee, char *value)
 {
 	char *end_ptr = NULL;
 
@@ -247,7 +247,7 @@ static void handle_option_v(struct tracee *tracee, char *value)
 		notice(ERROR, USER, "option `-v` expects an integer value.");
 }
 
-static void handle_option_V(struct tracee *tracee, char *value)
+static void handle_option_V(Tracee *tracee, char *value)
 {
 	printf("PRoot %s: %s.\n", version, subtitle);
 	printf("%s\n", colophon);
@@ -255,32 +255,32 @@ static void handle_option_V(struct tracee *tracee, char *value)
 }
 
 static void print_usage(bool);
-static void handle_option_h(struct tracee *tracee, char *value)
+static void handle_option_h(Tracee *tracee, char *value)
 {
 	print_usage(true);
 	exit(EXIT_SUCCESS);
 }
 
-static void handle_option_B(struct tracee *tracee, char *value)
+static void handle_option_B(Tracee *tracee, char *value)
 {
 	int i;
 	for (i = 0; recommended_bindings[i] != NULL; i++)
 		new_binding(recommended_bindings[i], false);
 }
 
-static void handle_option_Q(struct tracee *tracee, char *value)
+static void handle_option_Q(Tracee *tracee, char *value)
 {
 	handle_option_q(tracee, value);
 	handle_option_B(tracee, NULL);
 }
 
-static void handle_option_W(struct tracee *tracee, char *value)
+static void handle_option_W(Tracee *tracee, char *value)
 {
 	handle_option_w(tracee, ".");
 	handle_option_b(tracee, ".");
 }
 
-#define NB_OPTIONS (sizeof(options) / sizeof(struct option))
+#define NB_OPTIONS (sizeof(options) / sizeof(Option))
 
 /**
  * Print a (@detailed) usage of PRoot.
@@ -298,7 +298,7 @@ static void print_usage(bool detailed)
 
 	for (i = 0; i < NB_OPTIONS; i++) {
 		for (j = 0; ; j++) {
-			struct argument *argument = &(options[i].arguments[j]);
+			Argument *argument = &(options[i].arguments[j]);
 
 			if (!argument->name || (!detailed && j != 0)) {
 				DETAIL(printf("\n"));
@@ -345,7 +345,7 @@ static void print_execve_help(const char *argv0)
 "  * <qemu> does not work correctly (if specified).");
 }
 
-static void error_separator(struct argument *argument)
+static void error_separator(Argument *argument)
 {
 	if (argument->separator == '\0')
 		notice(ERROR, USER,
@@ -384,7 +384,7 @@ static void print_argv(const char *prompt, char **argv)
 	notice(INFO, USER, "%s", string);
 }
 
-static void print_config(const struct tracee *tracee)
+static void print_config(const Tracee *tracee)
 {
 	notice(INFO, USER, "guest rootfs = %s", tracee->root);
 
@@ -415,10 +415,10 @@ static void print_config(const struct tracee *tracee)
  * Configure @tracee according to the command-line arguments stored in
  * @argv[].  This function succeed or die trying.
  */
-static void parse_cli(struct tracee *tracee, int argc, char *argv[])
+static void parse_cli(Tracee *tracee, int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
-	struct binding *binding;
+	Binding *binding;
 	char tmp[PATH_MAX];
 	int i, j, k;
 	int status;
@@ -442,11 +442,11 @@ static void parse_cli(struct tracee *tracee, int argc, char *argv[])
 			break; /* End of PRoot options. */
 
 		for (j = 0; j < NB_OPTIONS; j++) {
-			struct option *option = &options[j];
+			Option *option = &options[j];
 
 			/* A given option has several aliases.  */
 			for (k = 0; ; k++) {
-				struct argument *argument;
+				Argument *argument;
 				size_t length;
 
 				argument = &option->arguments[k];
@@ -524,7 +524,7 @@ static void parse_cli(struct tracee *tracee, int argc, char *argv[])
 
 	binding = SLIST_FIRST(&bindings);
 	while (binding != NULL) {
-		struct binding *next = SLIST_NEXT(binding, link);
+		Binding *next = SLIST_NEXT(binding, link);
 		bind_path(tracee, binding->host, binding->guest, binding->must_exist);
 		TALLOC_FREE(binding);
 		binding = next;
@@ -537,12 +537,11 @@ static void parse_cli(struct tracee *tracee, int argc, char *argv[])
 
 	if (verbose_level > 0)
 		print_config(tracee);
-
 }
 
 int main(int argc, char *argv[])
 {
-	struct tracee *tracee;
+	Tracee *tracee;
 	int status;
 
 	/* Configure the memory allocator.  */

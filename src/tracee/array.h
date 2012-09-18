@@ -28,15 +28,15 @@
 #include "tracee/reg.h"
 #include "arch.h"
 
-struct array;
-typedef int (*read_item_t)(struct array *array, size_t index, void **value);
-typedef int (*write_item_t)(struct array *array, size_t index, const void *value);
-typedef int (*compare_item_t)(struct array *array, size_t index, const void *reference);
-typedef int (*sizeof_item_t)(struct array *array, size_t index);
+typedef struct array Array;
+typedef int (*read_item_t)(Array *array, size_t index, void **value);
+typedef int (*write_item_t)(Array *array, size_t index, const void *value);
+typedef int (*compare_item_t)(Array *array, size_t index, const void *reference);
+typedef int (*sizeof_item_t)(Array *array, size_t index);
 
-struct _entry;
+typedef struct array_entry ArrayEntry;
 struct array {
-	struct _entry *_cache;
+	ArrayEntry *_cache;
 	size_t length;
 
 	read_item_t    read_item;
@@ -45,41 +45,37 @@ struct array {
 	sizeof_item_t  sizeof_item;
 };
 
-/**
- * XXX
- */
-
-static inline int read_item(struct array *array, size_t index, void **value)
+static inline int read_item(Array *array, size_t index, void **value)
 {
 	return array->read_item(array, index, value);
 }
 
 
-static inline int write_item(struct array *array, size_t index, const void *value)
+static inline int write_item(Array *array, size_t index, const void *value)
 {
 	return array->write_item(array, index, value);
 }
 
-static inline int compare_item(struct array *array, size_t index, const void *reference)
+static inline int compare_item(Array *array, size_t index, const void *reference)
 {
 	return array->compare_item(array, index, reference);
 }
 
-static inline int sizeof_item(struct array *array, size_t index)
+static inline int sizeof_item(Array *array, size_t index)
 {
 	return array->sizeof_item(array, index);
 }
 
-extern int find_item(struct array *array, const void *reference);
-extern int resize_array(struct array *array, size_t index, ssize_t nb_delta_entries);
-extern int fetch_array(struct array *array, enum reg reg, size_t nb_entries);
-extern int push_array(struct array *array, enum reg reg);
+extern int find_item(Array *array, const void *reference);
+extern int resize_array(Array *array, size_t index, ssize_t nb_delta_entries);
+extern int fetch_array(Array *array, Reg reg, size_t nb_entries);
+extern int push_array(Array *array, Reg reg);
 
-extern int read_item_data(struct array *array, size_t index, void **value);
-extern int read_item_string(struct array *array, size_t index, char **value);
-extern int write_item_string(struct array *array, size_t index, const char *value);
-extern int write_items(struct array *array, size_t index, size_t nb_items, ...);
-extern int compare_item_generic(struct array *array, size_t index, const void *reference);
-extern int sizeof_item_string(struct array *array, size_t index);
+extern int read_item_data(Array *array, size_t index, void **value);
+extern int read_item_string(Array *array, size_t index, char **value);
+extern int write_item_string(Array *array, size_t index, const char *value);
+extern int write_items(Array *array, size_t index, size_t nb_items, ...);
+extern int compare_item_generic(Array *array, size_t index, const void *reference);
+extern int sizeof_item_string(Array *array, size_t index);
 
 #endif /* ARRAY_H */

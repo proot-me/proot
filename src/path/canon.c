@@ -42,14 +42,14 @@
  * (returned value is 1), otherwise it returns -errno (-ENOENT or
  * -ENOTDIR).
  */
-static inline int substitute_binding_stat(struct tracee *tracee, enum finality is_final,
+static inline int substitute_binding_stat(Tracee *tracee, Finality is_final,
 					const char guest_path[PATH_MAX], char host_path[PATH_MAX])
 {
 	struct stat statl;
 	int status;
 
 	strcpy(host_path, guest_path);
-	status = substitute_binding(tracee, GUEST_SIDE, host_path);
+	status = substitute_binding(tracee, GUEST, host_path);
 	if (status < 0)
 		return status;
 
@@ -85,12 +85,12 @@ static inline int substitute_binding_stat(struct tracee *tracee, enum finality i
  * what you are doing. This function returns -errno if an error
  * occured, otherwise it returns 0.
  */
-int canonicalize(struct tracee *tracee, const char *user_path, bool deref_final,
+int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		 char guest_path[PATH_MAX], unsigned int recursion_level)
 {
 	char scratch_path[PATH_MAX];
 	bool pending_dot = false;
-	enum finality is_final;
+	Finality is_final;
 	const char *cursor;
 	int status;
 
@@ -115,7 +115,7 @@ int canonicalize(struct tracee *tracee, const char *user_path, bool deref_final,
 	cursor = user_path;
 	is_final = NOT_FINAL;
 	while (!is_final) {
-		enum path_comparison comparison;
+		Comparison comparison;
 		char component[NAME_MAX];
 		char host_path[PATH_MAX];
 

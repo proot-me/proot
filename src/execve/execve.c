@@ -43,7 +43,7 @@
  * executable and is a regular file.  This function returns -errno if
  * an error occured, 0 otherwise.
  */
-static int translate_n_check(struct tracee *tracee, char t_path[PATH_MAX], const char *u_path)
+static int translate_n_check(Tracee *tracee, char t_path[PATH_MAX], const char *u_path)
 {
 	struct stat statl;
 	int status;
@@ -73,13 +73,9 @@ static int translate_n_check(struct tracee *tracee, char t_path[PATH_MAX], const
  * the program itself if it doesn't use an interpreter) are stored in
  * @t_interp and @u_interp (respectively translated and untranslated).
  */
-static int expand_interp(struct tracee *tracee,
-			 const char *u_path,
-			 char t_interp[PATH_MAX],
-			 char u_interp[PATH_MAX],
-			 struct array *argv,
-			 extract_interp_t callback,
-			 bool ignore_interpreter)
+static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_MAX],
+			char u_interp[PATH_MAX], Array *argv, extract_interp_t callback,
+			bool ignore_interpreter)
 {
 	char argument[ARG_MAX];
 
@@ -201,14 +197,14 @@ static int expand_interp(struct tracee *tracee,
  *
  *     execve("/tmp/new_root/bin/sh", argv = [ "/bin/sh", "/bin/script.sh", "arg1", arg2", ... ], envp);
  */
-int translate_execve(struct tracee *tracee)
+int translate_execve(Tracee *tracee)
 {
 	char u_path[PATH_MAX];
 	char t_interp[PATH_MAX];
 	char u_interp[PATH_MAX];
 
-	struct array *envp = NULL;
-	struct array *argv = NULL;
+	Array *envp = NULL;
+	Array *argv = NULL;
 	char *argv0 = NULL;
 
 	bool ignore_elf_interpreter;
@@ -222,7 +218,7 @@ int translate_execve(struct tracee *tracee)
 	if (status < 0)
 		return status;
 
-	argv = talloc_zero(tracee->tmp, struct array);
+	argv = talloc_zero(tracee->tmp, Array);
 	if (argv == NULL)
 		return -ENOMEM;
 
@@ -240,7 +236,7 @@ int translate_execve(struct tracee *tracee)
 		if (argv0 != NULL)
 			argv0 = talloc_strdup(tracee->tmp, argv0);
 
-		envp = talloc_zero(tracee->tmp, struct array);
+		envp = talloc_zero(tracee->tmp, Array);
 		if (envp == NULL)
 			return -ENOMEM;
 

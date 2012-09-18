@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-struct elf_header32 {
+typedef struct {
 	unsigned char e_ident[EI_NIDENT];
 	uint16_t      e_type;
 	uint16_t      e_machine;
@@ -43,9 +43,9 @@ struct elf_header32 {
 	uint16_t      e_shentsize;
 	uint16_t      e_shnum;
 	uint16_t      e_shstrndx;
-};
+} ElfHeader32;
 
-struct elf_header64 {
+typedef struct {
 	unsigned char e_ident[EI_NIDENT];
 	uint16_t      e_type;
 	uint16_t      e_machine;
@@ -60,14 +60,14 @@ struct elf_header64 {
 	uint16_t      e_shentsize;
 	uint16_t      e_shnum;
 	uint16_t      e_shstrndx;
-};
+} ElfHeader64;
 
-union elf_header {
-	struct elf_header32 class32;
-	struct elf_header64 class64;
-};
+typedef union {
+	ElfHeader32 class32;
+	ElfHeader64 class64;
+} ElfHeader;
 
-struct program_header32 {
+typedef struct {
 	uint32_t   p_type;
 	uint32_t   p_offset;
 	uint32_t   p_vaddr;
@@ -76,9 +76,9 @@ struct program_header32 {
 	uint32_t   p_memsz;
 	uint32_t   p_flags;
 	uint32_t   p_align;
-};
+} ProgramHeader32;
 
-struct program_header64 {
+typedef struct {
 	uint32_t   p_type;
 	uint32_t   p_flags;
 	uint64_t   p_offset;
@@ -87,39 +87,39 @@ struct program_header64 {
 	uint64_t   p_filesz;
 	uint64_t   p_memsz;
 	uint64_t   p_align;
-};
+} ProgramHeader64;
 
-union program_header {
-	struct program_header32 class32;
-	struct program_header64 class64;
-};
+typedef union {
+	ProgramHeader32 class32;
+	ProgramHeader64 class64;
+} ProgramHeader;
 
-enum segment_type {
+typedef enum {
 	PT_LOAD    = 1,
 	PT_DYNAMIC = 2,
 	PT_INTERP  = 3
-};
+} SegmentType;
 
-struct dynamic_entry32 {
+typedef struct {
 	int32_t d_tag;
 	uint32_t d_val;
-};
+} DynamicEntry32;
 
-struct dynamic_entry64 {
+typedef struct {
 	int64_t d_tag;
 	uint64_t d_val;
-};
+} DynamicEntry64;
 
-union dynamic_entry {
-	struct dynamic_entry32 class32;
-	struct dynamic_entry64 class64;
-};
+typedef struct {
+	DynamicEntry32 class32;
+	DynamicEntry64 class64;
+} DynamicEntry;
 
-enum dynamic_type {
+typedef enum {
 	DT_STRTAB  = 5,
 	DT_RPATH   = 15,
 	DT_RUNPATH = 29
-};
+} DynamicType;
 
 /* The following macros are also compatible with ELF 64-bit. */
 #define ELF_IDENT(header, index) (header).class32.e_ident[(index)]
@@ -146,22 +146,20 @@ enum dynamic_type {
 	 : (dynent).class32. d_ ## field)
 
 #define KNOWN_PHENTSIZE(header, size)					\
-	(   (IS_CLASS32(header) && (size) == sizeof(struct program_header32)) \
-	 || (IS_CLASS64(header) && (size) == sizeof(struct program_header64)))
+	(   (IS_CLASS32(header) && (size) == sizeof(ProgramHeader32)) \
+	 || (IS_CLASS64(header) && (size) == sizeof(ProgramHeader64)))
 
 
 #include "tracee/tracee.h"
 
-extern int open_elf(const char *t_path, union elf_header *elf_header);
+extern int open_elf(const char *t_path, ElfHeader *elf_header);
 
-extern bool is_host_elf(const struct tracee *tracee, const char *t_path);
+extern bool is_host_elf(const Tracee *tracee, const char *t_path);
 
-extern int find_program_header(int fd,
-			const union elf_header *elf_header,
-			union program_header *program_header,
-			enum segment_type type, uint64_t address);
+extern int find_program_header(int fd, const ElfHeader *elf_header, ProgramHeader *program_header,
+			SegmentType type, uint64_t address);
 
-extern int read_ldso_rpaths(const struct tracee *tracee, int fd,
-			const union elf_header *elf_header, char **rpath, char **runpath);
+extern int read_ldso_rpaths(const Tracee *tracee, int fd, const ElfHeader *elf_header,
+			char **rpath, char **runpath);
 
 #endif /* ELF_H */

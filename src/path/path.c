@@ -55,7 +55,7 @@
  *
  *     - 0 otherwise.
  */
-enum finality next_component(char component[NAME_MAX], const char **cursor)
+Finality next_component(char component[NAME_MAX], const char **cursor)
 {
 	const char *start;
 	ptrdiff_t length;
@@ -190,8 +190,8 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
  * the current working directory).  See the documentation of
  * canonicalize() for the meaning of @deref_final.
  */
-int translate_path(struct tracee *tracee, char result[PATH_MAX],
-		   int dir_fd, const char *fake_path, int deref_final)
+int translate_path(Tracee *tracee, char result[PATH_MAX],
+		   int dir_fd, const char *fake_path, bool deref_final)
 {
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	int status;
@@ -251,7 +251,7 @@ int translate_path(struct tracee *tracee, char result[PATH_MAX],
 	/* Final binding substitution to convert "result" into a host
 	 * path, since canonicalize() works from the guest
 	 * point-of-view.  */
-	status = substitute_binding(tracee, GUEST_SIDE, result);
+	status = substitute_binding(tracee, GUEST, result);
 	if (status < 0)
 		return status;
 
@@ -266,7 +266,7 @@ int translate_path(struct tracee *tracee, char result[PATH_MAX],
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
+int detranslate_path(const Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
 	size_t new_length;
@@ -281,7 +281,7 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 
 	/* Is it a symlink?  */
 	if (t_referrer != NULL) {
-		enum path_comparison comparison;
+		Comparison comparison;
 
 		sanity_check = false;
 		follow_binding = false;
@@ -309,8 +309,8 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 			const char *binding_referree;
 			const char *binding_referrer;
 
-			binding_referree = get_path_binding(tracee, HOST_SIDE, path);
-			binding_referrer = get_path_binding(tracee, HOST_SIDE, t_referrer);
+			binding_referree = get_path_binding(tracee, HOST, path);
+			binding_referrer = get_path_binding(tracee, HOST, t_referrer);
 			assert(binding_referrer != NULL);
 
 			/* Resolve bindings for symlinks that belong
@@ -333,7 +333,7 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
 	}
 
 	if (follow_binding) {
-		switch (substitute_binding(tracee, HOST_SIDE, path)) {
+		switch (substitute_binding(tracee, HOST, path)) {
 		case 0:
 			return 0;
 		case 1:
@@ -379,9 +379,9 @@ int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const cha
  * Check if the translated @t_path belongs to the guest rootfs, that
  * is, isn't from a binding.
  */
-bool belongs_to_guestfs(const struct tracee *tracee, const char *host_path)
+bool belongs_to_guestfs(const Tracee *tracee, const char *host_path)
 {
-	enum path_comparison comparison;
+	Comparison comparison;
 
 	comparison = compare_paths(tracee->root, host_path);
 	return (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
@@ -394,8 +394,7 @@ bool belongs_to_guestfs(const struct tracee *tracee, const char *host_path)
  * This function works only with paths canonicalized in the same
  * namespace (host/guest)!
  */
-enum path_comparison compare_paths2(const char *path1, size_t length1,
-				const char *path2, size_t length2)
+Comparison compare_paths2(const char *path1, size_t length1, const char *path2, size_t length2)
 {
 	size_t length_min;
 	bool is_prefix;
@@ -448,7 +447,7 @@ enum path_comparison compare_paths2(const char *path1, size_t length1,
 	return PATHS_ARE_NOT_COMPARABLE;
 }
 
-enum path_comparison compare_paths(const char *path1, const char *path2)
+Comparison compare_paths(const char *path1, const char *path2)
 {
 	return compare_paths2(path1, strlen(path1), path2, strlen(path2));
 }

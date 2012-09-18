@@ -32,7 +32,7 @@
 
 #include "arch.h"
 
-struct _entry {
+struct array_entry {
 	/* Pointer (tracee's address space) to the current value, if
 	 * local == NULL.  */
 	word_t remote;
@@ -53,7 +53,7 @@ struct _entry {
  * @array at the given @index.  This function returns -errno when an
  * error occured, otherwise 0.
  */
-int read_item_data(struct array *array, size_t index, void **value)
+int read_item_data(Array *array, size_t index, void **value)
 {
 	int status;
 	int size;
@@ -96,7 +96,7 @@ end:
  * @array at the given @index.  This function returns -errno when an
  * error occured, otherwise 0.
  */
-int read_item_string(struct array *array, size_t index, char **value)
+int read_item_string(Array *array, size_t index, char **value)
 {
 	char tmp[ARG_MAX];
 	int status;
@@ -135,7 +135,7 @@ end:
  * by the entry in @array at the given @index, otherwise -errno when
  * an error occured.
  */
-int sizeof_item_string(struct array *array, size_t index)
+int sizeof_item_string(Array *array, size_t index)
 {
 	char *value;
 	int status;
@@ -158,7 +158,7 @@ int sizeof_item_string(struct array *array, size_t index)
  * the given @index, otherwise it returns -errno when an error
  * occured.
  */
-int compare_item_generic(struct array *array, size_t index, const void *reference)
+int compare_item_generic(Array *array, size_t index, const void *reference)
 {
 	void *value;
 	int status;
@@ -190,7 +190,7 @@ int compare_item_generic(struct array *array, size_t index, const void *referenc
  * equivalent to the @reference item, otherwise it returns -errno when
  * an error occured.
  */
-int find_item(struct array *array, const void *reference)
+int find_item(Array *array, const void *reference)
 {
 	int i;
 
@@ -212,7 +212,7 @@ int find_item(struct array *array, const void *reference)
  * the string pointed to by @value.  This function returns -errno when
  * an error occured, otherwise 0.
  */
-int write_item_string(struct array *array, size_t index, const char *value)
+int write_item_string(Array *array, size_t index, const char *value)
 {
 	assert(index < array->length);
 
@@ -228,7 +228,7 @@ int write_item_string(struct array *array, size_t index, const char *value)
  * a copy of the item pointed to by the variadic arguments.  This
  * function returns -errno when an error occured, otherwise 0.
  */
-int write_items(struct array *array, size_t index, size_t nb_items, ...)
+int write_items(Array *array, size_t index, size_t nb_items, ...)
 {
 	va_list va_items;
 	int status;
@@ -257,7 +257,7 @@ end:
  * free/write_item by iteself.  This function returns -errno when an
  * error occured, otherwise 0.
  */
-int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
+int resize_array(Array *array, size_t index, ssize_t delta_nb_entries)
 {
 	size_t nb_moved_entries;
 	size_t new_length;
@@ -273,15 +273,15 @@ int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
 	nb_moved_entries = array->length - index;
 
 	if (delta_nb_entries > 0) {
-		tmp = talloc_realloc(array, array->_cache, struct _entry, new_length);
+		tmp = talloc_realloc(array, array->_cache, ArrayEntry, new_length);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_cache = tmp;
 
 		memmove(array->_cache + index + delta_nb_entries, array->_cache + index,
-			nb_moved_entries * sizeof(struct _entry));
+			nb_moved_entries * sizeof(ArrayEntry));
 
-		bzero(array->_cache + index, delta_nb_entries * sizeof(struct _entry));
+		bzero(array->_cache + index, delta_nb_entries * sizeof(ArrayEntry));
 	}
 	else {
 		/* Sanity check.  */
@@ -289,9 +289,9 @@ int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
 			assert(array->_cache[index + i].local == NULL);
 
 		memmove(array->_cache + index + delta_nb_entries, array->_cache + index,
-			nb_moved_entries * sizeof(struct _entry));
+			nb_moved_entries * sizeof(ArrayEntry));
 
-		tmp = talloc_realloc(array, array->_cache, struct _entry, new_length);
+		tmp = talloc_realloc(array, array->_cache, ArrayEntry, new_length);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_cache = tmp;
@@ -308,7 +308,7 @@ int resize_array(struct array *array, size_t index, ssize_t delta_nb_entries)
  * pointer are copied.  This function returns -errno when an error
  * occured, otherwise 0.
  */
-int fetch_array(struct array *array, enum reg reg, size_t nb_entries)
+int fetch_array(Array *array, Reg reg, size_t nb_entries)
 {
 	word_t pointer = (word_t)-1;
 	word_t address;
@@ -320,7 +320,7 @@ int fetch_array(struct array *array, enum reg reg, size_t nb_entries)
 	address = peek_reg(TRACEE(array), CURRENT, reg);
 
 	for (i = 0; nb_entries != 0 ? i < nb_entries : pointer != 0; i++) {
-		void *tmp = talloc_realloc(array, array->_cache, struct _entry, i + 1);
+		void *tmp = talloc_realloc(array, array->_cache, ArrayEntry, i + 1);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_cache = tmp;
@@ -352,9 +352,9 @@ int fetch_array(struct array *array, enum reg reg, size_t nb_entries)
  * pointer table.  This function returns -errno if an error occured,
  * otherwise 0.
  */
-int push_array(struct array *array, enum reg reg)
+int push_array(Array *array, Reg reg)
 {
-	struct tracee *tracee;
+	Tracee *tracee;
 	struct iovec *local;
 	size_t local_count;
 	size_t total_size;

@@ -130,7 +130,7 @@
 /**
  * Return the *cached* value of the given @tracees' @reg.
  */
-word_t peek_reg(const struct tracee *tracee, enum reg_version version, enum reg reg)
+word_t peek_reg(const Tracee *tracee, RegVersion version, Reg reg)
 {
 	word_t result;
 
@@ -149,7 +149,7 @@ word_t peek_reg(const struct tracee *tracee, enum reg_version version, enum reg 
 /**
  * Set the *cached* value of the given @tracees' @reg.
  */
-void poke_reg(struct tracee *tracee, enum reg reg, word_t value)
+void poke_reg(Tracee *tracee, Reg reg, word_t value)
 {
 	if (peek_reg(tracee, CURRENT, reg) == value)
 		return;
@@ -163,7 +163,7 @@ void poke_reg(struct tracee *tracee, enum reg reg, word_t value)
  * cache.  This function returns -errno if an error occured, 0
  * otherwise.
  */
-int fetch_regs(struct tracee *tracee)
+int fetch_regs(Tracee *tracee)
 {
 	int status;
 
@@ -183,7 +183,7 @@ int fetch_regs(struct tracee *tracee)
  * back to the process, if necessary.  This function returns -errno if
  * an error occured, 0 otherwise.
  */
-int push_regs(struct tracee *tracee)
+int push_regs(Tracee *tracee)
 {
 	int status;
 

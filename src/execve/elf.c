@@ -42,7 +42,7 @@
  * This function returns -errno if an error occured, otherwise the
  * file descriptor for @t_path.
  */
-int open_elf(const char *t_path, union elf_header *elf_header)
+int open_elf(const char *t_path, ElfHeader *elf_header)
 {
 	int fd;
 	int status;
@@ -56,8 +56,8 @@ int open_elf(const char *t_path, union elf_header *elf_header)
 		return -errno;
 
 	/* Check if it is an ELF file.  */
-	status = read(fd, elf_header, sizeof(union elf_header));
-	if (status < sizeof(union elf_header)
+	status = read(fd, elf_header, sizeof(ElfHeader));
+	if (status < sizeof(ElfHeader)
 	    || ELF_IDENT(*elf_header, 0) != 0x7f
 	    || ELF_IDENT(*elf_header, 1) != 'E'
 	    || ELF_IDENT(*elf_header, 2) != 'L'
@@ -91,10 +91,8 @@ end:
  * returns -errno if an error occured, 1 if the program header was
  * found, otherwise 0.
  */
-int find_program_header(int fd,
-			const union elf_header *elf_header,
-			union program_header *program_header,
-			enum segment_type type, uint64_t address)
+int find_program_header(int fd, const ElfHeader *elf_header, ProgramHeader *program_header,
+			SegmentType type, uint64_t address)
 {
 	uint64_t elf_phoff;
 	uint16_t elf_phentsize;
@@ -160,11 +158,11 @@ int find_program_header(int fd,
 /**
  * Check if @t_path is an ELF file for the host architecture.
  */
-bool is_host_elf(const struct tracee *tracee, const char *t_path)
+bool is_host_elf(const Tracee *tracee, const char *t_path)
 {
 	int host_elf_machine[] = HOST_ELF_MACHINE;
 	static int force_foreign = -1;
-	union elf_header elf_header;
+	ElfHeader elf_header;
 	uint16_t elf_machine;
 	int fd;
 	int i;
@@ -198,12 +196,11 @@ bool is_host_elf(const struct tracee *tracee, const char *t_path)
  * if @callback returns an error (something < 0).  This function
  * returns -errno if an error occured, otherwise 0.
  */
-static int foreach_dynamic_entry(int fd,
-			const union elf_header *elf_header,
-			const union program_header *program_header,
-			enum dynamic_type type, int (*callback)(uint64_t))
+static int foreach_dynamic_entry(int fd, const ElfHeader *elf_header,
+				const ProgramHeader *program_header,
+				DynamicType type, int (*callback)(uint64_t))
 {
-	union dynamic_entry dynamic_entry;
+	DynamicEntry dynamic_entry;
 	size_t sizeof_dynamic_entry;
 	uint64_t offset;
 	uint64_t size;
@@ -219,9 +216,9 @@ static int foreach_dynamic_entry(int fd,
 	size   = PROGRAM_FIELD(*elf_header, *program_header, filesz);
 
 	if (IS_CLASS32(*elf_header))
-		sizeof_dynamic_entry = sizeof(struct dynamic_entry32);
+		sizeof_dynamic_entry = sizeof(DynamicEntry32);
 	else
-		sizeof_dynamic_entry = sizeof(struct dynamic_entry64);
+		sizeof_dynamic_entry = sizeof(DynamicEntry64);
 
 	if (size % sizeof_dynamic_entry != 0)
 		return -ENOEXEC;
@@ -254,7 +251,7 @@ static int foreach_dynamic_entry(int fd,
  * referenced by @fd at the given @offset.  This function returns
  * -errno if an error occured, otherwise 0.
  */
-static int add_xpaths(const struct tracee *tracee, int fd, uint64_t offset, char **xpaths)
+static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpaths)
 {
 	char *paths = NULL;
 	char *tmp;
@@ -317,11 +314,11 @@ static int add_xpaths(const struct tracee *tracee, int fd, uint64_t offset, char
  * @runpaths respectively.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-int read_ldso_rpaths(const struct tracee* tracee, int fd,
-		const union elf_header *elf_header, char **rpaths, char **runpaths)
+int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_header,
+		char **rpaths, char **runpaths)
 {
-	union program_header dynamic;
-	union program_header strtab_segment;
+	ProgramHeader dynamic;
+	ProgramHeader strtab_segment;
 	uint64_t strtab_address = (uint64_t) -1;
 	off_t strtab_offset;
 	int status;

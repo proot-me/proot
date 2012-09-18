@@ -46,7 +46,7 @@
 
 #include "compat.h"
 
-bool launch_process(struct tracee *tracee)
+bool launch_process(Tracee *tracee)
 {
 	struct rlimit rlimit;
 	long status;
@@ -175,7 +175,7 @@ bool launch_process(struct tracee *tracee)
 /* Send the KILL signal to all [known] tracees.  */
 static void kill_all_tracees()
 {
-	struct tracee *tracee;
+	Tracee *tracee;
 
 	LIST_FOREACH(tracee, &tracees, link)
 		kill(tracee->pid, SIGKILL);
@@ -198,9 +198,9 @@ static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
 int event_loop()
 {
 	struct sigaction signal_action;
-	struct tracee *tracee;
 	int last_exit_status = -1;
 	int tracee_status;
+	Tracee *tracee;
 	long status;
 	int signum;
 	int signal;
@@ -339,7 +339,7 @@ int event_loop()
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			case SIGTRAP | PTRACE_EVENT_CLONE << 8: {
-				struct tracee *child_tracee;
+				Tracee *child_tracee;
 				pid_t child_pid;
 
 				signal = 0;

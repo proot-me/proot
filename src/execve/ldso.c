@@ -54,7 +54,7 @@ static inline bool is_env_name(const char *variable, const char *name)
  * in @array at the given @index, otherwise it returns -errno when an
  * error occured.
  */
-int compare_item_env(struct array *array, size_t index, const char *reference)
+int compare_item_env(Array *array, size_t index, const char *reference)
 {
 	char *value;
 	int status;
@@ -98,8 +98,7 @@ int compare_item_env(struct array *array, size_t index, const char *reference)
  *
  * This funtion returns -errno if an error occured, otherwise 0.
  */
-int ldso_env_passthru(struct array *envp, struct array *argv,
-		      const char *define, const char *undefine)
+int ldso_env_passthru(Array *envp, Array *argv, const char *define, const char *undefine)
 {
 	bool has_seen_library_path = false;
 	int status;
@@ -231,11 +230,10 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
  * This function returns -errno if an error occured, 1 if
  * RPATH/RUNPATH entries were found, 0 otherwise.
  */
-int rebuild_host_ldso_paths(const struct tracee *tracee,
-			const char t_program[PATH_MAX], struct array *envp)
+int rebuild_host_ldso_paths(const Tracee *tracee, const char t_program[PATH_MAX], Array *envp)
 {
 	static char *initial_ldso_paths = NULL;
-	union elf_header elf_header;
+	ElfHeader elf_header;
 
 	char host_ldso_paths[ARG_MAX] = "";
 	bool inhibit_rpath = false;

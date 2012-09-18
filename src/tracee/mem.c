@@ -78,8 +78,7 @@ static inline void store_word(void *address, word_t value)
  * @dest_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int write_data(const struct tracee *tracee, word_t dest_tracee,
-	       const void *src_tracer, word_t size)
+int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size)
 {
 	word_t *src  = (word_t *)src_tracer;
 	word_t *dest = (word_t *)dest_tracee;
@@ -151,8 +150,7 @@ int write_data(const struct tracee *tracee, word_t dest_tracee,
  * process.  This function returns -errno if an error occured,
  * otherwise 0.
  */
-int writev_data(const struct tracee *tracee, word_t dest_tracee,
-		const struct iovec *src_tracer, int src_tracer_count)
+int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *src_tracer, int src_tracer_count)
 {
 	size_t size;
 	int status;
@@ -191,8 +189,7 @@ int writev_data(const struct tracee *tracee, word_t dest_tracee,
  * @src_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int read_data(const struct tracee *tracee, void *dest_tracer,
-	      word_t src_tracee, word_t size)
+int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t size)
 {
 	word_t *src  = (word_t *)src_tracee;
 	word_t *dest = (word_t *)dest_tracer;
@@ -260,8 +257,7 @@ int read_data(const struct tracee *tracee, void *dest_tracer,
  * it returns the number in bytes of the string, including the
  * end-of-string terminator.
  */
-int read_string(const struct tracee *tracee, char *dest_tracer,
-		word_t src_tracee, word_t max_size)
+int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word_t max_size)
 {
 	word_t *src  = (word_t *)src_tracee;
 	word_t *dest = (word_t *)dest_tracer;
@@ -390,7 +386,7 @@ fallback:
  * memory space.  The caller must test errno to check if an error
  * occured.
  */
-word_t peek_mem(const struct tracee *tracee, word_t address)
+word_t peek_mem(const Tracee *tracee, word_t address)
 {
 	word_t result = 0;
 
@@ -427,7 +423,7 @@ word_t peek_mem(const struct tracee *tracee, word_t address)
  * the given @value.  The caller must test errno to check if an error
  * occured.
  */
-void poke_mem(const struct tracee *tracee, word_t address, word_t value)
+void poke_mem(const Tracee *tracee, word_t address, word_t value)
 {
 	word_t tmp;
 
@@ -471,7 +467,7 @@ void poke_mem(const struct tracee *tracee, word_t address, word_t value)
  * returns the address of the allocated memory in the @tracee's memory
  * space, otherwise 0 if an error occured.
  */
-word_t alloc_mem(struct tracee *tracee, ssize_t size)
+word_t alloc_mem(Tracee *tracee, ssize_t size)
 {
 	word_t stack_pointer;
 

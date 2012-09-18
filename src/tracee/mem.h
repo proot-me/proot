@@ -30,12 +30,12 @@
 #include "arch.h" /* word_t, */
 #include "tracee/tracee.h"
 
-extern int write_data(const struct tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
-extern int writev_data(const struct tracee *tracee, word_t dest_tracee, const struct iovec *src_tracer, int src_tracer_count);
-extern int read_data(const struct tracee *tracee, void *dest_tracer, word_t src_tracee, word_t size);
-extern int read_string(const struct tracee *tracee, char *dest_tracer, word_t src_tracee, word_t max_size);
-extern word_t peek_mem(const struct tracee *tracee, word_t address);
-extern void poke_mem(const struct tracee *tracee, word_t address, word_t value);
-extern word_t alloc_mem(struct tracee *tracee, ssize_t size);
+extern int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
+extern int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *src_tracer, int src_tracer_count);
+extern int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t size);
+extern int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word_t max_size);
+extern word_t peek_mem(const Tracee *tracee, word_t address);
+extern void poke_mem(const Tracee *tracee, word_t address, word_t value);
+extern word_t alloc_mem(Tracee *tracee, ssize_t size);
 
 #endif /* TRACEE_MEM_H */

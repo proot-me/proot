@@ -7,21 +7,21 @@
 #include "tracee/tracee.h"
 #include "build.h"
 
-struct argument {
+typedef struct {
 	const char *name;
 	char separator;
 	const char *value;
-};
+} Argument;
 
-typedef void (*option_handler_t)(struct tracee *tracee, char *value);
+typedef void (*option_handler_t)(Tracee *tracee, char *value);
 
-struct option {
+typedef struct {
 	const char *class;
 	option_handler_t handler;
 	const char *description;
 	const char *detail;
-	struct argument arguments[5];
-};
+	Argument arguments[5];
+} Option;
 
 #ifndef VERSION
 #define VERSION "2.2"
@@ -53,20 +53,20 @@ static char *recommended_bindings[] = {
 	NULL,
 };
 
-static void handle_option_r(struct tracee *tracee, char *value);
-static void handle_option_b(struct tracee *tracee, char *value);
-static void handle_option_q(struct tracee *tracee, char *value);
-static void handle_option_w(struct tracee *tracee, char *value);
-static void handle_option_k(struct tracee *tracee, char *value);
-static void handle_option_0(struct tracee *tracee, char *value);
-static void handle_option_v(struct tracee *tracee, char *value);
-static void handle_option_V(struct tracee *tracee, char *value);
-static void handle_option_h(struct tracee *tracee, char *value);
-static void handle_option_B(struct tracee *tracee, char *value);
-static void handle_option_Q(struct tracee *tracee, char *value);
-static void handle_option_W(struct tracee *tracee, char *value);
+static void handle_option_r(Tracee *tracee, char *value);
+static void handle_option_b(Tracee *tracee, char *value);
+static void handle_option_q(Tracee *tracee, char *value);
+static void handle_option_w(Tracee *tracee, char *value);
+static void handle_option_k(Tracee *tracee, char *value);
+static void handle_option_0(Tracee *tracee, char *value);
+static void handle_option_v(Tracee *tracee, char *value);
+static void handle_option_V(Tracee *tracee, char *value);
+static void handle_option_h(Tracee *tracee, char *value);
+static void handle_option_B(Tracee *tracee, char *value);
+static void handle_option_Q(Tracee *tracee, char *value);
+static void handle_option_W(Tracee *tracee, char *value);
 
-static struct option options[] = {
+static Option options[] = {
 	{ .class = "Regular options",
 	  .arguments = {
 		{ .name = "-r", .separator = ' ', .value = "path" },

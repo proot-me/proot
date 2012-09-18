@@ -24,7 +24,7 @@
  * has canonicalized "fd + path" into "path".  */
 switch (peek_reg(tracee, CURRENT, SYSARG_NUM)) {
 case PR_accept4: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,28),
 		.new_sysarg_num   = PR_accept,
 		.shifts		  = {{0}}
@@ -34,7 +34,7 @@ case PR_accept4: {
 }
 
 case PR_dup3: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,27),
 		.new_sysarg_num   = PR_dup2,
 		.shifts		  = {{0}}
@@ -44,7 +44,7 @@ case PR_dup3: {
 }
 
 case PR_epoll_create1: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,27),
 		.new_sysarg_num   = PR_epoll_create,
 		.shifts		  = {{0}}
@@ -55,7 +55,7 @@ case PR_epoll_create1: {
 }
 
 case PR_epoll_pwait: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,19),
 		.new_sysarg_num   = PR_epoll_wait,
 		.shifts		  = {{0}}
@@ -66,7 +66,7 @@ case PR_epoll_pwait: {
 }
 
 case PR_eventfd2: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,27),
 		.new_sysarg_num   = PR_eventfd,
 		.shifts		  = {{0}}
@@ -77,7 +77,7 @@ case PR_eventfd2: {
 }
 
 case PR_faccessat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_access,
 		.shifts	= { [0] = {
@@ -92,7 +92,7 @@ case PR_faccessat: {
 }
 
 case PR_fchmodat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_chmod,
 		.shifts	= { [0] = {
@@ -107,7 +107,7 @@ case PR_fchmodat: {
 }
 
 case PR_fchownat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.shifts	= { [0] = {
 				.sysarg  = SYSARG_2,
@@ -128,7 +128,7 @@ case PR_fchownat: {
 
 case PR_newfstatat:
 case PR_fstatat64: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.shifts = { [0] = {
 				.sysarg  = SYSARG_2,
@@ -152,7 +152,7 @@ case PR_fstatat64: {
 }
 
 case PR_futimesat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_utimes,
 		.shifts = { [0] = {
@@ -166,7 +166,7 @@ case PR_futimesat: {
 }
 
 case PR_inotify_init1: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,27),
 		.new_sysarg_num   = PR_inotify_init,
 		.shifts		  = {{0}}
@@ -177,7 +177,7 @@ case PR_inotify_init1: {
 }
 
 case PR_linkat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_link,
 		.shifts = { [0] = {
@@ -196,7 +196,7 @@ case PR_linkat: {
 }
 
 case PR_mkdirat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_mkdir,
 		.shifts = { [0] = {
@@ -210,7 +210,7 @@ case PR_mkdirat: {
 }
 
 case PR_mknodat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_mknod,
 		.shifts = { [0] = {
@@ -224,7 +224,7 @@ case PR_mknodat: {
 }
 
 case PR_openat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_open,
 		.shifts = { [0] = {
@@ -238,7 +238,7 @@ case PR_openat: {
 }
 
 case PR_pipe2: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,27),
 		.new_sysarg_num   = PR_pipe,
 		.shifts		  = {{0}}
@@ -249,7 +249,7 @@ case PR_pipe2: {
 }
 
 case PR_pselect6: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,19),
 #if defined(ARCH_X86_64)
 		.new_sysarg_num   = PR_select,
@@ -264,7 +264,7 @@ case PR_pselect6: {
 }
 
 case PR_readlinkat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_readlink,
 		.shifts = { [0] = {
@@ -278,7 +278,7 @@ case PR_readlinkat: {
 }
 
 case PR_renameat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_rename,
 		.shifts = { [0] = {
@@ -296,7 +296,7 @@ case PR_renameat: {
 }
 
 case PR_signalfd4: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,17),
 		.new_sysarg_num   = PR_signalfd,
 		.shifts		  = {{0}}
@@ -307,7 +307,7 @@ case PR_signalfd4: {
 }
 
 case PR_symlinkat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.new_sysarg_num   = PR_symlink,
 		.shifts = { [0] = {
@@ -321,7 +321,7 @@ case PR_symlinkat: {
 }
 
 case PR_unlinkat: {
-	struct syscall_modification modif = {
+	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.shifts = { [0] = {
 				.sysarg  =  SYSARG_2,

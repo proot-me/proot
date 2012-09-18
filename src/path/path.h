@@ -30,40 +30,52 @@
 
 #include "tracee/tracee.h"
 
-/* Helper macros. */
-#define REGULAR 1
-#define SYMLINK 0
+/* File type.  */
+typedef enum {
+	REGULAR,
+	SYMLINK
+} Type;
 
-#define STRONG  1
-#define WEAK    0
+/* Path point-of-view.  */
+typedef enum {
+	GUEST,
+	HOST,
+} Side;
 
-extern int translate_path(struct tracee *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, int deref_final);
-extern int detranslate_path(const struct tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
-extern bool belongs_to_guestfs(const struct tracee *tracee, const char *path);
+/* Path with cached attributes.  */
+typedef struct {
+	char path[PATH_MAX];
+	size_t length;
+	Side side;
+} Path;
 
-extern int join_paths(int number_paths, char result[PATH_MAX], ...);
-
-enum finality {
-	NOT_FINAL = 0,
+/* Path ending type.  */
+typedef enum {
+	NOT_FINAL,
 	FINAL_NORMAL,
 	FINAL_SLASH,
 	FINAL_DOT
-};
+} Finality;
 
-extern enum finality next_component(char component[NAME_MAX], const char **cursor);
+/* Comparison between two paths.  */
+typedef enum Comparison {
+	PATHS_ARE_EQUAL,
+	PATH1_IS_PREFIX,
+	PATH2_IS_PREFIX,
+	PATHS_ARE_NOT_COMPARABLE,
+} Comparison;
+
+extern int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, bool deref_final);
+extern int detranslate_path(const Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
+extern bool belongs_to_guestfs(const Tracee *tracee, const char *path);
+
+extern int join_paths(int number_paths, char result[PATH_MAX], ...);
+extern Finality next_component(char component[NAME_MAX], const char **cursor);
 extern void pop_component(char *path);
 extern int list_open_fd(pid_t pid);
 
-enum path_comparison {
-	PATHS_ARE_EQUAL = 0,
-	PATH1_IS_PREFIX = -1,
-	PATH2_IS_PREFIX = 1,
-	PATHS_ARE_NOT_COMPARABLE = 125,
-};
-
-extern enum path_comparison compare_paths(const char *path1, const char *path2);
-extern enum path_comparison compare_paths2(const char *path1, size_t length1,
-					const char *path2, size_t length2);
+extern Comparison compare_paths(const char *path1, const char *path2);
+extern Comparison compare_paths2(const char *path1, size_t length1, const char *path2, size_t length2);
 
 /* Check if path interpretable relatively to dirfd, see openat(2) for details. */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))

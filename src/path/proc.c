@@ -40,11 +40,11 @@
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result.
  */
-enum action readlink_proc(const struct tracee *tracee, char result[PATH_MAX],
+Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 			const char base[PATH_MAX], const char component[NAME_MAX],
-			enum path_comparison comparison)
+			Comparison comparison)
 {
-	const struct tracee *known_tracee;
+	const Tracee *known_tracee;
 	char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
 	int status;
 	pid_t pid;
@@ -166,9 +166,9 @@ enum action readlink_proc(const struct tracee *tracee, char result[PATH_MAX],
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result (but this byte is not counted in the returned value).
  */
-size_t readlink_proc2(const struct tracee *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
+size_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
 {
-	enum action action;
+	Action action;
 	char base[PATH_MAX];
 	char *component;
 

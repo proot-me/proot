@@ -26,21 +26,19 @@
 #include "tracee/tracee.h"
 
 /* Specify where a notice is coming from. */
-enum notice_origin
-{
+typedef enum {
 	SYSTEM,
 	INTERNAL,
 	USER,
 	TALLOC,
-};
+} Origin;
 
 /* Specify the severity of a notice. */
-enum notice_severity
-{
+typedef enum {
 	ERROR,
 	WARNING,
 	INFO,
-};
+} Severity;
 
 /* Verbose level, < 0 means quiet.  */
 extern int verbose_level;
@@ -50,7 +48,6 @@ extern int verbose_level;
 			notice(INFO, INTERNAL, (message), ## args);	\
 	} while (0)
 
-extern void notice(enum notice_severity severity, enum notice_origin origin,
-		const char *message, ...);
+extern void notice(Severity severity, Origin origin, const char *message, ...);
 
 #endif /* NOTICE_H */

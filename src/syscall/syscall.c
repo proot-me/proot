@@ -27,7 +27,6 @@
 #include <limits.h>      /* PATH_MAX, */
 #include <stddef.h>      /* intptr_t, offsetof(3), getenv(2), */
 #include <errno.h>       /* errno(3), */
-#include <sys/user.h>    /* struct user*, */
 #include <stdlib.h>      /* exit(3), strtoul(3), */
 #include <string.h>      /* strlen(3), */
 #include <sys/utsname.h> /* struct utsname, */
@@ -53,7 +52,7 @@
  * current syscall.  This function returns -errno if an error occured,
  * otherwise it returns the size in bytes put into the @path.
  */
-int get_sysarg_path(const struct tracee *tracee, char path[PATH_MAX], enum reg reg)
+int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg)
 {
 	int size;
 	word_t src;
@@ -85,7 +84,7 @@ int get_sysarg_path(const struct tracee *tracee, char path[PATH_MAX], enum reg r
  * syscall points to this new block.  This function returns -errno if
  * an error occured, otherwise 0.
  */
-int set_sysarg_data(struct tracee *tracee, void *tracer_ptr, word_t size, enum reg reg)
+int set_sysarg_data(Tracee *tracee, void *tracer_ptr, word_t size, Reg reg)
 {
 	word_t tracee_ptr;
 	int status;
@@ -111,19 +110,19 @@ int set_sysarg_data(struct tracee *tracee, void *tracer_ptr, word_t size, enum r
  * of the current syscall points to this new block.  This function
  * returns -errno if an error occured, otherwise 0.
  */
-int set_sysarg_path(struct tracee *tracee, char path[PATH_MAX], enum reg reg)
+int set_sysarg_path(Tracee *tracee, char path[PATH_MAX], Reg reg)
 {
 	return set_sysarg_data(tracee, path, strlen(path) + 1, reg);
 }
 
 /**
  * Translate @path and put the result in the @tracee's memory address
- * space pointed to by the @reg argument of the current
- * syscall. See the documentation of translate_path() about the
- * meaning of @deref_final. This function returns -errno if an error
- * occured, otherwise 0.
+ * space pointed to by the @reg argument of the current syscall. See
+ * the documentation of translate_path() about the meaning of
+ * @type. This function returns -errno if an error occured, otherwise
+ * 0.
  */
-static int translate_path2(struct tracee *tracee, int dir_fd, char path[PATH_MAX], enum reg reg, int deref_final)
+static int translate_path2(Tracee *tracee, int dir_fd, char path[PATH_MAX], Reg reg, Type type)
 {
 	char new_path[PATH_MAX];
 	int status;
@@ -133,7 +132,7 @@ static int translate_path2(struct tracee *tracee, int dir_fd, char path[PATH_MAX
 		return 0;
 
 	/* Translate the original path. */
-	status = translate_path(tracee, new_path, dir_fd, path, deref_final);
+	status = translate_path(tracee, new_path, dir_fd, path, type != SYMLINK);
 	if (status < 0)
 		return status;
 
@@ -143,7 +142,7 @@ static int translate_path2(struct tracee *tracee, int dir_fd, char path[PATH_MAX
 /**
  * A helper, see the comment of the function above.
  */
-static int translate_sysarg(struct tracee *tracee, enum reg reg, int deref_final)
+static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
 {
 	char old_path[PATH_MAX];
 	int status;
@@ -153,7 +152,7 @@ static int translate_sysarg(struct tracee *tracee, enum reg reg, int deref_final
 	if (status < 0)
 		return status;
 
-	return translate_path2(tracee, AT_FDCWD, old_path, reg, deref_final);
+	return translate_path2(tracee, AT_FDCWD, old_path, reg, type);
 }
 
 static int parse_kernel_release(const char *release)
@@ -179,22 +178,22 @@ static int parse_kernel_release(const char *release)
 }
 
 #define MAX_ARG_SHIFT 2
-struct syscall_modification {
+typedef struct {
 	int expected_release;
 	word_t new_sysarg_num;
 	struct {
-		enum reg sysarg;    /* first argument to be moved.  */
-		size_t nb_args;     /* number of arguments to be moved.  */
-		int offset;         /* offset to be applied.  */
+		Reg sysarg;     /* first argument to be moved.  */
+		size_t nb_args; /* number of arguments to be moved.  */
+		int offset;     /* offset to be applied.  */
 	} shifts[MAX_ARG_SHIFT];
-};
+} Modif;
 
 /**
  * Modify the current syscall of @tracee as described by @modif.
  *
  * This function return -errno if an error occured, otherwise 0.
  */
-static int modify_syscall(struct tracee *tracee, struct syscall_modification *modif)
+static int modify_syscall(Tracee *tracee, Modif *modif)
 {
 	static int emulated_release = -1;
 	static int actual_release = -1;
@@ -227,9 +226,9 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
 
 	/* Shift syscall arguments.  */
 	for (i = 0; i < MAX_ARG_SHIFT; i++) {
-		enum reg sysarg    = modif->shifts[i].sysarg;
-		size_t nb_args     = modif->shifts[i].nb_args;
-		int offset         = modif->shifts[i].offset;
+		Reg sysarg     = modif->shifts[i].sysarg;
+		size_t nb_args = modif->shifts[i].nb_args;
+		int offset     = modif->shifts[i].offset;
 
 		for (j = 0; j < nb_args; j++) {
 			word_t arg = peek_reg(tracee, CURRENT, sysarg + j);
@@ -248,7 +247,7 @@ static int modify_syscall(struct tracee *tracee, struct syscall_modification *mo
  * for instance), otherwise 0. This function returns -errno if an
  * error occured from PRoot's point-of-view, otherwise 0.
  */
-static int translate_syscall_enter(struct tracee *tracee)
+static int translate_syscall_enter(Tracee *tracee)
 {
 	int flags;
 	int dirfd;
@@ -323,7 +322,7 @@ static int translate_syscall_enter(struct tracee *tracee)
  * this syscall to @tracee->status if an error occured previously
  * during the translation, that is, if @tracee->status is less than 0.
  */
-static int translate_syscall_exit(struct tracee *tracee)
+static int translate_syscall_exit(Tracee *tracee)
 {
 	bool restore_original_sp = true;
 	int status;
@@ -374,12 +373,12 @@ end:
 	/* Reset the tracee's status. */
 	tracee->status = 0;
 
-	/* The struct tracee will be freed in
+	/* The Tracee will be freed in
 	 * event_loop() if status < 0. */
 	return status;
 }
 
-int translate_syscall(struct tracee *tracee)
+int translate_syscall(Tracee *tracee)
 {
 	int result;
 	int status;
