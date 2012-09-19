@@ -64,7 +64,6 @@ static void handle_option_V(Tracee *tracee, char *value);
 static void handle_option_h(Tracee *tracee, char *value);
 static void handle_option_B(Tracee *tracee, char *value);
 static void handle_option_Q(Tracee *tracee, char *value);
-static void handle_option_W(Tracee *tracee, char *value);
 
 static Option options[] = {
 	{ .class = "Regular options",
@@ -123,9 +122,7 @@ static Option options[] = {
 	  .detail = "\tSome programs expect to be launched from a given directory but do\n\
 \tnot perform any chdir by themselves, the most common example\n\
 \tis ./configure scripts.  This option avoids the need for\n\
-\trunning a shell and then entering the directory manually.\n\
-\t\n\
-\tSee the -W option.",
+\trunning a shell and then entering the directory manually.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -227,17 +224,6 @@ static Option options[] = {
 	  .description = "Alias: -q *command* -B",
 	  .detail = "\tThis option is highly recommended when using QEMU user-mode; it\n\
 \tenables all the recommended bindings.",
-	},
-	{ .class = "Alias options",
-	  .arguments = {
-		{ .name = "-W", .separator = '\0', .value = NULL },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_W,
-	  .description = "Alias: -b . -w .",
-	  .detail = "\tMake the current working directory accessible in the guest rootfs\n\
-\tand then use it as the initial working directory.  This option is\n\
-\ttypically useful to launch ./configure scripts directly, for\n\
-\tinstance.",
 	},
 };
 

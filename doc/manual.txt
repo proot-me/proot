@@ -109,8 +109,6 @@ Regular options
     is ``./configure`` scripts.  This option avoids the need for
     running a shell and then entering the directory manually.
 
-    See the ``-W`` option.
-
 -k string, --kernel-release=string
     Set the kernel release and compatibility level to *string*.
 
@@ -184,14 +182,6 @@ The following options are aliases for handy sets of options.
 
     This option is highly recommended when using QEMU user-mode; it
     enables all the recommended bindings.
-
--W
-    Alias: ``-b . -w .``
-
-    Make the current working directory accessible in the guest rootfs
-    and then use it as the initial working directory.  This option is
-    typically useful to launch ``./configure`` scripts directly, for
-    instance.
 
 
 Exit Status

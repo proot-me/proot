@@ -274,12 +274,6 @@ static void handle_option_Q(Tracee *tracee, char *value)
 	handle_option_B(tracee, NULL);
 }
 
-static void handle_option_W(Tracee *tracee, char *value)
-{
-	handle_option_w(tracee, ".");
-	handle_option_b(tracee, ".");
-}
-
 #define NB_OPTIONS (sizeof(options) / sizeof(Option))
 
 /**
