@@ -110,7 +110,7 @@ typedef struct {
 	uint64_t d_val;
 } DynamicEntry64;
 
-typedef struct {
+typedef union {
 	DynamicEntry32 class32;
 	DynamicEntry64 class64;
 } DynamicEntry;
@@ -127,19 +127,19 @@ typedef enum {
 #define IS_CLASS32(header) (ELF_CLASS(header) == 1)
 #define IS_CLASS64(header) (ELF_CLASS(header) == 2)
 
-/* Helper to access a @field of the structure elf_headerXX. */
+/* Helper to access a @field of the structure ElfHeaderXX. */
 #define ELF_FIELD(header, field)		\
 	(IS_CLASS64(header)			\
 	 ? (header).class64. e_ ## field	\
 	 : (header).class32. e_ ## field)
 
-/* Helper to access a @field of the structure program_headerXX */
+/* Helper to access a @field of the structure ProgramHeaderXX */
 #define PROGRAM_FIELD(ehdr, phdr, field)	\
 	(IS_CLASS64(ehdr)			\
 	 ? (phdr).class64. p_ ## field		\
 	 : (phdr).class32. p_ ## field)
 
-/* Helper to access a @field of the structure dynamic_entryXX */
+/* Helper to access a @field of the structure DynamicEntryXX */
 #define DYNAMIC_FIELD(ehdr, dynent, field)	\
 	(IS_CLASS64(ehdr)			\
 	 ? (dynent).class64. d_ ## field	\
