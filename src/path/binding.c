@@ -416,6 +416,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 		tracee->glue = talloc_asprintf(tracee, "/tmp/proot-%d-XXXXXX", getpid());
 		if (tracee->glue == NULL)
 			return 0;
+		talloc_set_name_const(tracee->glue, "$glue");
 
 		if (mkdtemp(tracee->glue) == NULL) {
 			TALLOC_FREE(tracee->glue);

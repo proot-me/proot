@@ -94,6 +94,7 @@ void inherit(Tracee *child, Tracee *parent)
 	 * updated later.  */
 	if (parent == NULL) {
 		child->exe = talloc_strdup(child, "<dummy>");
+		talloc_set_name_const(child->exe, "$exe");
 		//child->root = talloc_strdup(guest_rootfs);
 		//child->cwd  = talloc_strdup(config.initial_cwd);
 		return;
@@ -132,6 +133,9 @@ void inherit(Tracee *child, Tracee *parent)
 		/* File-system information is copied.  */
 		child->root = talloc_strdup(child, parent->root);
 		child->cwd  = talloc_strdup(child, parent->cwd);
+
+		talloc_set_name_const(child->root, "$root");
+		talloc_set_name_const(child->cwd, "$cwd");
 	}
 #else
 	child->root = talloc_reference(child, parent->root);

@@ -195,6 +195,73 @@ static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
 		_exit(EXIT_FAILURE);
 }
 
+/* Print on stderr the complete talloc hierarchy.  */
+static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontext)
+{
+	void print_talloc_chunk(const void *ptr, int depth, int max_depth, int is_ref, void *data)
+	{
+		const char *name;
+		size_t size;
+
+		name = talloc_get_name(ptr);
+		size = talloc_get_size(ptr);
+
+		if (depth == 0)
+			return;
+
+		while (depth-- > 1)
+			fprintf(stderr, "\t");
+
+		fprintf(stderr, "%-16s ", name);
+
+		if (is_ref)
+			fprintf(stderr, "-> %-8p", ptr);
+		else {
+			fprintf(stderr, "%-8p  %zd bytes", ptr, size);
+
+			if (name[0] == '$') {
+				fprintf(stderr, "\t(\"%s\")", (char *)ptr);
+			}
+			else if (strcmp(name, "Tracee") == 0) {
+				fprintf(stderr, "\t(pid = %d)", ((Tracee *)ptr)->pid);
+			}
+#if 0
+			else if (strcmp(name, "Bindings") == 0) {
+				 Tracee *tracee;
+
+				 tracee = talloc_get_type(talloc_parent(ptr), Tracee);
+
+				 if (ptr == tracee->bindings_user)
+					 fprintf(stderr, "\t(user)");
+				 else if (ptr == tracee->bindings_guest)
+					 fprintf(stderr, "\t(guest)");
+				 else if (ptr == tracee->bindings_host)
+					 fprintf(stderr, "\t(host)");
+			}
+			else if (strcmp(name, "Binding") == 0) {
+				Binding *binding = (Binding *)ptr;
+				fprintf(stderr, "\t(%s:%s)", binding->host.path, binding->guest.path);
+			}
+#endif
+		}
+
+		fprintf(stderr, "\n");
+	}
+
+	switch (signum) {
+	case SIGUSR1:
+		talloc_report_depth_cb(NULL, 0, 100, print_talloc_chunk, NULL);
+		break;
+
+	case SIGUSR2:
+		talloc_report_depth_file(NULL, 0, 100, stderr);
+		break;
+
+	default:
+		break;
+	}
+}
+
 int event_loop()
 {
 	struct sigaction signal_action;
@@ -237,6 +304,13 @@ int event_loop()
 			 * signals.  This ensures no process is left
 			 * untraced.  */
 			signal_action.sa_sigaction = kill_all_tracees2;
+			break;
+
+		case SIGUSR1:
+		case SIGUSR2:
+			/* Print on stderr the complete talloc
+			 * hierarchy, useful for debug purpose.  */
+			signal_action.sa_sigaction = print_talloc_hierarchy;
 			break;
 
 		case SIGCHLD:

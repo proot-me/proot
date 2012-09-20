@@ -259,8 +259,12 @@ int translate_execve(Tracee *tracee)
 	strcpy(u_path, t_interp);
 	(void) detranslate_path(tracee, u_path, NULL);
 
+	/* TODO: it would be safier to do this in exit.c, however I'm
+	 * not able to write a test where execve would fail at kernel
+	 * level but here.  */
 	talloc_unlink(tracee, tracee->exe);
 	tracee->exe = talloc_strdup(tracee, u_path);
+	talloc_set_name_const(tracee->exe, "$exe");
 
 	if (tracee->qemu != NULL) {
 		/* Prepend the QEMU command to the initial argv[] if

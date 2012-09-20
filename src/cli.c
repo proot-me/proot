@@ -190,6 +190,7 @@ static void handle_option_q(Tracee *tracee, char *value)
 	tracee->qemu = talloc_zero_array(tracee, char *, nb_args + 1);
 	if (!tracee->qemu)
 		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
+	talloc_set_name_const(tracee->qemu, "@qemu");
 
 	i = 0;
 	ptr = value;
@@ -224,7 +225,8 @@ static void handle_option_q(Tracee *tracee, char *value)
 
 static void handle_option_w(Tracee *tracee, char *value)
 {
-	tracee->cwd = value;
+	tracee->cwd = talloc_strdup(tracee, value);
+	talloc_set_name_const(tracee->cwd, "$cwd");
 }
 
 static void handle_option_k(Tracee *tracee, char *value)
@@ -508,6 +510,7 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 	if (realpath(tracee->root, tmp) == NULL)
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", tracee->root);
 	tracee->root = talloc_strdup(tracee, tmp);
+	talloc_set_name_const(tracee->root, "$root");
 
 	/* The binding to "/" has to be initialized before other
 	 * bindings since this former is required to sanitize these

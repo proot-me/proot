@@ -13,10 +13,6 @@ Short term
 
   * ``proot`` under PRoot
 
-* on SIGHUP:
-
-    talloc_report_depth_file(NULL, 0, 100, STDOUT);
-
 * Add support for extensions, then make the -0 and -k features use
   this mechanism.
 
