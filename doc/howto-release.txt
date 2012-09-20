@@ -20,6 +20,11 @@ memcheck`) shall suffer no failure on:
 
 - x86_64 (Slackware64)
 
+Talloc shall report no leak during all the PRoot's testsuite (`make -C
+tests V=1 2>1 | grep talloc`) on:
+
+- x86_64 (Slackware64)
+
 
 Use-Case Checks
 ---------------
