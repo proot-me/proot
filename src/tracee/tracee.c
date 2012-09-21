@@ -85,10 +85,6 @@ Tracee *get_tracee(pid_t pid, bool create)
  */
 void inherit(Tracee *child, Tracee *parent)
 {
-	assert(child->exe  == NULL);
-	// assert(child->root == NULL);
-	// assert(child->cwd  == NULL);
-
 	/* The first tracee is started by PRoot and does nothing but a
 	 * call to execve(2), thus child->exe will be automatically
 	 * updated later.  */
@@ -100,8 +96,12 @@ void inherit(Tracee *child, Tracee *parent)
 		return;
 	}
 
+	assert(child->exe  == NULL);
+	assert(child->root == NULL);
+	// assert(child->cwd  == NULL);
+
 	assert(parent->exe  != NULL);
-	// assert(parent->root != NULL);
+	assert(parent->root != NULL);
 	// assert(parent->cwd  != NULL);
 
 	/* The path to the executable is unshared only once the child
@@ -138,6 +138,9 @@ void inherit(Tracee *child, Tracee *parent)
 		talloc_set_name_const(child->cwd, "$cwd");
 	}
 #else
+	child->bindings_user  = NULL; assert(parent->bindings_user == NULL);
+	child->bindings_guest = talloc_reference(child, parent->bindings_guest);
+	child->bindings_host  = talloc_reference(child, parent->bindings_host);
 	child->root = talloc_reference(child, parent->root);
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);

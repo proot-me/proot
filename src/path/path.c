@@ -267,7 +267,7 @@ int translate_path(Tracee *tracee, char result[PATH_MAX],
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(const Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
+int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
 	size_t new_length;

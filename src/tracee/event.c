@@ -225,7 +225,6 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 			else if (strcmp(name, "Tracee") == 0) {
 				fprintf(stderr, "\t(pid = %d)", ((Tracee *)ptr)->pid);
 			}
-#if 0
 			else if (strcmp(name, "Bindings") == 0) {
 				 Tracee *tracee;
 
@@ -242,7 +241,6 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 				Binding *binding = (Binding *)ptr;
 				fprintf(stderr, "\t(%s:%s)", binding->host.path, binding->guest.path);
 			}
-#endif
 		}
 
 		fprintf(stderr, "\n");
@@ -272,11 +270,6 @@ int event_loop()
 	int signum;
 	int signal;
 	pid_t pid;
-
-	/* Free everything when exiting.  */
-	status = atexit(free_bindings);
-	if (status != 0)
-		notice(WARNING, INTERNAL, "atexit() failed");
 
 	/* Kill all tracees when exiting.  */
 	status = atexit(kill_all_tracees);

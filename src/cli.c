@@ -33,13 +33,14 @@
 #include <unistd.h>    /* stat(2), */
 #include <errno.h>     /* errno(3), */
 #include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
-#include <sys/queue.h> /* SLIST_*, */
+#include <sys/queue.h> /* LIST_*, */
 #include <talloc.h>    /* talloc_*, */
 
 #include "cli.h"
 #include "path/binding.h"
 #include "notice.h"
 #include "path/path.h"
+#include "path/binding.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
 #include "tracee/tracee.h"
@@ -51,34 +52,7 @@ static void handle_option_r(Tracee *tracee, char *value)
 	tracee->root = value;
 }
 
-typedef struct binding {
-	const char *host;
-	const char *guest;
-	bool must_exist;
-
-	SLIST_ENTRY(binding) link;
-} Binding;
-
-static SLIST_HEAD(bindings, binding) bindings;
-
-static void new_binding2(const char *host, const char *guest, bool must_exist)
-{
-	Binding *binding;
-
-	binding = talloc_zero(NULL, Binding);
-	if (binding == NULL) {
-		notice(WARNING, INTERNAL, "talloc_zero() failed");
-		return;
-	}
-
-	binding->host  = host;
-	binding->guest = guest;
-	binding->must_exist = must_exist;
-
-	SLIST_INSERT_HEAD(&bindings, binding, link);
-}
-
-static void new_binding(char *value, bool must_exist)
+static void handle_option_b(Tracee *tracee, char *value)
 {
 	char *ptr = strchr(value, ':');
 	if (ptr != NULL) {
@@ -86,16 +60,7 @@ static void new_binding(char *value, bool must_exist)
 		ptr++;
 	}
 
-	/* Expand environment variables like $HOME.  */
-	if (value[0] == '$' && getenv(&value[1]))
-		value = getenv(&value[1]);
-
-	new_binding2(value, ptr, must_exist);
-}
-
-static void handle_option_b(Tracee *tracee, char *value)
-{
-	new_binding(value, true);
+	new_binding(tracee, value, ptr, true);
 }
 
 /**
@@ -219,8 +184,8 @@ static void handle_option_q(Tracee *tracee, char *value)
 	which(tracee->qemu[0], path);
 	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
 
-	new_binding2("/", HOST_ROOTFS, true);
-	new_binding2("/dev/null", "/etc/ld.so.preload", false);
+	new_binding(tracee, "/", HOST_ROOTFS, true);
+	new_binding(tracee, "/dev/null", "/etc/ld.so.preload", false);
 }
 
 static void handle_option_w(Tracee *tracee, char *value)
@@ -267,7 +232,7 @@ static void handle_option_B(Tracee *tracee, char *value)
 {
 	int i;
 	for (i = 0; recommended_bindings[i] != NULL; i++)
-		new_binding(recommended_bindings[i], false);
+		new_binding(tracee, recommended_bindings[i], NULL, false);
 }
 
 static void handle_option_Q(Tracee *tracee, char *value)
@@ -403,8 +368,6 @@ static void print_config(const Tracee *tracee)
 		notice(INFO, USER, "fake root id = true");
 
 	notice(INFO, USER, "verbose level = %d", verbose_level);
-
-	print_bindings();
 }
 
 /**
@@ -415,7 +378,6 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
 	Binding *binding;
-	char tmp[PATH_MAX];
 	int i, j, k;
 	int status;
 
@@ -507,25 +469,22 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 			tracee->root = "/";
 	}
 
-	if (realpath(tracee->root, tmp) == NULL)
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", tracee->root);
-	tracee->root = talloc_strdup(tracee, tmp);
+	/* Note: ``chroot $PATH`` is almost equivalent to ``mount
+	 * --bind $PATH /``.  PRoot just ensures it is inserted before
+	 * other bindings since this former is required to
+	 * canonicalize these latters.  */
+	binding = new_binding(tracee, tracee->root, "/", true);
+	if (binding == NULL)
+		notice(ERROR, SYSTEM, "fatal!");
+
+	/* tracee->root is mainly used to avoid costly lookups in
+	 * tracee->bindings_guest.  */
+	tracee->root = talloc_strdup(tracee, binding->host.path);
 	talloc_set_name_const(tracee->root, "$root");
 
-	/* The binding to "/" has to be initialized before other
-	 * bindings since this former is required to sanitize these
-	 * latters (c.f. bind_path() for details).  */
-	status = bind_path(tracee, tracee->root, "/", true);
-	if (status < 0)
-		notice(ERROR, USER, "fatal");
-
-	binding = SLIST_FIRST(&bindings);
-	while (binding != NULL) {
-		Binding *next = SLIST_NEXT(binding, link);
-		bind_path(tracee, binding->host, binding->guest, binding->must_exist);
-		TALLOC_FREE(binding);
-		binding = next;
-	}
+	/* Bindings specify by the user (tracee->bindings_user) can
+	 * now be canonicalized, as expected by get_bindings().  */
+	initialize_bindings(tracee);
 
 	if (i < argc)
 		tracee->cmdline = &argv[i];

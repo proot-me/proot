@@ -28,12 +28,24 @@
 
 #include "path.h"
 
-extern int bind_path(Tracee *tracee, const char *host_path, const char *guest_path, bool must_exist);
-extern mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final);
-extern void print_bindings(void);
-extern void free_bindings(void);
+typedef struct binding {
+	Path host;
+	Path guest;
 
-extern const char *get_path_binding(const Tracee* tracee, Side side, const char path[PATH_MAX]);
-extern int substitute_binding(const Tracee* tracee, Side side, char path[PATH_MAX]);
+	bool need_substitution;
+	bool must_exist;
+
+	LIST_ENTRY(binding) user_link;
+	LIST_ENTRY(binding) guest_link;
+	LIST_ENTRY(binding) host_link;
+} Binding;
+
+typedef LIST_HEAD(bindings, binding) Bindings;
+
+extern mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final);
+extern Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist);
+extern void initialize_bindings(Tracee *tracee);
+extern const char *get_path_binding(Tracee* tracee, Side side, const char path[PATH_MAX]);
+extern int substitute_binding(Tracee* tracee, Side side, char path[PATH_MAX]);
 
 #endif /* BINDING_H */

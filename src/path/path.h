@@ -66,7 +66,7 @@ typedef enum Comparison {
 } Comparison;
 
 extern int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, bool deref_final);
-extern int detranslate_path(const Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
+extern int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
 extern bool belongs_to_guestfs(const Tracee *tracee, const char *path);
 
 extern int join_paths(int number_paths, char result[PATH_MAX], ...);

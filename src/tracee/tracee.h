@@ -40,6 +40,8 @@ typedef enum {
 	NB_REG_VERSION
 } RegVersion;
 
+struct bindings;
+
 /* Information related to a tracee process. */
 typedef struct tracee {
 	/**********************************************************************
@@ -80,8 +82,22 @@ typedef struct tracee {
 	mode_t glue_type;
 
 
+	/***********************************************************************
+	 * Shared resources until the tracee changes its filesystem namespace. *
+	 ***********************************************************************/
+
+	/* List of bindings as specified by the user.  */
+	struct bindings *bindings_user;
+
+	/* List of bindings canonicalized and sorted in the "guest" order.  */
+	struct bindings *bindings_guest;
+
+	/* List of bindings canonicalized and sorted in the "host" order.  */
+	struct bindings *bindings_host;
+
+
 	/**********************************************************************
-	 * Shared resources until the tracees makes a call to execve().       *
+	 * Shared resources until the tracee makes a call to execve().       *
 	 **********************************************************************/
 
 	/* Path to the executable, à la /proc/self/exe.  */

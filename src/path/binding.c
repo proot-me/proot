@@ -26,6 +26,7 @@
 #include <unistd.h>   /* getcwd(2), lstat(2), mknod(2), symlink(2), */
 #include <stdlib.h>   /* realpath(3), mkdtemp(3), */
 #include <string.h>   /* string(3),  */
+#include <strings.h>  /* bzero(3), */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
 #include <errno.h>    /* errno, E* */
@@ -38,28 +39,12 @@
 #include "path/canon.h"
 #include "notice.h"
 
-typedef struct binding {
-	Path host;
-	Path guest;
+#define HEAD(tracee, side)  (side == GUEST ? (tracee)->bindings_guest : (tracee)->bindings_host)
 
-	bool need_substitution;
-
-	LIST_ENTRY(binding) guest_link;
-	LIST_ENTRY(binding) host_link;
-} Binding;
-
-typedef LIST_HEAD(bindings, binding) Bindings;
-
-static Bindings bindings_guest;
-static Bindings bindings_host;
-
-#define FIELD(side) (side == GUEST ? guest_link : host_link)
-#define HEAD(side)  (side == GUEST ? &bindings_guest : &bindings_host)
-
-#define LIST_FOREACH_(binding, side)					\
-	for (binding = LIST_FIRST(HEAD(side));				\
+#define LIST_FOREACH_(tracee, binding, side)				\
+	for (binding = LIST_FIRST(HEAD(tracee, side));			\
 	     binding != NULL;						\
-	     binding = (side == GUEST				\
+	     binding = (side == GUEST					\
 		     ? LIST_NEXT(binding, guest_link)			\
 		     : LIST_NEXT(binding, host_link)))
 
@@ -77,21 +62,32 @@ static Bindings bindings_host;
 		LIST_INSERT_BEFORE(next, binding, host_link);	\
 } while (0)
 
-#define LIST_INSERT_HEAD_(binding, side) do {			\
+#define LIST_INSERT_HEAD_(tracee, binding, side) do {		\
 	if (side == GUEST)					\
-		LIST_INSERT_HEAD(HEAD(side), binding, guest_link); \
+		LIST_INSERT_HEAD(HEAD(tracee, side), binding, guest_link); \
 	else							\
-		LIST_INSERT_HEAD(HEAD(side), binding, host_link); \
+		LIST_INSERT_HEAD(HEAD(tracee, side), binding, host_link); \
+} while (0)
+
+#define IS_LINKED(binding, link)					\
+	((binding)->link.le_next != NULL || (binding)->link.le_prev != NULL)
+
+#define LIST_REMOVE_(binding, link) do {		\
+	LIST_REMOVE(binding, link);			\
+	bzero(&binding->link, sizeof(binding->link));	\
 } while (0)
 
 /**
  * Print all bindings (verbose purpose).
  */
-void print_bindings()
+static void print_bindings(const Tracee *tracee)
 {
 	const Binding *binding;
 
-	LIST_FOREACH_(binding, GUEST) {
+	if (tracee->bindings_guest == NULL)
+		return;
+
+	LIST_FOREACH_(tracee, binding, GUEST) {
 		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
 			notice(INFO, USER, "binding = %s", binding->host.path);
 		else
@@ -104,7 +100,7 @@ void print_bindings()
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-static const Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
+static const Binding *get_binding(Tracee *tracee, Side side, const char path[PATH_MAX])
 {
 	const Binding *binding;
 	size_t path_length = strlen(path);
@@ -112,7 +108,7 @@ static const Binding *get_binding(const Tracee *tracee, Side side, const char pa
 	/* Sanity checks.  */
 	assert(path != NULL && path[0] == '/');
 
-	LIST_FOREACH_(binding, side) {
+	LIST_FOREACH_(tracee, binding, side) {
 		Comparison comparison;
 		const Path *ref;
 
@@ -155,7 +151,7 @@ static const Binding *get_binding(const Tracee *tracee, Side side, const char pa
  * Get the binding path for the given @path (relatively to the given
  * binding @side).
  */
-const char *get_path_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
+const char *get_path_binding(Tracee *tracee, Side side, const char path[PATH_MAX])
 {
 	const Binding *binding;
 
@@ -188,7 +184,7 @@ const char *get_path_binding(const Tracee *tracee, Side side, const char path[PA
  *     * 1 if it is a binding location and a substitution was performed
  *       ("asymmetric" binding)
  */
-int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
+int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
 {
 	const Path *reverse_ref;
 	const Path *ref;
@@ -278,14 +274,14 @@ int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
  *
  * Note: "nested" from the @side point-of-view.
  */
-static void insort_binding(Side side, Binding *binding)
+static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 {
 	Binding *iterator;
 	Binding *previous = NULL;
-	Binding *next = LIST_FIRST(HEAD(side));
+	Binding *next = LIST_FIRST(HEAD(tracee, side));
 
 	/* Find where it should be added in the list.  */
-	LIST_FOREACH_(iterator, side) {
+	LIST_FOREACH_(tracee, iterator, side) {
 		Comparison comparison;
 		const Path *binding_path;
 		const Path *iterator_path;
@@ -348,21 +344,27 @@ static void insort_binding(Side side, Binding *binding)
 	else if (next != NULL)
 		LIST_INSERT_BEFORE_(next, binding, side);
 	else
-		LIST_INSERT_HEAD_(binding, side);
+		LIST_INSERT_HEAD_(tracee, binding, side);
+
+	/* Declare tracee->bindings_side as a parent of this
+	 * binding.  */
+	(void) talloc_reference(HEAD(tracee, side), binding);
 }
 
 /**
  * c.f. function above.
  */
-static void insort_binding2(Binding *binding)
+static void insort_binding2(Tracee *tracee, Binding *binding)
 {
-	insort_binding(GUEST, binding);
-	insort_binding(HOST, binding);
+	insort_binding(tracee, GUEST, binding);
+	insort_binding(tracee, HOST, binding);
 }
 
 /**
  * Delete only empty files and directories from the glue: the files
  * created by the user inside this glue are left.
+ *
+ * Note: this is a Talloc desctructor.
  */
 static int remove_glue(char *path)
 {
@@ -460,7 +462,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */
-	binding = talloc_zero(NULL, Binding);
+	binding = talloc_zero(tracee->glue, Binding);
 	if (!binding) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return 0;
@@ -474,7 +476,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 
 	binding->need_substitution = true;
 
-	insort_binding2(binding);
+	insort_binding2(tracee, binding);
 
 	/* TODO: emulation of getdents(parent(guest_path)) to finalize
 	 * the glue, "black" in getdent("/") from the example.  */
@@ -483,73 +485,131 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 }
 
 /**
- * Free all the bindings.
+ * Remove @binding from all the list of bindings it belongs to.
+ *
+ * Note: this is a Talloc destructor.
  */
-void free_bindings()
+static int remove_binding(Binding *binding)
 {
-	Binding *binding = LIST_FIRST(HEAD(GUEST));
+	if (IS_LINKED(binding, user_link))
+		LIST_REMOVE_(binding, user_link);
 
-	while (binding != NULL) {
-		Binding *next = LIST_NEXT(binding, guest_link);
-		TALLOC_FREE(binding);
-		binding = next;
-	}
+	if (IS_LINKED(binding, guest_link))
+		LIST_REMOVE_(binding, guest_link);
+
+	if (IS_LINKED(binding, host_link))
+		LIST_REMOVE_(binding, host_link);
+
+	return 0;
 }
 
 /**
- * Save @host_path:@guest_path in the list of bindings for the
- * translation mechanism.  This function returns -1 if an error
- * occured, 0 otherwise.
+ * Allocate a new binding "@host:@guest" and attach it to
+ * @tracee->bindings_user.  This function complains about missing
+ * @host path only if @must_exist is true.  This function returns the
+ * allocated binding on success, NULL on error.
  */
-int bind_path(Tracee *tracee, const char *host_path, const char *guest_path, bool must_exist)
+Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist)
 {
 	Binding *binding;
-	int status;
 
-	assert(host_path != NULL);
+	/* Should be called only from the CLI support.  */
+	assert(tracee->pid == 0);
 
-	binding = talloc_zero(NULL, Binding);
-	if (binding == NULL) {
-		notice(WARNING, INTERNAL, "talloc_zero() failed");
-		goto error;
+	/* Lasy allocation of the list of bindings specified by the
+	 * user.  This list will be used by initialize_bindings().  */
+	if (tracee->bindings_user == NULL) {
+		tracee->bindings_user = talloc_zero(tracee, Bindings);
+		if (tracee->bindings_user == NULL) {
+			notice(WARNING, INTERNAL, "talloc_zero() failed");
+			return NULL;
+		}
 	}
 
-	if (realpath(host_path, binding->host.path) == NULL) {
+	/* Allocate an empty binding.  */
+	binding = talloc_zero(tracee->bindings_user, Binding);
+	if (binding == NULL) {
+		notice(WARNING, INTERNAL, "talloc_zero() failed");
+		return NULL;
+	}
+	talloc_set_destructor(binding, remove_binding);
+
+	/* Expand environment variables like $HOME.  */
+	if (host[0] == '$' && getenv(&host[1]))
+		host = getenv(&host[1]);
+
+	/* Canonicalize the host part of the binding, as expected by
+	 * get_binding().  */
+	if (realpath(host, binding->host.path) == NULL) {
 		if (must_exist)
-			notice(WARNING, SYSTEM, "realpath(\"%s\")", host_path);
+			notice(WARNING, SYSTEM, "realpath(\"%s\")", host);
 		goto error;
 	}
 	binding->host.length = strlen(binding->host.path);
 
-	/* Initial state before canonicalization.  */
-	strcpy(binding->guest.path, "/");
+	/* Symetric binding?  */
+	guest = guest ?: host;
 
-	if (guest_path != NULL && compare_paths(guest_path, "/") == PATHS_ARE_EQUAL) {
-		if (LIST_FIRST(HEAD(HOST)) != NULL)
-			notice(ERROR, USER,
-				"explicit binding to \"/\" isn't allowed, "
-				"use the -r option instead");
+	/* Save the expected guest part, it will be canonicalized by
+	 * initialize_bindings().  */
+	binding->guest.length = strlen(guest);
+	if (binding->guest.length >= PATH_MAX) {
+		notice(WARNING, USER, "path to the rootfs is too long (\"%s\")", guest);
+		goto error;
+	}
+	strcpy(binding->guest.path, guest);
+
+	/* The binding to "/" has to be installed before other
+	 * bindings since this former is required to canonicalize
+	 * these latters (c.f. initialize_binding() for details).  */
+	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL
+	    || LIST_FIRST(tracee->bindings_user) == NULL)
+		LIST_INSERT_HEAD(tracee->bindings_user, binding, user_link);
+	else
+		LIST_INSERT_AFTER(LIST_FIRST(tracee->bindings_user), binding, user_link);
+	return binding;
+
+error:
+	TALLOC_FREE(binding);
+	return NULL;
+}
+
+/**
+ * Canonicalize the guest part of the given @binding, insert it into
+ * @tracee->bindings_guest and @tracee->bindings_host, then remove it
+ * from @tracee->bindings_user.  This function returns -1 if an error
+ * occured, 0 otherwise.
+ */
+static int initialize_binding(Tracee *tracee, Binding *binding)
+{
+	char path[PATH_MAX];
+	struct stat statl;
+	int status;
+
+	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL) {
+		if (LIST_FIRST(HEAD(tracee, HOST)) != NULL)
+			notice(ERROR, USER, "explicit binding to \"/\" isn't allowed, "
+					    "use the -r option instead");
+		strcpy(binding->guest.path, "/");
 	}
 	else {
-		struct stat statl;
-		char path[PATH_MAX];
-
-		/* Symetric binding?  */
-		guest_path = guest_path ?: host_path;
-
 		/* When not absolute, assume the guest_path is
 		 * relative to the host cwd (eg. ``-b .``).  */
-		if (guest_path[0] != '/') {
+		if (binding->guest.path[0] != '/') {
 			char cwd[PATH_MAX];
+
 			if (getcwd(cwd, PATH_MAX) == NULL) {
 				notice(WARNING, SYSTEM, "can't sanitize binding \"%s\", getcwd()",
 					binding->guest.path);
 				goto error;
 			}
-			join_paths(2, path, cwd, guest_path);
+			join_paths(2, path, cwd, binding->guest.path);
 		}
 		else
-			strcpy(path, guest_path);
+			strcpy(path, binding->guest.path);
+
+		/* Initial state before canonicalization.  */
+		strcpy(binding->guest.path, "/");
 
 		/* Remember the type of the final component, it will be used
 		 * in build_glue() later.  */
@@ -587,10 +647,54 @@ int bind_path(Tracee *tracee, const char *host_path, const char *guest_path, boo
 		binding->guest.length -= 1;
 	}
 
-	insort_binding2(binding);
+	insort_binding2(tracee, binding);
 	return 0;
 
 error:
 	TALLOC_FREE(binding);
 	return -1;
+}
+
+/**
+ * Allocate @tracee->bindings_guest and @tracee->bindings_host, then
+ * call initialize_binding() on each binding listed in
+ * @tracee->bindings_user.
+ */
+void initialize_bindings(Tracee *tracee)
+{
+	Binding *binding;
+
+	/* Sanity checks.  */
+	assert(    tracee->bindings_guest == NULL
+		&& tracee->bindings_host  == NULL
+		&& tracee->bindings_user  != NULL);
+
+	/* Allocate @tracee->bindings_guest and
+	 * @tracee->bindings_host.  */
+	tracee->bindings_guest = talloc_zero(tracee, Bindings);
+	tracee->bindings_host  = talloc_zero(tracee, Bindings);
+	if (tracee->bindings_guest == NULL || tracee->bindings_host == NULL)
+		notice(ERROR, INTERNAL, "can't allocate enough memory");
+
+	/* Sanity check: the first binding has to be "/".  */
+	binding = LIST_FIRST(tracee->bindings_user);
+	assert(compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL);
+
+	/* Call initialize_binding() on each binding listed in
+	 * @tracee->bindings_user.  */
+	while (binding != NULL) {
+		Binding *next;
+
+		next = LIST_NEXT(binding, user_link);
+
+		initialize_binding(tracee, binding);
+
+		LIST_REMOVE_(binding, user_link);
+		binding = next;
+	}
+
+	TALLOC_FREE(tracee->bindings_user);
+
+	if (verbose_level > 0)
+		print_bindings(tracee);
 }
