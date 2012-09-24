@@ -27,7 +27,7 @@
 #include <limits.h>      /* PATH_MAX, */
 #include <stddef.h>      /* intptr_t, offsetof(3), getenv(2), */
 #include <errno.h>       /* errno(3), */
-#include <stdlib.h>      /* exit(3), strtoul(3), */
+#include <stdlib.h>      /* strtoul(3), */
 #include <string.h>      /* strlen(3), */
 #include <sys/utsname.h> /* struct utsname, */
 #include <stdarg.h>      /* va_*, */

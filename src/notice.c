@@ -22,7 +22,6 @@
 
 #include <errno.h>  /* errno, */
 #include <string.h> /* strerror(3), */
-#include <stdlib.h> /* exit(3), EXIT_*, */
 #include <stdarg.h> /* va_*, */
 #include <stdio.h>  /* vfprintf(3), */
 
@@ -33,8 +32,7 @@ int verbose_level = 0;
 
 /**
  * Print @message to the standard error stream according to its
- * @severity and @origin.  This function exits if the @severity is
- * ERROR.
+ * @severity and @origin.
  */
 void notice(Severity severity, Origin origin, const char *message, ...)
 {
@@ -79,11 +77,6 @@ void notice(Severity severity, Origin origin, const char *message, ...)
 	default:
 		fprintf(stderr, "\n");
 		break;
-	}
-
-	if (severity == ERROR) {
-		fprintf(stderr, "proot error: see `proot --help` or `man proot`.\n");
-		exit(EXIT_FAILURE);
 	}
 
 	return;

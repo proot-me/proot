@@ -13,7 +13,7 @@ typedef struct {
 	const char *value;
 } Argument;
 
-typedef void (*option_handler_t)(Tracee *tracee, char *value);
+typedef int (*option_handler_t)(Tracee *tracee, char *value);
 
 typedef struct {
 	const char *class;
@@ -53,17 +53,17 @@ static char *recommended_bindings[] = {
 	NULL,
 };
 
-static void handle_option_r(Tracee *tracee, char *value);
-static void handle_option_b(Tracee *tracee, char *value);
-static void handle_option_q(Tracee *tracee, char *value);
-static void handle_option_w(Tracee *tracee, char *value);
-static void handle_option_k(Tracee *tracee, char *value);
-static void handle_option_0(Tracee *tracee, char *value);
-static void handle_option_v(Tracee *tracee, char *value);
-static void handle_option_V(Tracee *tracee, char *value);
-static void handle_option_h(Tracee *tracee, char *value);
-static void handle_option_B(Tracee *tracee, char *value);
-static void handle_option_Q(Tracee *tracee, char *value);
+static int handle_option_r(Tracee *tracee, char *value);
+static int handle_option_b(Tracee *tracee, char *value);
+static int handle_option_q(Tracee *tracee, char *value);
+static int handle_option_w(Tracee *tracee, char *value);
+static int handle_option_k(Tracee *tracee, char *value);
+static int handle_option_0(Tracee *tracee, char *value);
+static int handle_option_v(Tracee *tracee, char *value);
+static int handle_option_V(Tracee *tracee, char *value);
+static int handle_option_h(Tracee *tracee, char *value);
+static int handle_option_B(Tracee *tracee, char *value);
+static int handle_option_Q(Tracee *tracee, char *value);
 
 static Option options[] = {
 	{ .class = "Regular options",

@@ -625,9 +625,11 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 	int status;
 
 	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL) {
-		if (LIST_FIRST(HEAD(tracee, HOST)) != NULL)
+		if (LIST_FIRST(HEAD(tracee, HOST)) != NULL) {
 			notice(ERROR, USER, "explicit binding to \"/\" isn't allowed, "
 					    "use the -r option instead");
+			goto error;
+		}
 		strcpy(binding->guest.path, "/");
 	}
 	else {
@@ -698,7 +700,7 @@ error:
  * call initialize_binding() on each binding listed in
  * @tracee->bindings_user.
  */
-void initialize_bindings(Tracee *tracee)
+int initialize_bindings(Tracee *tracee)
 {
 	Binding *binding;
 
@@ -711,8 +713,10 @@ void initialize_bindings(Tracee *tracee)
 	 * @tracee->bindings_host.  */
 	tracee->bindings_guest = talloc_zero(tracee, Bindings);
 	tracee->bindings_host  = talloc_zero(tracee, Bindings);
-	if (tracee->bindings_guest == NULL || tracee->bindings_host == NULL)
+	if (tracee->bindings_guest == NULL || tracee->bindings_host == NULL) {
 		notice(ERROR, INTERNAL, "can't allocate enough memory");
+		return -1;
+	}
 
 	talloc_set_destructor(tracee->bindings_guest, remove_bindings);
 	talloc_set_destructor(tracee->bindings_host, remove_bindings);
@@ -738,4 +742,6 @@ void initialize_bindings(Tracee *tracee)
 
 	if (verbose_level > 0)
 		print_bindings(tracee);
+
+	return 0;
 }

@@ -47,12 +47,13 @@
 #include "execve/ldso.h"
 #include "build.h"
 
-static void handle_option_r(Tracee *tracee, char *value)
+static int handle_option_r(Tracee *tracee, char *value)
 {
 	tracee->root = value;
+	return 0;
 }
 
-static void handle_option_b(Tracee *tracee, char *value)
+static int handle_option_b(Tracee *tracee, char *value)
 {
 	char *ptr = strchr(value, ':');
 	if (ptr != NULL) {
@@ -61,14 +62,15 @@ static void handle_option_b(Tracee *tracee, char *value)
 	}
 
 	new_binding(tracee, value, ptr, true);
+	return 0;
 }
 
 /**
  * Put in @result the absolute path of the given @command.
  *
- * This function always returns something consistent or die trying.
+ * This function always returns -1 on error, toherwsie 0.
  */
-static void which(char *const command, char result[PATH_MAX])
+static int which(char *const command, char result[PATH_MAX])
 {
 	char *const argv[3] = { "which", command, NULL };
 	char which_output[PATH_MAX];
@@ -77,13 +79,16 @@ static void which(char *const command, char result[PATH_MAX])
 	pid_t pid;
 
 	status = pipe(pipe_fd);
-	if (status < 0)
+	if (status < 0) {
 		notice(ERROR, SYSTEM, "pipe()");
+		return -1;
+	}
 
 	pid = fork();
 	switch (pid) {
 	case -1:
 		notice(ERROR, SYSTEM, "fork()");
+		return -1;
 
 	case 0: /* child */
 		close(pipe_fd[0]); /* "read" end */
@@ -91,42 +96,58 @@ static void which(char *const command, char result[PATH_MAX])
 		/* Replace the standard output with the "write" end of
 		 * the pipe.  */
 		status = dup2(pipe_fd[1], STDOUT_FILENO);
-		if (status < 0)
+		if (status < 0) {
 			notice(ERROR, SYSTEM, "dup2()");
+			return -1;
+		}
 
 		execvp(argv[0], argv);
+
 		notice(ERROR, SYSTEM, "can't execute `%s %s`", argv[0], command);
+		return -1;
 
 	default: /* parent */
 		close(pipe_fd[1]); /* "write" end */
 
 		status = read(pipe_fd[0], which_output, PATH_MAX - 1);
-		if (status < 0)
+		if (status < 0) {
 			notice(ERROR, SYSTEM, "read()");
-		if (status == 0)
+			return -1;
+		}
+		if (status == 0) {
 			notice(ERROR, USER, "%s: command not found", command);
+			return -1;
+		}
 		assert(status < PATH_MAX);
 		which_output[status - 1] = '\0'; /* overwrite "\n" */
 
 		close(pipe_fd[0]); /* "read" end */
 
 		pid = wait(&status);
-		if (pid < 0)
+		if (pid < 0) {
 			notice(ERROR, SYSTEM, "wait()");
-
-		if (status != 0)
+			return -1;
+		}
+		if (status != 0) {
 			notice(ERROR, USER, "`%s %s` returned an error", argv[0], command);
+			return -1;
+		}
 		break;
 	}
 
-	if (realpath(which_output, result) == NULL)
+	if (realpath(which_output, result) == NULL) {
 		notice(ERROR, SYSTEM, "realpath(\"%s\")", which_output);
+		return -1;
+	}
+
+	return 0;
 }
 
-static void handle_option_q(Tracee *tracee, char *value)
+static int handle_option_q(Tracee *tracee, char *value)
 {
 	char path[PATH_MAX];
 	size_t nb_args;
+	int status;
 	char *ptr;
 	int i;
 
@@ -153,8 +174,10 @@ static void handle_option_q(Tracee *tracee, char *value)
 	}
 
 	tracee->qemu = talloc_zero_array(tracee, char *, nb_args + 1);
-	if (!tracee->qemu)
+	if (!tracee->qemu) {
 		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
+		return -1;
+	}
 	talloc_set_name_const(tracee->qemu, "@qemu");
 
 	i = 0;
@@ -181,64 +204,89 @@ static void handle_option_q(Tracee *tracee, char *value)
 	}
 	assert(i == nb_args);
 
-	which(tracee->qemu[0], path);
+	status = which(tracee->qemu[0], path);
+	if (status < 0)
+		return -1;
 	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
 
 	new_binding(tracee, "/", HOST_ROOTFS, true);
 	new_binding(tracee, "/dev/null", "/etc/ld.so.preload", false);
+
+	return 0;
 }
 
-static void handle_option_w(Tracee *tracee, char *value)
+static int handle_option_w(Tracee *tracee, char *value)
 {
 	tracee->cwd = talloc_strdup(tracee, value);
 	talloc_set_name_const(tracee->cwd, "$cwd");
+	return 0;
 }
 
-static void handle_option_k(Tracee *tracee, char *value)
+static int handle_option_k(Tracee *tracee, char *value)
 {
 	tracee->kernel_release = value;
+	return 0;
 }
 
-static void handle_option_0(Tracee *tracee, char *value)
+static int handle_option_0(Tracee *tracee, char *value)
 {
 	tracee->fake_id0 = true;
+	return 0;
 }
 
-static void handle_option_v(Tracee *tracee, char *value)
+static int handle_option_v(Tracee *tracee, char *value)
 {
 	char *end_ptr = NULL;
 
 	errno = 0;
 	verbose_level = strtol(value, &end_ptr, 10);
-	if (errno != 0 || end_ptr == value)
+	if (errno != 0 || end_ptr == value) {
 		notice(ERROR, USER, "option `-v` expects an integer value.");
+		return -1;
+	}
+
+	return 0;
 }
 
-static void handle_option_V(Tracee *tracee, char *value)
+static bool exit_failure = true;
+
+static int handle_option_V(Tracee *tracee, char *value)
 {
 	printf("PRoot %s: %s.\n", version, subtitle);
 	printf("%s\n", colophon);
-	exit(EXIT_SUCCESS);
+	exit_failure = false;
+	return -1;
 }
 
 static void print_usage(bool);
-static void handle_option_h(Tracee *tracee, char *value)
+static int handle_option_h(Tracee *tracee, char *value)
 {
 	print_usage(true);
-	exit(EXIT_SUCCESS);
+	exit_failure = false;
+	return -1;
 }
 
-static void handle_option_B(Tracee *tracee, char *value)
+static int handle_option_B(Tracee *tracee, char *value)
 {
 	int i;
 	for (i = 0; recommended_bindings[i] != NULL; i++)
 		new_binding(tracee, recommended_bindings[i], NULL, false);
+	return 0;
 }
 
-static void handle_option_Q(Tracee *tracee, char *value)
+static int handle_option_Q(Tracee *tracee, char *value)
 {
-	handle_option_q(tracee, value);
-	handle_option_B(tracee, NULL);
+	int status;
+
+	status = handle_option_q(tracee, value);
+	if (status < 0)
+		return status;
+
+	status = handle_option_B(tracee, NULL);
+	if (status < 0)
+		return status;
+
+	return 0;
 }
 
 #define NB_OPTIONS (sizeof(options) / sizeof(Option))
@@ -296,7 +344,7 @@ static void print_usage(bool detailed)
 
 static char *default_command[] = { "/bin/sh", NULL };
 
-static void print_execve_help(const char *argv0)
+static void print_execve_help(const Tracee *tracee, const char *argv0)
 {
 	notice(WARNING, SYSTEM, "execv(\"%s\")", argv0);
 	notice(INFO, USER, "possible causes:\n"
@@ -306,20 +354,17 @@ static void print_execve_help(const char *argv0)
 "  * <qemu> does not work correctly (if specified).");
 }
 
-static void error_separator(Argument *argument)
+static void print_error_separator(const Tracee *tracee, Argument *argument)
 {
 	if (argument->separator == '\0')
-		notice(ERROR, USER,
-			"option '%s' expects no value.",
-			argument->name);
+		notice(ERROR, USER, "option '%s' expects no value.", argument->name);
 	else
 		notice(ERROR, USER,
 			"option '%s' and its value must be separated by '%c'.",
-			argument->name,
-			argument->separator);
+			argument->name, argument->separator);
 }
 
-static void print_argv(const char *prompt, char **argv)
+static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 {
 	int i;
 	char string[ARG_MAX] = "";
@@ -355,8 +400,8 @@ static void print_config(const Tracee *tracee)
 	if (tracee->glue)
 		notice(INFO, USER, "glue rootfs = %s", tracee->glue);
 
-	print_argv("command", tracee->cmdline);
-	print_argv("qemu", tracee->qemu);
+	print_argv(tracee, "command", tracee->cmdline);
+	print_argv(tracee, "qemu", tracee->qemu);
 
 	if (tracee->cwd)
 		notice(INFO, USER, "initial cwd = %s", tracee->cwd);
@@ -374,7 +419,7 @@ static void print_config(const Tracee *tracee)
  * Configure @tracee according to the command-line arguments stored in
  * @argv[].  This function succeed or die trying.
  */
-static void parse_cli(Tracee *tracee, int argc, char *argv[])
+static int parse_cli(Tracee *tracee, int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
 	Binding *binding;
@@ -383,7 +428,7 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 
 	if (argc == 1) {
 		print_usage(false);
-		exit(EXIT_FAILURE);
+		return -1;
 	}
 
 	for (i = 1; i < argc; i++) {
@@ -391,7 +436,9 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 
 		/* The current argument is the value of a short option.  */
 		if (handler != NULL) {
-			handler(tracee, arg);
+			status = handler(tracee, arg);
+			if (status < 0)
+				return status;
 			handler = NULL;
 			continue;
 		}
@@ -419,25 +466,33 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 
 				/* Avoid ambiguities.  */
 				if (strlen(arg) > length
-				    && arg[length] != argument->separator)
-					error_separator(argument);
+				    && arg[length] != argument->separator) {
+					print_error_separator(tracee, argument);
+					return -1;
+				}
 
 				/* No option value.  */
 				if (!argument->value) {
-					option->handler(tracee, arg);
+					status = option->handler(tracee, arg);
+					if (status < 0)
+						return status;
 					goto known_option;
 				}
 
 				/* Value coalesced with to its option.  */
 				if (argument->separator == arg[length]) {
 					assert(strlen(arg) >= length);
-					option->handler(tracee, &arg[length + 1]);
+					status = option->handler(tracee, &arg[length + 1]);
+					if (status < 0)
+						return status;
 					goto known_option;
 				}
 
 				/* Avoid ambiguities.  */
-				if (argument->separator != ' ')
-					error_separator(argument);
+				if (argument->separator != ' ') {
+					print_error_separator(tracee, argument);
+					return -1;
+				}
 
 				/* Short option with a separated value.  */
 				handler = option->handler;
@@ -446,11 +501,13 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 		}
 
 		notice(ERROR, USER, "unknown option '%s'.", arg);
+		return -1;
 
 	known_option:
-		if (handler != NULL && i == argc - 1)
-			notice(ERROR, USER,
-				"missing value for option '%s'.", arg);
+		if (handler != NULL && i == argc - 1) {
+			notice(ERROR, USER, "missing value for option '%s'.", arg);
+			return -1;
+		}
 	}
 
 	/* When no guest rootfs were specified: if the first bare
@@ -475,7 +532,7 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 	 * canonicalize these latters.  */
 	binding = new_binding(tracee, tracee->root, "/", true);
 	if (binding == NULL)
-		notice(ERROR, SYSTEM, "fatal!");
+		return -1;
 
 	/* tracee->root is mainly used to avoid costly lookups in
 	 * tracee->bindings_guest.  */
@@ -484,7 +541,9 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 
 	/* Bindings specify by the user (tracee->bindings_user) can
 	 * now be canonicalized, as expected by get_bindings().  */
-	initialize_bindings(tracee);
+	status = initialize_bindings(tracee);
+	if (status < 0)
+		return -1;
 
 	if (i < argc)
 		tracee->cmdline = &argv[i];
@@ -493,6 +552,8 @@ static void parse_cli(Tracee *tracee, int argc, char *argv[])
 
 	if (verbose_level > 0)
 		print_config(tracee);
+
+	return 0;
 }
 
 int main(int argc, char *argv[])
@@ -506,17 +567,30 @@ int main(int argc, char *argv[])
 
 	/* Pre-create the first tracee (pid == 0).  */
 	tracee = get_tracee(0, true);
+	assert(tracee != NULL);
 
 	/* Pre-configure the first tracee.  */
-	parse_cli(tracee, argc, argv);
+	status = parse_cli(tracee, argc, argv);
+	if (status < 0)
+		goto error;
 
 	/* Start the first tracee.  */
 	status = launch_process(tracee);
-	if (!status) {
-		print_execve_help(tracee->cmdline[0]);
-		exit(EXIT_FAILURE);
+	if (status < 0) {
+		print_execve_help(tracee, tracee->cmdline[0]);
+		goto error;
 	}
 
 	/* Start tracing the first tracee and all its children.  */
 	exit(event_loop());
+
+error:
+	TALLOC_FREE(tracee);
+
+	if (exit_failure) {
+		fprintf(stderr, "proot error: see `proot --help` or `man proot`.\n");
+		exit(EXIT_FAILURE);
+	}
+	else
+		exit(EXIT_SUCCESS);
 }

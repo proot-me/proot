@@ -25,7 +25,9 @@
 
 #include <stdbool.h>
 
-extern bool launch_process();
+#include "tracee/tracee.h"
+
+extern int launch_process(Tracee *tracee);
 extern int event_loop();
 
 #endif /* TRACEE_EVENT_H */

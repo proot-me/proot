@@ -22,7 +22,7 @@
 
 #include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <sys/types.h>  /* pid_t, size_t, */
-#include <stdlib.h>     /* NULL, exit(3), */
+#include <stdlib.h>     /* NULL, */
 #include <stddef.h>     /* offsetof(), */
 #include <sys/user.h>   /* struct user*, */
 #include <errno.h>      /* errno, */

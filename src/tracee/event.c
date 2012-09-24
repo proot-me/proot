@@ -46,7 +46,11 @@
 
 #include "compat.h"
 
-bool launch_process(Tracee *tracee)
+/**
+ * Launch the first process as specified by @tracee->cmdline[].  This
+ * function returns -1 if an error occurred, otherwise 0.
+ */
+int launch_process(Tracee *tracee)
 {
 	struct rlimit rlimit;
 	long status;
@@ -56,13 +60,16 @@ bool launch_process(Tracee *tracee)
 	switch(pid) {
 	case -1:
 		notice(ERROR, SYSTEM, "fork()");
+		return -1;
 
 	case 0: /* child */
 		/* Declare myself as ptraceable before executing the
 		 * requested program. */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-		if (status < 0)
+		if (status < 0) {
 			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
+			return -1;
+		}
 
 		/* Warn about open file descriptors. They won't be
 		 * translated until they are closed. */
@@ -157,7 +164,7 @@ bool launch_process(Tracee *tracee)
 
 		execvp(tracee->cmdline[0], tracee->cmdline);
 
-		return false;
+		return -1;
 
 	default: /* parent */
 		/* We know the pid of the first tracee now.  */
@@ -165,11 +172,11 @@ bool launch_process(Tracee *tracee)
 
 		/* This tracee has no traced parent.  */
 		inherit(tracee, NULL);
-		return true;
+		return 0;
 	}
 
 	/* Never reached.  */
-	return false;
+	return -1;
 }
 
 /* Send the KILL signal to all [known] tracees.  */
@@ -260,16 +267,17 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 	}
 }
 
+/**
+ * Wait then handle any event from any tracee.  This function returns
+ * the exit status of the last terminated program.
+ */
 int event_loop()
 {
 	struct sigaction signal_action;
 	int last_exit_status = -1;
-	int tracee_status;
-	Tracee *tracee;
 	long status;
 	int signum;
 	int signal;
-	pid_t pid;
 
 	/* Kill all tracees when exiting.  */
 	status = atexit(kill_all_tracees);
@@ -330,13 +338,18 @@ int event_loop()
 
 	signal = 0;
 	while (1) {
+		int tracee_status;
+		Tracee *tracee;
+		pid_t pid;
+
 		/* Wait for the next tracee's stop. */
 		pid = waitpid(-1, &tracee_status, __WALL);
 		if (pid < 0) {
-			if (errno != ECHILD)
+			if (errno != ECHILD) {
 				notice(ERROR, SYSTEM, "waitpid()");
-			else
-				break;
+				return EXIT_FAILURE;
+			}
+			break;
 		}
 
 		/* Get the information about this tracee. */
@@ -389,8 +402,10 @@ int event_loop()
 						PTRACE_O_TRACEVFORK   |
 						PTRACE_O_TRACEEXEC    |
 						PTRACE_O_TRACECLONE);
-				if (status < 0)
+				if (status < 0) {
 					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
+					return EXIT_FAILURE;
+				}
 				/* Fall through. */
 			case SIGTRAP | 0x80:
 				assert(tracee->exe != NULL);

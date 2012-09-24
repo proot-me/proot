@@ -44,7 +44,7 @@ typedef LIST_HEAD(bindings, binding) Bindings;
 
 extern mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final);
 extern Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist);
-extern void initialize_bindings(Tracee *tracee);
+extern int initialize_bindings(Tracee *tracee);
 extern const char *get_path_binding(Tracee* tracee, Side side, const char path[PATH_MAX]);
 extern int substitute_binding(Tracee* tracee, Side side, char path[PATH_MAX]);
 
