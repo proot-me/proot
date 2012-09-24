@@ -438,7 +438,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 		type = S_IFDIR;
 
 	/* Try to create this component into the "guest" or "glue"
-	 * rootfs (depending if there were a glue previsouly).  */
+	 * rootfs (depending if there were a glue previously).  */
 	if (S_ISDIR(type))
 		status = mkdir(host_path, 0777);
 	else
@@ -485,6 +485,43 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 }
 
 /**
+ * Detach all bindings pointed to by @bindings.
+ *
+ * Note: this is a Talloc destructor.
+ */
+static int remove_bindings(Bindings *bindings)
+{
+	Binding *binding;
+	Tracee *tracee;
+
+	/* Each binding is linked to itself (both prev and next), this
+	 * ensures no use-after-free will occured in their destructor
+	 * (remove_binding()).  */
+#define LIST_DETACH_ALL(link) do {				\
+	binding = LIST_FIRST(bindings);				\
+	while (binding != NULL) {				\
+		Binding *next = LIST_NEXT(binding, link);	\
+		binding->link.le_prev = &binding;		\
+		binding->link.le_next = binding;		\
+		binding = next;					\
+	}							\
+} while (0)
+
+	/* Search which link is used by this list.  */
+	tracee = talloc_get_type(talloc_parent(bindings), Tracee);
+	if (bindings == tracee->bindings_user)
+		LIST_DETACH_ALL(user_link);
+	else if (bindings == tracee->bindings_guest)
+		LIST_DETACH_ALL(guest_link);
+	else if (bindings == tracee->bindings_host)
+		LIST_DETACH_ALL(host_link);
+
+	bzero(bindings, sizeof(Bindings));
+
+	return 0;
+}
+
+/**
  * Remove @binding from all the list of bindings it belongs to.
  *
  * Note: this is a Talloc destructor.
@@ -524,6 +561,7 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 			notice(WARNING, INTERNAL, "talloc_zero() failed");
 			return NULL;
 		}
+		talloc_set_destructor(tracee->bindings_user, remove_bindings);
 	}
 
 	/* Allocate an empty binding.  */
@@ -675,6 +713,9 @@ void initialize_bindings(Tracee *tracee)
 	tracee->bindings_host  = talloc_zero(tracee, Bindings);
 	if (tracee->bindings_guest == NULL || tracee->bindings_host == NULL)
 		notice(ERROR, INTERNAL, "can't allocate enough memory");
+
+	talloc_set_destructor(tracee->bindings_guest, remove_bindings);
+	talloc_set_destructor(tracee->bindings_host, remove_bindings);
 
 	/* Sanity check: the first binding has to be "/".  */
 	binding = LIST_FIRST(tracee->bindings_user);
