@@ -179,17 +179,8 @@ int launch_process(Tracee *tracee)
 	return -1;
 }
 
-/* Send the KILL signal to all [known] tracees.  */
-static void kill_all_tracees()
-{
-	Tracee *tracee;
-
-	LIST_FOREACH(tracee, &tracees, link)
-		kill(tracee->pid, SIGKILL);
-
-	notice(INFO, USER, "exited");
-}
-
+/* Send the KILL signal to all tracees when PRoot has received a fatal
+ * signal.  */
 static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
 {
 	notice(WARNING, INTERNAL, "signal %d received from process %d", signum, siginfo->si_pid);
@@ -235,7 +226,7 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 			else if (strcmp(name, "Bindings") == 0) {
 				 Tracee *tracee;
 
-				 tracee = talloc_get_type(talloc_parent(ptr), Tracee);
+				 tracee = talloc_get_type_abort(talloc_parent(ptr), Tracee);
 
 				 if (ptr == tracee->bindings_user)
 					 fprintf(stderr, "\t(user)");

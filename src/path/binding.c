@@ -508,7 +508,7 @@ static int remove_bindings(Bindings *bindings)
 } while (0)
 
 	/* Search which link is used by this list.  */
-	tracee = talloc_get_type(talloc_parent(bindings), Tracee);
+	tracee = talloc_get_type_abort(talloc_parent(bindings), Tracee);
 	if (bindings == tracee->bindings_user)
 		LIST_DETACH_ALL(user_link);
 	else if (bindings == tracee->bindings_guest)

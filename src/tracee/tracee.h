@@ -135,12 +135,10 @@ typedef struct tracee {
 
 #define HOST_ROOTFS "/host-rootfs"
 
-#define TRACEE(a) talloc_parent(talloc_parent(a))
-
-typedef LIST_HEAD(tracees, tracee) Tracees;
-extern Tracees tracees;
+#define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(pid_t pid, bool create);
 extern void inherit(Tracee *child, Tracee *parent);
+extern void kill_all_tracees();
 
 #endif /* TRACEE_H */

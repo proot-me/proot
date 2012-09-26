@@ -27,11 +27,13 @@
 #include <stdbool.h>    /* bool, true, false, */
 #include <sys/queue.h>  /* LIST_*,  */
 #include <talloc.h>     /* talloc_*, */
+#include <signal.h>     /* kill(2), SIGKILL, */
 
 #include "tracee/tracee.h"
 #include "notice.h"
 
-Tracees tracees;
+typedef LIST_HEAD(tracees, tracee) Tracees;
+static Tracees tracees;
 
 /**
  * Remove @tracee from the list of tracees.
@@ -149,4 +151,15 @@ void inherit(Tracee *child, Tracee *parent)
 #endif
 
 	return;
+}
+
+/* Send the KILL signal to all tracees.  */
+void kill_all_tracees()
+{
+	Tracee *tracee;
+
+	LIST_FOREACH(tracee, &tracees, link)
+		kill(tracee->pid, SIGKILL);
+
+	notice(INFO, USER, "exited");
 }
