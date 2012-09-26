@@ -147,8 +147,6 @@ void inherit(Tracee *child, Tracee *parent)
 	child->root = talloc_reference(child, parent->root);
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
-	child->kernel_release = talloc_reference(child, parent->kernel_release);
-	child->fake_id0 = parent->fake_id0;
 
 	inherit_extensions(child, parent);
 #endif

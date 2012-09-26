@@ -222,13 +222,18 @@ static int handle_option_w(Tracee *tracee, char *value)
 
 static int handle_option_k(Tracee *tracee, char *value)
 {
-	tracee->kernel_release = value;
+	int status;
+
+	status = initialize_extension(tracee, kompat_callback, value);
+	if (status < 0)
+		notice(WARNING, INTERNAL, "option \"-k %s\" discarded", value);
+
 	return 0;
 }
 
 static int handle_option_0(Tracee *tracee, char *value)
 {
-	tracee->fake_id0 = true;
+	(void) initialize_extension(tracee, fake_id0_callback, value);
 	return 0;
 }
 
@@ -405,12 +410,6 @@ static void print_config(Tracee *tracee)
 
 	if (tracee->cwd)
 		notice(INFO, USER, "initial cwd = %s", tracee->cwd);
-
-	if (tracee->kernel_release)
-		notice(INFO, USER, "kernel release = %s", tracee->kernel_release);
-
-	if (tracee->fake_id0)
-		notice(INFO, USER, "fake root id = true");
 
 	notice(INFO, USER, "verbose level = %d", verbose_level);
 

@@ -27,11 +27,9 @@
 #include <limits.h>      /* PATH_MAX, */
 #include <stddef.h>      /* intptr_t, offsetof(3), getenv(2), */
 #include <errno.h>       /* errno(3), */
-#include <stdlib.h>      /* strtoul(3), */
 #include <string.h>      /* strlen(3), */
 #include <sys/utsname.h> /* struct utsname, */
 #include <stdarg.h>      /* va_*, */
-#include <linux/version.h> /* KERNEL_VERSION, */
 #include <talloc.h>      /* talloc_*, */
 
 #include "syscall/syscall.h"
@@ -156,91 +154,6 @@ static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
 	return translate_path2(tracee, AT_FDCWD, old_path, reg, type);
 }
 
-static int parse_kernel_release(const char *release)
-{
-	unsigned long major = 0;
-	unsigned long minor = 0;
-	unsigned long revision = 0;
-	char *cursor = (char *)release;
-
-	major = strtoul(cursor, &cursor, 10);
-
-	if (*cursor == '.') {
-		cursor++;
-		minor = strtoul(cursor, &cursor, 10);
-	}
-
-	if (*cursor == '.') {
-		cursor++;
-		revision = strtoul(cursor, &cursor, 10);
-	}
-
-	return KERNEL_VERSION(major, minor, revision);
-}
-
-#define MAX_ARG_SHIFT 2
-typedef struct {
-	int expected_release;
-	word_t new_sysarg_num;
-	struct {
-		Reg sysarg;     /* first argument to be moved.  */
-		size_t nb_args; /* number of arguments to be moved.  */
-		int offset;     /* offset to be applied.  */
-	} shifts[MAX_ARG_SHIFT];
-} Modif;
-
-/**
- * Modify the current syscall of @tracee as described by @modif.
- *
- * This function return -errno if an error occured, otherwise 0.
- */
-static int modify_syscall(Tracee *tracee, Modif *modif)
-{
-	static int emulated_release = -1;
-	static int actual_release = -1;
-	int status;
-	int i;
-	int j;
-
-	assert(tracee->kernel_release != NULL);
-
-	if (emulated_release < 0)
-		emulated_release = parse_kernel_release(tracee->kernel_release);
-
-	if (actual_release < 0) {
-		struct utsname utsname;
-
-		status = uname(&utsname);
-		if (status < 0 || getenv("PROOT_FORCE_SYSCALL_COMPAT") != NULL)
-			actual_release = 0;
-		else
-			actual_release = parse_kernel_release(utsname.release);
-	}
-
-	/* Emulate only syscalls that are available in the expected
-	 * release but that are missing in the actual one.  */
-	if (   modif->expected_release <= actual_release
-	    || modif->expected_release > emulated_release)
-		return 0;
-
-	poke_reg(tracee, SYSARG_NUM, modif->new_sysarg_num);
-
-	/* Shift syscall arguments.  */
-	for (i = 0; i < MAX_ARG_SHIFT; i++) {
-		Reg sysarg     = modif->shifts[i].sysarg;
-		size_t nb_args = modif->shifts[i].nb_args;
-		int offset     = modif->shifts[i].offset;
-
-		for (j = 0; j < nb_args; j++) {
-			word_t arg = peek_reg(tracee, CURRENT, sysarg + j);
-			poke_reg(tracee, sysarg + j + offset, arg);
-		}
-	}
-	status = 0;
-
-	return status;
-}
-
 /**
  * Translate the input arguments of the current @tracee's syscall in the
  * @tracee->pid process area. This function sets @tracee->status to
@@ -283,25 +196,13 @@ static int translate_syscall_enter(Tracee *tracee)
 	switch (get_abi(tracee)) {
 	case ABI_DEFAULT: {
 		#include SYSNUM_HEADER
-
 		#include "syscall/enter.c"
-
-		if (tracee->kernel_release != NULL && status >= 0) {
-			/* Errors are ignored.  */
-			#include "syscall/compat.c"
-		}
 	}
 		break;
 #ifdef SYSNUM_HEADER2
 	case ABI_2: {
 		#include SYSNUM_HEADER2
-
 		#include "syscall/enter.c"
-
-		if (tracee->kernel_release != NULL && status >= 0) {
-			/* Errors are ignored.  */
-			#include "syscall/compat.c"
-		}
 	}
 		break;
 #endif

@@ -129,10 +129,6 @@ typedef struct tracee {
 	/* Path to glue between the guest rootfs and the host rootfs.  */
 	char *glue;
 
-	/* Extra configuration (will be handled by dedicated extensions soon).  */
-	const char *kernel_release;
-	bool fake_id0;
-
 	/* List of extensions enabled for this tracee.  */
 	struct extensions *extensions;
 } Tracee;

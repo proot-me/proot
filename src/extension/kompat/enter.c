@@ -29,8 +29,8 @@ case PR_accept4: {
 		.new_sysarg_num   = PR_accept,
 		.shifts		  = {{0}}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_dup3: {
@@ -39,8 +39,8 @@ case PR_dup3: {
 		.new_sysarg_num   = PR_dup2,
 		.shifts		  = {{0}}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_epoll_create1: {
@@ -50,8 +50,8 @@ case PR_epoll_create1: {
 		.shifts		  = {{0}}
 	};
 	poke_reg(tracee, SYSARG_1, 0); /* Force "size" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_epoll_pwait: {
@@ -61,8 +61,8 @@ case PR_epoll_pwait: {
 		.shifts		  = {{0}}
 	};
 	poke_reg(tracee, SYSARG_5, 0); /* Force "sigmask" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_eventfd2: {
@@ -72,8 +72,8 @@ case PR_eventfd2: {
 		.shifts		  = {{0}}
 	};
 	poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_faccessat: {
@@ -87,8 +87,8 @@ case PR_faccessat: {
 		}
 	};
 	poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_fchmodat: {
@@ -102,11 +102,12 @@ case PR_fchmodat: {
 		}
 	};
 	poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_fchownat: {
+	word_t flags;
 	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.shifts	= { [0] = {
@@ -122,12 +123,13 @@ case PR_fchownat: {
 				: PR_chown);
 
 	poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_newfstatat:
 case PR_fstatat64: {
+	word_t flags;
 	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.shifts = { [0] = {
@@ -147,8 +149,8 @@ case PR_fstatat64: {
 #endif
 
 	poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_futimesat: {
@@ -161,8 +163,8 @@ case PR_futimesat: {
 				.offset  = -1 }
 		}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_inotify_init1: {
@@ -172,8 +174,8 @@ case PR_inotify_init1: {
 		.shifts		  = {{0}}
 	};
 	poke_reg(tracee, SYSARG_1, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_linkat: {
@@ -191,8 +193,8 @@ case PR_linkat: {
 		}
 	};
 	poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_mkdirat: {
@@ -205,8 +207,8 @@ case PR_mkdirat: {
 				.offset  = -1 }
 		}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_mknodat: {
@@ -219,8 +221,8 @@ case PR_mknodat: {
 				.offset  = -1 }
 		}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_openat: {
@@ -233,8 +235,8 @@ case PR_openat: {
 				.offset  = -1 }
 		}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_pipe2: {
@@ -244,8 +246,8 @@ case PR_pipe2: {
 		.shifts		  = {{0}}
 	};
 	poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_pselect6: {
@@ -259,8 +261,8 @@ case PR_pselect6: {
 		.shifts		  = {{0}}
 	};
 	poke_reg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_readlinkat: {
@@ -273,8 +275,8 @@ case PR_readlinkat: {
 				.offset  = -1}
 		}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_renameat: {
@@ -291,8 +293,8 @@ case PR_renameat: {
 				.offset  = -2 }
 		}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_signalfd4: {
@@ -302,8 +304,8 @@ case PR_signalfd4: {
 		.shifts		  = {{0}}
 	};
 	poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_symlinkat: {
@@ -316,11 +318,12 @@ case PR_symlinkat: {
 				.offset  = -1 }
 		}
 	};
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 case PR_unlinkat: {
+	word_t flags;
 	Modif modif = {
 		.expected_release = KERNEL_VERSION(2,6,16),
 		.shifts = { [0] = {
@@ -337,10 +340,10 @@ case PR_unlinkat: {
 				: PR_unlink);
 
 	poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
-	modify_syscall(tracee, &modif);
-	break;
+	modify_syscall(tracee, config, &modif);
+	return 0;
 }
 
 default:
-	break;
+	return 0;
 }

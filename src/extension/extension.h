@@ -152,4 +152,8 @@ static inline int notify_extensions(Tracee *tracee, ExtensionEvent event,
 	return 0;
 }
 
+/* Built-in extensions.  */
+extern int kompat_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
+extern int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
+
 #endif /* EXTENSION_H */

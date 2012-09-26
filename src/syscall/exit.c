@@ -172,18 +172,14 @@ case PR_readlinkat: {
 }
 	break;
 
+#if defined(ARCH_X86_64)
 case PR_uname: {
 	struct utsname utsname;
 	word_t address;
 	word_t result;
 	size_t size;
 
-	bool change_uname;
-
-	change_uname = tracee->kernel_release != NULL
-		       || get_abi(tracee) != ABI_DEFAULT;
-
-	if (!change_uname) {
+	if (get_abi(tracee) != ABI_2) {
 		/* Nothing to do.  */
 		status = 0;
 		goto end;
@@ -203,40 +199,11 @@ case PR_uname: {
 	if (status < 0)
 		goto end;
 
-	/*
-	 * Note: on x86_64, we can handle the two modes (32/64) with
-	 * the same code since struct utsname as always the same
-	 * layout.
-	 */
-
-	if (tracee->kernel_release) {
-		size = sizeof(utsname.release);
-
-		strncpy(utsname.release, tracee->kernel_release, size);
-		utsname.release[size - 1] = '\0';
-	}
-
-#if defined(ARCH_X86_64)
-	switch (get_abi(tracee)) {
-	case ABI_DEFAULT:
-		/* Nothing to do.  */
-		break;
-
-	case ABI_2:
-		size = sizeof(utsname.machine);
-
-		/* Some 32-bit programs like package managers can be
-		 * confused when the kernel reports "x86_64".  */
-		strncpy(utsname.machine, "i686", size);
-		utsname.machine[size - 1] = '\0';
-		break;
-
-	default:
-		assert(0);
-	}
-#else
-	assert(get_abi(tracee) == ABI_DEFAULT);
-#endif
+	/* Some 32-bit programs like package managers can be
+	 * confused when the kernel reports "x86_64".  */
+	size = sizeof(utsname.machine);
+	strncpy(utsname.machine, "i686", size);
+	utsname.machine[size - 1] = '\0';
 
 	status = write_data(tracee, address, &utsname, sizeof(utsname));
 	if (status < 0)
@@ -245,67 +212,7 @@ case PR_uname: {
 	status = 0;
 }
 	break;
-
-case PR_chroot: {
-	char path[PATH_MAX];
-	word_t result;
-	word_t input;
-
-	if (!tracee->fake_id0) {
-		status = 0;
-		goto end;
-	}
-
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-
-	/* Override only permission errors.  */
-	if ((int) result != -EPERM) {
-		status = 0;
-		goto end;
-	}
-
-	input = peek_reg(tracee, MODIFIED, SYSARG_1);
-
-	status = read_string(tracee, path, input, PATH_MAX);
-	if (status < 0)
-		goto end;
-
-	/* Succeed only if the new rootfs == current rootfs.  */
-	status = compare_paths(tracee->root, path);
-	if (status != PATHS_ARE_EQUAL) {
-		status = 0;
-		goto end;
-	}
-
-	status = 0;
-}
-	break;
-
-case PR_chown:
-case PR_fchown:
-case PR_lchown:
-case PR_chown32:
-case PR_fchown32:
-case PR_lchown32:
-case PR_fchownat: {
-	word_t result;
-
-	if (!tracee->fake_id0) {
-		status = 0;
-		goto end;
-	}
-
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-
-	/* Override only permission errors.  */
-	if ((int) result != -EPERM) {
-		status = 0;
-		goto end;
-	}
-
-	status = 0;
-}
-	break;
+#endif
 
 case PR_execve:
 	if ((int) peek_reg(tracee, CURRENT, SYSARG_RESULT) >= 0) {
@@ -315,33 +222,6 @@ case PR_sigreturn:
 	}
 	status = 0;
 	goto end;
-
-case PR_getuid:
-case PR_getgid:
-case PR_getegid:
-case PR_geteuid:
-case PR_getuid32:
-case PR_getgid32:
-case PR_geteuid32:
-case PR_getegid32:
-case PR_setuid:
-case PR_setgid:
-case PR_setfsuid:
-case PR_setfsgid:
-case PR_setuid32:
-case PR_setgid32:
-case PR_setfsuid32:
-case PR_setfsgid32:
-	status = 0;
-	if (tracee->fake_id0)
-		break;
-	goto end;
-
-case PR_getresuid:
-case PR_getresuid32:
-case PR_getresgid:
-case PR_getresgid32:
-	/* TODO.  */
 
 default:
 	status = 0;
