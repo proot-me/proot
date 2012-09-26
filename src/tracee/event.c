@@ -43,6 +43,7 @@
 #include "path/path.h"
 #include "path/binding.h"
 #include "syscall/syscall.h"
+#include "extension/extension.h"
 
 #include "compat.h"
 
@@ -347,6 +348,10 @@ int event_loop()
 		tracee = get_tracee(pid, true);
 		assert(tracee != NULL);
 
+		status = notify_extensions(tracee, NEW_TRACEE_STATUS, tracee_status, 0);
+		if (status != 0)
+			continue;
+
 		if (WIFEXITED(tracee_status)) {
 			VERBOSE(1, "pid %d: exited with status %d",
 				pid, WEXITSTATUS(tracee_status));
@@ -392,7 +397,8 @@ int event_loop()
 						PTRACE_O_TRACEFORK    |
 						PTRACE_O_TRACEVFORK   |
 						PTRACE_O_TRACEEXEC    |
-						PTRACE_O_TRACECLONE);
+						PTRACE_O_TRACECLONE   |
+						PTRACE_O_TRACEEXIT);
 				if (status < 0) {
 					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 					return EXIT_FAILURE;
@@ -443,6 +449,7 @@ int event_loop()
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
+			case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
 				signal = 0;
 				break;
 

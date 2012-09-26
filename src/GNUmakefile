@@ -27,7 +27,8 @@ OBJECTS = cli.o			\
 	tracee/array.o		\
 	tracee/mem.o		\
 	tracee/reg.o		\
-	tracee/event.o
+	tracee/event.o		\
+	extension/extension.o
 
 .DEFAULT_GOAL = proot
 all: proot

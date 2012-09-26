@@ -36,6 +36,7 @@
 #include "path/binding.h"
 #include "path/canon.h"
 #include "path/proc.h"
+#include "extension/extension.h"
 #include "notice.h"
 #include "build.h"
 
@@ -244,6 +245,12 @@ int translate_path(Tracee *tracee, char result[PATH_MAX],
 
 	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", pid, result, fake_path);
 
+	status = notify_extensions(tracee, GUEST_PATH, (intptr_t)result, (intptr_t)fake_path);
+	if (status < 0)
+		return status;
+	if (status > 0)
+		goto skip;
+
 	/* Canonicalize regarding the new root. */
 	status = canonicalize(tracee, fake_path, deref_final, result, 0);
 	if (status < 0)
@@ -256,6 +263,7 @@ int translate_path(Tracee *tracee, char result[PATH_MAX],
 	if (status < 0)
 		return status;
 
+skip:
 	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
 	return 0;
 }

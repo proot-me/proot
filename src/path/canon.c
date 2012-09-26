@@ -33,6 +33,7 @@
 #include "path/path.h"
 #include "path/binding.h"
 #include "path/proc.h"
+#include "extension/extension.h"
 #include "notice.h"
 
 /**
@@ -61,6 +62,10 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality is_final,
 			status = -1;
 	}
 	else {
+		status = notify_extensions(tracee, HOST_PATH, (intptr_t)host_path, is_final);
+		if (status < 0)
+			return status;
+
 		statl.st_mode = 0;
 		status = lstat(host_path, &statl);
 	}

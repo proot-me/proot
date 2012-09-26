@@ -42,6 +42,7 @@
 #include "tracee/abi.h"
 #include "path/path.h"
 #include "execve/execve.h"
+#include "extension/extension.h"
 #include "notice.h"
 
 #include "compat.h"
@@ -272,6 +273,12 @@ static int translate_syscall_enter(Tracee *tracee)
 		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid,
 			(int)peek_reg(tracee, CURRENT, SYSARG_NUM));
 
+	status = notify_extensions(tracee, SYSCALL_ENTER_START, 0, 0);
+	if (status < 0)
+		return status;
+	if (status > 0)
+		goto skip;
+
 	/* Translate input arguments. */
 	switch (get_abi(tracee)) {
 	case ABI_DEFAULT: {
@@ -313,6 +320,11 @@ static int translate_syscall_enter(Tracee *tracee)
 	else
 		tracee->status = 1;
 
+	status = notify_extensions(tracee, SYSCALL_ENTER_END, 0, 0);
+	if (status < 0)
+		return status;
+
+skip:
 	return 0;
 }
 
@@ -326,6 +338,12 @@ static int translate_syscall_exit(Tracee *tracee)
 {
 	bool restore_original_sp = true;
 	int status;
+
+	status = notify_extensions(tracee, SYSCALL_EXIT_START, 0, 0);
+	if (status < 0)
+		return status;
+	if (status > 0)
+		goto skip;
 
 	/* Set the tracee's errno if an error occured previously during
 	 * the translation. */
@@ -359,6 +377,10 @@ static int translate_syscall_exit(Tracee *tracee)
 	status = 0;
 
 end:
+	/* Propagate the error from exit.c.  */
+	if (status < 0)
+		goto skip;
+
 	/* "restore_original_sp" was updated in syscall/exit.c.  */
 	if (restore_original_sp)
 		poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
@@ -367,14 +389,14 @@ end:
 		peek_reg(tracee, CURRENT, SYSARG_RESULT),
 		peek_reg(tracee, CURRENT, STACK_POINTER));
 
-	if (status > 0)
-		status = 0;
-
 	/* Reset the tracee's status. */
 	tracee->status = 0;
 
-	/* The Tracee will be freed in
-	 * event_loop() if status < 0. */
+	status = notify_extensions(tracee, SYSCALL_EXIT_END, 0, 0);
+skip:
+	/* The Tracee will be freed in event_loop() if status < 0. */
+	if (status > 0)
+		status = 0;
 	return status;
 }
 

@@ -37,14 +37,12 @@
 #include <talloc.h>    /* talloc_*, */
 
 #include "cli.h"
-#include "path/binding.h"
 #include "notice.h"
 #include "path/path.h"
 #include "path/binding.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
-#include "tracee/tracee.h"
-#include "execve/ldso.h"
+#include "extension/extension.h"
 #include "build.h"
 
 static int handle_option_r(Tracee *tracee, char *value)
@@ -258,10 +256,10 @@ static int handle_option_V(Tracee *tracee, char *value)
 	return -1;
 }
 
-static void print_usage(bool);
+static void print_usage(Tracee *, bool);
 static int handle_option_h(Tracee *tracee, char *value)
 {
-	print_usage(true);
+	print_usage(tracee, true);
 	exit_failure = false;
 	return -1;
 }
@@ -294,7 +292,7 @@ static int handle_option_Q(Tracee *tracee, char *value)
 /**
  * Print a (@detailed) usage of PRoot.
  */
-static void print_usage(bool detailed)
+static void print_usage(Tracee *tracee, bool detailed)
 {
 	const char *current_class = "none";
 	int i, j;
@@ -337,6 +335,8 @@ static void print_usage(bool detailed)
 				printf("\t");
 		}
 	}
+
+	notify_extensions(tracee, PRINT_USAGE, detailed, 0);
 
 	if (detailed)
 		printf("%s\n", colophon);
@@ -390,7 +390,7 @@ static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 	notice(INFO, USER, "%s", string);
 }
 
-static void print_config(const Tracee *tracee)
+static void print_config(Tracee *tracee)
 {
 	notice(INFO, USER, "guest rootfs = %s", tracee->root);
 
@@ -413,6 +413,8 @@ static void print_config(const Tracee *tracee)
 		notice(INFO, USER, "fake root id = true");
 
 	notice(INFO, USER, "verbose level = %d", verbose_level);
+
+	notify_extensions(tracee, PRINT_CONFIG, 0, 0);
 }
 
 /**
@@ -427,7 +429,7 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 	int status;
 
 	if (argc == 1) {
-		print_usage(false);
+		print_usage(tracee, false);
 		return -1;
 	}
 

@@ -41,6 +41,7 @@ typedef enum {
 } RegVersion;
 
 struct bindings;
+struct extensions;
 
 /* Information related to a tracee process. */
 typedef struct tracee {
@@ -131,6 +132,9 @@ typedef struct tracee {
 	/* Extra configuration (will be handled by dedicated extensions soon).  */
 	const char *kernel_release;
 	bool fake_id0;
+
+	/* List of extensions enabled for this tracee.  */
+	struct extensions *extensions;
 } Tracee;
 
 #define HOST_ROOTFS "/host-rootfs"

@@ -30,6 +30,7 @@
 #include <signal.h>     /* kill(2), SIGKILL, */
 
 #include "tracee/tracee.h"
+#include "extension/extension.h"
 #include "notice.h"
 
 typedef LIST_HEAD(tracees, tracee) Tracees;
@@ -148,6 +149,8 @@ void inherit(Tracee *child, Tracee *parent)
 	child->glue = talloc_reference(child, parent->glue);
 	child->kernel_release = talloc_reference(child, parent->kernel_release);
 	child->fake_id0 = parent->fake_id0;
+
+	inherit_extensions(child, parent);
 #endif
 
 	return;
