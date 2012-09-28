@@ -626,7 +626,7 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 
 	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL) {
 		if (LIST_FIRST(HEAD(tracee, HOST)) != NULL) {
-			notice(ERROR, USER, "explicit binding to \"/\" isn't allowed, "
+			notice(WARNING, USER, "explicit binding to \"/\" isn't allowed, "
 					    "use the -r option instead");
 			goto error;
 		}
@@ -691,7 +691,6 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 	return 0;
 
 error:
-	TALLOC_FREE(binding);
 	return -1;
 }
 
@@ -729,12 +728,16 @@ int initialize_bindings(Tracee *tracee)
 	 * @tracee->bindings_user.  */
 	while (binding != NULL) {
 		Binding *next;
+		int status;
 
 		next = LIST_NEXT(binding, user_link);
 
-		initialize_binding(tracee, binding);
+		status = initialize_binding(tracee, binding);
+		if (status < 0)
+			TALLOC_FREE(binding);
+		else
+			LIST_REMOVE_(binding, user_link);
 
-		LIST_REMOVE_(binding, user_link);
 		binding = next;
 	}
 

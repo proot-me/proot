@@ -30,3 +30,5 @@ ${PROOT} -r ${DONT_EXIST} -r ${ROOTFS} true
 
 ${PROOT} -b /bin/true:${DONT_EXIST} ${DONT_EXIST}
 
+${PROOT} -r / -b /etc:/ true
+${PROOT} -b /etc:/ true
