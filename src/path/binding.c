@@ -31,7 +31,7 @@
 #include <limits.h>   /* PATH_MAX, */
 #include <errno.h>    /* errno, E* */
 #include <stdio.h>    /* sprintf(3), */
-#include <sys/queue.h> /* LIST_*, */
+#include <sys/queue.h> /* CIRCLEQ_*, */
 #include <talloc.h>   /* talloc_*, */
 
 #include "path/binding.h"
@@ -39,43 +39,41 @@
 #include "path/canon.h"
 #include "notice.h"
 
-#define HEAD(tracee, side)  (side == GUEST ? (tracee)->bindings_guest : (tracee)->bindings_host)
+#define HEAD(tracee, side)  (side == GUEST ? (tracee)->bindings.guest : (tracee)->bindings.host)
 
-#define LIST_FOREACH_(tracee, binding, side)				\
-	for (binding = LIST_FIRST(HEAD(tracee, side));			\
-	     binding != NULL;						\
+#define CIRCLEQ_FOREACH_(tracee, binding, side)				\
+	for (binding = CIRCLEQ_FIRST(HEAD(tracee, side));		\
+	     binding != (void *) HEAD(tracee, side);			\
 	     binding = (side == GUEST					\
-		     ? LIST_NEXT(binding, guest_link)			\
-		     : LIST_NEXT(binding, host_link)))
+		     ? CIRCLEQ_NEXT(binding, link.guest)		\
+		     : CIRCLEQ_NEXT(binding, link.host)))
 
-#define LIST_INSERT_AFTER_(previous, binding, side) do {	\
-	if (side == GUEST)					\
-		LIST_INSERT_AFTER(previous, binding, guest_link); \
-	else							\
-		LIST_INSERT_AFTER(previous, binding, host_link); \
+#define CIRCLEQ_INSERT_AFTER_(tracee, previous, binding, side) do {	\
+	if (side == GUEST)						\
+		CIRCLEQ_INSERT_AFTER((tracee)->bindings.guest, previous, binding, link.guest); \
+	else								\
+		CIRCLEQ_INSERT_AFTER((tracee)->bindings.host, previous, binding, link.host); \
 } while (0)
 
-#define LIST_INSERT_BEFORE_(next, binding, side) do {		\
-	if (side == GUEST)					\
-		LIST_INSERT_BEFORE(next, binding, guest_link);	\
-	else							\
-		LIST_INSERT_BEFORE(next, binding, host_link);	\
+#define CIRCLEQ_INSERT_BEFORE_(tracee, next, binding, side) do {		\
+	if (side == GUEST)						\
+		CIRCLEQ_INSERT_BEFORE((tracee)->bindings.guest, next, binding, link.guest); \
+	else								\
+		CIRCLEQ_INSERT_BEFORE((tracee)->bindings.host, next, binding, link.host); \
 } while (0)
 
-#define LIST_INSERT_HEAD_(tracee, binding, side) do {		\
-	if (side == GUEST)					\
-		LIST_INSERT_HEAD(HEAD(tracee, side), binding, guest_link); \
-	else							\
-		LIST_INSERT_HEAD(HEAD(tracee, side), binding, host_link); \
+#define CIRCLEQ_INSERT_HEAD_(tracee, binding, side) do {		\
+	if (side == GUEST)						\
+		CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.guest); \
+	else								\
+		CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.host); \
 } while (0)
 
 #define IS_LINKED(binding, link)					\
-	((binding)->link.le_next != NULL || (binding)->link.le_prev != NULL)
+	((binding)->link.cqe_next != NULL || (binding)->link.cqe_prev != NULL)
 
-#define LIST_REMOVE_(binding, link) do {		\
-	LIST_REMOVE(binding, link);			\
-	bzero(&binding->link, sizeof(binding->link));	\
-} while (0)
+#define CIRCLEQ_REMOVE_(tracee, binding, name) \
+	CIRCLEQ_REMOVE((tracee)->bindings.name, binding, link.name);
 
 /**
  * Print all bindings (verbose purpose).
@@ -84,10 +82,10 @@ static void print_bindings(const Tracee *tracee)
 {
 	const Binding *binding;
 
-	if (tracee->bindings_guest == NULL)
+	if (tracee->bindings.guest == NULL)
 		return;
 
-	LIST_FOREACH_(tracee, binding, GUEST) {
+	CIRCLEQ_FOREACH_(tracee, binding, GUEST) {
 		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
 			notice(INFO, USER, "binding = %s", binding->host.path);
 		else
@@ -108,7 +106,7 @@ static const Binding *get_binding(Tracee *tracee, Side side, const char path[PAT
 	/* Sanity checks.  */
 	assert(path != NULL && path[0] == '/');
 
-	LIST_FOREACH_(tracee, binding, side) {
+	CIRCLEQ_FOREACH_(tracee, binding, side) {
 		Comparison comparison;
 		const Path *ref;
 
@@ -278,10 +276,10 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 {
 	Binding *iterator;
 	Binding *previous = NULL;
-	Binding *next = LIST_FIRST(HEAD(tracee, side));
+	Binding *next = CIRCLEQ_FIRST(HEAD(tracee, side));
 
 	/* Find where it should be added in the list.  */
-	LIST_FOREACH_(tracee, iterator, side) {
+	CIRCLEQ_FOREACH_(tracee, iterator, side) {
 		Comparison comparison;
 		const Path *binding_path;
 		const Path *iterator_path;
@@ -325,7 +323,7 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 		case PATH2_IS_PREFIX:
 			/* The iterator contains the new binding.
 			 * Use the deepest container.  */
-			if (next == NULL)
+			if (next == (void *) HEAD(tracee, side))
 				next = iterator;
 			break;
 
@@ -340,13 +338,13 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 
 	/* Insert this copy in the list.  */
 	if (previous != NULL)
-		LIST_INSERT_AFTER_(previous, binding, side);
-	else if (next != NULL)
-		LIST_INSERT_BEFORE_(next, binding, side);
+		CIRCLEQ_INSERT_AFTER_(tracee, previous, binding, side);
+	else if (next != (void *) HEAD(tracee, side))
+		CIRCLEQ_INSERT_BEFORE_(tracee, next, binding, side);
 	else
-		LIST_INSERT_HEAD_(tracee, binding, side);
+		CIRCLEQ_INSERT_HEAD_(tracee, binding, side);
 
-	/* Declare tracee->bindings_side as a parent of this
+	/* Declare tracee->bindings.side as a parent of this
 	 * binding.  */
 	(void) talloc_reference(HEAD(tracee, side), binding);
 }
@@ -485,7 +483,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 }
 
 /**
- * Detach all bindings pointed to by @bindings.
+ * Free all bindings from @bindings.
  *
  * Note: this is a Talloc destructor.
  */
@@ -494,27 +492,25 @@ static int remove_bindings(Bindings *bindings)
 	Binding *binding;
 	Tracee *tracee;
 
-	/* Each binding is linked to itself (both prev and next), this
-	 * ensures no use-after-free will occured in their destructor
-	 * (remove_binding()).  */
-#define LIST_DETACH_ALL(link) do {				\
-	binding = LIST_FIRST(bindings);				\
-	while (binding != NULL) {				\
-		Binding *next = LIST_NEXT(binding, link);	\
-		binding->link.le_prev = &binding;		\
-		binding->link.le_next = binding;		\
+	/* Free all bindings from the @link list.  */
+#define CIRCLEQ_REMOVE_ALL(link) do {				\
+	binding = CIRCLEQ_FIRST(bindings);			\
+	while (binding != (void *) bindings) {			\
+		Binding *next = CIRCLEQ_NEXT(binding, link);	\
+		talloc_set_destructor(binding, NULL);		\
+		talloc_unlink(bindings, binding);		\
 		binding = next;					\
 	}							\
 } while (0)
 
 	/* Search which link is used by this list.  */
 	tracee = talloc_get_type_abort(talloc_parent(bindings), Tracee);
-	if (bindings == tracee->bindings_user)
-		LIST_DETACH_ALL(user_link);
-	else if (bindings == tracee->bindings_guest)
-		LIST_DETACH_ALL(guest_link);
-	else if (bindings == tracee->bindings_host)
-		LIST_DETACH_ALL(host_link);
+	if (bindings == tracee->bindings.user)
+		CIRCLEQ_REMOVE_ALL(link.user);
+	else if (bindings == tracee->bindings.guest)
+		CIRCLEQ_REMOVE_ALL(link.guest);
+	else if (bindings == tracee->bindings.host)
+		CIRCLEQ_REMOVE_ALL(link.host);
 
 	bzero(bindings, sizeof(Bindings));
 
@@ -528,21 +524,23 @@ static int remove_bindings(Bindings *bindings)
  */
 static int remove_binding(Binding *binding)
 {
-	if (IS_LINKED(binding, user_link))
-		LIST_REMOVE_(binding, user_link);
+	Tracee *tracee = TRACEE(binding);
 
-	if (IS_LINKED(binding, guest_link))
-		LIST_REMOVE_(binding, guest_link);
+	if (IS_LINKED(binding, link.user))
+		CIRCLEQ_REMOVE_(tracee, binding, user);
 
-	if (IS_LINKED(binding, host_link))
-		LIST_REMOVE_(binding, host_link);
+	if (IS_LINKED(binding, link.guest))
+		CIRCLEQ_REMOVE_(tracee, binding, guest);
+
+	if (IS_LINKED(binding, link.host))
+		CIRCLEQ_REMOVE_(tracee, binding, host);
 
 	return 0;
 }
 
 /**
  * Allocate a new binding "@host:@guest" and attach it to
- * @tracee->bindings_user.  This function complains about missing
+ * @tracee->bindings.user.  This function complains about missing
  * @host path only if @must_exist is true.  This function returns the
  * allocated binding on success, NULL on error.
  */
@@ -555,17 +553,18 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 
 	/* Lasy allocation of the list of bindings specified by the
 	 * user.  This list will be used by initialize_bindings().  */
-	if (tracee->bindings_user == NULL) {
-		tracee->bindings_user = talloc_zero(tracee, Bindings);
-		if (tracee->bindings_user == NULL) {
+	if (tracee->bindings.user == NULL) {
+		tracee->bindings.user = talloc_zero(tracee, Bindings);
+		if (tracee->bindings.user == NULL) {
 			notice(WARNING, INTERNAL, "talloc_zero() failed");
 			return NULL;
 		}
-		talloc_set_destructor(tracee->bindings_user, remove_bindings);
+		CIRCLEQ_INIT(tracee->bindings.user);
+		talloc_set_destructor(tracee->bindings.user, remove_bindings);
 	}
 
 	/* Allocate an empty binding.  */
-	binding = talloc_zero(tracee->bindings_user, Binding);
+	binding = talloc_zero(tracee->bindings.user, Binding);
 	if (binding == NULL) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return NULL;
@@ -601,10 +600,11 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	 * bindings since this former is required to canonicalize
 	 * these latters (c.f. initialize_binding() for details).  */
 	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL
-	    || LIST_FIRST(tracee->bindings_user) == NULL)
-		LIST_INSERT_HEAD(tracee->bindings_user, binding, user_link);
+	    || CIRCLEQ_EMPTY(tracee->bindings.user))
+		CIRCLEQ_INSERT_HEAD(tracee->bindings.user, binding, link.user);
 	else
-		LIST_INSERT_AFTER(LIST_FIRST(tracee->bindings_user), binding, user_link);
+		CIRCLEQ_INSERT_AFTER(tracee->bindings.user, CIRCLEQ_FIRST(tracee->bindings.user),
+				binding, link.user);
 	return binding;
 
 error:
@@ -614,8 +614,8 @@ error:
 
 /**
  * Canonicalize the guest part of the given @binding, insert it into
- * @tracee->bindings_guest and @tracee->bindings_host, then remove it
- * from @tracee->bindings_user.  This function returns -1 if an error
+ * @tracee->bindings.guest and @tracee->bindings.host, then remove it
+ * from @tracee->bindings.user.  This function returns -1 if an error
  * occured, 0 otherwise.
  */
 static int initialize_binding(Tracee *tracee, Binding *binding)
@@ -625,7 +625,7 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 	int status;
 
 	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL) {
-		if (LIST_FIRST(HEAD(tracee, HOST)) != NULL) {
+		if (CIRCLEQ_FIRST(HEAD(tracee, HOST)) != (void *) HEAD(tracee, HOST)) {
 			notice(WARNING, USER, "explicit binding to \"/\" isn't allowed, "
 					    "use the -r option instead");
 			goto error;
@@ -695,53 +695,56 @@ error:
 }
 
 /**
- * Allocate @tracee->bindings_guest and @tracee->bindings_host, then
+ * Allocate @tracee->bindings.guest and @tracee->bindings.host, then
  * call initialize_binding() on each binding listed in
- * @tracee->bindings_user.
+ * @tracee->bindings.user.
  */
 int initialize_bindings(Tracee *tracee)
 {
 	Binding *binding;
 
 	/* Sanity checks.  */
-	assert(    tracee->bindings_guest == NULL
-		&& tracee->bindings_host  == NULL
-		&& tracee->bindings_user  != NULL);
+	assert(    tracee->bindings.guest == NULL
+		&& tracee->bindings.host  == NULL
+		&& tracee->bindings.user  != NULL);
 
-	/* Allocate @tracee->bindings_guest and
-	 * @tracee->bindings_host.  */
-	tracee->bindings_guest = talloc_zero(tracee, Bindings);
-	tracee->bindings_host  = talloc_zero(tracee, Bindings);
-	if (tracee->bindings_guest == NULL || tracee->bindings_host == NULL) {
+	/* Allocate @tracee->bindings.guest and
+	 * @tracee->bindings.host.  */
+	tracee->bindings.guest = talloc_zero(tracee, Bindings);
+	tracee->bindings.host  = talloc_zero(tracee, Bindings);
+	if (tracee->bindings.guest == NULL || tracee->bindings.host == NULL) {
 		notice(ERROR, INTERNAL, "can't allocate enough memory");
 		return -1;
 	}
 
-	talloc_set_destructor(tracee->bindings_guest, remove_bindings);
-	talloc_set_destructor(tracee->bindings_host, remove_bindings);
+	CIRCLEQ_INIT(tracee->bindings.guest);
+	CIRCLEQ_INIT(tracee->bindings.host);
+
+	talloc_set_destructor(tracee->bindings.guest, remove_bindings);
+	talloc_set_destructor(tracee->bindings.host, remove_bindings);
 
 	/* Sanity check: the first binding has to be "/".  */
-	binding = LIST_FIRST(tracee->bindings_user);
+	binding = CIRCLEQ_FIRST(tracee->bindings.user);
 	assert(compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL);
 
 	/* Call initialize_binding() on each binding listed in
-	 * @tracee->bindings_user.  */
-	while (binding != NULL) {
+	 * @tracee->bindings.user.  */
+	while (binding != (void *) tracee->bindings.user) {
 		Binding *next;
 		int status;
 
-		next = LIST_NEXT(binding, user_link);
+		next = CIRCLEQ_NEXT(binding, link.user);
 
 		status = initialize_binding(tracee, binding);
 		if (status < 0)
 			TALLOC_FREE(binding);
 		else
-			LIST_REMOVE_(binding, user_link);
+			CIRCLEQ_REMOVE_(tracee, binding, user);
 
 		binding = next;
 	}
 
-	TALLOC_FREE(tracee->bindings_user);
+	TALLOC_FREE(tracee->bindings.user);
 
 	if (verbose_level > 0)
 		print_bindings(tracee);

@@ -87,14 +87,16 @@ typedef struct tracee {
 	 * Shared resources until the tracee changes its filesystem namespace. *
 	 ***********************************************************************/
 
-	/* List of bindings as specified by the user.  */
-	struct bindings *bindings_user;
+	struct {
+		/* List of bindings as specified by the user.  */
+		struct bindings *user;
 
-	/* List of bindings canonicalized and sorted in the "guest" order.  */
-	struct bindings *bindings_guest;
+		/* List of bindings canonicalized and sorted in the "guest" order.  */
+		struct bindings *guest;
 
-	/* List of bindings canonicalized and sorted in the "host" order.  */
-	struct bindings *bindings_host;
+		/* List of bindings canonicalized and sorted in the "host" order.  */
+		struct bindings *host;
+	} bindings;
 
 
 	/**********************************************************************

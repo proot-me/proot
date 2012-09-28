@@ -141,9 +141,9 @@ void inherit(Tracee *child, Tracee *parent)
 		talloc_set_name_const(child->cwd, "$cwd");
 	}
 #else
-	child->bindings_user  = NULL; assert(parent->bindings_user == NULL);
-	child->bindings_guest = talloc_reference(child, parent->bindings_guest);
-	child->bindings_host  = talloc_reference(child, parent->bindings_host);
+	child->bindings.user  = NULL; assert(parent->bindings.user == NULL);
+	child->bindings.guest = talloc_reference(child, parent->bindings.guest);
+	child->bindings.host  = talloc_reference(child, parent->bindings.host);
 	child->root = talloc_reference(child, parent->root);
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);

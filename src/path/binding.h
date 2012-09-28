@@ -35,12 +35,14 @@ typedef struct binding {
 	bool need_substitution;
 	bool must_exist;
 
-	LIST_ENTRY(binding) user_link;
-	LIST_ENTRY(binding) guest_link;
-	LIST_ENTRY(binding) host_link;
+	struct {
+		CIRCLEQ_ENTRY(binding) user;
+		CIRCLEQ_ENTRY(binding) guest;
+		CIRCLEQ_ENTRY(binding) host;
+	} link;
 } Binding;
 
-typedef LIST_HEAD(bindings, binding) Bindings;
+typedef CIRCLEQ_HEAD(bindings, binding) Bindings;
 
 extern mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final);
 extern Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist);

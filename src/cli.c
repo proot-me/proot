@@ -536,11 +536,11 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 		return -1;
 
 	/* tracee->root is mainly used to avoid costly lookups in
-	 * tracee->bindings_guest.  */
+	 * tracee->bindings.guest.  */
 	tracee->root = talloc_strdup(tracee, binding->host.path);
 	talloc_set_name_const(tracee->root, "$root");
 
-	/* Bindings specify by the user (tracee->bindings_user) can
+	/* Bindings specify by the user (tracee->bindings.user) can
 	 * now be canonicalized, as expected by get_bindings().  */
 	status = initialize_bindings(tracee);
 	if (status < 0)

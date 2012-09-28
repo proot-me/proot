@@ -229,11 +229,11 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 
 				 tracee = talloc_get_type_abort(talloc_parent(ptr), Tracee);
 
-				 if (ptr == tracee->bindings_user)
+				 if (ptr == tracee->bindings.user)
 					 fprintf(stderr, "\t(user)");
-				 else if (ptr == tracee->bindings_guest)
+				 else if (ptr == tracee->bindings.guest)
 					 fprintf(stderr, "\t(guest)");
-				 else if (ptr == tracee->bindings_host)
+				 else if (ptr == tracee->bindings.host)
 					 fprintf(stderr, "\t(host)");
 			}
 			else if (strcmp(name, "Binding") == 0) {
