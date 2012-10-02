@@ -40,9 +40,11 @@ and \fBbinfmt_misc\fP.  This means that users don\(aqt need any privilege
 or setup to do things like: using an arbitrary directory as the new
 root filesystem, making files accessible somewhere else in the
 filesystem hierarchy, or executing programs built for another CPU
-architecture transparently through QEMU user\-mode.  Technically PRoot
-relies on \fBptrace\fP, an unprivileged system\-call available in every
-Linux kernel.
+architecture transparently through QEMU user\-mode.  Also, developers
+can add their own features or use PRoot as a Linux process
+instrumentation engine thanks to its extension mechanism.  Technically
+PRoot relies on \fBptrace\fP, an unprivileged system\-call available in
+every Linux kernel.
 .sp
 The new root file\-system, a.k.a \fIguest rootfs\fP, typically contains a
 Linux distribution.  By default PRoot confines the execution of
@@ -96,8 +98,7 @@ This option makes any file or directory of the host rootfs
 accessible in the confined environment just as if it were part of
 the guest rootfs.  By default the host path is bound to the same
 path in the guest rootfs but users can specify any other location
-with the syntax: \fB\-b *host_path*:*guest_location*\fP. Such
-bindings are said "asymmetric".
+with the syntax: \fB\-b *host_path*:*guest_location*\fP.
 .TP
 .BI \-q \ command, \ \-\-qemu\fB= command
 Execute guest programs through QEMU as specified by \fIcommand\fP.
@@ -112,12 +113,32 @@ is still effective and the whole host rootfs is bound to
 This option is automatically enabled by the \fB\-Q\fP option.
 .TP
 .BI \-w \ path, \ \-\-pwd\fB= path, \ \-\-cwd\fB= path
-Set the initial working directory to \fIpath\fP, default is \fB/\fP.
+Set the initial working directory to \fIpath\fP.
 .sp
 Some programs expect to be launched from a given directory but do
-not perform any \fBchdir\fP by themselves, the most common example
-is \fB./configure\fP scripts.  This option avoids the need for
-running a shell and then entering the directory manually.
+not perform any \fBchdir\fP by themselves.  This option avoids the
+need for running a shell and then entering the directory manually.
+.TP
+.BI \-v \ value, \ \-\-verbose\fB= value
+Set the level of debug information to \fIvalue\fP.
+.sp
+The higher the integer \fIvalue\fP is, the more detailled debug
+information is printed to the standard error stream.  A negative
+\fIvalue\fP makes PRoot quiet except on fatal errors.
+.TP
+.B \-V,  \-\-version,  \-\-about
+Print version, copyright, license and contact, then exit.
+.TP
+.B \-h,  \-\-help,  \-\-usage
+Print the version and the command\-line usage, then exit.
+.UNINDENT
+.SS Extension options
+.sp
+The following options enable built\-in extensions.  Technically
+developers can add their own features to PRoot or use it as a Linux
+process instrumentation engine thanks to its extension mechanism, see
+the sources for further details.
+.INDENT 0.0
 .TP
 .BI \-k \ string, \ \-\-kernel\-release\fB= string
 Set the kernel release and compatibility level to \fIstring\fP.
@@ -139,19 +160,6 @@ identity, and by faking the success of some operations like
 changing the ownership of files, changing the root directory to
 \fB/\fP, ...  Note that this option is quite limited compared to
 \fBfakeroot\fP.
-.TP
-.BI \-v \ value, \ \-\-verbose\fB= value
-Set the level of debug information to \fIvalue\fP.
-.sp
-The higher the integer \fIvalue\fP is, the more detailled debug
-information is printed to the standard error stream.  A negative
-\fIvalue\fP makes PRoot quiet except on fatal errors.
-.TP
-.B \-V,  \-\-version,  \-\-about
-Print version, copyright, license and contact, then exit.
-.TP
-.B \-h,  \-\-help,  \-\-usage
-Print the version and the command\-line usage, then exit.
 .UNINDENT
 .SS Alias options
 .sp
@@ -452,7 +460,7 @@ required when PRoot is used as a \fBmount \-\-bind\fP equivalent only.
 Slackware, Arch, Fedora for ARM:
 .INDENT 2.0
 .IP \(bu 2
-\fI\%ftp://ftp.armedslack.org/armedslack/armedslack\-devtools/minirootfs/\fP
+\fI\%ftp://ftp.armedslack.org/slackwarearm/slackwarearm\-devtools/minirootfs/roots/\fP
 .IP \(bu 2
 \fI\%http://archlinuxarm.org/developers/downloads\fP
 .IP \(bu 2

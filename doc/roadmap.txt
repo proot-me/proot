@@ -13,9 +13,6 @@ Short term
 
   * ``proot`` under PRoot
 
-* Add support for extensions, then make the -0 and -k features use
-  this mechanism.
-
 * For /proc/<pid>/cwd: the detranslation isn't a state machine, hence
   it doesn't know how to detranslate correctly when there are several
   bindings with the same host-side::

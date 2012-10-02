@@ -25,9 +25,11 @@ and ``binfmt_misc``.  This means that users don't need any privilege
 or setup to do things like: using an arbitrary directory as the new
 root filesystem, making files accessible somewhere else in the
 filesystem hierarchy, or executing programs built for another CPU
-architecture transparently through QEMU user-mode.  Technically PRoot
-relies on ``ptrace``, an unprivileged system-call available in every
-Linux kernel.
+architecture transparently through QEMU user-mode.  Also, developers
+can add their own features or use PRoot as a Linux process
+instrumentation engine thanks to its extension mechanism.  Technically
+PRoot relies on ``ptrace``, an unprivileged system-call available in
+every Linux kernel.
 
 The new root file-system, a.k.a *guest rootfs*, typically contains a
 Linux distribution.  By default PRoot confines the execution of
@@ -101,12 +103,33 @@ Regular options
     This option is automatically enabled by the ``-Q`` option.
 
 -w path, --pwd=path, --cwd=path
-    Set the initial working directory to *path*, default is ``/``.
+    Set the initial working directory to *path*.
 
     Some programs expect to be launched from a given directory but do
-    not perform any ``chdir`` by themselves, the most common example
-    is ``./configure`` scripts.  This option avoids the need for
-    running a shell and then entering the directory manually.
+    not perform any ``chdir`` by themselves.  This option avoids the
+    need for running a shell and then entering the directory manually.
+
+-v value, --verbose=value
+    Set the level of debug information to *value*.
+
+    The higher the integer *value* is, the more detailled debug
+    information is printed to the standard error stream.  A negative
+    *value* makes PRoot quiet except on fatal errors.
+
+-V, --version, --about
+    Print version, copyright, license and contact, then exit.
+
+-h, --help, --usage
+    Print the version and the command-line usage, then exit.
+
+
+Extension options
+-----------------
+
+The following options enable built-in extensions.  Technically
+developers can add their own features to PRoot or use it as a Linux
+process instrumentation engine thanks to its extension mechanism, see
+the sources for further details.
 
 -k string, --kernel-release=string
     Set the kernel release and compatibility level to *string*.
@@ -128,19 +151,6 @@ Regular options
     changing the ownership of files, changing the root directory to
     ``/``, ...  Note that this option is quite limited compared to
     ``fakeroot``.
-
--v value, --verbose=value
-    Set the level of debug information to *value*.
-
-    The higher the integer *value* is, the more detailled debug
-    information is printed to the standard error stream.  A negative
-    *value* makes PRoot quiet except on fatal errors.
-
--V, --version, --about
-    Print version, copyright, license and contact, then exit.
-
--h, --help, --usage
-    Print the version and the command-line usage, then exit.
 
 
 Alias options
@@ -396,7 +406,7 @@ required when PRoot is used as a ``mount --bind`` equivalent only.
 
 * Slackware, Arch, Fedora for ARM:
 
-  * ftp://ftp.armedslack.org/armedslack/armedslack-devtools/minirootfs/
+  * ftp://ftp.armedslack.org/slackwarearm/slackwarearm-devtools/minirootfs/roots/
   * http://archlinuxarm.org/developers/downloads
   * http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/
 

@@ -57,11 +57,11 @@ static int handle_option_r(Tracee *tracee, char *value);
 static int handle_option_b(Tracee *tracee, char *value);
 static int handle_option_q(Tracee *tracee, char *value);
 static int handle_option_w(Tracee *tracee, char *value);
-static int handle_option_k(Tracee *tracee, char *value);
-static int handle_option_0(Tracee *tracee, char *value);
 static int handle_option_v(Tracee *tracee, char *value);
 static int handle_option_V(Tracee *tracee, char *value);
 static int handle_option_h(Tracee *tracee, char *value);
+static int handle_option_k(Tracee *tracee, char *value);
+static int handle_option_0(Tracee *tracee, char *value);
 static int handle_option_B(Tracee *tracee, char *value);
 static int handle_option_Q(Tracee *tracee, char *value);
 
@@ -92,8 +92,7 @@ static Option options[] = {
 \taccessible in the confined environment just as if it were part of\n\
 \tthe guest rootfs.  By default the host path is bound to the same\n\
 \tpath in the guest rootfs but users can specify any other location\n\
-\twith the syntax: -b *host_path*:*guest_location*. Such\n\
-\tbindings are said \"asymmetric\".",
+\twith the syntax: -b *host_path*:*guest_location*.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -118,40 +117,10 @@ static Option options[] = {
 		{ .name = "--cwd", .separator = '=', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_w,
-	  .description = "Set the initial working directory to *path*, default is /.",
+	  .description = "Set the initial working directory to *path*.",
 	  .detail = "\tSome programs expect to be launched from a given directory but do\n\
-\tnot perform any chdir by themselves, the most common example\n\
-\tis ./configure scripts.  This option avoids the need for\n\
-\trunning a shell and then entering the directory manually.",
-	},
-	{ .class = "Regular options",
-	  .arguments = {
-		{ .name = "-k", .separator = ' ', .value = "string" },
-		{ .name = "--kernel-release", .separator = '=', .value = "string" },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_k,
-	  .description = "Set the kernel release and compatibility level to *string*.",
-	  .detail = "\tIf a program is run on a kernel older than the one expected by its\n\
-\tGNU C library, the following error is reported: \"FATAL: kernel too\n\
-\told\".  To be able to run such programs, PRoot can emulate some of\n\
-\tthe syscalls that are available in the kernel release specified by\n\
-\tstring but that are missing in the current kernel.",
-	},
-	{ .class = "Regular options",
-	  .arguments = {
-		{ .name = "-0", .separator = '\0', .value = NULL },
-		{ .name = "--root-id", .separator = '\0', .value = NULL },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_0,
-	  .description = "Force some syscalls to behave as if executed by \"root\".",
-	  .detail = "\tSome programs will refuse to work if they are not run with \"root\"\n\
-\tprivileges, even if there is no technical reason for that.  This\n\
-\tis typically the case with package managers.  This option allows\n\
-\tusers to bypass this kind of limitation by faking the user/group\n\
-\tidentity, and by faking the success of some operations like\n\
-\tchanging the ownership of files, changing the root directory to\n\
-\t/, ...  Note that this option is quite limited compared to\n\
-\tfakeroot.",
+\tnot perform any chdir by themselves.  This option avoids the\n\
+\tneed for running a shell and then entering the directory manually.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -183,6 +152,35 @@ static Option options[] = {
 	  .handler = handle_option_h,
 	  .description = "Print the version and the command-line usage, then exit.",
 	  .detail = "",
+	},
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-k", .separator = ' ', .value = "string" },
+		{ .name = "--kernel-release", .separator = '=', .value = "string" },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_k,
+	  .description = "Set the kernel release and compatibility level to *string*.",
+	  .detail = "\tIf a program is run on a kernel older than the one expected by its\n\
+\tGNU C library, the following error is reported: \"FATAL: kernel too\n\
+\told\".  To be able to run such programs, PRoot can emulate some of\n\
+\tthe syscalls that are available in the kernel release specified by\n\
+\tstring but that are missing in the current kernel.",
+	},
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-0", .separator = '\0', .value = NULL },
+		{ .name = "--root-id", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_0,
+	  .description = "Force some syscalls to behave as if executed by \"root\".",
+	  .detail = "\tSome programs will refuse to work if they are not run with \"root\"\n\
+\tprivileges, even if there is no technical reason for that.  This\n\
+\tis typically the case with package managers.  This option allows\n\
+\tusers to bypass this kind of limitation by faking the user/group\n\
+\tidentity, and by faking the success of some operations like\n\
+\tchanging the ownership of files, changing the root directory to\n\
+\t/, ...  Note that this option is quite limited compared to\n\
+\tfakeroot.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {

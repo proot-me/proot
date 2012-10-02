@@ -333,7 +333,7 @@ static void print_usage(Tracee *tracee, bool detailed)
 
 			if (strcmp(options[i].class, current_class) != 0) {
 				current_class = options[i].class;
-				printf("%s:\n", current_class);
+				printf("\n%s:\n", current_class);
 			}
 
 			if (j == 0)
