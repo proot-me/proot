@@ -40,6 +40,10 @@ typedef enum {
 typedef enum {
 	GUEST,
 	HOST,
+
+	/* Used for bindings as specified by the user but not
+	 * canonicalized yet (new_binding, initialize_binding).  */
+	PENDING,
 } Side;
 
 /* Path with cached attributes.  */

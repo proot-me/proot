@@ -83,13 +83,13 @@ typedef struct tracee {
 	mode_t glue_type;
 
 
-	/***********************************************************************
-	 * Shared resources until the tracee changes its filesystem namespace. *
-	 ***********************************************************************/
+	/**********************************************************************
+	 * Shared or private resources, depending on the CLONE_FS flag.       *
+	 **********************************************************************/
 
 	struct {
-		/* List of bindings as specified by the user.  */
-		struct bindings *user;
+		/* List of bindings as specified by the user but not canonicalized yet.  */
+		struct bindings *pending;
 
 		/* List of bindings canonicalized and sorted in the "guest" order.  */
 		struct bindings *guest;
@@ -98,9 +98,12 @@ typedef struct tracee {
 		struct bindings *host;
 	} bindings;
 
+	/* Current working directory, à la /proc/self/pwd.  */
+	char *cwd;
+
 
 	/**********************************************************************
-	 * Shared resources until the tracee makes a call to execve().       *
+	 * Shared resources until the tracee makes a call to execve().        *
 	 **********************************************************************/
 
 	/* Path to the executable, à la /proc/self/exe.  */
@@ -108,17 +111,6 @@ typedef struct tracee {
 
 	/* Initial command-line, à la /proc/self/cmdline.  */
 	char **cmdline;
-
-
-	/**********************************************************************
-	 * Shared or private resources, depending on the CLONE_FS flag.       *
-	 **********************************************************************/
-
-	/* Current working directory, à la /proc/self/pwd.  */
-	char *cwd;
-
-	/* Path to the root file-system, à la /proc/self/root.  */
-	char *root;
 
 
 	/**********************************************************************

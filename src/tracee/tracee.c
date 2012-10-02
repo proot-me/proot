@@ -94,17 +94,14 @@ void inherit(Tracee *child, Tracee *parent)
 	if (parent == NULL) {
 		child->exe = talloc_strdup(child, "<dummy>");
 		talloc_set_name_const(child->exe, "$exe");
-		//child->root = talloc_strdup(guest_rootfs);
 		//child->cwd  = talloc_strdup(config.initial_cwd);
 		return;
 	}
 
 	assert(child->exe  == NULL);
-	assert(child->root == NULL);
 	// assert(child->cwd  == NULL);
 
 	assert(parent->exe  != NULL);
-	assert(parent->root != NULL);
 	// assert(parent->cwd  != NULL);
 
 	/* The path to the executable is unshared only once the child
@@ -129,22 +126,18 @@ void inherit(Tracee *child, Tracee *parent)
 	 */
 	if ((parent->clone_flags & CLONE_FS) != 0) {
 		/* File-system information is shared.  */
-		child->root = talloc_reference(child, parent->root);
 		child->cwd  = talloc_reference(child, parent->cwd);
 	}
 	else {
 		/* File-system information is copied.  */
-		child->root = talloc_strdup(child, parent->root);
 		child->cwd  = talloc_strdup(child, parent->cwd);
 
-		talloc_set_name_const(child->root, "$root");
 		talloc_set_name_const(child->cwd, "$cwd");
 	}
 #else
-	child->bindings.user  = NULL; assert(parent->bindings.user == NULL);
+	child->bindings.pending = NULL; assert(parent->bindings.pending == NULL);
 	child->bindings.guest = talloc_reference(child, parent->bindings.guest);
 	child->bindings.host  = talloc_reference(child, parent->bindings.host);
-	child->root = talloc_reference(child, parent->root);
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
 

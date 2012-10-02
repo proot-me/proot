@@ -30,6 +30,7 @@
 #include "tracee/mem.h"
 #include "tracee/reg.h"
 #include "path/path.h"
+#include "path/binding.h"
 
 /**
  * Handler for this @extension.  It is triggered each time an @event

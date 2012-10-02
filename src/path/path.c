@@ -352,10 +352,10 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 		}
 	}
 
-	switch (compare_paths(tracee->root, path)) {
+	switch (compare_paths(get_root(tracee), path)) {
 	case PATH1_IS_PREFIX:
 		/* Remove the leading part, that is, the "root".  */
-		prefix_length = strlen(tracee->root);
+		prefix_length = strlen(get_root(tracee));
 
 		/* Special case when path to the guest rootfs == "/". */
 		if (prefix_length == 1)
@@ -392,7 +392,7 @@ bool belongs_to_guestfs(const Tracee *tracee, const char *host_path)
 {
 	Comparison comparison;
 
-	comparison = compare_paths(tracee->root, host_path);
+	comparison = compare_paths(get_root(tracee), host_path);
 	return (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
 }
 

@@ -35,6 +35,7 @@
 #include "syscall/syscall.h"
 #include "notice.h"
 #include "path/path.h"
+#include "path/binding.h"
 
 #include "compat.h"
 
@@ -324,7 +325,7 @@ int translate_execve(Tracee *tracee)
 	 * is compatible (currently the test is only "guest rootfs ==
 	 * host rootfs") or if there's no need for RPATH inhibition in
 	 * mixed-mode.  */
-	ignore_elf_interpreter = (strcmp(tracee->root, "/") == 0
+	ignore_elf_interpreter = (compare_paths(get_root(tracee), "/") == PATHS_ARE_EQUAL
 				  || (tracee->qemu != NULL && !inhibit_rpath));
 
 	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */,

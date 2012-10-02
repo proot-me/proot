@@ -39,34 +39,47 @@
 #include "path/canon.h"
 #include "notice.h"
 
-#define HEAD(tracee, side)  (side == GUEST ? (tracee)->bindings.guest : (tracee)->bindings.host)
+#define HEAD(tracee, side)						\
+	(side == GUEST							\
+		? (tracee)->bindings.guest				\
+		: (side == HOST						\
+			? (tracee)->bindings.host			\
+			: (tracee)->bindings.pending))
+
+#define NEXT(binding, side)						\
+	(side == GUEST							\
+		? CIRCLEQ_NEXT(binding, link.guest)			\
+		: (side == HOST						\
+			? CIRCLEQ_NEXT(binding, link.host)		\
+			: CIRCLEQ_NEXT(binding, link.pending)))
 
 #define CIRCLEQ_FOREACH_(tracee, binding, side)				\
 	for (binding = CIRCLEQ_FIRST(HEAD(tracee, side));		\
 	     binding != (void *) HEAD(tracee, side);			\
-	     binding = (side == GUEST					\
-		     ? CIRCLEQ_NEXT(binding, link.guest)		\
-		     : CIRCLEQ_NEXT(binding, link.host)))
+	     binding = NEXT(binding, side))
 
 #define CIRCLEQ_INSERT_AFTER_(tracee, previous, binding, side) do {	\
-	if (side == GUEST)						\
-		CIRCLEQ_INSERT_AFTER((tracee)->bindings.guest, previous, binding, link.guest); \
-	else								\
-		CIRCLEQ_INSERT_AFTER((tracee)->bindings.host, previous, binding, link.host); \
+	switch (side) {							\
+	case GUEST: CIRCLEQ_INSERT_AFTER(HEAD(tracee, side), previous, binding, link.guest);   break; \
+	case HOST:  CIRCLEQ_INSERT_AFTER(HEAD(tracee, side), previous, binding, link.host);    break; \
+	default:    CIRCLEQ_INSERT_AFTER(HEAD(tracee, side), previous, binding, link.pending); break; \
+	}								\
 } while (0)
 
-#define CIRCLEQ_INSERT_BEFORE_(tracee, next, binding, side) do {		\
-	if (side == GUEST)						\
-		CIRCLEQ_INSERT_BEFORE((tracee)->bindings.guest, next, binding, link.guest); \
-	else								\
-		CIRCLEQ_INSERT_BEFORE((tracee)->bindings.host, next, binding, link.host); \
+#define CIRCLEQ_INSERT_BEFORE_(tracee, next, binding, side) do {	\
+	switch (side) {							\
+	case GUEST: CIRCLEQ_INSERT_BEFORE(HEAD(tracee, side), next, binding, link.guest);   break; \
+	case HOST:  CIRCLEQ_INSERT_BEFORE(HEAD(tracee, side), next, binding, link.host);    break; \
+	default:    CIRCLEQ_INSERT_BEFORE(HEAD(tracee, side), next, binding, link.pending); break; \
+	}								\
 } while (0)
 
 #define CIRCLEQ_INSERT_HEAD_(tracee, binding, side) do {		\
-	if (side == GUEST)						\
-		CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.guest); \
-	else								\
-		CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.host); \
+	switch (side) {							\
+	case GUEST: CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.guest);	  break; \
+	case HOST:  CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.host);    break; \
+	default:    CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.pending); break; \
+	}								\
 } while (0)
 
 #define IS_LINKED(binding, link)					\
@@ -135,7 +148,7 @@ static const Binding *get_binding(Tracee *tracee, Side side, const char path[PAT
 		 *     proot -m /usr:/location /usr/local/slackware
 		 */
 		if (   side == HOST
-		    && tracee->root[1] != '\0'
+		    && compare_paths(get_root(tracee), "/") != PATHS_ARE_EQUAL
 		    && belongs_to_guestfs(tracee, path))
 				continue;
 
@@ -168,6 +181,37 @@ const char *get_path_binding(Tracee *tracee, Side side, const char path[PATH_MAX
 		assert(0);
 		return NULL;
 	}
+}
+
+/**
+ * Return the path to the guest rootfs for the given @tracee, from the
+ * host point-of-view obviously.  Depending on whether
+ * initialize_bindings() was called or not, the path is retrieved from
+ * the "bindings.guest" list or from the "bindings.pending" list,
+ * respectively.
+ */
+const char *get_root(const Tracee* tracee)
+{
+	const Binding *binding;
+
+	if (tracee->bindings.guest == NULL) {
+		if (tracee->bindings.pending == NULL || CIRCLEQ_EMPTY(tracee->bindings.pending))
+			return NULL;
+
+		binding = CIRCLEQ_LAST(tracee->bindings.pending);
+		if (compare_paths(binding->guest.path, "/") != PATHS_ARE_EQUAL)
+			return NULL;
+
+		return binding->host.path;
+	}
+
+	assert(!CIRCLEQ_EMPTY(tracee->bindings.guest));
+
+	binding = CIRCLEQ_LAST(tracee->bindings.guest);
+
+	assert(strcmp(binding->guest.path, "/") == 0);
+
+	return binding->host.path;
 }
 
 /**
@@ -285,6 +329,7 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 		const Path *iterator_path;
 
 		switch (side) {
+		case PENDING:
 		case GUEST:
 			binding_path = &binding->guest;
 			iterator_path = &iterator->guest;
@@ -312,7 +357,11 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 			notice(WARNING, USER,
 				"both '%s' and '%s' are bound to '%s', "
 				"only the last binding is active.",
-				binding->host.path, iterator->host.path, binding->guest.path);
+				iterator->host.path, binding->host.path, binding->guest.path);
+
+			/* Replace this iterator with the new binding.  */
+			CIRCLEQ_INSERT_AFTER_(tracee, iterator, binding, side);
+			TALLOC_FREE(iterator);
 			return;
 
 		case PATH1_IS_PREFIX:
@@ -336,7 +385,7 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 		}
 	}
 
-	/* Insert this copy in the list.  */
+	/* Insert this binding in the list.  */
 	if (previous != NULL)
 		CIRCLEQ_INSERT_AFTER_(tracee, previous, binding, side);
 	else if (next != (void *) HEAD(tracee, side))
@@ -346,7 +395,10 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 
 	/* Declare tracee->bindings.side as a parent of this
 	 * binding.  */
-	(void) talloc_reference(HEAD(tracee, side), binding);
+	if (side != PENDING)
+		(void) talloc_reference(HEAD(tracee, side), binding);
+	else
+		assert(talloc_parent(binding) == HEAD(tracee, side));
 }
 
 /**
@@ -505,8 +557,8 @@ static int remove_bindings(Bindings *bindings)
 
 	/* Search which link is used by this list.  */
 	tracee = talloc_get_type_abort(talloc_parent(bindings), Tracee);
-	if (bindings == tracee->bindings.user)
-		CIRCLEQ_REMOVE_ALL(link.user);
+	if (bindings == tracee->bindings.pending)
+		CIRCLEQ_REMOVE_ALL(link.pending);
 	else if (bindings == tracee->bindings.guest)
 		CIRCLEQ_REMOVE_ALL(link.guest);
 	else if (bindings == tracee->bindings.host)
@@ -526,8 +578,8 @@ static int remove_binding(Binding *binding)
 {
 	Tracee *tracee = TRACEE(binding);
 
-	if (IS_LINKED(binding, link.user))
-		CIRCLEQ_REMOVE_(tracee, binding, user);
+	if (IS_LINKED(binding, link.pending))
+		CIRCLEQ_REMOVE_(tracee, binding, pending);
 
 	if (IS_LINKED(binding, link.guest))
 		CIRCLEQ_REMOVE_(tracee, binding, guest);
@@ -540,31 +592,33 @@ static int remove_binding(Binding *binding)
 
 /**
  * Allocate a new binding "@host:@guest" and attach it to
- * @tracee->bindings.user.  This function complains about missing
+ * @tracee->bindings.pending.  This function complains about missing
  * @host path only if @must_exist is true.  This function returns the
  * allocated binding on success, NULL on error.
  */
 Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist)
 {
 	Binding *binding;
+	char base[PATH_MAX];
+	int status;
 
 	/* Should be called only from the CLI support.  */
 	assert(tracee->pid == 0);
 
 	/* Lasy allocation of the list of bindings specified by the
 	 * user.  This list will be used by initialize_bindings().  */
-	if (tracee->bindings.user == NULL) {
-		tracee->bindings.user = talloc_zero(tracee, Bindings);
-		if (tracee->bindings.user == NULL) {
+	if (tracee->bindings.pending == NULL) {
+		tracee->bindings.pending = talloc_zero(tracee, Bindings);
+		if (tracee->bindings.pending == NULL) {
 			notice(WARNING, INTERNAL, "talloc_zero() failed");
 			return NULL;
 		}
-		CIRCLEQ_INIT(tracee->bindings.user);
-		talloc_set_destructor(tracee->bindings.user, remove_bindings);
+		CIRCLEQ_INIT(tracee->bindings.pending);
+		talloc_set_destructor(tracee->bindings.pending, remove_bindings);
 	}
 
 	/* Allocate an empty binding.  */
-	binding = talloc_zero(tracee->bindings.user, Binding);
+	binding = talloc_zero(tracee->bindings.pending, Binding);
 	if (binding == NULL) {
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return NULL;
@@ -587,24 +641,30 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	/* Symetric binding?  */
 	guest = guest ?: host;
 
-	/* Save the expected guest part, it will be canonicalized by
-	 * initialize_bindings().  */
-	binding->guest.length = strlen(guest);
-	if (binding->guest.length >= PATH_MAX) {
-		notice(WARNING, USER, "path to the rootfs is too long (\"%s\")", guest);
+	/* When not absolute, assume the guest path is relative to the
+	 * current working directory, as with ``-b .`` for instance.  */
+	if (guest[0] != '/') {
+		if (getcwd(base, PATH_MAX) == NULL) {
+			notice(WARNING, SYSTEM, "can't sanitize binding \"%s\", getcwd()",
+				binding->guest.path);
+			goto error;
+		}
+	}
+	else
+		strcpy(base, "/");
+
+	status = join_paths(2, binding->guest.path, base, guest);
+	if (status < 0) {
+		notice(WARNING, SYSTEM, "can't sanitize binding \"%s\"", binding->guest.path);
 		goto error;
 	}
-	strcpy(binding->guest.path, guest);
+	binding->guest.length = strlen(binding->guest.path);
 
-	/* The binding to "/" has to be installed before other
-	 * bindings since this former is required to canonicalize
-	 * these latters (c.f. initialize_binding() for details).  */
-	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL
-	    || CIRCLEQ_EMPTY(tracee->bindings.user))
-		CIRCLEQ_INSERT_HEAD(tracee->bindings.user, binding, link.user);
-	else
-		CIRCLEQ_INSERT_AFTER(tracee->bindings.user, CIRCLEQ_FIRST(tracee->bindings.user),
-				binding, link.user);
+	/* Keep the list of bindings specified by the user ordered,
+	 * for the sake of consistency.  For instance binding to "/"
+	 * has to be the last in the list.  */
+	insort_binding(tracee, PENDING, binding);
+
 	return binding;
 
 error:
@@ -615,8 +675,8 @@ error:
 /**
  * Canonicalize the guest part of the given @binding, insert it into
  * @tracee->bindings.guest and @tracee->bindings.host, then remove it
- * from @tracee->bindings.user.  This function returns -1 if an error
- * occured, 0 otherwise.
+ * from @tracee->bindings.pending.  This function returns -1 if an
+ * error occured, 0 otherwise.
  */
 static int initialize_binding(Tracee *tracee, Binding *binding)
 {
@@ -624,41 +684,22 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 	struct stat statl;
 	int status;
 
-	if (compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL) {
-		if (CIRCLEQ_FIRST(HEAD(tracee, HOST)) != (void *) HEAD(tracee, HOST)) {
-			notice(WARNING, USER, "explicit binding to \"/\" isn't allowed, "
-					    "use the -r option instead");
-			goto error;
-		}
-		strcpy(binding->guest.path, "/");
-	}
-	else {
-		/* When not absolute, assume the guest_path is
-		 * relative to the host cwd (eg. ``-b .``).  */
-		if (binding->guest.path[0] != '/') {
-			char cwd[PATH_MAX];
-
-			if (getcwd(cwd, PATH_MAX) == NULL) {
-				notice(WARNING, SYSTEM, "can't sanitize binding \"%s\", getcwd()",
-					binding->guest.path);
-				goto error;
-			}
-			join_paths(2, path, cwd, binding->guest.path);
-		}
-		else
-			strcpy(path, binding->guest.path);
-
+	/* All bindings but "/" must be canonicalized.  The exception
+	 * for "/" is required to bootstrap the canonicalization.  */
+	if (compare_paths(binding->guest.path, "/") != PATHS_ARE_EQUAL) {
 		/* Initial state before canonicalization.  */
+		strcpy(path, binding->guest.path);
 		strcpy(binding->guest.path, "/");
 
-		/* Remember the type of the final component, it will be used
-		 * in build_glue() later.  */
+		/* Remember the type of the final component, it will
+		 * be used in build_glue() later.  */
 		status = lstat(binding->host.path, &statl);
 		tracee->glue_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
 				? S_IFREG : statl.st_mode & S_IFMT);
 
-		/* Sanitize the guest path of the binding within the alternate
-		   rootfs since it is assumed by substitute_binding().  */
+		/* Sanitize the guest path of the binding within the
+		   alternate rootfs since it is assumed by
+		   substitute_binding().  */
 		status = canonicalize(tracee, path, true, binding->guest.path, 0);
 		if (status < 0) {
 			notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
@@ -697,7 +738,7 @@ error:
 /**
  * Allocate @tracee->bindings.guest and @tracee->bindings.host, then
  * call initialize_binding() on each binding listed in
- * @tracee->bindings.user.
+ * @tracee->bindings.pending.
  */
 int initialize_bindings(Tracee *tracee)
 {
@@ -706,7 +747,7 @@ int initialize_bindings(Tracee *tracee)
 	/* Sanity checks.  */
 	assert(    tracee->bindings.guest == NULL
 		&& tracee->bindings.host  == NULL
-		&& tracee->bindings.user  != NULL);
+		&& tracee->bindings.pending != NULL);
 
 	/* Allocate @tracee->bindings.guest and
 	 * @tracee->bindings.host.  */
@@ -723,28 +764,31 @@ int initialize_bindings(Tracee *tracee)
 	talloc_set_destructor(tracee->bindings.guest, remove_bindings);
 	talloc_set_destructor(tracee->bindings.host, remove_bindings);
 
-	/* Sanity check: the first binding has to be "/".  */
-	binding = CIRCLEQ_FIRST(tracee->bindings.user);
+	/* The binding to "/" has to be installed before other
+	 * bindings since this former is required to canonicalize
+	 * these latters.  */
+	binding = CIRCLEQ_LAST(tracee->bindings.pending);
 	assert(compare_paths(binding->guest.path, "/") == PATHS_ARE_EQUAL);
 
-	/* Call initialize_binding() on each binding listed in
-	 * @tracee->bindings.user.  */
-	while (binding != (void *) tracee->bindings.user) {
-		Binding *next;
+	/* Call initialize_binding() on each pending binding in
+	 * reverse order: the last binding "/" is used to bootstrap
+	 * the canonicalization.  */
+	while (binding != (void *) tracee->bindings.pending) {
+		Binding *previous;
 		int status;
 
-		next = CIRCLEQ_NEXT(binding, link.user);
+		previous = CIRCLEQ_PREV(binding, link.pending);
 
 		status = initialize_binding(tracee, binding);
 		if (status < 0)
 			TALLOC_FREE(binding);
 		else
-			CIRCLEQ_REMOVE_(tracee, binding, user);
+			CIRCLEQ_REMOVE_(tracee, binding, pending);
 
-		binding = next;
+		binding = previous;
 	}
 
-	TALLOC_FREE(tracee->bindings.user);
+	TALLOC_FREE(tracee->bindings.pending);
 
 	if (verbose_level > 0)
 		print_bindings(tracee);

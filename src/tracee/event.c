@@ -200,10 +200,12 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 	void print_talloc_chunk(const void *ptr, int depth, int max_depth, int is_ref, void *data)
 	{
 		const char *name;
+		size_t count;
 		size_t size;
 
 		name = talloc_get_name(ptr);
 		size = talloc_get_size(ptr);
+		count = talloc_reference_count(ptr);
 
 		if (depth == 0)
 			return;
@@ -216,7 +218,7 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 		if (is_ref)
 			fprintf(stderr, "-> %-8p", ptr);
 		else {
-			fprintf(stderr, "%-8p  %zd bytes", ptr, size);
+			fprintf(stderr, "%-8p  %zd bytes  %zd ref'", ptr, size, count);
 
 			if (name[0] == '$') {
 				fprintf(stderr, "\t(\"%s\")", (char *)ptr);
@@ -229,8 +231,8 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 
 				 tracee = talloc_get_type_abort(talloc_parent(ptr), Tracee);
 
-				 if (ptr == tracee->bindings.user)
-					 fprintf(stderr, "\t(user)");
+				 if (ptr == tracee->bindings.pending)
+					 fprintf(stderr, "\t(pending)");
 				 else if (ptr == tracee->bindings.guest)
 					 fprintf(stderr, "\t(guest)");
 				 else if (ptr == tracee->bindings.host)

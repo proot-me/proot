@@ -39,7 +39,7 @@ case PR_chroot: {
 		return status;
 
 	/* Only "new rootfs == current rootfs" is supported yet.  */
-	status = compare_paths(tracee->root, path);
+	status = compare_paths(get_root(tracee), path);
 	if (status != PATHS_ARE_EQUAL)
 		return 0;
 

@@ -47,7 +47,14 @@
 
 static int handle_option_r(Tracee *tracee, char *value)
 {
-	tracee->root = value;
+	Binding *binding;
+
+	/* ``chroot $PATH`` is semantically equivalent to ``mount
+	 * --bind $PATH /``.  */
+	binding = new_binding(tracee, value, "/", true);
+	if (binding == NULL)
+		return -1;
+
 	return 0;
 }
 
@@ -397,7 +404,7 @@ static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 
 static void print_config(Tracee *tracee)
 {
-	notice(INFO, USER, "guest rootfs = %s", tracee->root);
+	assert(tracee != NULL);
 
 	if (tracee->qemu)
 		notice(INFO, USER, "host rootfs = %s", HOST_ROOTFS);
@@ -423,7 +430,6 @@ static void print_config(Tracee *tracee)
 static int parse_cli(Tracee *tracee, int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
-	Binding *binding;
 	int i, j, k;
 	int status;
 
@@ -515,30 +521,18 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 	 * option is a directory, then the old command-line interface
 	 * (similar to the chroot one) is expected.  Otherwise this is
 	 * the new command-line interface where the default guest
-	 * rootfs is "/".
-	 */
-	if (tracee->root == NULL) {
+	 * rootfs is "/".  */
+	if (get_root(tracee) == NULL) {
 		struct stat buf;
 
 		status = stat(argv[i], &buf);
 		if (status == 0 && S_ISDIR(buf.st_mode))
-			tracee->root = argv[i++];
+			status = handle_option_r(tracee, argv[i++]);
 		else
-			tracee->root = "/";
+			status = handle_option_r(tracee, "/");
+		if (status < 0)
+			return status;
 	}
-
-	/* Note: ``chroot $PATH`` is almost equivalent to ``mount
-	 * --bind $PATH /``.  PRoot just ensures it is inserted before
-	 * other bindings since this former is required to
-	 * canonicalize these latters.  */
-	binding = new_binding(tracee, tracee->root, "/", true);
-	if (binding == NULL)
-		return -1;
-
-	/* tracee->root is mainly used to avoid costly lookups in
-	 * tracee->bindings.guest.  */
-	tracee->root = talloc_strdup(tracee, binding->host.path);
-	talloc_set_name_const(tracee->root, "$root");
 
 	/* Bindings specify by the user (tracee->bindings.user) can
 	 * now be canonicalized, as expected by get_bindings().  */

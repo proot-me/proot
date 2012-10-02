@@ -86,8 +86,7 @@ Regular options
     accessible in the confined environment just as if it were part of
     the guest rootfs.  By default the host path is bound to the same
     path in the guest rootfs but users can specify any other location
-    with the syntax: ``-b *host_path*:*guest_location*``. Such
-    bindings are said "asymmetric".
+    with the syntax: ``-b *host_path*:*guest_location*``.
 
 -q command, --qemu=command
     Execute guest programs through QEMU as specified by *command*.

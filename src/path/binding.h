@@ -36,7 +36,7 @@ typedef struct binding {
 	bool must_exist;
 
 	struct {
-		CIRCLEQ_ENTRY(binding) user;
+		CIRCLEQ_ENTRY(binding) pending;
 		CIRCLEQ_ENTRY(binding) guest;
 		CIRCLEQ_ENTRY(binding) host;
 	} link;
@@ -48,6 +48,7 @@ extern mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[
 extern Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist);
 extern int initialize_bindings(Tracee *tracee);
 extern const char *get_path_binding(Tracee* tracee, Side side, const char path[PATH_MAX]);
+extern const char *get_root(const Tracee* tracee);
 extern int substitute_binding(Tracee* tracee, Side side, char path[PATH_MAX]);
 
 #endif /* BINDING_H */
