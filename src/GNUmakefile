@@ -19,6 +19,7 @@ OBJECTS = cli.o			\
 	execve/elf.o		\
 	execve/ldso.o		\
 	path/binding.o		\
+	path/glue.o		\
 	path/canon.o		\
 	path/path.o		\
 	path/proc.o		\

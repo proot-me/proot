@@ -32,6 +32,7 @@
 #include "path/canon.h"
 #include "path/path.h"
 #include "path/binding.h"
+#include "path/glue.h"
 #include "path/proc.h"
 #include "extension/extension.h"
 #include "notice.h"

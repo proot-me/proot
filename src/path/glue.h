@@ -20,36 +20,14 @@
  * 02110-1301 USA.
  */
 
-#ifndef BINDING_H
-#define BINDING_H
+#ifndef GLUE_H
+#define GLUE_H
 
 #include <limits.h> /* PATH_MAX, */
-#include <stdbool.h>
 
 #include "tracee/tracee.h"
 #include "path.h"
 
-typedef struct binding {
-	Path host;
-	Path guest;
+extern mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final);
 
-	bool need_substitution;
-	bool must_exist;
-
-	struct {
-		CIRCLEQ_ENTRY(binding) pending;
-		CIRCLEQ_ENTRY(binding) guest;
-		CIRCLEQ_ENTRY(binding) host;
-	} link;
-} Binding;
-
-typedef CIRCLEQ_HEAD(bindings, binding) Bindings;
-
-extern void insort_binding2(Tracee *tracee, Binding *binding);
-extern Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist);
-extern int initialize_bindings(Tracee *tracee);
-extern const char *get_path_binding(Tracee* tracee, Side side, const char path[PATH_MAX]);
-extern const char *get_root(const Tracee* tracee);
-extern int substitute_binding(Tracee* tracee, Side side, char path[PATH_MAX]);
-
-#endif /* BINDING_H */
+#endif /* GLUE_H */
