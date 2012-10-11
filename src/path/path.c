@@ -185,25 +185,105 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 }
 
 /**
- * Copy in @result the equivalent of @root + canonicalize(@dir_fd +
- * @fake_path).  If @fake_path is not absolute then it is relative to
- * the directory referred by the descriptor @dir_fd (AT_FDCWD is for
- * the current working directory).  See the documentation of
- * canonicalize() for the meaning of @deref_final.
+ * Put in @host_path the full path to the given shell @command.  The
+ * @command is searched in @paths if not null, otherwise in $PATH
+ * (relatively to the @tracee's file-system name-space).  This
+ * function always returns -1 on error, otherwise 0.
  */
-int translate_path(Tracee *tracee, char result[PATH_MAX],
-		   int dir_fd, const char *fake_path, bool deref_final)
+int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *const command)
+{
+	char path[PATH_MAX];
+	const char *cursor;
+	struct stat statr;
+	int status;
+
+	assert(command != NULL);
+
+	/* Is the command available without any $PATH look-up?  */
+	status = realpath2(tracee, host_path, command, false);
+	if (status == 0
+	    && stat(host_path, &statr) == 0
+	    && S_ISREG(statr.st_mode)
+	    && (statr.st_mode & S_IXUSR) != 0)
+		return 0;
+
+	paths = paths ?: getenv("PATH");
+	if (paths == NULL)
+		return -1;
+
+	cursor = paths;
+	do {
+		size_t length;
+
+		length = strcspn(cursor, ":");
+		cursor += length + 1;
+
+		if (length >= PATH_MAX)
+			continue;
+		else if (length == 0)
+			strcpy(path, ".");
+		else {
+			strncpy(path, cursor - length - 1, length);
+			path[length] = '\0';
+		}
+
+		/* Avoid buffer-overflow.  */
+		if (length + strlen(command) + 2 >= PATH_MAX)
+			continue;
+
+		strcat(path, "/");
+		strcat(path, command);
+
+		status = realpath2(tracee, host_path, path, false);
+		if (status == 0
+		    && stat(host_path, &statr) == 0
+		    && S_ISREG(statr.st_mode)
+		    && (statr.st_mode & S_IXUSR) != 0)
+				return 0;
+	} while (*(cursor - 1) != '\0');
+
+	notice(WARNING, USER, "no %s in %s", command, paths);
+	return -1;
+}
+
+/**
+ * Put in @host_path the canonicalized form of @path.  In the nominal
+ * case (@tracee == NULL), this function is barely equivalent to
+ * realpath(), but when doing partial reconfiguration, the path is
+ * canonicalized relatively to the current @tracee's file-system
+ * name-space.  This function returns -errno on error, otherwise 0.
+ */
+int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool deref_final)
+{
+	int status;
+
+	if (tracee == NULL)
+		status = (realpath(path, host_path) == NULL ? -errno : 0);
+	else
+		status = translate_path(tracee, host_path, AT_FDCWD, path, deref_final);
+	return status;
+}
+
+/**
+ * Copy in @host_path the equivalent of "@tracee->root +
+ * canonicalize(@dir_fd + @guest_path)".  If @guest_path is not
+ * absolute then it is relative to the directory referred by the
+ * descriptor @dir_fd (AT_FDCWD is for the current working directory).
+ * See the documentation of canonicalize() for the meaning of
+ * @deref_final.  This function returns -errno if an error occured,
+ * otherwise 0.
+ */
+int translate_path(Tracee *tracee, char host_path[PATH_MAX],
+		   int dir_fd, const char *guest_path, bool deref_final)
 {
 	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	int status;
-	pid_t pid;
 
-	/* tracee->pid == 0 until the first tracee has started.  */
-	pid = (tracee->pid ?: getpid());
+	assert(tracee->pid != 0);
 
-	/* Use "/" as the base if it is an absolute [fake] path. */
-	if (fake_path[0] == '/') {
-		strcpy(result, "/");
+	/* Use "/" as the base if it is an absolute guest path. */
+	if (guest_path[0] == '/') {
+		strcpy(host_path, "/");
 	}
 	/* It is relative to the current working directory or to a
 	 * directory referred by a descriptors, see openat(2) for
@@ -213,58 +293,58 @@ int translate_path(Tracee *tracee, char result[PATH_MAX],
 
 		/* Format the path to the "virtual" link. */
 		if (dir_fd == AT_FDCWD)
-			status = snprintf(link, sizeof(link), "/proc/%d/cwd", pid);
+			status = snprintf(link, sizeof(link), "/proc/%d/cwd", tracee->pid);
 		else
-			status = snprintf(link, sizeof(link), "/proc/%d/fd/%d", pid, dir_fd);
+			status = snprintf(link, sizeof(link), "/proc/%d/fd/%d", tracee->pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
 			return -EPERM;
 
 		/* Read the value of this "virtual" link. */
-		status = readlink(link, result, PATH_MAX);
+		status = readlink(link, host_path, PATH_MAX);
 		if (status < 0)
 			return -EPERM;
 		if (status >= PATH_MAX)
 			return -ENAMETOOLONG;
-		result[status] = '\0';
+		host_path[status] = '\0';
 
 		if (dir_fd != AT_FDCWD) {
 			/* Ensure it points to a directory. */
-			status = stat(result, &statl);
+			status = stat(host_path, &statl);
 			if (!S_ISDIR(statl.st_mode))
 				return -ENOTDIR;
 		}
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
-		status = detranslate_path(tracee, result, NULL);
+		status = detranslate_path(tracee, host_path, NULL);
 		if (status < 0)
 			return status;
 	}
 
-	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", pid, result, fake_path);
+	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", tracee->pid, host_path, guest_path);
 
-	status = notify_extensions(tracee, GUEST_PATH, (intptr_t)result, (intptr_t)fake_path);
+	status = notify_extensions(tracee, GUEST_PATH, (intptr_t)host_path, (intptr_t)guest_path);
 	if (status < 0)
 		return status;
 	if (status > 0)
 		goto skip;
 
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(tracee, fake_path, deref_final, result, 0);
+	status = canonicalize(tracee, guest_path, deref_final, host_path, 0);
 	if (status < 0)
 		return status;
 
-	/* Final binding substitution to convert "result" into a host
+	/* Final binding substitution to convert "host_path" into a host
 	 * path, since canonicalize() works from the guest
 	 * point-of-view.  */
-	status = substitute_binding(tracee, GUEST, result);
+	status = substitute_binding(tracee, GUEST, host_path);
 	if (status < 0)
 		return status;
 
 skip:
-	VERBOSE(4, "pid %d:          -> \"%s\"", pid, result);
+	VERBOSE(4, "pid %d:          -> \"%s\"", tracee->pid, host_path);
 	return 0;
 }
 

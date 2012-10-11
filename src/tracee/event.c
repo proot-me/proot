@@ -47,9 +47,11 @@
 
 #include "compat.h"
 
+extern char **environ;
+
 /**
  * Launch the first process as specified by @tracee->cmdline[].  This
- * function returns -1 if an error occurred, otherwise 0.
+ * function returns -errno if an error occurred, otherwise 0.
  */
 int launch_process(Tracee *tracee)
 {
@@ -61,7 +63,7 @@ int launch_process(Tracee *tracee)
 	switch(pid) {
 	case -1:
 		notice(ERROR, SYSTEM, "fork()");
-		return -1;
+		return -errno;
 
 	case 0: /* child */
 		/* Declare myself as ptraceable before executing the
@@ -69,7 +71,7 @@ int launch_process(Tracee *tracee)
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		if (status < 0) {
 			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
-			return -1;
+			return -errno;
 		}
 
 		/* Warn about open file descriptors. They won't be
@@ -164,8 +166,7 @@ int launch_process(Tracee *tracee)
 		notice(INFO, INTERNAL, "started");
 
 		execvp(tracee->cmdline[0], tracee->cmdline);
-
-		return -1;
+		return -errno;
 
 	default: /* parent */
 		/* We know the pid of the first tracee now.  */
@@ -177,7 +178,7 @@ int launch_process(Tracee *tracee)
 	}
 
 	/* Never reached.  */
-	return -1;
+	return -ENOSYS;
 }
 
 /* Send the KILL signal to all tracees when PRoot has received a fatal

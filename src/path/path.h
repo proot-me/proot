@@ -69,7 +69,12 @@ typedef enum Comparison {
 	PATHS_ARE_NOT_COMPARABLE,
 } Comparison;
 
-extern int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd, const char *fake_path, bool deref_final);
+extern int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *const command);
+extern int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool deref_final);
+
+extern int translate_path(Tracee *tracee, char host_path[PATH_MAX],
+			int dir_fd, const char *guest_path, bool deref_final);
+
 extern int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
 extern bool belongs_to_guestfs(const Tracee *tracee, const char *path);
 

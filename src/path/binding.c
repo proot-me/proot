@@ -22,7 +22,6 @@
 
 #include <sys/stat.h> /* lstat(2), */
 #include <unistd.h>   /* getcwd(2), lstat(2), */
-#include <stdlib.h>   /* realpath(3), */
 #include <string.h>   /* string(3),  */
 #include <strings.h>  /* bzero(3), */
 #include <assert.h>   /* assert(3), */
@@ -504,9 +503,10 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 
 	/* Canonicalize the host part of the binding, as expected by
 	 * get_binding().  */
-	if (realpath(host, binding->host.path) == NULL) {
+	status = realpath2(tracee->reconf.tracee, binding->host.path, host, true);
+	if (status < 0) {
 		if (must_exist)
-			notice(WARNING, SYSTEM, "realpath(\"%s\")", host);
+			notice(WARNING, SYSTEM, "canonicalizing \"%s\"", host);
 		goto error;
 	}
 	binding->host.length = strlen(binding->host.path);
@@ -618,9 +618,9 @@ int initialize_bindings(Tracee *tracee)
 	Binding *binding;
 
 	/* Sanity checks.  */
-	assert(    tracee->bindings.guest == NULL
-		&& tracee->bindings.host  == NULL
-		&& tracee->bindings.pending != NULL);
+	assert(tracee->bindings.pending != NULL);
+	assert(tracee->bindings.guest == NULL);
+	assert(tracee->bindings.host == NULL);
 
 	/* Allocate @tracee->bindings.guest and
 	 * @tracee->bindings.host.  */

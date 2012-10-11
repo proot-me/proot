@@ -12,7 +12,6 @@ chmod +x ${TMP}
 # Valgrind prepends "/bin/sh" in front of foreign binaries and uses
 # LD_PRELOAD.
 if $(echo ${PROOT} | grep -q valgrind); then
-    PROOT2=${PROOT}
     PROOT="env PROOT_FORCE_FOREIGN_BINARY=1 ${PROOT}"
     COMMAND1="-E LD_PRELOAD=.* -0 /bin/sh /bin/sh ${TMP}"
     TEST1="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env /usr/bin/env LD_LIBRARY_PATH=test1 ${TMP}"
@@ -21,7 +20,6 @@ if $(echo ${PROOT} | grep -q valgrind); then
     TEST4="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env /usr/bin/env LD_TRACE_LOADED_OBJECTS=1 ${TMP}"
     COMMAND2="-E LD_PRELOAD=.* -0 ${TMP} ${TMP} ${TMP2}"
 else
-    PROOT2=${PROOT}
     COMMAND1="-0 ${TMP} ${TMP}"
     TEST1="-- -E LD_LIBRARY_PATH=test1 ${COMMAND1}"
     TEST2="-- -E LD_LIBRARY_PATH=test2 ${COMMAND1}"
@@ -34,7 +32,11 @@ fi
 ! ${PROOT} -q false / ${TMP}
 [ $? -eq 0 ]
 
-HOST_LD_LIBRARY_PATH=$(${PROOT2} -q 'echo --' / env | grep LD_LIBRARY_PATH)
+  (cd /; ${PROOT} -q ./$(which true) / ${TMP})
+! (cd /; ${PROOT} -q ./$(which false) / ${TMP})
+[ $? -eq 0 ]
+
+HOST_LD_LIBRARY_PATH=$(${PROOT} -q 'echo --' / env | grep LD_LIBRARY_PATH)
 test ! -z ${HOST_LD_LIBRARY_PATH}
 
 unset LD_LIBRARY_PATH

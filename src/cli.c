@@ -26,7 +26,6 @@
 #include <stdlib.h>    /* exit(3), strtol(3), */
 #include <stdbool.h>   /* bool, true, false, */
 #include <assert.h>    /* assert(3), */
-#include <unistd.h>    /* acess(2), pipe(2), dup2(2), */
 #include <sys/wait.h>  /* wait(2), */
 #include <sys/types.h> /* stat(2), */
 #include <sys/stat.h>  /* stat(2), */
@@ -70,84 +69,6 @@ static int handle_option_b(Tracee *tracee, char *value)
 	return 0;
 }
 
-/**
- * Put in @result the absolute path of the given @command.
- *
- * This function always returns -1 on error, toherwsie 0.
- */
-static int which(char *const command, char result[PATH_MAX])
-{
-	char *const argv[3] = { "which", command, NULL };
-	char which_output[PATH_MAX];
-	int pipe_fd[2];
-	int status;
-	pid_t pid;
-
-	status = pipe(pipe_fd);
-	if (status < 0) {
-		notice(ERROR, SYSTEM, "pipe()");
-		return -1;
-	}
-
-	pid = fork();
-	switch (pid) {
-	case -1:
-		notice(ERROR, SYSTEM, "fork()");
-		return -1;
-
-	case 0: /* child */
-		close(pipe_fd[0]); /* "read" end */
-
-		/* Replace the standard output with the "write" end of
-		 * the pipe.  */
-		status = dup2(pipe_fd[1], STDOUT_FILENO);
-		if (status < 0) {
-			notice(ERROR, SYSTEM, "dup2()");
-			return -1;
-		}
-
-		execvp(argv[0], argv);
-
-		notice(ERROR, SYSTEM, "can't execute `%s %s`", argv[0], command);
-		return -1;
-
-	default: /* parent */
-		close(pipe_fd[1]); /* "write" end */
-
-		status = read(pipe_fd[0], which_output, PATH_MAX - 1);
-		if (status < 0) {
-			notice(ERROR, SYSTEM, "read()");
-			return -1;
-		}
-		if (status == 0) {
-			notice(ERROR, USER, "%s: command not found", command);
-			return -1;
-		}
-		assert(status < PATH_MAX);
-		which_output[status - 1] = '\0'; /* overwrite "\n" */
-
-		close(pipe_fd[0]); /* "read" end */
-
-		pid = wait(&status);
-		if (pid < 0) {
-			notice(ERROR, SYSTEM, "wait()");
-			return -1;
-		}
-		if (status != 0) {
-			notice(ERROR, USER, "`%s %s` returned an error", argv[0], command);
-			return -1;
-		}
-		break;
-	}
-
-	if (realpath(which_output, result) == NULL) {
-		notice(ERROR, SYSTEM, "realpath(\"%s\")", which_output);
-		return -1;
-	}
-
-	return 0;
-}
-
 static int handle_option_q(Tracee *tracee, char *value)
 {
 	char path[PATH_MAX];
@@ -179,7 +100,7 @@ static int handle_option_q(Tracee *tracee, char *value)
 	}
 
 	tracee->qemu = talloc_zero_array(tracee, char *, nb_args + 1);
-	if (!tracee->qemu) {
+	if (tracee->qemu == NULL) {
 		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
 		return -1;
 	}
@@ -209,7 +130,7 @@ static int handle_option_q(Tracee *tracee, char *value)
 	}
 	assert(i == nb_args);
 
-	status = which(tracee->qemu[0], path);
+	status = which(tracee->reconf.tracee, tracee->reconf.paths, path, tracee->qemu[0]);
 	if (status < 0)
 		return -1;
 	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
@@ -425,7 +346,8 @@ static void print_config(Tracee *tracee)
 
 /**
  * Configure @tracee according to the command-line arguments stored in
- * @argv[].  This function succeed or die trying.
+ * @argv[].  This function returns -1 if an error occured, otherwise
+ * 0.
  */
 static int parse_cli(Tracee *tracee, int argc, char *argv[])
 {
@@ -482,7 +404,7 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 				if (!argument->value) {
 					status = option->handler(tracee, arg);
 					if (status < 0)
-						return status;
+						return -1;
 					goto known_option;
 				}
 
@@ -491,7 +413,7 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 					assert(strlen(arg) >= length);
 					status = option->handler(tracee, &arg[length + 1]);
 					if (status < 0)
-						return status;
+						return -1;
 					goto known_option;
 				}
 
@@ -523,15 +445,19 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 	 * the new command-line interface where the default guest
 	 * rootfs is "/".  */
 	if (get_root(tracee) == NULL) {
+		char path[PATH_MAX];
 		struct stat buf;
 
-		status = stat(argv[i], &buf);
-		if (status == 0 && S_ISDIR(buf.st_mode))
-			status = handle_option_r(tracee, argv[i++]);
+		if (   realpath2(tracee->reconf.tracee, path, argv[i], true) == 0
+		    && stat(path, &buf) == 0
+		    && S_ISDIR(buf.st_mode)) {
+			status = handle_option_r(tracee, path);
+			i++;
+		}
 		else
 			status = handle_option_r(tracee, "/");
 		if (status < 0)
-			return status;
+			return -1;
 	}
 
 	/* Bindings specify by the user (tracee->bindings.user) can

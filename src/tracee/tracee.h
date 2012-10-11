@@ -82,6 +82,15 @@ typedef struct tracee {
 	 * defined in bind_path() then used in build_glue().  */
 	mode_t glue_type;
 
+	/* During a partial reconfiguration, the new setup is
+	 * relatively to @tracee's file-system name-space.  Also,
+	 * @paths holds its $PATH environment variable in order to
+	 * emulate the execvp(3) behavior.  */
+	struct {
+		struct tracee *tracee;
+		const char *paths;
+	} reconf;
+
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the CLONE_FS flag.       *
