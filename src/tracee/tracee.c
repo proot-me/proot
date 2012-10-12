@@ -28,6 +28,7 @@
 #include <sys/queue.h>  /* LIST_*,  */
 #include <talloc.h>     /* talloc_*, */
 #include <signal.h>     /* kill(2), SIGKILL, */
+#include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
 
 #include "tracee/tracee.h"
 #include "extension/extension.h"
@@ -84,9 +85,9 @@ Tracee *get_tracee(pid_t pid, bool create)
 
 /**
  * Make the @child tracee inherit from the @parent tracee.  Depending
- * on the @parent->clone_flags, some information are copied or shared.
+ * on @shared_fs, some information are copied or shared.
  */
-void inherit(Tracee *child, Tracee *parent)
+void inherit(Tracee *child, Tracee *parent, bool shared_fs)
 {
 	/* The first tracee is started by PRoot and does nothing but a
 	 * call to execve(2), thus child->exe will be automatically
@@ -94,15 +95,16 @@ void inherit(Tracee *child, Tracee *parent)
 	if (parent == NULL) {
 		child->exe = talloc_strdup(child, "<dummy>");
 		talloc_set_name_const(child->exe, "$exe");
-		//child->cwd  = talloc_strdup(config.initial_cwd);
 		return;
 	}
 
-	assert(child->exe  == NULL);
-	// assert(child->cwd  == NULL);
-
-	assert(parent->exe  != NULL);
-	// assert(parent->cwd  != NULL);
+	assert(child->exe == NULL && parent->exe != NULL);
+	/* assert(child->cwd == NULL && parent->cwd != NULL); */
+	assert(child->bindings.pending == NULL && parent->bindings.pending == NULL);
+	assert(child->bindings.guest == NULL   && parent->bindings.guest != NULL);
+	assert(child->bindings.host == NULL    && parent->bindings.host != NULL);
+	assert(child->qemu == NULL);
+	assert(child->glue == NULL);
 
 	/* The path to the executable is unshared only once the child
 	 * process does a call to execve(2).  */
@@ -124,25 +126,36 @@ void inherit(Tracee *child, Tracee *parent)
 	 *
 	 * -- clone(2) man-page
 	 */
-	if ((parent->clone_flags & CLONE_FS) != 0) {
+	if (shared_fs) {
 		/* File-system information is shared.  */
-		child->cwd  = talloc_reference(child, parent->cwd);
+		child->cwd = talloc_reference(child, parent->cwd);
 	}
 	else {
 		/* File-system information is copied.  */
-		child->cwd  = talloc_strdup(child, parent->cwd);
-
+		child->cwd = talloc_strdup(child, parent->cwd);
 		talloc_set_name_const(child->cwd, "$cwd");
 	}
-#else
-	child->bindings.pending = NULL; assert(parent->bindings.pending == NULL);
+#endif
+
 	child->bindings.guest = talloc_reference(child, parent->bindings.guest);
 	child->bindings.host  = talloc_reference(child, parent->bindings.host);
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
 
 	inherit_extensions(child, parent);
-#endif
+
+	/* Restart the child tracee if it was already alive but
+	 * stopped until that moment.  */
+	if (child->sigstop == SIGSTOP_PENDING) {
+		int status;
+
+		child->sigstop = SIGSTOP_ALLOWED;
+		status = ptrace(PTRACE_SYSCALL, child->pid, NULL, 0);
+		if (status < 0) {
+			notice(WARNING, SYSTEM,	"ptrace(SYSCALL, %d) [1]", child->pid);
+			TALLOC_FREE(child);
+		}
+	}
 
 	return;
 }

@@ -173,7 +173,7 @@ int launch_process(Tracee *tracee)
 		tracee->pid = pid;
 
 		/* This tracee has no traced parent.  */
-		inherit(tracee, NULL);
+		inherit(tracee, NULL, false);
 		return 0;
 	}
 
@@ -418,9 +418,10 @@ int event_loop()
 				signal = 0;
 				break;
 
-			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
-			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
-			case SIGTRAP | PTRACE_EVENT_CLONE << 8: {
+			case SIGTRAP | PTRACE_EVENT_VFORK << 8: {
+				/* Note: clone(2) and fork(2) are
+				 * handle in syscall/exit.c.  */
+
 				Tracee *child_tracee;
 				pid_t child_pid;
 
@@ -433,33 +434,25 @@ int event_loop()
 					break;
 				}
 
-				/* Declare the parent of this new tracee.  */
 				child_tracee = get_tracee(child_pid, true);
-				inherit(child_tracee, tracee);
-
-				/* Restart the child tracee if it was started
-				 * before this notification event.  */
-				if (child_tracee->sigstop == SIGSTOP_PENDING) {
-					tracee->sigstop = SIGSTOP_ALLOWED;
-					status = ptrace(PTRACE_SYSCALL, child_pid, NULL, 0);
-					if (status < 0) {
-						notice(WARNING, SYSTEM,
-							"ptrace(SYSCALL, %d) [1]", child_pid);
-						TALLOC_FREE(tracee);
-					}
+				if (child_tracee == NULL) {
+					notice(WARNING, SYSTEM, "running out of memory");
+					break;
 				}
-			}
-				break;
 
+				inherit(child_tracee, tracee, false);
+
+				break;
+			}
+
+			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
 			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
 			case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
 				signal = 0;
 				break;
 
 			case SIGSTOP:
-				/* For each tracee, the first SIGSTOP
-				 * is only used to notify the tracer.  */
-
 				/* Stop this tracee until PRoot has received
 				 * the EVENT_*FORK|CLONE notification.  */
 				if (tracee->exe == NULL) {
@@ -467,6 +460,8 @@ int event_loop()
 					continue;
 				}
 
+				/* For each tracee, the first SIGSTOP
+				 * is only used to notify the tracer.  */
 				if (tracee->sigstop == SIGSTOP_IGNORED) {
 					tracee->sigstop = SIGSTOP_ALLOWED;
 					signal = 0;

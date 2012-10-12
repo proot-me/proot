@@ -90,8 +90,8 @@ case PR_getcwd: {
 	/* The value of "status" is used to update the returned value
 	 * in translate_syscall_exit().  */
 	status = new_size;
-}
 	break;
+}
 
 case PR_readlink:
 case PR_readlinkat: {
@@ -169,8 +169,8 @@ case PR_readlinkat: {
 	/* The value of "status" is used to update the returned value
 	 * in translate_syscall_exit().  */
 	status = new_size;
-}
 	break;
+}
 
 #if defined(ARCH_X86_64)
 case PR_uname: {
@@ -210,8 +210,8 @@ case PR_uname: {
 		goto end;
 
 	status = 0;
-}
 	break;
+}
 #endif
 
 case PR_execve:
@@ -222,6 +222,43 @@ case PR_sigreturn:
 	}
 	status = 0;
 	goto end;
+
+case PR_fork:
+case PR_clone: {
+	/* Note: vfork can't be handled here since the parent don't
+	 * return until the child does a call to execve(2) and the
+	 * child would be stopped by PRoot until the parent returns
+	 * (deak-lock).  Instead it is handled asynchronously in
+	 * event.c.  */
+
+	Tracee *child;
+	word_t result;
+	word_t flags;
+
+	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+
+	/* Error reported by the kernel.  */
+	if ((int) result < 0) {
+		status = 0;
+		goto end;
+	}
+
+	child = get_tracee(result, true);
+	if (child == NULL) {
+		status = -ENOMEM;
+		break;
+	}
+
+	if (peek_reg(tracee, ORIGINAL, SYSARG_NUM) == PR_clone)
+		flags = peek_reg(tracee, ORIGINAL, SYSARG_3);
+	else
+		flags = 0;
+
+	inherit(child, tracee, (flags & CLONE_FS) != 0);
+
+	status = 0;
+	goto end;
+}
 
 default:
 	status = 0;

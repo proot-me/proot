@@ -20,7 +20,8 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE      /* O_NOFOLLOW in fcntl.h, */
+#define _GNU_SOURCE      /* O_NOFOLLOW in fcntl.h, clone(2), */
+#include <sched.h>       /* clone(2), */
 #include <fcntl.h>       /* AT_FDCWD, */
 #include <sys/types.h>   /* pid_t, */
 #include <assert.h>      /* assert(3), */
