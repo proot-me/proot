@@ -38,6 +38,7 @@
 #include "cli.h"
 #include "notice.h"
 #include "path/path.h"
+#include "path/canon.h"
 #include "path/binding.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
@@ -133,7 +134,10 @@ static int handle_option_q(Tracee *tracee, char *value)
 	status = which(tracee->reconf.tracee, tracee->reconf.paths, path, tracee->qemu[0]);
 	if (status < 0)
 		return -1;
+
 	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
+	if (tracee->qemu[0] == NULL)
+		return -1;
 
 	new_binding(tracee, "/", HOST_ROOTFS, true);
 	new_binding(tracee, "/dev/null", "/etc/ld.so.preload", false);
@@ -144,6 +148,8 @@ static int handle_option_q(Tracee *tracee, char *value)
 static int handle_option_w(Tracee *tracee, char *value)
 {
 	tracee->cwd = talloc_strdup(tracee, value);
+	if (tracee->cwd == NULL)
+		return -1;
 	talloc_set_name_const(tracee->cwd, "$cwd");
 	return 0;
 }
@@ -345,6 +351,64 @@ static void print_config(Tracee *tracee)
 }
 
 /**
+ * Initialize @tracee's current working directory.  This function
+ * returns -1 if an error occurred, otherwise 0.
+ */
+static int initialize_cwd(Tracee *tracee)
+{
+	char path2[PATH_MAX];
+	char path[PATH_MAX];
+	int status;
+
+	/* Default to "." if none were specified.  */
+	if (tracee->cwd == NULL) {
+		status = handle_option_w(tracee, ".");
+		if (status < 0)
+			return -1;
+	}
+
+	/* Compute the base directory.  */
+	if (tracee->cwd[0] != '/') {
+		status = getcwd2(tracee->reconf.tracee, path);
+		if (status < 0) {
+			notice(ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+			return -1;
+		}
+	}
+	else
+		strcpy(path, "/");
+
+	/* The ending "." ensures canonicalize() will report an error
+	 * if tracee->cwd does not exist or if it is not a directory.  */
+	status = join_paths(3, path2, path, tracee->cwd, ".");
+	if (status < 0) {
+		notice(ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+		return -1;
+	}
+
+	/* Initiale state for canonicalization.  */
+	strcpy(path, "/");
+
+	status = canonicalize(tracee, path2, true, path, 0);
+	if (status < 0) {
+		notice(WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
+			path2, strerror(-status));
+		notice(INFO, USER, "default working directory is now \"/\"");
+		strcpy(path, "/");
+	}
+	chop_finality(path);
+
+	/* Replace with the canonicalized working directory.  */
+	TALLOC_FREE(tracee->cwd);
+	tracee->cwd = talloc_strdup(tracee, path);
+	if (tracee->cwd == NULL)
+		return -1;
+	talloc_set_name_const(tracee->cwd, "$cwd");
+
+	return 0;
+}
+
+/**
  * Configure @tracee according to the command-line arguments stored in
  * @argv[].  This function returns -1 if an error occured, otherwise
  * 0.
@@ -460,9 +524,16 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 			return -1;
 	}
 
-	/* Bindings specify by the user (tracee->bindings.user) can
-	 * now be canonicalized, as expected by get_bindings().  */
+	/* The guest rootfs is now known: bindings specified by the
+	 * user (tracee->bindings.user) can be canonicalized.  */
 	status = initialize_bindings(tracee);
+	if (status < 0)
+		return -1;
+
+	/* Bindings are now installed (tracee->bindings.guest &
+	 * tracee->bindings.host): the current working directory can
+	 * be canonicalized.  */
+	status = initialize_cwd(tracee);
 	if (status < 0)
 		return -1;
 

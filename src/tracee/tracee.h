@@ -141,7 +141,7 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(pid_t pid, bool create);
-extern void inherit(Tracee *child, Tracee *parent, bool shared_fs);
+extern int inherit(Tracee *child, Tracee *parent, bool shared_fs);
 extern void kill_all_tracees();
 
 #endif /* TRACEE_H */

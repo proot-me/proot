@@ -29,6 +29,7 @@
 #include <talloc.h>     /* talloc_*, */
 #include <signal.h>     /* kill(2), SIGKILL, */
 #include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
+#include <errno.h>      /* E*, */
 
 #include "tracee/tracee.h"
 #include "extension/extension.h"
@@ -85,21 +86,24 @@ Tracee *get_tracee(pid_t pid, bool create)
 
 /**
  * Make the @child tracee inherit from the @parent tracee.  Depending
- * on @shared_fs, some information are copied or shared.
+ * on @shared_fs, some information are copied or shared.  This
+ * function returns -errno if an error occured, otherwise 0.
  */
-void inherit(Tracee *child, Tracee *parent, bool shared_fs)
+int inherit(Tracee *child, Tracee *parent, bool shared_fs)
 {
 	/* The first tracee is started by PRoot and does nothing but a
 	 * call to execve(2), thus child->exe will be automatically
 	 * updated later.  */
 	if (parent == NULL) {
 		child->exe = talloc_strdup(child, "<dummy>");
+		if (child->exe == NULL)
+			return -ENOMEM;
 		talloc_set_name_const(child->exe, "$exe");
-		return;
+		return 0;
 	}
 
 	assert(child->exe == NULL && parent->exe != NULL);
-	/* assert(child->cwd == NULL && parent->cwd != NULL); */
+	assert(child->cwd == NULL && parent->cwd != NULL);
 	assert(child->bindings.pending == NULL && parent->bindings.pending == NULL);
 	assert(child->bindings.guest == NULL   && parent->bindings.guest != NULL);
 	assert(child->bindings.host == NULL    && parent->bindings.host != NULL);
@@ -110,7 +114,6 @@ void inherit(Tracee *child, Tracee *parent, bool shared_fs)
 	 * process does a call to execve(2).  */
 	child->exe = talloc_reference(child, parent->exe);
 
-#if 0
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root
 	 * of the file system, the current working directory, and the
@@ -133,9 +136,10 @@ void inherit(Tracee *child, Tracee *parent, bool shared_fs)
 	else {
 		/* File-system information is copied.  */
 		child->cwd = talloc_strdup(child, parent->cwd);
+		if (child->cwd == NULL)
+			return -ENOMEM;
 		talloc_set_name_const(child->cwd, "$cwd");
 	}
-#endif
 
 	child->bindings.guest = talloc_reference(child, parent->bindings.guest);
 	child->bindings.host  = talloc_reference(child, parent->bindings.host);
@@ -157,7 +161,7 @@ void inherit(Tracee *child, Tracee *parent, bool shared_fs)
 		}
 	}
 
-	return;
+	return 0;
 }
 
 /* Send the KILL signal to all tracees.  */

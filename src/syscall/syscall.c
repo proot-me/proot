@@ -40,6 +40,7 @@
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "path/path.h"
+#include "path/canon.h"
 #include "execve/execve.h"
 #include "extension/extension.h"
 #include "notice.h"

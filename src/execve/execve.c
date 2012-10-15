@@ -207,6 +207,7 @@ int translate_execve(Tracee *tracee)
 	Array *envp = NULL;
 	Array *argv = NULL;
 	char *argv0 = NULL;
+	char *tmp;
 
 	bool ignore_elf_interpreter;
 	bool inhibit_rpath = false;
@@ -262,9 +263,12 @@ int translate_execve(Tracee *tracee)
 
 	/* TODO: it would be safier to do this in exit.c, however I'm
 	 * not able to write a test where execve would fail at kernel
-	 * level but here.  */
+	 * level but not in PRoot.  */
+	tmp = talloc_strdup(tracee, u_path);
+	if (tmp == NULL)
+		return -ENOMEM;
 	talloc_unlink(tracee, tracee->exe);
-	tracee->exe = talloc_strdup(tracee, u_path);
+	tracee->exe = tmp;
 	talloc_set_name_const(tracee->exe, "$exe");
 
 	if (tracee->qemu != NULL) {

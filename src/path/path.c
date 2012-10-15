@@ -265,6 +265,52 @@ int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool d
 }
 
 /**
+ * Put in @guest_path the canonicalized current working directory.  In
+ * the nominal case (@tracee == NULL), this function is barely
+ * equivalent to realpath(), but when doing partial reconfiguration,
+ * the path is canonicalized relatively to the current @tracee's
+ * file-system name-space.  This function returns -errno on error,
+ * otherwise 0.
+ */
+int getcwd2(Tracee *tracee, char guest_path[PATH_MAX])
+{
+	if (tracee == NULL) {
+		if (getcwd(guest_path, PATH_MAX) == NULL)
+			return -errno;
+	}
+	else {
+		if (strlen(tracee->cwd) >= PATH_MAX)
+			return -ENAMETOOLONG;
+
+		strcpy(guest_path, tracee->cwd);
+	}
+
+	return 0;
+}
+
+/**
+ * Remove the trailing "/" or "/.".
+ */
+void chop_finality(char *path)
+{
+	size_t length = strlen(path);
+
+	if (path[length - 1] == '.') {
+		assert(length >= 2);
+		/* Special case for "/." */
+		if (length == 2)
+			path[length - 1] = '\0';
+		else
+			path[length - 2] = '\0';
+	}
+	else if (path[length - 1] == '/') {
+		/* Special case for "/" */
+		if (length > 1)
+			path[length - 1] = '\0';
+	}
+}
+
+/**
  * Copy in @host_path the equivalent of "@tracee->root +
  * canonicalize(@dir_fd + @guest_path)".  If @guest_path is not
  * absolute then it is relative to the directory referred by the
@@ -276,7 +322,6 @@ int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool d
 int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 		   int dir_fd, const char *guest_path, bool deref_final)
 {
-	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 	int status;
 
 	assert(tracee->pid != 0);
@@ -288,14 +333,18 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 	/* It is relative to the current working directory or to a
 	 * directory referred by a descriptors, see openat(2) for
 	 * details. */
+	else if (dir_fd == AT_FDCWD) {
+		status = getcwd2(tracee, host_path);
+		if (status < 0)
+			return status;
+	}
 	else {
+		char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 		struct stat statl;
 
 		/* Format the path to the "virtual" link. */
-		if (dir_fd == AT_FDCWD)
-			status = snprintf(link, sizeof(link), "/proc/%d/cwd", tracee->pid);
-		else
-			status = snprintf(link, sizeof(link), "/proc/%d/fd/%d", tracee->pid, dir_fd);
+		status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",
+				tracee->pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))
@@ -309,12 +358,10 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 			return -ENAMETOOLONG;
 		host_path[status] = '\0';
 
-		if (dir_fd != AT_FDCWD) {
-			/* Ensure it points to a directory. */
-			status = stat(host_path, &statl);
-			if (!S_ISDIR(statl.st_mode))
-				return -ENOTDIR;
-		}
+		/* Ensure it points to a directory. */
+		status = stat(host_path, &statl);
+		if (!S_ISDIR(statl.st_mode))
+			return -ENOTDIR;
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */

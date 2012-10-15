@@ -30,7 +30,6 @@
  */
 switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
 case PR_getcwd: {
-	char path[PATH_MAX];
 	size_t new_size;
 	size_t size;
 	word_t output;
@@ -47,43 +46,19 @@ case PR_getcwd: {
 	output = peek_reg(tracee, ORIGINAL, SYSARG_1);
 
 	size = (size_t) peek_reg(tracee, ORIGINAL, SYSARG_2);
-
-	if (size > PATH_MAX)
-		size = PATH_MAX;
-
 	if (size == 0) {
 		status = -EINVAL;
 		break;
 	}
 
-	/* The kernel does put the terminating NULL byte for
-	 * getcwd(2).  */
-	status = read_string(tracee, path, output, size);
-	if (status < 0)
-		goto end;
-
-	if (status >= size) {
-		status = (size == PATH_MAX ? -ENAMETOOLONG : -ERANGE);
-		break;
-	}
-
-	status = detranslate_path(tracee, path, NULL);
-	if (status < 0)
-		break;
-
-	/* The original path doesn't require any transformation, i.e
-	 * it is a symetric binding.  */
-	if (status == 0)
-		goto end;
-
-	new_size = status;
-	if (new_size > size) {
-		status = (size == PATH_MAX ? -ENAMETOOLONG : -ERANGE);
+	new_size = strlen(tracee->cwd) + 1;
+	if (size < new_size) {
+		status = -ERANGE;
 		break;
 	}
 
 	/* Overwrite the path.  */
-	status = write_data(tracee, output, path, new_size);
+	status = write_data(tracee, output, tracee->cwd, new_size);
 	if (status < 0)
 		goto end;
 
@@ -92,6 +67,13 @@ case PR_getcwd: {
 	status = new_size;
 	break;
 }
+
+case PR_fchdir:
+case PR_chdir:
+	/* These syscalls are fully emulated, see enter.c for details
+	 * (like errors).  */
+	status = 0;
+	break;
 
 case PR_readlink:
 case PR_readlinkat: {
@@ -254,7 +236,9 @@ case PR_clone: {
 	else
 		flags = 0;
 
-	inherit(child, tracee, (flags & CLONE_FS) != 0);
+	status = inherit(child, tracee, (flags & CLONE_FS) != 0);
+	if (status < 0)
+		break;
 
 	status = 0;
 	goto end;

@@ -108,8 +108,8 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 		/* Substitute link "/proc/<PID>/???" with the content
 		 * of tracee->???.  */
 		SUBSTITUTE(exe);
+		SUBSTITUTE(cwd);
 		//SUBSTITUTE(root);
-		//SUBSTITUTE(cwd);
 #undef SUBSTITUTE
 		return DEFAULT;
 

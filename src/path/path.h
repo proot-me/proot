@@ -71,6 +71,8 @@ typedef enum Comparison {
 
 extern int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *const command);
 extern int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool deref_final);
+extern int getcwd2(Tracee *tracee, char guest_path[PATH_MAX]);
+extern void chop_finality(char *path);
 
 extern int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 			int dir_fd, const char *guest_path, bool deref_final);

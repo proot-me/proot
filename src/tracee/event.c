@@ -146,23 +146,6 @@ int launch_process(Tracee *tracee)
 		/* Now process is ptraced, so the current rootfs is
 		 * already the guest rootfs. */
 
-		if (tracee->cwd != NULL) {
-			status = chdir(tracee->cwd);
-			if (status < 0) {
-				notice(WARNING, SYSTEM, "chdir('%s/)", tracee->cwd);
-				chdir("/");
-			}
-		}
-		else {
-			status = chdir(".");
-			if (status < 0) {
-				notice(INFO, USER,
-					"the current working directory isn't "
-					"accessible anymore, changing to \"/\"");
-				chdir("/");
-			}
-		}
-
 		notice(INFO, INTERNAL, "started");
 
 		execvp(tracee->cmdline[0], tracee->cmdline);
@@ -173,8 +156,7 @@ int launch_process(Tracee *tracee)
 		tracee->pid = pid;
 
 		/* This tracee has no traced parent.  */
-		inherit(tracee, NULL, false);
-		return 0;
+		return inherit(tracee, NULL, false);
 	}
 
 	/* Never reached.  */
@@ -440,7 +422,11 @@ int event_loop()
 					break;
 				}
 
-				inherit(child_tracee, tracee, false);
+				status = inherit(child_tracee, tracee, false);
+				if (status < 0) {
+					notice(ERROR, SYSTEM, "XXX");
+					break;
+				}
 
 				break;
 			}

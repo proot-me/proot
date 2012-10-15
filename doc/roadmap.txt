@@ -13,16 +13,6 @@ Short term
 
   * ``proot`` under PRoot
 
-* For /proc/<pid>/cwd: the detranslation isn't a state machine, hence
-  it doesn't know how to detranslate correctly when there are several
-  bindings with the same host-side::
-
-    $ proot -w /a -m /tmp:/a -m /tmp:/b ../tests/rootfs /bin/pwd
-    /b
-
-    $ proot -w /a -m /tmp:/b -m /tmp:/a ../tests/rootfs /bin/pwd
-    /a
-
 
 Middle term
 ===========

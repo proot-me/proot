@@ -67,7 +67,6 @@ case PR_fadvise64_64:
 case PR_fallocate:
 case PR_fanotify_init:
 case PR_fanotify_mark:
-case PR_fchdir:
 case PR_fchmod:
 case PR_fchown:
 case PR_fchown32:
@@ -352,7 +351,7 @@ case PR_ARM_usr26:
 case PR_ARM_usr32:
 case PR_arm_fadvise64_64:
 case PR_arm_sync_file_range:
-#endif /*  */
+#endif
 
 	/* Nothing to do. */
 	status = 0;
@@ -362,9 +361,78 @@ case PR_execve:
 	status = translate_execve(tracee);
 	break;
 
+case PR_fchdir:
+case PR_chdir: {
+	char *tmp;
+
+	if (peek_reg(tracee, CURRENT, SYSARG_NUM) == PR_chdir) {
+		status = get_sysarg_path(tracee, path, SYSARG_1);
+		if (status < 0)
+			break;
+
+		/* The ending "." ensures canonicalize() will report
+		 * an error if path does not exist or if it is not a
+		 * directory.  */
+		if (path[0] != '/')
+			status = join_paths(3, newpath, tracee->cwd, path, ".");
+		else
+			status = join_paths(2, newpath, path, ".");
+		if (status < 0)
+			break;
+
+		/* Initiale state for canonicalization.  */
+		strcpy(path, "/");
+
+		status = canonicalize(tracee, newpath, true, path, 0);
+		if (status < 0)
+			break;
+	}
+	else {
+		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+
+		/* Sadly this method doesn't detranslate statefully,
+		 * this means that there's an ambiguity when several
+		 * bindings are from the same host path:
+		 *
+		 *    $ proot -m /tmp:/a -m /tmp:/b fchdir_getcwd /a
+		 *    /b
+		 *
+		 *    $ proot -m /tmp:/b -m /tmp:/a fchdir_getcwd /a
+		 *    /a
+		 *
+		 * A solution would be to follow each file descriptor
+		 * just like it is done for cwd.
+		 */
+
+		status = translate_path(tracee, path, dirfd, ".", true);
+		if (status < 0)
+			break;
+
+		status = detranslate_path(tracee, path, NULL);
+		if (status < 0)
+			break;
+	}
+
+	/* Remove the trailing "/" or "/.".  */
+	chop_finality(path);
+
+	tmp = talloc_strdup(tracee, path);
+	if (tmp == NULL) {
+		status = -ENOMEM;
+		break;
+	}
+	TALLOC_FREE(tracee->cwd);
+
+	tracee->cwd = tmp;
+	talloc_set_name_const(tracee->cwd, "$cwd");
+
+	poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
+	status = 0;
+	break;
+}
+
 case PR_access:
 case PR_acct:
-case PR_chdir:
 case PR_chmod:
 case PR_chown:
 case PR_chown32:

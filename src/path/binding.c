@@ -506,7 +506,8 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	status = realpath2(tracee->reconf.tracee, binding->host.path, host, true);
 	if (status < 0) {
 		if (must_exist)
-			notice(WARNING, SYSTEM, "canonicalizing \"%s\"", host);
+			notice(WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
+				host, strerror(-status));
 		goto error;
 	}
 	binding->host.length = strlen(binding->host.path);
@@ -517,9 +518,10 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	/* When not absolute, assume the guest path is relative to the
 	 * current working directory, as with ``-b .`` for instance.  */
 	if (guest[0] != '/') {
-		if (getcwd(base, PATH_MAX) == NULL) {
-			notice(WARNING, SYSTEM, "can't sanitize binding \"%s\", getcwd()",
-				binding->guest.path);
+		status = getcwd2(tracee->reconf.tracee, base);
+		if (status < 0) {
+			notice(WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
+				binding->guest.path, strerror(-status));
 			goto error;
 		}
 	}
@@ -580,6 +582,10 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 			goto error;
 		}
 
+		/* Remove the trailing "/" or "/." as expected by
+		 * substitute_binding().  */
+		chop_finality(binding->guest.path);
+
 		/* Disable definitively the creation of the glue for
 		 * this binding.  */
 		tracee->glue_type = 0;
@@ -589,17 +595,6 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 
 	binding->need_substitution =
 		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
-
-	/* Remove the trailing "/" or "/." as expected by substitute_binding(). */
-	if (binding->guest.path[binding->guest.length - 1] == '.') {
-		binding->guest.path[binding->guest.length - 2] = '\0';
-		binding->guest.length -= 2;
-	}
-	else if (binding->guest.path[binding->guest.length - 1] == '/'
-		&& binding->guest.length > 1 /* Special case for "/".  */) {
-		binding->guest.path[binding->guest.length - 1] = '\0';
-		binding->guest.length -= 1;
-	}
 
 	insort_binding2(tracee, binding);
 	return 0;
