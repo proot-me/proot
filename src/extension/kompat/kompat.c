@@ -34,6 +34,7 @@
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
+#include "compat.h"
 
 #define MAX_ARG_SHIFT 2
 typedef struct {

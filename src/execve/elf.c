@@ -20,6 +20,7 @@
  * 02110-1301 USA.
  */
 
+#define  _GNU_SOURCE /* strnlen(3), */
 #include <fcntl.h>  /* open(2), */
 #include <unistd.h> /* read(2), close(2), */
 #include <errno.h>  /* EACCES, ENOTSUP, */

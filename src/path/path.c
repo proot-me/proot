@@ -20,6 +20,7 @@
  * 02110-1301 USA.
  */
 
+#define _ATFILE_SOURCE /* readlinkat(2), */
 #include <string.h>    /* string(3), */
 #include <stdarg.h>    /* va_*(3), */
 #include <assert.h>    /* assert(3), */
