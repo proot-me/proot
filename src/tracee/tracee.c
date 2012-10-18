@@ -55,19 +55,15 @@ static Tracee *new_tracee(pid_t pid)
 	Tracee *tracee;
 
 	tracee = talloc_zero(NULL, Tracee);
-	if (tracee == NULL) {
-		notice(WARNING, INTERNAL, "talloc_zero() failed");
+	if (tracee == NULL)
 		return NULL;
-	}
 	talloc_set_destructor(tracee, remove_tracee);
 
 	/* By default new tracees have an empty file-system
 	 * name-space.  */
 	tracee->fs = talloc_zero(tracee, FileSystemNameSpace);
-	if (tracee->fs == NULL) {
-		notice(WARNING, INTERNAL, "talloc_zero() failed");
+	if (tracee->fs == NULL)
 		return NULL;
-	}
 
 	tracee->pid = pid;
 	LIST_INSERT_HEAD(&tracees, tracee, link);

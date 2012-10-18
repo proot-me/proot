@@ -101,10 +101,8 @@ static int handle_option_q(Tracee *tracee, char *value)
 	}
 
 	tracee->qemu = talloc_zero_array(tracee, char *, nb_args + 1);
-	if (tracee->qemu == NULL) {
-		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
+	if (tracee->qemu == NULL)
 		return -1;
-	}
 	talloc_set_name_const(tracee->qemu, "@qemu");
 
 	i = 0;

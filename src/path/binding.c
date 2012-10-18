@@ -481,20 +481,16 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	 * user.  This list will be used by initialize_bindings().  */
 	if (tracee->fs->bindings.pending == NULL) {
 		tracee->fs->bindings.pending = talloc_zero(tracee->fs, Bindings);
-		if (tracee->fs->bindings.pending == NULL) {
-			notice(WARNING, INTERNAL, "talloc_zero() failed");
+		if (tracee->fs->bindings.pending == NULL)
 			return NULL;
-		}
 		CIRCLEQ_INIT(tracee->fs->bindings.pending);
 		talloc_set_destructor(tracee->fs->bindings.pending, remove_bindings);
 	}
 
 	/* Allocate an empty binding.  */
 	binding = talloc_zero(tracee->fs->bindings.pending, Binding);
-	if (binding == NULL) {
-		notice(WARNING, INTERNAL, "talloc_zero() failed");
+	if (binding == NULL)
 		return NULL;
-	}
 	talloc_set_destructor(binding, remove_binding);
 
 	/* Expand environment variables like $HOME.  */
