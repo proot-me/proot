@@ -280,10 +280,10 @@ int getcwd2(Tracee *tracee, char guest_path[PATH_MAX])
 			return -errno;
 	}
 	else {
-		if (strlen(tracee->cwd) >= PATH_MAX)
+		if (strlen(tracee->fs->cwd) >= PATH_MAX)
 			return -ENAMETOOLONG;
 
-		strcpy(guest_path, tracee->cwd);
+		strcpy(guest_path, tracee->fs->cwd);
 	}
 
 	return 0;

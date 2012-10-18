@@ -43,6 +43,23 @@ typedef enum {
 struct bindings;
 struct extensions;
 
+/* Information related to a file-system name-space.  */
+typedef struct {
+	struct {
+	     /* List of bindings as specified by the user but not canonicalized yet.  */
+		struct bindings *pending;
+
+		/* List of bindings canonicalized and sorted in the "guest" order.  */
+		struct bindings *guest;
+
+		/* List of bindings canonicalized and sorted in the "host" order.  */
+		struct bindings *host;
+	} bindings;
+
+	/* Current working directory, à la /proc/self/pwd.  */
+	char *cwd;
+} FileSystemNameSpace;
+
 /* Information related to a tracee process. */
 typedef struct tracee {
 	/**********************************************************************
@@ -96,19 +113,7 @@ typedef struct tracee {
 	 * Shared or private resources, depending on the CLONE_FS flag.       *
 	 **********************************************************************/
 
-	struct {
-		/* List of bindings as specified by the user but not canonicalized yet.  */
-		struct bindings *pending;
-
-		/* List of bindings canonicalized and sorted in the "guest" order.  */
-		struct bindings *guest;
-
-		/* List of bindings canonicalized and sorted in the "host" order.  */
-		struct bindings *host;
-	} bindings;
-
-	/* Current working directory, à la /proc/self/pwd.  */
-	char *cwd;
+	FileSystemNameSpace *fs;
 
 
 	/**********************************************************************

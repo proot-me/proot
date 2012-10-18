@@ -11,4 +11,4 @@ mkdir ${TMP}
 ! ${PROOT} rmdir ${TMP}/./
 [ $? -eq 0 ]
 
-rmdir ${TMP}
+${PROOT} rmdir ${TMP}

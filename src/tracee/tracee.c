@@ -59,8 +59,15 @@ static Tracee *new_tracee(pid_t pid)
 		notice(WARNING, INTERNAL, "talloc_zero() failed");
 		return NULL;
 	}
-
 	talloc_set_destructor(tracee, remove_tracee);
+
+	/* By default new tracees have an empty file-system
+	 * name-space.  */
+	tracee->fs = talloc_zero(tracee, FileSystemNameSpace);
+	if (tracee->fs == NULL) {
+		notice(WARNING, INTERNAL, "talloc_zero() failed");
+		return NULL;
+	}
 
 	tracee->pid = pid;
 	LIST_INSERT_HEAD(&tracees, tracee, link);
@@ -103,10 +110,10 @@ int inherit(Tracee *child, Tracee *parent, bool shared_fs)
 	}
 
 	assert(child->exe == NULL && parent->exe != NULL);
-	assert(child->cwd == NULL && parent->cwd != NULL);
-	assert(child->bindings.pending == NULL && parent->bindings.pending == NULL);
-	assert(child->bindings.guest == NULL   && parent->bindings.guest != NULL);
-	assert(child->bindings.host == NULL    && parent->bindings.host != NULL);
+	assert(child->fs->cwd == NULL && parent->fs->cwd != NULL);
+	assert(child->fs->bindings.pending == NULL && parent->fs->bindings.pending == NULL);
+	assert(child->fs->bindings.guest == NULL   && parent->fs->bindings.guest != NULL);
+	assert(child->fs->bindings.host == NULL    && parent->fs->bindings.host != NULL);
 	assert(child->qemu == NULL);
 	assert(child->glue == NULL);
 
@@ -129,20 +136,30 @@ int inherit(Tracee *child, Tracee *parent, bool shared_fs)
 	 *
 	 * -- clone(2) man-page
 	 */
+	TALLOC_FREE(child->fs);
 	if (shared_fs) {
-		/* File-system information is shared.  */
-		child->cwd = talloc_reference(child, parent->cwd);
+		/* File-system name-space is shared.  */
+		child->fs = talloc_reference(child, parent->fs);
 	}
 	else {
-		/* File-system information is copied.  */
-		child->cwd = talloc_strdup(child, parent->cwd);
-		if (child->cwd == NULL)
+		/* File-system name-space is copied.  */
+		child->fs = talloc_zero(child, FileSystemNameSpace);
+		if (child->fs == NULL)
 			return -ENOMEM;
-		talloc_set_name_const(child->cwd, "$cwd");
+
+		child->fs->cwd = talloc_strdup(child->fs, parent->fs->cwd);
+		if (child->fs->cwd == NULL)
+			return -ENOMEM;
+		talloc_set_name_const(child->fs->cwd, "$cwd");
+
+		/* Bindings are shared across file-system name-spaces since a
+		 * "mount --bind" made by a process affects all other processes
+		 * under Linux.  Actually they are copied when a sub
+		 * reconfiguration occured (nested proot or chroot(2)).  */
+		child->fs->bindings.guest = talloc_reference(child->fs, parent->fs->bindings.guest);
+		child->fs->bindings.host  = talloc_reference(child->fs, parent->fs->bindings.host);
 	}
 
-	child->bindings.guest = talloc_reference(child, parent->bindings.guest);
-	child->bindings.host  = talloc_reference(child, parent->bindings.host);
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
 

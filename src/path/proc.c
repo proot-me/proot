@@ -92,23 +92,23 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 	comparison = compare_paths(proc_path, base);
 	switch (comparison) {
 	case PATHS_ARE_EQUAL:
-#define SUBSTITUTE(name)					\
+#define SUBSTITUTE(name, field)					\
 		do {						\
 			if (strcmp(component, #name) != 0)	\
 				break;				\
 								\
-			status = strlen(known_tracee->name);	\
+			status = strlen(known_tracee->field);	\
 			if (status >= PATH_MAX)			\
 				return -EPERM;			\
 								\
-			strncpy(result, known_tracee->name, status + 1); \
+			strncpy(result, known_tracee->field, status + 1); \
 			return CANONICALIZE;			\
 		} while (0)
 
 		/* Substitute link "/proc/<PID>/???" with the content
 		 * of tracee->???.  */
-		SUBSTITUTE(exe);
-		SUBSTITUTE(cwd);
+		SUBSTITUTE(exe, exe);
+		SUBSTITUTE(cwd, fs->cwd);
 		//SUBSTITUTE(root);
 #undef SUBSTITUTE
 		return DEFAULT;

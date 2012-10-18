@@ -147,10 +147,10 @@ static int handle_option_q(Tracee *tracee, char *value)
 
 static int handle_option_w(Tracee *tracee, char *value)
 {
-	tracee->cwd = talloc_strdup(tracee, value);
-	if (tracee->cwd == NULL)
+	tracee->fs->cwd = talloc_strdup(tracee->fs, value);
+	if (tracee->fs->cwd == NULL)
 		return -1;
-	talloc_set_name_const(tracee->cwd, "$cwd");
+	talloc_set_name_const(tracee->fs->cwd, "$cwd");
 	return 0;
 }
 
@@ -342,8 +342,7 @@ static void print_config(Tracee *tracee)
 	print_argv(tracee, "command", tracee->cmdline);
 	print_argv(tracee, "qemu", tracee->qemu);
 
-	if (tracee->cwd)
-		notice(INFO, USER, "initial cwd = %s", tracee->cwd);
+	notice(INFO, USER, "initial cwd = %s", tracee->fs->cwd);
 
 	notice(INFO, USER, "verbose level = %d", verbose_level);
 
@@ -361,14 +360,14 @@ static int initialize_cwd(Tracee *tracee)
 	int status;
 
 	/* Default to "." if none were specified.  */
-	if (tracee->cwd == NULL) {
+	if (tracee->fs->cwd == NULL) {
 		status = handle_option_w(tracee, ".");
 		if (status < 0)
 			return -1;
 	}
 
 	/* Compute the base directory.  */
-	if (tracee->cwd[0] != '/') {
+	if (tracee->fs->cwd[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, path);
 		if (status < 0) {
 			notice(ERROR, INTERNAL, "getcwd: %s", strerror(-status));
@@ -379,8 +378,9 @@ static int initialize_cwd(Tracee *tracee)
 		strcpy(path, "/");
 
 	/* The ending "." ensures canonicalize() will report an error
-	 * if tracee->cwd does not exist or if it is not a directory.  */
-	status = join_paths(3, path2, path, tracee->cwd, ".");
+	 * if tracee->fs->cwd does not exist or if it is not a
+	 * directory.  */
+	status = join_paths(3, path2, path, tracee->fs->cwd, ".");
 	if (status < 0) {
 		notice(ERROR, INTERNAL, "getcwd: %s", strerror(-status));
 		return -1;
@@ -399,11 +399,11 @@ static int initialize_cwd(Tracee *tracee)
 	chop_finality(path);
 
 	/* Replace with the canonicalized working directory.  */
-	TALLOC_FREE(tracee->cwd);
-	tracee->cwd = talloc_strdup(tracee, path);
-	if (tracee->cwd == NULL)
+	TALLOC_FREE(tracee->fs->cwd);
+	tracee->fs->cwd = talloc_strdup(tracee->fs, path);
+	if (tracee->fs->cwd == NULL)
 		return -1;
-	talloc_set_name_const(tracee->cwd, "$cwd");
+	talloc_set_name_const(tracee->fs->cwd, "$cwd");
 
 	return 0;
 }

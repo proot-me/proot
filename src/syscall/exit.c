@@ -51,14 +51,14 @@ case PR_getcwd: {
 		break;
 	}
 
-	new_size = strlen(tracee->cwd) + 1;
+	new_size = strlen(tracee->fs->cwd) + 1;
 	if (size < new_size) {
 		status = -ERANGE;
 		break;
 	}
 
 	/* Overwrite the path.  */
-	status = write_data(tracee, output, tracee->cwd, new_size);
+	status = write_data(tracee, output, tracee->fs->cwd, new_size);
 	if (status < 0)
 		goto end;
 
@@ -232,7 +232,7 @@ case PR_clone: {
 	}
 
 	if (peek_reg(tracee, ORIGINAL, SYSARG_NUM) == PR_clone)
-		flags = peek_reg(tracee, ORIGINAL, SYSARG_3);
+		flags = peek_reg(tracee, ORIGINAL, SYSARG_2);
 	else
 		flags = 0;
 

@@ -212,13 +212,13 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 			else if (strcmp(name, "Bindings") == 0) {
 				 Tracee *tracee;
 
-				 tracee = talloc_get_type_abort(talloc_parent(ptr), Tracee);
+				 tracee = TRACEE(ptr);
 
-				 if (ptr == tracee->bindings.pending)
+				 if (ptr == tracee->fs->bindings.pending)
 					 fprintf(stderr, "\t(pending)");
-				 else if (ptr == tracee->bindings.guest)
+				 else if (ptr == tracee->fs->bindings.guest)
 					 fprintf(stderr, "\t(guest)");
-				 else if (ptr == tracee->bindings.host)
+				 else if (ptr == tracee->fs->bindings.host)
 					 fprintf(stderr, "\t(host)");
 			}
 			else if (strcmp(name, "Binding") == 0) {

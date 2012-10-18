@@ -374,7 +374,7 @@ case PR_chdir: {
 		 * an error if path does not exist or if it is not a
 		 * directory.  */
 		if (path[0] != '/')
-			status = join_paths(3, newpath, tracee->cwd, path, ".");
+			status = join_paths(3, newpath, tracee->fs->cwd, path, ".");
 		else
 			status = join_paths(2, newpath, path, ".");
 		if (status < 0)
@@ -416,15 +416,15 @@ case PR_chdir: {
 	/* Remove the trailing "/" or "/.".  */
 	chop_finality(path);
 
-	tmp = talloc_strdup(tracee, path);
+	tmp = talloc_strdup(tracee->fs, path);
 	if (tmp == NULL) {
 		status = -ENOMEM;
 		break;
 	}
-	TALLOC_FREE(tracee->cwd);
+	TALLOC_FREE(tracee->fs->cwd);
 
-	tracee->cwd = tmp;
-	talloc_set_name_const(tracee->cwd, "$cwd");
+	tracee->fs->cwd = tmp;
+	talloc_set_name_const(tracee->fs->cwd, "$cwd");
 
 	poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
 	status = 0;

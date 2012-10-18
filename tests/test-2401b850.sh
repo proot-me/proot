@@ -37,7 +37,7 @@ fi
 [ $? -eq 0 ]
 
 HOST_LD_LIBRARY_PATH=$(${PROOT} -q 'echo --' / env | grep LD_LIBRARY_PATH)
-test ! -z ${HOST_LD_LIBRARY_PATH}
+test ! -z "${HOST_LD_LIBRARY_PATH}"
 
 unset LD_LIBRARY_PATH
 ${PROOT} -q 'echo --' / ${TMP} | grep -- "^-- -U LD_LIBRARY_PATH ${COMMAND1}$"

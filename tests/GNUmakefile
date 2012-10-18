@@ -32,6 +32,9 @@ check-test-af062114.c: test-af062114
 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true -b . -b /lib -b /lib64 -b /proc $(ROOTFS) ./$< | grep -- --inhibit-rpath)
 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<')
 
+check-test-5bed7141.c: test-5bed7141
+	$(call check_c,$<,$(PROOT) $<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -74,6 +77,9 @@ test-bdc90417: test-bdc90417.c
 
 test-af062114: test-af062114.c
 	$(Q)$(CC) $< -Wl,-rpath=foo -o $@ $(silently) || true
+
+test-5bed7141: test-5bed7141.c
+	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output
