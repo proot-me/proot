@@ -114,6 +114,7 @@ typedef struct tracee {
 
 	FileSystemNameSpace *fs;
 
+
 	/**********************************************************************
 	 * Shared resources until the tracee makes a call to execve().        *
 	 **********************************************************************/
@@ -137,6 +138,15 @@ typedef struct tracee {
 
 	/* List of extensions enabled for this tracee.  */
 	struct extensions *extensions;
+
+
+	/**********************************************************************
+	 * Private resources                                                  *
+	 **********************************************************************/
+
+	/* Verbose level.  */
+	int verbose;
+
 } Tracee;
 
 #define HOST_ROOTFS "/host-rootfs"

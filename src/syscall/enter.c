@@ -646,7 +646,8 @@ case PR_symlinkat:
 	break;
 
 default:
-	notice(WARNING, INTERNAL, "unknown syscall %ld", peek_reg(tracee, CURRENT, SYSARG_NUM));
+	notice(tracee, WARNING, INTERNAL, "unknown syscall %ld",
+		peek_reg(tracee, CURRENT, SYSARG_NUM));
 	status = 0;
 	break;
 }

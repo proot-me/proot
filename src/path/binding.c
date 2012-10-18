@@ -96,9 +96,9 @@ static void print_bindings(const Tracee *tracee)
 
 	CIRCLEQ_FOREACH_(tracee, binding, GUEST) {
 		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
-			notice(INFO, USER, "binding = %s", binding->host.path);
+			notice(tracee, INFO, USER, "binding = %s", binding->host.path);
 		else
-			notice(INFO, USER, "binding = %s:%s",
+			notice(tracee, INFO, USER, "binding = %s:%s",
 				binding->host.path, binding->guest.path);
 	}
 }
@@ -350,7 +350,7 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 				break;
 			}
 
-			notice(WARNING, USER,
+			notice(tracee, WARNING, USER,
 				"both '%s' and '%s' are bound to '%s', "
 				"only the last binding is active.",
 				iterator->host.path, binding->host.path, binding->guest.path);
@@ -499,7 +499,7 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	status = realpath2(tracee->reconf.tracee, binding->host.path, host, true);
 	if (status < 0) {
 		if (must_exist)
-			notice(WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
+			notice(tracee, WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
 				host, strerror(-status));
 		goto error;
 	}
@@ -513,7 +513,7 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	if (guest[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, base);
 		if (status < 0) {
-			notice(WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
+			notice(tracee, WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
 				binding->guest.path, strerror(-status));
 			goto error;
 		}
@@ -523,7 +523,8 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 
 	status = join_paths(2, binding->guest.path, base, guest);
 	if (status < 0) {
-		notice(WARNING, SYSTEM, "can't sanitize binding \"%s\"", binding->guest.path);
+		notice(tracee, WARNING, SYSTEM, "can't sanitize binding \"%s\"",
+			binding->guest.path);
 		goto error;
 	}
 	binding->guest.length = strlen(binding->guest.path);
@@ -570,7 +571,8 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 		   substitute_binding().  */
 		status = canonicalize(tracee, path, true, binding->guest.path, 0);
 		if (status < 0) {
-			notice(WARNING, INTERNAL, "sanitizing the guest path (binding) \"%s\": %s",
+			notice(tracee, WARNING, INTERNAL,
+				"sanitizing the guest path (binding) \"%s\": %s",
 				path, strerror(-status));
 			goto error;
 		}
@@ -615,7 +617,7 @@ int initialize_bindings(Tracee *tracee)
 	tracee->fs->bindings.guest = talloc_zero(tracee->fs, Bindings);
 	tracee->fs->bindings.host  = talloc_zero(tracee->fs, Bindings);
 	if (tracee->fs->bindings.guest == NULL || tracee->fs->bindings.host == NULL) {
-		notice(ERROR, INTERNAL, "can't allocate enough memory");
+		notice(tracee, ERROR, INTERNAL, "can't allocate enough memory");
 		TALLOC_FREE(tracee->fs->bindings.guest);
 		TALLOC_FREE(tracee->fs->bindings.host);
 		return -1;
@@ -653,7 +655,7 @@ int initialize_bindings(Tracee *tracee)
 
 	TALLOC_FREE(tracee->fs->bindings.pending);
 
-	if (verbose_level > 0)
+	if (tracee->verbose > 0)
 		print_bindings(tracee);
 
 	return 0;

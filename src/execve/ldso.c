@@ -152,9 +152,6 @@ int ldso_env_passthru(Array *envp, Array *argv, const char *define, const char *
 		PASSTHRU(is_known, "LD_USE_LOAD_BIAS");
 		PASSTHRU(is_known, "LD_VERBOSE");
 		PASSTHRU(is_known, "LD_WARN");
-
-		if (!is_known && verbose_level >= 1)
-			notice(WARNING, INTERNAL, "unknown LD_ environment variable");
 	}
 
 	if (!has_seen_library_path) {

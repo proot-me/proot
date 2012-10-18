@@ -104,6 +104,8 @@ int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 	assert(child->qemu == NULL);
 	assert(child->glue == NULL);
 
+	child->verbose = parent->verbose;
+
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root
 	 * of the file system, the current working directory, and the
@@ -161,7 +163,7 @@ int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 		child->sigstop = SIGSTOP_ALLOWED;
 		status = ptrace(PTRACE_SYSCALL, child->pid, NULL, 0);
 		if (status < 0) {
-			notice(WARNING, SYSTEM,	"ptrace(SYSCALL, %d) [1]", child->pid);
+			notice(child, WARNING, SYSTEM, "ptrace(SYSCALL, %d) [1]", child->pid);
 			TALLOC_FREE(child);
 		}
 	}
@@ -181,6 +183,8 @@ int swap_config(Tracee *tracee1, Tracee *tracee2)
 		return -ENOMEM;
 
 	void reparent_config(Tracee *new_parent, Tracee *old_parent) {
+		new_parent->verbose = old_parent->verbose;
+
 		#define REPARENT(field) do {						\
 			talloc_reparent(old_parent, new_parent, old_parent->field);	\
 			new_parent->field = old_parent->field;				\
@@ -208,6 +212,4 @@ void kill_all_tracees()
 
 	LIST_FOREACH(tracee, &tracees, link)
 		kill(tracee->pid, SIGKILL);
-
-	notice(INFO, USER, "exited");
 }

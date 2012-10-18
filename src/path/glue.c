@@ -51,7 +51,7 @@ static int remove_glue(char *path)
 
 		status = system(command);
 		if (status != 0)
-			notice(INFO, USER, "can't delete '%s'", path);
+			notice(NULL, INFO, USER, "can't delete '%s'", path);
 	}
 
 	TALLOC_FREE(command);
@@ -131,7 +131,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	comparison = compare_paths(tracee->glue, host_path);
 	if (   comparison == PATHS_ARE_EQUAL
 	    || comparison == PATH1_IS_PREFIX) {
-		notice(WARNING, SYSTEM, "mkdir/mknod");
+		notice(tracee, WARNING, SYSTEM, "mkdir/mknod");
 		return 0;
 	}
 

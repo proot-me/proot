@@ -40,14 +40,11 @@ typedef enum {
 	INFO,
 } Severity;
 
-/* Verbose level, < 0 means quiet.  */
-extern int verbose_level;
-
-#define VERBOSE(level, message, args...) do {				\
-		if (verbose_level >= (level))				\
-			notice(INFO, INTERNAL, (message), ## args);	\
+#define VERBOSE(tracee, level, message, args...) do {			\
+		if (tracee == NULL || tracee->verbose >= (level))	\
+			notice(tracee, INFO, INTERNAL, (message), ## args); \
 	} while (0)
 
-extern void notice(Severity severity, Origin origin, const char *message, ...);
+extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...);
 
 #endif /* NOTICE_H */

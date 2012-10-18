@@ -60,7 +60,7 @@ int launch_process(Tracee *tracee)
 	pid = fork();
 	switch(pid) {
 	case -1:
-		notice(ERROR, SYSTEM, "fork()");
+		notice(tracee, ERROR, SYSTEM, "fork()");
 		return -errno;
 
 	case 0: /* child */
@@ -68,14 +68,14 @@ int launch_process(Tracee *tracee)
 		 * requested program. */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		if (status < 0) {
-			notice(ERROR, SYSTEM, "ptrace(TRACEME)");
+			notice(tracee, ERROR, SYSTEM, "ptrace(TRACEME)");
 			return -errno;
 		}
 
 		/* Warn about open file descriptors. They won't be
 		 * translated until they are closed. */
-		if (verbose_level > 0)
-			list_open_fd(getpid());
+		if (tracee->verbose > 0)
+			list_open_fd(tracee);
 
 		/* RHEL4 uses an ASLR mechanism that creates conflicts
 		 * between the layout of QEMU and the layout of the
@@ -83,7 +83,7 @@ int launch_process(Tracee *tracee)
 		status = personality(0xffffffff);
 		if (   status < 0
 		    || personality(status | ADDR_NO_RANDOMIZE) < 0)
-			notice(WARNING, INTERNAL, "can't disable ASLR");
+			notice(tracee, WARNING, INTERNAL, "can't disable ASLR");
 
 		/* 1. The ELF interpreter is explicitly used as a
 		 *    loader by PRoot, it means the Linux kernel
@@ -132,7 +132,7 @@ int launch_process(Tracee *tracee)
 			status = setrlimit(RLIMIT_STACK, &rlimit);
 		}
 		if (status < 0)
-			notice(WARNING, SYSTEM, "can't set the maximum stack size");
+			notice(tracee, WARNING, SYSTEM, "can't set the maximum stack size");
 
 		/* Synchronize with the tracer's event loop.  Without
 		 * this trick the tracer only sees the "return" from
@@ -141,13 +141,10 @@ int launch_process(Tracee *tracee)
 		 * does the same thing. */
 		kill(getpid(), SIGSTOP);
 
-		/* Now process is ptraced, so the current rootfs is
-		 * already the guest rootfs. */
-
-		notice(INFO, INTERNAL, "started");
-
-		/* Valgrind can't handle execve(2) on "foreign" binaries
-		 * (ENOEXEC) but can handle execvp(3) on such binaries.  */
+		/* Now process is ptraced, so the current rootfs is already the
+		 * guest rootfs.  Note: Valgrind can't handle execve(2) on
+		 * "foreign" binaries (ENOEXEC) but can handle execvp(3) on such
+		 * binaries.  */
 		execvp(tracee->exe, tracee->cmdline);
 		return -errno;
 
@@ -165,7 +162,8 @@ int launch_process(Tracee *tracee)
  * signal.  */
 static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
 {
-	notice(WARNING, INTERNAL, "signal %d received from process %d", signum, siginfo->si_pid);
+	notice(NULL, WARNING, INTERNAL, "signal %d received from process %d",
+		signum, siginfo->si_pid);
 	kill_all_tracees();
 
 	/* Exit immediately for system signals (segmentation fault,
@@ -266,7 +264,7 @@ int event_loop()
 	/* Kill all tracees when exiting.  */
 	status = atexit(kill_all_tracees);
 	if (status != 0)
-		notice(WARNING, INTERNAL, "atexit() failed");
+		notice(NULL, WARNING, INTERNAL, "atexit() failed");
 
 	/* All signals are blocked when the signal handler is called.
 	 * SIGINFO is used to know which process has signaled us and
@@ -275,7 +273,7 @@ int event_loop()
 	signal_action.sa_flags = SA_SIGINFO | SA_RESTART;
 	status = sigfillset(&signal_action.sa_mask);
 	if (status < 0)
-		notice(WARNING, SYSTEM, "sigfillset()");
+		notice(NULL, WARNING, SYSTEM, "sigfillset()");
 
 	/* Handle all signals.  */
 	for (signum = 0; signum < SIGRTMAX; signum++) {
@@ -317,7 +315,7 @@ int event_loop()
 
 		status = sigaction(signum, &signal_action, NULL);
 		if (status < 0 && errno != EINVAL)
-			notice(WARNING, SYSTEM, "sigaction(%d)", signum);
+			notice(NULL, WARNING, SYSTEM, "sigaction(%d)", signum);
 	}
 
 	signal = 0;
@@ -330,7 +328,7 @@ int event_loop()
 		pid = waitpid(-1, &tracee_status, __WALL);
 		if (pid < 0) {
 			if (errno != ECHILD) {
-				notice(ERROR, SYSTEM, "waitpid()");
+				notice(NULL, ERROR, SYSTEM, "waitpid()");
 				return EXIT_FAILURE;
 			}
 			break;
@@ -345,20 +343,20 @@ int event_loop()
 			continue;
 
 		if (WIFEXITED(tracee_status)) {
-			VERBOSE(1, "pid %d: exited with status %d",
+			VERBOSE(tracee, 1, "pid %d: exited with status %d",
 				pid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
 			TALLOC_FREE(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(tracee_status)) {
-			VERBOSE(1, "pid %d: terminated with signal %d",
+			VERBOSE(tracee, 1, "pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
 			TALLOC_FREE(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFCONTINUED(tracee_status)) {
-			VERBOSE(1, "pid %d: continued", pid);
+			VERBOSE(tracee, 1, "pid %d: continued", pid);
 			signal = SIGCONT;
 		}
 		else if (WIFSTOPPED(tracee_status)) {
@@ -392,7 +390,7 @@ int event_loop()
 						PTRACE_O_TRACECLONE   |
 						PTRACE_O_TRACEEXIT);
 				if (status < 0) {
-					notice(ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
+					notice(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 					return EXIT_FAILURE;
 				}
 				/* Fall through. */
@@ -419,22 +417,21 @@ int event_loop()
 				/* Get the pid of the tracee's new child.  */
 				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &child_pid);
 				if (status < 0) {
-					notice(WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
+					notice(tracee, WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
 					break;
 				}
 
 				child_tracee = get_tracee(child_pid, true);
 				if (child_tracee == NULL) {
-					notice(WARNING, SYSTEM, "running out of memory");
+					notice(tracee, WARNING, SYSTEM, "running out of memory");
 					break;
 				}
 
 				status = inherit_config(child_tracee, tracee, false);
-				if (status < 0) {
-					notice(ERROR, SYSTEM, "XXX");
+				if (status < 0)
 					break;
-				}
 
+				signal = 0;
 				break;
 			}
 
@@ -466,7 +463,7 @@ int event_loop()
 			}
 		}
 		else {
-			notice(WARNING, INTERNAL, "unknown trace event");
+			notice(tracee, WARNING, INTERNAL, "unknown trace event");
 			signal = 0;
 		}
 
@@ -475,7 +472,7 @@ int event_loop()
 		status = ptrace(PTRACE_SYSCALL, tracee->pid, NULL, signal);
 		if (status < 0) {
 			 /* The process died in a syscall.  */
-			notice(WARNING, SYSTEM, "ptrace(SYSCALL, %d) [2]", tracee->pid);
+			notice(tracee, WARNING, SYSTEM, "ptrace(SYSCALL, %d) [2]", tracee->pid);
 			TALLOC_FREE(tracee);
 		}
 	}

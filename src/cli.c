@@ -148,7 +148,7 @@ static int handle_option_k(Tracee *tracee, char *value)
 
 	status = initialize_extension(tracee, kompat_callback, value);
 	if (status < 0)
-		notice(WARNING, INTERNAL, "option \"-k %s\" discarded", value);
+		notice(tracee, WARNING, INTERNAL, "option \"-k %s\" discarded", value);
 
 	return 0;
 }
@@ -164,9 +164,9 @@ static int handle_option_v(Tracee *tracee, char *value)
 	char *end_ptr = NULL;
 
 	errno = 0;
-	verbose_level = strtol(value, &end_ptr, 10);
+	tracee->verbose = strtol(value, &end_ptr, 10);
 	if (errno != 0 || end_ptr == value) {
-		notice(ERROR, USER, "option `-v` expects an integer value.");
+		notice(tracee, ERROR, USER, "option `-v` expects an integer value.");
 		return -1;
 	}
 
@@ -271,8 +271,8 @@ static void print_usage(Tracee *tracee, bool detailed)
 
 static void print_execve_help(const Tracee *tracee, const char *argv0)
 {
-	notice(WARNING, SYSTEM, "execve(\"%s\")", argv0);
-	notice(INFO, USER, "possible causes:\n"
+	notice(tracee, WARNING, SYSTEM, "execve(\"%s\")", argv0);
+	notice(tracee, INFO, USER, "possible causes:\n"
 "  * <program> is a script but its interpreter (eg. /bin/sh) was not found;\n"
 "  * <program> is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
 "  * <program> is a foreign binary but no <qemu> was specified;\n"
@@ -282,9 +282,9 @@ static void print_execve_help(const Tracee *tracee, const char *argv0)
 static void print_error_separator(const Tracee *tracee, Argument *argument)
 {
 	if (argument->separator == '\0')
-		notice(ERROR, USER, "option '%s' expects no value.", argument->name);
+		notice(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
 	else
-		notice(ERROR, USER,
+		notice(tracee, ERROR, USER,
 			"option '%s' and its value must be separated by '%c'.",
 			argument->name, argument->separator);
 }
@@ -312,29 +312,27 @@ static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 	}
 	string[sizeof(string) - 1] = '\0';
 
-	notice(INFO, USER, "%s", string);
+	notice(tracee, INFO, USER, "%s", string);
 }
 
 static void print_config(Tracee *tracee)
 {
 	assert(tracee != NULL);
 
-	if (verbose_level <= 0)
+	if (tracee->verbose <= 0)
 		return;
 
 	if (tracee->qemu)
-		notice(INFO, USER, "host rootfs = %s", HOST_ROOTFS);
+		notice(tracee, INFO, USER, "host rootfs = %s", HOST_ROOTFS);
 
 	if (tracee->glue)
-		notice(INFO, USER, "glue rootfs = %s", tracee->glue);
+		notice(tracee, INFO, USER, "glue rootfs = %s", tracee->glue);
 
-	notice(INFO, USER, "exe = %s", tracee->exe);
+	notice(tracee, INFO, USER, "exe = %s", tracee->exe);
 	print_argv(tracee, "command", tracee->cmdline);
 	print_argv(tracee, "qemu", tracee->qemu);
-
-	notice(INFO, USER, "initial cwd = %s", tracee->fs->cwd);
-
-	notice(INFO, USER, "verbose level = %d", verbose_level);
+	notice(tracee, INFO, USER, "initial cwd = %s", tracee->fs->cwd);
+	notice(tracee, INFO, USER, "verbose level = %d", tracee->verbose);
 
 	notify_extensions(tracee, PRINT_CONFIG, 0, 0);
 }
@@ -360,7 +358,7 @@ static int initialize_cwd(Tracee *tracee)
 	if (tracee->fs->cwd[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, path);
 		if (status < 0) {
-			notice(ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+			notice(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
 			return -1;
 		}
 	}
@@ -372,7 +370,7 @@ static int initialize_cwd(Tracee *tracee)
 	 * directory.  */
 	status = join_paths(3, path2, path, tracee->fs->cwd, ".");
 	if (status < 0) {
-		notice(ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+		notice(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
 		return -1;
 	}
 
@@ -381,9 +379,9 @@ static int initialize_cwd(Tracee *tracee)
 
 	status = canonicalize(tracee, path2, true, path, 0);
 	if (status < 0) {
-		notice(WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
+		notice(tracee, WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
 			path2, strerror(-status));
-		notice(INFO, USER, "default working directory is now \"/\"");
+		notice(tracee, INFO, USER, "default working directory is now \"/\"");
 		strcpy(path, "/");
 	}
 	chop_finality(path);
@@ -414,7 +412,7 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 
 	tracee->cmdline = talloc_zero_array(tracee, char *, i + 1);
 	if (tracee->cmdline == NULL) {
-		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
+		notice(tracee, ERROR, INTERNAL, "talloc_zero_array() failed");
 		return -1;
 	}
 	talloc_set_name_const(tracee->cmdline, "@cmdline");
@@ -539,12 +537,12 @@ int parse_config(Tracee *tracee, int argc, char *argv[])
 			}
 		}
 
-		notice(ERROR, USER, "unknown option '%s'.", arg);
+		notice(tracee, ERROR, USER, "unknown option '%s'.", arg);
 		return -1;
 
 	known_option:
 		if (handler != NULL && i == argc - 1) {
-			notice(ERROR, USER, "missing value for option '%s'.", arg);
+			notice(tracee, ERROR, USER, "missing value for option '%s'.", arg);
 			return -1;
 		}
 	}

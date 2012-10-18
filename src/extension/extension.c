@@ -85,7 +85,7 @@ int initialize_extension(Tracee *tracee, extension_callback_t callback, const ch
 
 	extension = new_extension(tracee, callback);
 	if (extension == NULL) {
-		notice(WARNING, INTERNAL, "can't create a new extension");
+		notice(tracee, WARNING, INTERNAL, "can't create a new extension");
 		return -1;
 	}
 
@@ -128,7 +128,7 @@ void inherit_extensions(Tracee *child, Tracee *parent)
 		/* Inheritable...  */
 		child_extension = new_extension(child, parent_extension->callback);
 		if (child_extension == NULL) {
-			notice(WARNING, INTERNAL,
+			notice(parent, WARNING, INTERNAL,
 				"can't create a new extension for pid %d", child->pid);
 			continue;
 		}

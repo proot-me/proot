@@ -115,7 +115,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 	for (i = 0; i < nb_full_words; i++) {
 		status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, load_word(&src[i]));
 		if (status < 0) {
-			notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
+			notice(tracee, WARNING, SYSTEM, "ptrace(POKEDATA)");
 			return -EFAULT;
 		}
 	}
@@ -125,7 +125,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 
 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, dest + i, NULL);
 	if (errno != 0) {
-		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
+		notice(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 
@@ -137,7 +137,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 
 	status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, word);
 	if (status < 0) {
-		notice(WARNING, SYSTEM, "ptrace(POKEDATA)");
+		notice(tracee, WARNING, SYSTEM, "ptrace(POKEDATA)");
 		return -EFAULT;
 	}
 
@@ -226,7 +226,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 	for (i = 0; i < nb_full_words; i++) {
 		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0) {
-			notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
+			notice(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
 			return -EFAULT;
 		}
 		store_word(&dest[i], word);
@@ -237,7 +237,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 
 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0) {
-		notice(WARNING, SYSTEM, "ptrace(PEEKDATA)");
+		notice(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 
@@ -484,7 +484,8 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= size)
 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-		notice(WARNING, INTERNAL, "integer under/overflow detected in %s", __FUNCTION__);
+		notice(tracee, WARNING, INTERNAL, "integer under/overflow detected in %s",
+			__FUNCTION__);
 		return 0;
 	}
 

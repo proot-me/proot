@@ -156,8 +156,8 @@ extern int open_elf(const char *t_path, ElfHeader *elf_header);
 
 extern bool is_host_elf(const Tracee *tracee, const char *t_path);
 
-extern int find_program_header(int fd, const ElfHeader *elf_header, ProgramHeader *program_header,
-			SegmentType type, uint64_t address);
+extern int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_header,
+			ProgramHeader *program_header, SegmentType type, uint64_t address);
 
 extern int read_ldso_rpaths(const Tracee *tracee, int fd, const ElfHeader *elf_header,
 			char **rpath, char **runpath);

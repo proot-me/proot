@@ -28,7 +28,6 @@
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "arch.h"
-#include "notice.h"
 
 typedef enum {
 	ABI_DEFAULT,

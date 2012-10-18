@@ -92,8 +92,8 @@ end:
  * returns -errno if an error occured, 1 if the program header was
  * found, otherwise 0.
  */
-int find_program_header(int fd, const ElfHeader *elf_header, ProgramHeader *program_header,
-			SegmentType type, uint64_t address)
+int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_header,
+			ProgramHeader *program_header, SegmentType type, uint64_t address)
 {
 	uint64_t elf_phoff;
 	uint16_t elf_phentsize;
@@ -113,12 +113,12 @@ int find_program_header(int fd, const ElfHeader *elf_header, ProgramHeader *prog
 	 */
 
 	if (elf_phnum >= 0xffff) {
-		notice(WARNING, INTERNAL, "%d: big PH tables are not yet supported.", fd);
+		notice(tracee, WARNING, INTERNAL, "%d: big PH tables are not yet supported.", fd);
 		return -ENOTSUP;
 	}
 
 	if (!KNOWN_PHENTSIZE(*elf_header, elf_phentsize)) {
-		notice(WARNING, INTERNAL, "%d: unsupported size of program header.", fd);
+		notice(tracee, WARNING, INTERNAL, "%d: unsupported size of program header.", fd);
 		return -ENOTSUP;
 	}
 
@@ -182,7 +182,7 @@ bool is_host_elf(const Tracee *tracee, const char *t_path)
 	elf_machine = ELF_FIELD(elf_header, machine);
 	for (i = 0; host_elf_machine[i] != 0; i++) {
 		if (host_elf_machine[i] == elf_machine) {
-			VERBOSE(1, "'%s' is a host ELF", t_path);
+			VERBOSE(tracee, 1, "'%s' is a host ELF", t_path);
 			return true;
 		}
 	}
@@ -324,7 +324,7 @@ int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_header,
 	off_t strtab_offset;
 	int status;
 
-	status = find_program_header(fd, elf_header, &dynamic, PT_DYNAMIC, (uint64_t) -1);
+	status = find_program_header(tracee, fd, elf_header, &dynamic, PT_DYNAMIC, (uint64_t) -1);
 	if (status <= 0)
 		return status;
 
@@ -346,7 +346,8 @@ int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_header,
 	}
 
 	/* Search the program header that contains the given string table.  */
-	status = find_program_header(fd, elf_header, &strtab_segment, PT_LOAD, strtab_address);
+	status = find_program_header(tracee, fd, elf_header, &strtab_segment,
+				PT_LOAD, strtab_address);
 	if (status < 0)
 		return status;
 

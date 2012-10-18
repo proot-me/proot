@@ -137,7 +137,7 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 	 * in the caller because it depends on the use of a runner.
 	 */
 
-	VERBOSE(3, "expand shebang: -> %s %s %s", u_interp, argument, u_path);
+	VERBOSE(tracee, 3, "expand shebang: -> %s %s %s", u_interp, argument, u_path);
 
 	if (argument[0] != '\0') {
 		status = resize_array(argv, 0, 2);
@@ -236,7 +236,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, Array *envp, const cha
 
 	/* Sanity checks.  */
 	if (i < 1 || i >= argv->length) {
-		notice(WARNING, INTERNAL, "wrong number of arguments (%d)", i);
+		notice(tracee, WARNING, INTERNAL, "wrong number of arguments (%d)", i);
 		return -ECANCELED;
 	}
 
@@ -470,7 +470,7 @@ int translate_execve(Tracee *tracee)
 		}
 	}
 
-	VERBOSE(4, "execve: %s", t_interp);
+	VERBOSE(tracee, 4, "execve: %s", t_interp);
 
 	status = set_sysarg_path(tracee, t_interp, SYSARG_1);
 	if (status < 0)

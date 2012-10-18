@@ -243,7 +243,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 				return 0;
 	} while (*(cursor - 1) != '\0');
 
-	notice(WARNING, USER, "no %s in %s (root = %s)", command, paths, get_root(tracee));
+	notice(tracee, WARNING, USER, "no %s in %s (root = %s)", command, paths, get_root(tracee));
 	return -1;
 }
 
@@ -368,7 +368,7 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 			return status;
 	}
 
-	VERBOSE(4, "pid %d: translate(\"%s\" + \"%s\")", tracee->pid, host_path, guest_path);
+	VERBOSE(tracee, 4, "pid %d: translate(\"%s\" + \"%s\")", tracee->pid, host_path, guest_path);
 
 	status = notify_extensions(tracee, GUEST_PATH, (intptr_t)host_path, (intptr_t)guest_path);
 	if (status < 0)
@@ -389,7 +389,7 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 		return status;
 
 skip:
-	VERBOSE(4, "pid %d:          -> \"%s\"", tracee->pid, host_path);
+	VERBOSE(tracee, 4, "pid %d:          -> \"%s\"", tracee->pid, host_path);
 	return 0;
 }
 
@@ -586,14 +586,14 @@ Comparison compare_paths(const char *path1, const char *path2)
 	return compare_paths2(path1, strlen(path1), path2, strlen(path2));
 }
 
-typedef int (*foreach_fd_t)(pid_t pid, int fd, char path[PATH_MAX]);
+typedef int (*foreach_fd_t)(const Tracee *tracee, int fd, char path[PATH_MAX]);
 
 /**
  * Call @callback on each open file descriptors of @pid. It returns
  * the status of the first failure, that is, if @callback returned
  * seomthing lesser than 0, otherwise 0.
  */
-static int foreach_fd(pid_t pid, foreach_fd_t callback)
+static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 {
 	struct dirent *dirent;
 	char path[PATH_MAX];
@@ -602,7 +602,7 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 	DIR *dirp;
 
 	/* Format the path to the "virtual" directory. */
-	status = snprintf(proc_fd, sizeof(proc_fd), "/proc/%d/fd", pid);
+	status = snprintf(proc_fd, sizeof(proc_fd), "/proc/%d/fd", tracee->pid);
 	if (status < 0 || status >= sizeof(proc_fd))
 		return 0;
 
@@ -632,7 +632,7 @@ static int foreach_fd(pid_t pid, foreach_fd_t callback)
 		if (path[0] != '/')
 			continue;
 
-		status = callback(pid, atoi(dirent->d_name), path);
+		status = callback(tracee, atoi(dirent->d_name), path);
 		if (status < 0)
 			goto end;
 	}
@@ -647,12 +647,14 @@ end:
  * Warn for files that are open. It is useful right after PRoot has
  * attached a process.
  */
-int list_open_fd(pid_t pid)
+int list_open_fd(const Tracee *tracee)
 {
-	int list_open_fd_callback(pid_t pid, int fd, char path[PATH_MAX])
+	int list_open_fd_callback(const Tracee *tracee, int fd, char path[PATH_MAX])
 	{
-		VERBOSE(1, "pid %d: access to \"%s\" (fd %d) won't be translated until closed", pid, path, fd);
+		VERBOSE(tracee, 1,
+			"pid %d: access to \"%s\" (fd %d) won't be translated until closed",
+			tracee->pid, path, fd);
 		return 0;
 	}
-	return foreach_fd(pid, list_open_fd_callback);
+	return foreach_fd(tracee, list_open_fd_callback);
 }

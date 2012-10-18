@@ -176,8 +176,8 @@ static int translate_syscall_enter(Tracee *tracee)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
-	if (verbose_level >= 3)
-		VERBOSE(3,
+	if (tracee->verbose >= 3)
+		VERBOSE(tracee, 3,
 			"pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
 			tracee->pid, peek_reg(tracee, CURRENT, SYSARG_NUM),
 			peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
@@ -185,7 +185,7 @@ static int translate_syscall_enter(Tracee *tracee)
 			peek_reg(tracee, CURRENT, SYSARG_5), peek_reg(tracee, CURRENT, SYSARG_6),
 			peek_reg(tracee, CURRENT, STACK_POINTER));
 	else
-		VERBOSE(2, "pid %d: syscall(%d)", tracee->pid,
+		VERBOSE(tracee, 2, "pid %d: syscall(%d)", tracee->pid,
 			(int)peek_reg(tracee, CURRENT, SYSARG_NUM));
 
 	status = notify_extensions(tracee, SYSCALL_ENTER_START, 0, 0);
@@ -288,7 +288,7 @@ end:
 	if (restore_original_sp)
 		poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
 
-	VERBOSE(3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
+	VERBOSE(tracee, 3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
 		peek_reg(tracee, CURRENT, SYSARG_RESULT),
 		peek_reg(tracee, CURRENT, STACK_POINTER));
 

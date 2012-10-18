@@ -35,7 +35,6 @@
 #include "path/glue.h"
 #include "path/proc.h"
 #include "extension/extension.h"
-#include "notice.h"
 
 /**
  * Resolve bindings (if any) in @guest_path and copy the translated

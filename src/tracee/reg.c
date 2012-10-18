@@ -32,7 +32,6 @@
 
 #include "tracee/reg.h"
 #include "tracee/abi.h"
-#include "notice.h"  /* notice(), */
 
 /**
  * Compute the offset of the register @reg_name in the USER area.

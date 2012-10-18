@@ -24,19 +24,21 @@
 #include <string.h> /* strerror(3), */
 #include <stdarg.h> /* va_*, */
 #include <stdio.h>  /* vfprintf(3), */
+#include <limits.h> /* INT_MAX, */
 
 #include "notice.h"
 #include "tracee/tracee.h"
-
-int verbose_level = 0;
 
 /**
  * Print @message to the standard error stream according to its
  * @severity and @origin.
  */
-void notice(Severity severity, Origin origin, const char *message, ...)
+void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...)
 {
 	va_list extra_params;
+	int verbose_level;
+
+	verbose_level = (tracee != NULL ? tracee->verbose : 0);
 
 	if (verbose_level < 0 && severity != ERROR)
 		return;

@@ -25,7 +25,6 @@
 #include <stdlib.h>  /* atoi(3), strtol(3), */
 #include <errno.h>   /* E*, */
 #include <assert.h>  /* assert(3), */
-#include <unistd.h>  /* getpid(2), */
 
 #include "path/proc.h"
 #include "tracee/tracee.h"
@@ -51,9 +50,6 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 
 	assert(comparison == compare_paths("/proc", base));
 
-	/* tracee->pid == 0 until the first tracee has started.  */
-	pid = (tracee->pid ?: getpid());
-
 	/* Remember: comparison = compare_paths("/proc", base)  */
 	switch (comparison) {
 	case PATHS_ARE_EQUAL:
@@ -61,7 +57,7 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 		if (strcmp(component, "self") != 0)
 			return DEFAULT;
 
-		status = snprintf(result, PATH_MAX, "/proc/%d", pid);
+		status = snprintf(result, PATH_MAX, "/proc/%d", tracee->pid);
 		if (status < 0 || status >= PATH_MAX)
 			return -EPERM;
 

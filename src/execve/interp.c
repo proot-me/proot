@@ -202,7 +202,7 @@ int extract_elf_interp(const Tracee *tracee, const char *t_path,
 	if (fd < 0)
 		return fd;
 
-	status = find_program_header(fd, &elf_header, &program_header,
+	status = find_program_header(tracee, fd, &elf_header, &program_header,
 				PT_INTERP, (uint64_t) -1);
 	if (status < 0) {
 		status = -EACCES;
