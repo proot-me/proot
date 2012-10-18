@@ -94,16 +94,7 @@ Tracee *get_tracee(pid_t pid, bool create)
  */
 int inherit(Tracee *child, Tracee *parent, bool shared_fs)
 {
-	/* The first tracee is started by PRoot and does nothing but a
-	 * call to execve(2), thus child->exe will be automatically
-	 * updated later.  */
-	if (parent == NULL) {
-		child->exe = talloc_strdup(child, "<dummy>");
-		if (child->exe == NULL)
-			return -ENOMEM;
-		talloc_set_name_const(child->exe, "$exe");
-		return 0;
-	}
+	assert(parent != NULL);
 
 	assert(child->exe == NULL && parent->exe != NULL);
 	assert(child->fs->cwd == NULL && parent->fs->cwd != NULL);
@@ -112,10 +103,6 @@ int inherit(Tracee *child, Tracee *parent, bool shared_fs)
 	assert(child->fs->bindings.host == NULL    && parent->fs->bindings.host != NULL);
 	assert(child->qemu == NULL);
 	assert(child->glue == NULL);
-
-	/* The path to the executable is unshared only once the child
-	 * process does a call to execve(2).  */
-	child->exe = talloc_reference(child, parent->exe);
 
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root
@@ -155,6 +142,11 @@ int inherit(Tracee *child, Tracee *parent, bool shared_fs)
 		child->fs->bindings.guest = talloc_reference(child->fs, parent->fs->bindings.guest);
 		child->fs->bindings.host  = talloc_reference(child->fs, parent->fs->bindings.host);
 	}
+
+	/* The path to the executable and the command-line are unshared only
+	 * once the child process does a call to execve(2).  */
+	child->exe = talloc_reference(child, parent->exe);
+	child->cmdline = talloc_reference(child, parent->cmdline);
 
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);

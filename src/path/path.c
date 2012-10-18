@@ -243,7 +243,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 				return 0;
 	} while (*(cursor - 1) != '\0');
 
-	notice(WARNING, USER, "no %s in %s", command, paths);
+	notice(WARNING, USER, "no %s in %s (root = %s)", command, paths, get_root(tracee));
 	return -1;
 }
 
@@ -325,8 +325,6 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 {
 	int status;
 
-	assert(tracee->pid != 0);
-
 	/* Use "/" as the base if it is an absolute guest path. */
 	if (guest_path[0] == '/') {
 		strcpy(host_path, "/");
@@ -344,8 +342,7 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 		struct stat statl;
 
 		/* Format the path to the "virtual" link. */
-		status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",
-				tracee->pid, dir_fd);
+		status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	tracee->pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
 		if (status >= sizeof(link))

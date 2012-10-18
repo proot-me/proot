@@ -474,9 +474,6 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	char base[PATH_MAX];
 	int status;
 
-	/* Should be called only from the CLI support.  */
-	assert(tracee->pid == 0);
-
 	/* Lasy allocation of the list of bindings specified by the
 	 * user.  This list will be used by initialize_bindings().  */
 	if (tracee->fs->bindings.pending == NULL) {

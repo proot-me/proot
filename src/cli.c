@@ -72,9 +72,7 @@ static int handle_option_b(Tracee *tracee, char *value)
 
 static int handle_option_q(Tracee *tracee, char *value)
 {
-	char path[PATH_MAX];
 	size_t nb_args;
-	int status;
 	char *ptr;
 	int i;
 
@@ -128,14 +126,6 @@ static int handle_option_q(Tracee *tracee, char *value)
 			break;
 	}
 	assert(i == nb_args);
-
-	status = which(tracee->reconf.tracee, tracee->reconf.paths, path, tracee->qemu[0]);
-	if (status < 0)
-		return -1;
-
-	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
-	if (tracee->qemu[0] == NULL)
-		return -1;
 
 	new_binding(tracee, "/", HOST_ROOTFS, true);
 	new_binding(tracee, "/dev/null", "/etc/ld.so.preload", false);
@@ -279,11 +269,9 @@ static void print_usage(Tracee *tracee, bool detailed)
 		printf("%s\n", colophon);
 }
 
-static char *default_command[] = { "/bin/sh", NULL };
-
 static void print_execve_help(const Tracee *tracee, const char *argv0)
 {
-	notice(WARNING, SYSTEM, "execv(\"%s\")", argv0);
+	notice(WARNING, SYSTEM, "execve(\"%s\")", argv0);
 	notice(INFO, USER, "possible causes:\n"
 "  * <program> is a script but its interpreter (eg. /bin/sh) was not found;\n"
 "  * <program> is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
@@ -331,12 +319,16 @@ static void print_config(Tracee *tracee)
 {
 	assert(tracee != NULL);
 
+	if (verbose_level <= 0)
+		return;
+
 	if (tracee->qemu)
 		notice(INFO, USER, "host rootfs = %s", HOST_ROOTFS);
 
 	if (tracee->glue)
 		notice(INFO, USER, "glue rootfs = %s", tracee->glue);
 
+	notice(INFO, USER, "exe = %s", tracee->exe);
 	print_argv(tracee, "command", tracee->cmdline);
 	print_argv(tracee, "qemu", tracee->qemu);
 
@@ -405,6 +397,62 @@ static int initialize_cwd(Tracee *tracee)
 
 	return 0;
 }
+
+/**
+ * Initialize @tracee->exe and @tracee->cmdline from @cmdline, and resolve the
+ * full host path to @command@tracee->qemu[0].
+ */
+static int initialize_command(Tracee *tracee, char *const *cmdline)
+{
+	char path[PATH_MAX];
+	int status;
+	int i;
+
+	/* How many arguments?  */
+	for (i = 0; cmdline[i] != NULL; i++)
+		;
+
+	tracee->cmdline = talloc_zero_array(tracee, char *, i + 1);
+	if (tracee->cmdline == NULL) {
+		notice(ERROR, INTERNAL, "talloc_zero_array() failed");
+		return -1;
+	}
+	talloc_set_name_const(tracee->cmdline, "@cmdline");
+
+	for (i = 0; cmdline[i] != NULL; i++)
+		tracee->cmdline[i] = cmdline[i];
+
+	/* Resolve the full guest path to tracee->cmdline[0].  */
+	status = which(tracee, tracee->reconf.paths, path, tracee->cmdline[0]);
+	if (status < 0)
+		return -1;
+
+	status = detranslate_path(tracee, path, NULL);
+	if (status < 0)
+		return -1;
+
+	tracee->exe = talloc_strdup(tracee, path);
+	if (tracee->exe == NULL)
+		return -1;
+	talloc_set_name_const(tracee->exe, "$exe");
+
+	/* Nothing else to do ?  */
+	if (tracee->qemu == NULL)
+		return 0;
+
+	/* Resolve the full guest path to tracee->qemu[0].  */
+	status = which(tracee->reconf.tracee, tracee->reconf.paths, path, tracee->qemu[0]);
+	if (status < 0)
+		return -1;
+
+	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
+	if (tracee->qemu[0] == NULL)
+		return -1;
+
+	return 0;
+}
+
+static char *default_command[] = { "/bin/sh", NULL };
 
 /**
  * Configure @tracee according to the command-line arguments stored in
@@ -513,7 +561,7 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 		if (   realpath2(tracee->reconf.tracee, path, argv[i], true) == 0
 		    && stat(path, &buf) == 0
 		    && S_ISDIR(buf.st_mode)) {
-			status = handle_option_r(tracee, path);
+			status = handle_option_r(tracee, argv[i]);
 			i++;
 		}
 		else
@@ -535,13 +583,13 @@ static int parse_cli(Tracee *tracee, int argc, char *argv[])
 	if (status < 0)
 		return -1;
 
-	if (i < argc)
-		tracee->cmdline = &argv[i];
-	else
-		tracee->cmdline = default_command;
+	/* Bindings are now installed and the current working directory is
+	 * canonicalized: resolve path to @tracee->exe and @tracee->qemu.  */
+	status = initialize_command(tracee, i < argc ? &argv[i] : default_command);
+	if (status < 0)
+		return -1;
 
-	if (verbose_level > 0)
-		print_config(tracee);
+	print_config(tracee);
 
 	return 0;
 }
@@ -557,7 +605,9 @@ int main(int argc, char *argv[])
 
 	/* Pre-create the first tracee (pid == 0).  */
 	tracee = get_tracee(0, true);
-	assert(tracee != NULL);
+	if (tracee == NULL)
+		goto error;
+	tracee->pid = getpid();
 
 	/* Pre-configure the first tracee.  */
 	status = parse_cli(tracee, argc, argv);
@@ -567,7 +617,7 @@ int main(int argc, char *argv[])
 	/* Start the first tracee.  */
 	status = launch_process(tracee);
 	if (status < 0) {
-		print_execve_help(tracee, tracee->cmdline[0]);
+		print_execve_help(tracee, tracee->exe);
 		goto error;
 	}
 

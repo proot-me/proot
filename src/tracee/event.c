@@ -47,8 +47,6 @@
 
 #include "compat.h"
 
-extern char **environ;
-
 /**
  * Launch the first process as specified by @tracee->cmdline[].  This
  * function returns -errno if an error occurred, otherwise 0.
@@ -148,15 +146,15 @@ int launch_process(Tracee *tracee)
 
 		notice(INFO, INTERNAL, "started");
 
-		execvp(tracee->cmdline[0], tracee->cmdline);
+		/* Valgrind can't handle execve(2) on "foreign" binaries
+		 * (ENOEXEC) but can handle execvp(3) on such binaries.  */
+		execvp(tracee->exe, tracee->cmdline);
 		return -errno;
 
 	default: /* parent */
 		/* We know the pid of the first tracee now.  */
 		tracee->pid = pid;
-
-		/* This tracee has no traced parent.  */
-		return inherit(tracee, NULL, false);
+		return 0;
 	}
 
 	/* Never reached.  */
@@ -205,6 +203,15 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontex
 
 			if (name[0] == '$') {
 				fprintf(stderr, "\t(\"%s\")", (char *)ptr);
+			}
+			if (name[0] == '@') {
+				char **argv;
+				int i;
+
+				fprintf(stderr, "\t(");
+				for (i = 0, argv = (char **)ptr; argv[i] != NULL; i++)
+					fprintf(stderr, "\"%s\", ", argv[i]);
+				fprintf(stderr, ")");
 			}
 			else if (strcmp(name, "Tracee") == 0) {
 				fprintf(stderr, "\t(pid = %d)", ((Tracee *)ptr)->pid);
