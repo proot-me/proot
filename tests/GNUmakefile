@@ -2,6 +2,7 @@ DIR    = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 ROOTFS = $(DIR)/rootfs
 PROOT  = $(DIR)/../src/proot
 CC     = gcc
+PROOT_RAW = $(PROOT)
 
 CHECK_TESTS = $(patsubst %,check-%, $(wildcard test-*.sh) $(wildcard test-*.c))
 
@@ -9,6 +10,7 @@ CHECK_TESTS = $(patsubst %,check-%, $(wildcard test-*.sh) $(wildcard test-*.c))
 
 check: | clean_failure check_failure
 
+memcheck: PROOT_RAW := $(PROOT)
 memcheck: PROOT := $(shell which valgrind) -q --error-exitcode=1 $(PROOT)
 memcheck: check
 

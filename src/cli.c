@@ -556,7 +556,8 @@ int parse_config(Tracee *tracee, int argc, char *argv[])
 		char path[PATH_MAX];
 		struct stat buf;
 
-		if (   realpath2(tracee->reconf.tracee, path, argv[i], true) == 0
+		if (argv[i] != NULL
+		    && realpath2(tracee->reconf.tracee, path, argv[i], true) == 0
 		    && stat(path, &buf) == 0
 		    && S_ISDIR(buf.st_mode)) {
 			status = handle_option_r(tracee, argv[i]);
