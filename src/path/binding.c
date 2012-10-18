@@ -616,6 +616,8 @@ int initialize_bindings(Tracee *tracee)
 	tracee->fs->bindings.host  = talloc_zero(tracee->fs, Bindings);
 	if (tracee->fs->bindings.guest == NULL || tracee->fs->bindings.host == NULL) {
 		notice(ERROR, INTERNAL, "can't allocate enough memory");
+		TALLOC_FREE(tracee->fs->bindings.guest);
+		TALLOC_FREE(tracee->fs->bindings.host);
 		return -1;
 	}
 

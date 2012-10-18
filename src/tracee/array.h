@@ -50,7 +50,6 @@ static inline int read_item(Array *array, size_t index, void **value)
 	return array->read_item(array, index, value);
 }
 
-
 static inline int write_item(Array *array, size_t index, const void *value)
 {
 	return array->write_item(array, index, value);

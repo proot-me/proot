@@ -99,22 +99,20 @@ typedef struct tracee {
 	 * defined in bind_path() then used in build_glue().  */
 	mode_t glue_type;
 
-	/* During a partial reconfiguration, the new setup is
-	 * relatively to @tracee's file-system name-space.  Also,
-	 * @paths holds its $PATH environment variable in order to
-	 * emulate the execvp(3) behavior.  */
+	/* During a sub-reconfiguration, the new setup is relatively
+	 * to @tracee's file-system name-space.  Also, @paths holds
+	 * its $PATH environment variable in order to emulate the
+	 * execvp(3) behavior.  */
 	struct {
 		struct tracee *tracee;
 		const char *paths;
 	} reconf;
-
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the CLONE_FS flag.       *
 	 **********************************************************************/
 
 	FileSystemNameSpace *fs;
-
 
 	/**********************************************************************
 	 * Shared resources until the tracee makes a call to execve().        *
@@ -146,7 +144,9 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(pid_t pid, bool create);
-extern int inherit(Tracee *child, Tracee *parent, bool shared_fs);
+extern int inherit_config(Tracee *child, Tracee *parent, bool shared_fs);
+extern int swap_config(Tracee *tracee1, Tracee *tracee2);
+extern int parse_config(Tracee *tracee, int argc, char *argv[]);
 extern void kill_all_tracees();
 
 #endif /* TRACEE_H */

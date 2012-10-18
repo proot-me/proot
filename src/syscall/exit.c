@@ -236,7 +236,7 @@ case PR_clone: {
 	else
 		flags = 0;
 
-	status = inherit(child, tracee, (flags & CLONE_FS) != 0);
+	status = inherit_config(child, tracee, (flags & CLONE_FS) != 0);
 	if (status < 0)
 		break;
 

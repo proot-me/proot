@@ -92,7 +92,7 @@ Tracee *get_tracee(pid_t pid, bool create)
  * on @shared_fs, some information are copied or shared.  This
  * function returns -errno if an error occured, otherwise 0.
  */
-int inherit(Tracee *child, Tracee *parent, bool shared_fs)
+int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 {
 	assert(parent != NULL);
 
@@ -165,6 +165,38 @@ int inherit(Tracee *child, Tracee *parent, bool shared_fs)
 			TALLOC_FREE(child);
 		}
 	}
+
+	return 0;
+}
+
+/**
+ * Swap configuration (pointers and parentality) between @tracee1 and @tracee2.
+ */
+int swap_config(Tracee *tracee1, Tracee *tracee2)
+{
+	Tracee *tmp;
+
+	tmp = talloc_zero(tracee1->tmp, Tracee);
+	if (tmp == NULL)
+		return -ENOMEM;
+
+	void reparent_config(Tracee *new_parent, Tracee *old_parent) {
+		#define REPARENT(field) do {						\
+			talloc_reparent(old_parent, new_parent, old_parent->field);	\
+			new_parent->field = old_parent->field;				\
+		} while(0);
+
+		REPARENT(fs);
+		REPARENT(exe);
+		REPARENT(cmdline);
+		REPARENT(qemu);
+		REPARENT(glue);
+		REPARENT(extensions);
+	}
+
+	reparent_config(tmp,     tracee1);
+	reparent_config(tracee1, tracee2);
+	reparent_config(tracee2, tmp);
 
 	return 0;
 }

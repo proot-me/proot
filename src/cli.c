@@ -459,7 +459,7 @@ static char *default_command[] = { "/bin/sh", NULL };
  * @argv[].  This function returns -1 if an error occured, otherwise
  * 0.
  */
-static int parse_cli(Tracee *tracee, int argc, char *argv[])
+int parse_config(Tracee *tracee, int argc, char *argv[])
 {
 	option_handler_t handler = NULL;
 	int i, j, k;
@@ -610,7 +610,7 @@ int main(int argc, char *argv[])
 	tracee->pid = getpid();
 
 	/* Pre-configure the first tracee.  */
-	status = parse_cli(tracee, argc, argv);
+	status = parse_config(tracee, argc, argv);
 	if (status < 0)
 		goto error;
 

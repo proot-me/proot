@@ -250,7 +250,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 /**
  * Put in @host_path the canonicalized form of @path.  In the nominal
  * case (@tracee == NULL), this function is barely equivalent to
- * realpath(), but when doing partial reconfiguration, the path is
+ * realpath(), but when doing sub-reconfiguration, the path is
  * canonicalized relatively to the current @tracee's file-system
  * name-space.  This function returns -errno on error, otherwise 0.
  */
@@ -268,8 +268,8 @@ int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool d
 /**
  * Put in @guest_path the canonicalized current working directory.  In
  * the nominal case (@tracee == NULL), this function is barely
- * equivalent to realpath(), but when doing partial reconfiguration,
- * the path is canonicalized relatively to the current @tracee's
+ * equivalent to realpath(), but when doing sub-reconfiguration, the
+ * path is canonicalized relatively to the current @tracee's
  * file-system name-space.  This function returns -errno on error,
  * otherwise 0.
  */

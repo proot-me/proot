@@ -32,10 +32,12 @@
 #include "execve/elf.h"
 #include "execve/ldso.h"
 #include "tracee/array.h"
+#include "tracee/tracee.h"
 #include "syscall/syscall.h"
 #include "notice.h"
 #include "path/path.h"
 #include "path/binding.h"
+#include "extension/extension.h"
 
 #include "compat.h"
 
@@ -162,6 +164,117 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 }
 
 /**
+ * Check if the binary @host_path is PRoot itself.  In that case, @argv and
+ * @envp are used to reconfigure the current @tracee.  This function returns
+ * -errno if an error occured, 0 if the binary isn't PRoot, and 1 if @tracee was
+ * reconfigured correctly.
+ */
+static int handle_sub_reconf(Tracee *tracee, Array *argv, Array *envp, const char *host_path)
+{
+	static char *self_exe = NULL;
+	Tracee *dummy = NULL;
+	char path[PATH_MAX];
+	char **argv_pod;
+	int status;
+	int i;
+
+	/* The path to PRoot itself is cached.  */
+	if (self_exe == NULL) {
+		status = readlink("/proc/self/exe", path, PATH_MAX);
+		if (status < 0 || status >= PATH_MAX)
+			return 0;
+		path[status] = '\0';
+
+		self_exe = strdup(path);
+		if (self_exe == NULL)
+			return -ENOMEM;
+	}
+
+	/* Check if the executed program is PRoot itself.  */
+	if (strcmp(host_path, self_exe) != 0 || argv->length <= 1)
+		return 0;
+
+	/* Rebuild a POD argv[], as expected by parse_config().  */
+	argv_pod = talloc_size(tracee->tmp, argv->length * sizeof(char **));
+	if (argv_pod == NULL)
+		return -ENOMEM;
+
+	for (i = 0; i < argv->length; i++) {
+		status = read_item_string(argv, i, &argv_pod[i]);
+		if (status < 0)
+			return status;
+	}
+
+	/* This dummy tracee holds the new configuration that will be copied
+	 * back to the original tracee if everything is OK.  */
+	dummy = talloc_zero(tracee->tmp, Tracee);
+	if (dummy == NULL)
+		return -ENOMEM;
+
+	dummy->fs = talloc_zero(dummy, FileSystemNameSpace);
+	if (dummy->fs == NULL)
+		return -ENOMEM;
+
+	dummy->tmp = talloc_new(dummy);
+	if (dummy->tmp == NULL)
+		return -ENOMEM;
+
+	/* Inform parse_config() that paths are relative to the current tracee.
+	 * For instance, "-w ./foo" will be translated to "-w
+	 * ${tracee->cwd}/foo".  */
+	dummy->reconf.tracee = tracee;
+	dummy->reconf.paths = NULL;
+
+	status = parse_config(dummy, argv->length - 1, argv_pod);
+	if (status < 0)
+		return -ECANCELED;
+	bzero(&dummy->reconf, sizeof(dummy->reconf));
+
+	/* How many arguments for the actual command?  */
+	for (i = 0; dummy->cmdline[i] != NULL; i++)
+		;
+
+	/* Sanity checks.  */
+	if (i < 1 || i >= argv->length) {
+		notice(WARNING, INTERNAL, "wrong number of arguments (%d)", i);
+		return -ECANCELED;
+	}
+
+	/* Write the actual command back to the tracee's memory.  */
+	status = resize_array(argv, argv->length - 1, i + 1 - argv->length);
+	if (status < 0)
+		return status;
+
+	for (i = 0; dummy->cmdline[i] != NULL; i++)
+		write_item_string(argv, i, dummy->cmdline[i]);
+	write_item_string(argv, i, NULL);
+
+	status = push_array(argv, SYSARG_2);
+	if (status < 0)
+		return status;
+
+	status = set_sysarg_path(tracee, dummy->exe, SYSARG_1);
+	if (status < 0)
+		return status;
+
+	/* Commit the new configuration.  */
+	status = swap_config(tracee, dummy);
+	if (status < 0)
+		return status;
+
+	/* Restart the execve() but with the actual command.  */
+	status = translate_execve(tracee);
+	if (status < 0) {
+		/* Something went wrong, revert the new configuration.  Maybe
+		 * this should be done in the exit stage.  */
+		(void) swap_config(tracee, dummy);
+		return status;
+	}
+
+	return 1;
+}
+
+/**
  * Translate the arguments of the execve() syscall made by the @tracee
  * process.  This function return -errno if an error occured,
  * otherwise 0.
@@ -254,6 +367,13 @@ int translate_execve(Tracee *tracee)
 	if (status < 0)
 		return status;
 	is_script = (status > 0);
+
+	/* It's the rigth place to check if the binary is PRoot itself.  */
+	status = handle_sub_reconf(tracee, argv, envp, t_interp);
+	if (status < 0)
+		return status;
+	if (status > 0)
+		return 0;
 
 	/* "/proc/self/exe" points to a canonicalized path -- from the
 	 * guest point-of-view --, hence detranslate_path(t_interp).

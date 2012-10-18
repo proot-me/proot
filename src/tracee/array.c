@@ -262,7 +262,6 @@ int resize_array(Array *array, size_t index, ssize_t delta_nb_entries)
 	size_t nb_moved_entries;
 	size_t new_length;
 	void *tmp;
-	int i;
 
 	assert(index < array->length);
 
@@ -284,9 +283,7 @@ int resize_array(Array *array, size_t index, ssize_t delta_nb_entries)
 		bzero(array->_cache + index, delta_nb_entries * sizeof(ArrayEntry));
 	}
 	else {
-		/* Sanity check.  */
-		for (i = 0; i < nb_moved_entries; i++)
-			assert(array->_cache[index + i].local == NULL);
+		assert(index + delta_nb_entries >= 0);
 
 		memmove(array->_cache + index + delta_nb_entries, array->_cache + index,
 			nb_moved_entries * sizeof(ArrayEntry));

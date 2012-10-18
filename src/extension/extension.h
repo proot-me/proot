@@ -76,7 +76,11 @@ typedef enum {
 	 * signal: "(int) data1" is its new status as reported by
 	 * waitpid(2).  If the extension returns != 0, then PRoot
 	 * skips its own handling.  */
-	NEW_TRACEE_STATUS,
+	NEW_STATUS,
+
+	/* The tracee was reconfigured: "(Tracee *) data1" is the old
+	 * configuration.  */
+	NEW_CONFIGURATION,
 
 	/* Ask how this extension is inheritable: "(Tracee *) data1"
 	 * is the child tracee.

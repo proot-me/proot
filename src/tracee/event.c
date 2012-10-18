@@ -340,7 +340,7 @@ int event_loop()
 		tracee = get_tracee(pid, true);
 		assert(tracee != NULL);
 
-		status = notify_extensions(tracee, NEW_TRACEE_STATUS, tracee_status, 0);
+		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
 			continue;
 
@@ -429,7 +429,7 @@ int event_loop()
 					break;
 				}
 
-				status = inherit(child_tracee, tracee, false);
+				status = inherit_config(child_tracee, tracee, false);
 				if (status < 0) {
 					notice(ERROR, SYSTEM, "XXX");
 					break;
