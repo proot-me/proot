@@ -97,6 +97,7 @@ int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 	assert(parent != NULL);
 
 	assert(child->exe == NULL && parent->exe != NULL);
+	assert(child->cmdline == NULL && parent->cmdline != NULL);
 	assert(child->fs->cwd == NULL && parent->fs->cwd != NULL);
 	assert(child->fs->bindings.pending == NULL && parent->fs->bindings.pending == NULL);
 	assert(child->fs->bindings.guest == NULL   && parent->fs->bindings.guest != NULL);

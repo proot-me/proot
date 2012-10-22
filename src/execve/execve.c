@@ -266,7 +266,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, Array *envp, const cha
 	status = translate_execve(tracee);
 	if (status < 0) {
 		/* Something went wrong, revert the new configuration.  Maybe
-		 * this should be done in the exit stage.  */
+		 * this should be done in syscall/exit.c.  */
 		(void) swap_config(tracee, dummy);
 		return status;
 	}
@@ -320,7 +320,10 @@ int translate_execve(Tracee *tracee)
 	Array *envp = NULL;
 	Array *argv = NULL;
 	char *argv0 = NULL;
-	char *tmp;
+
+	char **new_cmdline;
+	char *new_exe;
+	int i;
 
 	bool ignore_elf_interpreter;
 	bool inhibit_rpath = false;
@@ -375,21 +378,30 @@ int translate_execve(Tracee *tracee)
 	if (status > 0)
 		return 0;
 
-	/* "/proc/self/exe" points to a canonicalized path -- from the
-	 * guest point-of-view --, hence detranslate_path(t_interp).
-	 * We can re-use u_path since it is not useful anymore.  */
+	/* Remember the value for "/proc/self/exe".  Note that it points to a
+	 * canonicalized guest path, hence detranslate_path().  We re-use u_path
+	 * since it is not useful anymore.  */
 	strcpy(u_path, t_interp);
 	(void) detranslate_path(tracee, u_path, NULL);
 
-	/* TODO: it would be safier to do this in exit.c, however I'm
-	 * not able to write a test where execve would fail at kernel
-	 * level but not in PRoot.  */
-	tmp = talloc_strdup(tracee, u_path);
-	if (tmp == NULL)
+	new_exe = talloc_strdup(tracee->tmp, u_path);
+	if (new_exe == NULL)
 		return -ENOMEM;
-	talloc_unlink(tracee, tracee->exe);
-	tracee->exe = tmp;
-	talloc_set_name_const(tracee->exe, "$exe");
+
+	/* Remember the value for "/proc/self/cmdline".  */
+	new_cmdline = talloc_zero_array(tracee->tmp, char *, argv->length);
+	if (new_cmdline == NULL)
+		return -ENOMEM;
+
+	for (i = 0; i < argv->length; i++) {
+		char *ptr;
+		status = read_item_string(argv, i, &ptr);
+		if (status < 0)
+			return status;
+		/* It's safe to reference these strings since they are never
+		 * overwritten, they are just replaced.  */
+		new_cmdline[i] = talloc_reference(new_cmdline, ptr);
+	}
 
 	if (tracee->qemu != NULL) {
 		/* Prepend the QEMU command to the initial argv[] if
@@ -483,6 +495,20 @@ int translate_execve(Tracee *tracee)
 	status = push_array(envp, SYSARG_3);
 	if (status < 0)
 		return status;
+
+	/* So far so good, we can now safely update tracee->exe and
+	 * tracee->cmdline.  Actually it would be safer in syscall/exit.c
+	 * however I'm not able to write a test where execve(2) would fail at
+	 * kernel level but not in PRoot.  Moreover this would require to store
+	 * temporarily the original values for exe and cmdline, that is, before
+	 * the insertion of the loader (ELF interpreter or QEMU).  */
+	talloc_unlink(tracee, tracee->exe);
+	tracee->exe = talloc_reference(tracee, new_exe);
+	talloc_set_name_const(tracee->exe, "$exe");
+
+	talloc_unlink(tracee, tracee->cmdline);
+	tracee->cmdline = talloc_reference(tracee, new_cmdline);
+	talloc_set_name_const(tracee->cmdline, "@cmdline");
 
 	return 0;
 }
