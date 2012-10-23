@@ -63,6 +63,8 @@ Fixes
 
 * Add support for /etc/ld.so.preload and /etc/ld.so.conf[.d] in mixed-mode.
 
+* Fix ``proot -k 1.2.3 proot -k 2.4.6 -k 3.4.5 uname -r | grep 3.4.5``.
+
 
 Features
 --------

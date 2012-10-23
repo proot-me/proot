@@ -154,7 +154,7 @@ int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
 
-	inherit_extensions(child, parent);
+	inherit_extensions(child, parent, false);
 
 	/* Restart the child tracee if it was already alive but
 	 * stopped until that moment.  */

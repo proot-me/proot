@@ -271,6 +271,8 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, Array *envp, const cha
 		return status;
 	}
 
+	inherit_extensions(tracee, dummy, true);
+
 	return 1;
 }
 

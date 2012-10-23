@@ -78,21 +78,20 @@ typedef enum {
 	 * skips its own handling.  */
 	NEW_STATUS,
 
-	/* The tracee was reconfigured: "(Tracee *) data1" is the old
-	 * configuration.  */
-	NEW_CONFIGURATION,
-
-	/* Ask how this extension is inheritable: "(Tracee *) data1"
-	 * is the child tracee.
+	/* Ask how this extension is inheritable: "(Tracee *) data1" is the
+	 * child tracee and "(bool) data2" specifies if it's a
+	 * sub-reconfiguration.  The meaning of the returned value is:
+	 *
 	 *   < 0 : not inheritable
 	 *  == 0 : inheritable + shared configuration.
 	 *   > 0 : inheritable + call INHERIT_CHILD.  */
 	INHERIT_PARENT,
 
-	/* Control the inheritance: "(Extension *) data1" is the
-	 * extension of the parent.  For instance the extension in the
-	 * child could create a new configuration depending on the
-	 * parent's configuration.  */
+	/* Control the inheritance: "(Extension *) data1" is the extension of
+	 * the parent and "(bool) data2" specifies if it's a
+	 * sub-reconfiguration.  For instance the extension in the child could
+	 * create a new configuration depending on the parent's
+	 * configuration.  */
 	INHERIT_CHILD,
 
 	/* Initialize the extension: "(const char *) data1" is its
@@ -133,7 +132,7 @@ typedef struct extension {
 typedef LIST_HEAD(extensions, extension) Extensions;
 
 extern int initialize_extension(Tracee *tracee, extension_callback_t callback, const char *cli);
-extern void inherit_extensions(Tracee *child, Tracee *parent);
+extern void inherit_extensions(Tracee *child, Tracee *parent, bool sub_reconf);
 
 /**
  * Notify all extensions of @tracee that the given @event occured.

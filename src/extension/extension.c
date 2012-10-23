@@ -103,7 +103,7 @@ int initialize_extension(Tracee *tracee, extension_callback_t callback, const ch
  * Rebuild a new list of extensions for this @child from its @parent.
  * The inheritance model is controlled by the @parent.
  */
-void inherit_extensions(Tracee *child, Tracee *parent)
+void inherit_extensions(Tracee *child, Tracee *parent, bool sub_reconf)
 {
 	Extension *parent_extension;
 	Extension *child_extension;
@@ -113,13 +113,13 @@ void inherit_extensions(Tracee *child, Tracee *parent)
 		return;
 
 	/* Sanity check.  */
-	assert(child->extensions == NULL);
+	assert(child->extensions == NULL || sub_reconf);
 
 	LIST_FOREACH(parent_extension, parent->extensions, link) {
 		/* Ask the parent how this extension is
 		 * inheritable.  */
 		status = parent_extension->callback(parent_extension, INHERIT_PARENT,
-						(intptr_t)child, 0);
+						(intptr_t)child, sub_reconf);
 
 		/* Not inheritable.  */
 		if (status < 0)
@@ -141,7 +141,7 @@ void inherit_extensions(Tracee *child, Tracee *parent)
 		else {
 			/* ... with another inheritance model.  */
 			child_extension->callback(child_extension, INHERIT_CHILD,
-						(intptr_t)parent_extension, 0);
+						(intptr_t)parent_extension, sub_reconf);
 		}
 	}
 }
