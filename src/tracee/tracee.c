@@ -59,16 +59,26 @@ static Tracee *new_tracee(pid_t pid)
 		return NULL;
 	talloc_set_destructor(tracee, remove_tracee);
 
+	/* Allocate a memory collector.  */
+	tracee->tmp = talloc_new(tracee);
+	if (tracee->tmp == NULL)
+		goto no_mem;
+
 	/* By default new tracees have an empty file-system
 	 * name-space.  */
 	tracee->fs = talloc_zero(tracee, FileSystemNameSpace);
 	if (tracee->fs == NULL)
-		return NULL;
+		goto no_mem;
 
 	tracee->pid = pid;
 	LIST_INSERT_HEAD(&tracees, tracee, link);
 
 	return tracee;
+
+no_mem:
+	TALLOC_FREE(tracee->fs);
+	TALLOC_FREE(tracee->tmp);
+	return NULL;
 }
 
 /**
@@ -81,8 +91,13 @@ Tracee *get_tracee(pid_t pid, bool create)
 	Tracee *tracee;
 
 	LIST_FOREACH(tracee, &tracees, link)
-		if (tracee->pid == pid)
+		if (tracee->pid == pid) {
+			/* Flush then allocate a new memory collector.  */
+			TALLOC_FREE(tracee->tmp);
+			tracee->tmp = talloc_new(tracee);
+
 			return tracee;
+		}
 
 	return (create ? new_tracee(pid) : NULL);
 }

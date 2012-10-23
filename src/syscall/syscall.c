@@ -312,14 +312,10 @@ int translate_syscall(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	tracee->tmp = talloc_new(tracee);
-
 	/* Check if we are either entering or exiting a syscall. */
 	result = (tracee->status == 0
 		  ? translate_syscall_enter(tracee)
 		  : translate_syscall_exit(tracee));
-
-	TALLOC_FREE(tracee->tmp);
 
 	status = push_regs(tracee);
 	if (status < 0)
