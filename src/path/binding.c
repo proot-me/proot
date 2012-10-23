@@ -421,6 +421,9 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
  */
 void insort_binding2(Tracee *tracee, Binding *binding)
 {
+	binding->need_substitution =
+		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
+
 	insort_binding(tracee, GUEST, binding);
 	insort_binding(tracee, HOST, binding);
 }
@@ -482,7 +485,7 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	}
 
 	/* Allocate an empty binding.  */
-	binding = talloc_zero(tracee->fs->bindings.pending, Binding);
+	binding = talloc_zero(tracee->tmp, Binding);
 	if (binding == NULL)
 		return NULL;
 
@@ -584,10 +587,95 @@ static void initialize_binding(Tracee *tracee, Binding *binding)
 
 	binding->guest.length = strlen(binding->guest.path);
 
-	binding->need_substitution =
-		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
-
 	insort_binding2(tracee, binding);
+}
+
+/**
+ * Add bindings induced by @new_binding when @tracee is being sub-reconfigured.
+ * For example, if the previous configuration ("-r /rootfs1") contains this
+ * binding:
+ *
+ *      -b /home/ced:/usr/local/ced
+ *
+ * and if the current configuration ("-r /rootfs2") introduces such a new
+ * binding:
+ *
+ *      -b /usr:/media
+ *
+ * then the following binding is induced:
+ *
+ *      -b /home/ced:/media/local/ced
+ */
+static void add_induced_bindings(Tracee *tracee, const Binding *new_binding)
+{
+	Binding *old_binding;
+	char path[PATH_MAX];
+	int status;
+
+	/* Only for reconfiguration.  */
+	if (tracee->reconf.tracee == NULL)
+		return;
+
+	/* From the example, PRoot has already converted "-b /usr:/media" into
+	 * "-b /rootfs1/usr:/media" in order to ensure the host part is really a
+	 * host path.  Here, the host part is converted back to "/usr" since the
+	 * comparison can't be made on "/rootfs1/usr".
+	 */
+	strcpy(path, new_binding->host.path);
+	status = detranslate_path(tracee->reconf.tracee, path, NULL);
+	if (status < 0)
+		return;
+
+	CIRCLEQ_FOREACH_(tracee->reconf.tracee, old_binding, GUEST) {
+		Binding *induced_binding;
+		Comparison comparison;
+		char path2[PATH_MAX];
+		size_t prefix_length;
+
+		/* Check if there's an induced binding by searching a common
+		 * path prefix in between new/old bindings:
+		 *
+		 *   -b /home/ced:[/usr]/local/ced
+		 *   -b [/usr]:/media
+		 */
+		comparison = compare_paths(path, old_binding->guest.path);
+		if (comparison != PATH1_IS_PREFIX)
+			continue;
+
+		/* Convert the path of this induced binding to the new
+		 * filesystem namespace.  From the example, "/usr/local/ced" is
+		 * converted into "/media/local/ced".  Note: substitute_binding
+		 * can't be used in this case since it would expect
+		 * "/rootfs1/usr/local/ced instead".
+		 */
+		prefix_length = strlen(path);
+		if (prefix_length == 1)
+			prefix_length = 0;
+
+		status = join_paths(2, path2, new_binding->guest.path, old_binding->guest.path + prefix_length);
+		if (status < 0)
+			continue;
+
+		/* Install the induced binding.  From the example:
+		 *
+		 *     -b /home/ced:/media/local/ced
+		 */
+		induced_binding = talloc_zero(tracee->tmp, Binding);
+		if (induced_binding == NULL)
+			continue;
+
+		strcpy(induced_binding->host.path, old_binding->host.path);
+		strcpy(induced_binding->guest.path, path2);
+
+		induced_binding->host.length = strlen(induced_binding->host.path);
+		induced_binding->guest.length = strlen(induced_binding->guest.path);
+
+		VERBOSE(tracee, 2, "induced binding: %s:%s (old) & %s:%s (new) -> %s:%s (induced)",
+			old_binding->host.path, old_binding->guest.path, path, new_binding->guest.path,
+			induced_binding->host.path, induced_binding->guest.path);
+
+		insort_binding2(tracee, induced_binding);
+	}
 }
 
 /**
@@ -633,7 +721,14 @@ int initialize_bindings(Tracee *tracee)
 	while (binding != (void *) tracee->fs->bindings.pending) {
 		Binding *previous;
 		previous = CIRCLEQ_PREV(binding, link.pending);
+
+		/* Canonicalize then insert this binding into
+		 * tracee->fs->bindings.guest/host.  */
 		initialize_binding(tracee, binding);
+
+		/* Add induced bindings on sub-reconfiguration.  */
+		add_induced_bindings(tracee, binding);
+
 		binding = previous;
 	}
 

@@ -146,16 +146,14 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */
 	binding = talloc_zero(tracee->glue, Binding);
-	if (!binding)
+	if (binding == NULL)
 		return 0;
 
 	strcpy(binding->host.path, tracee->glue);
-	binding->host.length = strlen(binding->host.path);
-
 	strcpy(binding->guest.path, guest_path);
-	binding->guest.length = strlen(binding->guest.path);
 
-	binding->need_substitution = true;
+	binding->host.length = strlen(binding->host.path);
+	binding->guest.length = strlen(binding->guest.path);
 
 	insort_binding2(tracee, binding);
 

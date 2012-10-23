@@ -11,8 +11,6 @@ Short term
 
   * ``chroot`` under PRoot
 
-  * ``proot`` under PRoot
-
 
 Middle term
 ===========
@@ -64,6 +62,24 @@ Fixes
 * Add support for /etc/ld.so.preload and /etc/ld.so.conf[.d] in mixed-mode.
 
 * Fix ``proot -k 1.2.3 proot -k 2.4.6 -k 3.4.5 uname -r | grep 3.4.5``.
+
+* Don't use the same prefix for glued path::
+
+      $ proot -b /etc/fstab -b /bin/readdir:/bin/readdir -r /tmp/empty-rootfs
+      [...]
+      proot info: binding = /tmp/proot-6738-CMr1hE:/bin
+      proot info: binding = /tmp/proot-6738-CMr1hE:/etc
+      [...]
+      $ readdir /bin
+      DT_DIR  ..
+      DT_DIR  .
+      DT_REG  readdir
+      DT_REG  fstab
+      $ readdir /etc
+      DT_DIR  ..
+      DT_DIR  .
+      DT_REG  readdir
+      DT_REG  fstab
 
 
 Features
