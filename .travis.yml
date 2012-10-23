@@ -1,0 +1,9 @@
+language: c
+
+compiler: gcc
+
+before_install:
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq libtalloc-dev
+
+script: make -C src && make -C tests
