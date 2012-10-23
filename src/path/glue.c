@@ -103,12 +103,20 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 		talloc_set_destructor(tracee->glue, remove_glue);
 	}
 
-	/* If it's not a final component then it is a directory.  I
-	 * definitively hate how the type of the final component is
-	 * propagated from bind_path() down to here, sadly there's no
-	 * elegant way to know its type at this stage.  */
-	if (is_final)
-		type = tracee->glue_type;
+	/* If it's not a final component then it is a directory.  I definitively
+	 * hate how the protential type of the final component is propagated
+	 * from initialize_binding() down to here, sadly there's no elegant way
+	 * to know its type at this stage.  */
+	if (is_final) {
+		struct stat statl;
+
+		/* Trust glue_type only if the destination doesn't exist.  */
+		status = lstat(host_path, &statl);
+		if (status < 0)
+			type = tracee->glue_type;
+		else
+			type = (statl.st_mode & S_IFMT);
+	}
 	else
 		type = S_IFDIR;
 

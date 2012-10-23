@@ -48,10 +48,10 @@ REGULAR=/tmp/$(mcookie)
 SYMLINK_TO_REGULAR=/tmp/$(mcookie)
 ln -s ${REGULAR} ${SYMLINK_TO_REGULAR}
 
-${PROOT} -v -1 -b ${TMP1}:${REGULAR} -b ${TMP2}:${SYMLINK_TO_REGULAR} cat ${REGULAR} | grep "^${TMP1}$"
+${PROOT} -v -1 -b ${TMP1}:${REGULAR} -b ${TMP2}:${SYMLINK_TO_REGULAR} cat ${REGULAR} | grep "^${TMP2}$"
 ${PROOT} -v -1 -b ${TMP2}:${SYMLINK_TO_REGULAR} -b ${TMP1}:${REGULAR} cat ${REGULAR} | grep "^${TMP1}$"
 
 ${PROOT} -v -1 -b ${TMP1}:${REGULAR} -b ${TMP2}:${SYMLINK_TO_REGULAR} cat ${SYMLINK_TO_REGULAR} | grep "^${TMP2}$"
-${PROOT} -v -1 -b ${TMP2}:${SYMLINK_TO_REGULAR} -b ${TMP1}:${REGULAR} cat ${SYMLINK_TO_REGULAR} | grep "^${TMP2}$"
+${PROOT} -v -1 -b ${TMP2}:${SYMLINK_TO_REGULAR} -b ${TMP1}:${REGULAR} cat ${SYMLINK_TO_REGULAR} | grep "^${TMP1}$"
 
 rm -fr ${TMP1} ${TMP2} ${REGULAR} $SYMLINK_TO_REGULAR}
