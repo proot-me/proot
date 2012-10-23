@@ -60,6 +60,7 @@
 	case HOST:  CIRCLEQ_INSERT_AFTER(HEAD(tracee, side), previous, binding, link.host);    break; \
 	default:    CIRCLEQ_INSERT_AFTER(HEAD(tracee, side), previous, binding, link.pending); break; \
 	}								\
+	(void) talloc_reference(HEAD(tracee, side), binding);		\
 } while (0)
 
 #define CIRCLEQ_INSERT_BEFORE_(tracee, next, binding, side) do {	\
@@ -68,21 +69,28 @@
 	case HOST:  CIRCLEQ_INSERT_BEFORE(HEAD(tracee, side), next, binding, link.host);    break; \
 	default:    CIRCLEQ_INSERT_BEFORE(HEAD(tracee, side), next, binding, link.pending); break; \
 	}								\
+	(void) talloc_reference(HEAD(tracee, side), binding);		\
 } while (0)
 
 #define CIRCLEQ_INSERT_HEAD_(tracee, binding, side) do {		\
 	switch (side) {							\
-	case GUEST: CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.guest);	  break; \
+	case GUEST: CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.guest);   break; \
 	case HOST:  CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.host);    break; \
 	default:    CIRCLEQ_INSERT_HEAD(HEAD(tracee, side), binding, link.pending); break; \
 	}								\
+	(void) talloc_reference(HEAD(tracee, side), binding);		\
 } while (0)
 
 #define IS_LINKED(binding, link)					\
 	((binding)->link.cqe_next != NULL || (binding)->link.cqe_prev != NULL)
 
-#define CIRCLEQ_REMOVE_(tracee, binding, name) \
-	CIRCLEQ_REMOVE((tracee)->fs->bindings.name, binding, link.name);
+#define CIRCLEQ_REMOVE_(tracee, binding, name) do {			\
+	CIRCLEQ_REMOVE((tracee)->fs->bindings.name, binding, link.name);\
+	(binding)->link.name.cqe_next = NULL;				\
+	(binding)->link.name.cqe_prev = NULL;				\
+	talloc_unlink((tracee)->fs->bindings.name, binding);		\
+} while (0)
+
 
 /**
  * Print all bindings (verbose purpose).
@@ -191,7 +199,8 @@ const char *get_root(const Tracee* tracee)
 	const Binding *binding;
 
 	if (tracee->fs->bindings.guest == NULL) {
-		if (tracee->fs->bindings.pending == NULL || CIRCLEQ_EMPTY(tracee->fs->bindings.pending))
+		if (tracee->fs->bindings.pending == NULL
+		    || CIRCLEQ_EMPTY(tracee->fs->bindings.pending))
 			return NULL;
 
 		binding = CIRCLEQ_LAST(tracee->fs->bindings.pending);
@@ -305,6 +314,23 @@ int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
 }
 
 /**
+ * Remove @binding from all the @tracee's lists of bindings it belongs to.
+ */
+static int remove_binding_from_all_lists(const Tracee *tracee, Binding *binding)
+{
+       if (IS_LINKED(binding, link.pending))
+	       CIRCLEQ_REMOVE_(tracee, binding, pending);
+
+       if (IS_LINKED(binding, link.guest))
+	       CIRCLEQ_REMOVE_(tracee, binding, guest);
+
+       if (IS_LINKED(binding, link.host))
+	       CIRCLEQ_REMOVE_(tracee, binding, host);
+
+       return 0;
+}
+
+/**
  * Insert @binding into the list of @bindings, in a sorted manner so
  * as to make the substitution of nested bindings determistic, ex.:
  *
@@ -357,7 +383,7 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 
 			/* Replace this iterator with the new binding.  */
 			CIRCLEQ_INSERT_AFTER_(tracee, iterator, binding, side);
-			TALLOC_FREE(iterator);
+			remove_binding_from_all_lists(tracee, iterator);
 			return;
 
 		case PATH1_IS_PREFIX:
@@ -388,13 +414,6 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 		CIRCLEQ_INSERT_BEFORE_(tracee, next, binding, side);
 	else
 		CIRCLEQ_INSERT_HEAD_(tracee, binding, side);
-
-	/* Declare tracee->fs->bindings.side as a parent of this
-	 * binding.  */
-	if (side != PENDING)
-		(void) talloc_reference(HEAD(tracee, side), binding);
-	else
-		assert(talloc_parent(binding) == HEAD(tracee, side));
 }
 
 /**
@@ -416,13 +435,12 @@ static int remove_bindings(Bindings *bindings)
 	Binding *binding;
 	Tracee *tracee;
 
-	/* Free all bindings from the @link list.  */
-#define CIRCLEQ_REMOVE_ALL(link) do {				\
+	/* Unlink all bindings from the @link list.  */
+#define CIRCLEQ_REMOVE_ALL(name) do {				\
 	binding = CIRCLEQ_FIRST(bindings);			\
 	while (binding != (void *) bindings) {			\
-		Binding *next = CIRCLEQ_NEXT(binding, link);	\
-		talloc_set_destructor(binding, NULL);		\
-		talloc_unlink(bindings, binding);		\
+		Binding *next = CIRCLEQ_NEXT(binding, link.name);\
+		CIRCLEQ_REMOVE_(tracee, binding, name);		\
 		binding = next;					\
 	}							\
 } while (0)
@@ -430,34 +448,13 @@ static int remove_bindings(Bindings *bindings)
 	/* Search which link is used by this list.  */
 	tracee = TRACEE(bindings);
 	if (bindings == tracee->fs->bindings.pending)
-		CIRCLEQ_REMOVE_ALL(link.pending);
+		CIRCLEQ_REMOVE_ALL(pending);
 	else if (bindings == tracee->fs->bindings.guest)
-		CIRCLEQ_REMOVE_ALL(link.guest);
+		CIRCLEQ_REMOVE_ALL(guest);
 	else if (bindings == tracee->fs->bindings.host)
-		CIRCLEQ_REMOVE_ALL(link.host);
+		CIRCLEQ_REMOVE_ALL(host);
 
 	bzero(bindings, sizeof(Bindings));
-
-	return 0;
-}
-
-/**
- * Remove @binding from all the list of bindings it belongs to.
- *
- * Note: this is a Talloc destructor.
- */
-static int remove_binding(Binding *binding)
-{
-	Tracee *tracee = TRACEE(talloc_parent(binding));
-
-	if (IS_LINKED(binding, link.pending))
-		CIRCLEQ_REMOVE_(tracee, binding, pending);
-
-	if (IS_LINKED(binding, link.guest))
-		CIRCLEQ_REMOVE_(tracee, binding, guest);
-
-	if (IS_LINKED(binding, link.host))
-		CIRCLEQ_REMOVE_(tracee, binding, host);
 
 	return 0;
 }
@@ -488,7 +485,6 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	binding = talloc_zero(tracee->fs->bindings.pending, Binding);
 	if (binding == NULL)
 		return NULL;
-	talloc_set_destructor(binding, remove_binding);
 
 	/* Expand environment variables like $HOME.  */
 	if (host[0] == '$' && getenv(&host[1]))
@@ -547,7 +543,7 @@ error:
  * remove it from @tracee->fs->bindings.pending.  This function
  * returns -1 if an error occured, 0 otherwise.
  */
-static int initialize_binding(Tracee *tracee, Binding *binding)
+static void initialize_binding(Tracee *tracee, Binding *binding)
 {
 	char path[PATH_MAX];
 	struct stat statl;
@@ -574,7 +570,7 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 			notice(tracee, WARNING, INTERNAL,
 				"sanitizing the guest path (binding) \"%s\": %s",
 				path, strerror(-status));
-			goto error;
+			return;
 		}
 
 		/* Remove the trailing "/" or "/." as expected by
@@ -592,10 +588,6 @@ static int initialize_binding(Tracee *tracee, Binding *binding)
 		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
 
 	insort_binding2(tracee, binding);
-	return 0;
-
-error:
-	return -1;
 }
 
 /**
@@ -640,16 +632,8 @@ int initialize_bindings(Tracee *tracee)
 	 * the canonicalization.  */
 	while (binding != (void *) tracee->fs->bindings.pending) {
 		Binding *previous;
-		int status;
-
 		previous = CIRCLEQ_PREV(binding, link.pending);
-
-		status = initialize_binding(tracee, binding);
-		if (status < 0)
-			TALLOC_FREE(binding);
-		else
-			CIRCLEQ_REMOVE_(tracee, binding, pending);
-
+		initialize_binding(tracee, binding);
 		binding = previous;
 	}
 
