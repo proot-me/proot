@@ -1,5 +1,5 @@
-if ! /usr/bin/pwd -P; then
+if [ -z `which pwd` ]; then
     exit 125;
 fi
 
-${PROOT} / /usr/bin/pwd -P
+${PROOT} pwd -P

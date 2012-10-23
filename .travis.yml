@@ -6,4 +6,4 @@ before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq libtalloc-dev
 
-script: make -C src && make -C tests
+script: make -C src && env PATH=/bin:/usr/bin:/sbin:/usr/sbin make -C tests

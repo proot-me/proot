@@ -1,5 +1,5 @@
-if ! /usr/bin/pwd -P || [ -z `which grep` ]; then
+if [ -z `which pwd` ] || [ -z `which grep` ]; then
     exit 125;
 fi
 
-${PROOT} /usr/bin/pwd -P | grep "^$PWD$"
+${PROOT} pwd -P | grep "^$PWD$"

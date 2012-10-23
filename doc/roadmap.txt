@@ -37,8 +37,6 @@ Middle term
 
   * unreadable directory can be accessed
 
-* Make the test-suite more portable (ARM/SH4)
-
 
 Not yet scheduled
 =================
