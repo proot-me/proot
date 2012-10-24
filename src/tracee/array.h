@@ -67,7 +67,7 @@ static inline int sizeof_item(Array *array, size_t index)
 
 extern int find_item(Array *array, const void *reference);
 extern int resize_array(Array *array, size_t index, ssize_t nb_delta_entries);
-extern int fetch_array(Array *array, Reg reg, size_t nb_entries);
+extern int fetch_array(Tracee *tracee, Array **array, Reg reg, size_t nb_entries);
 extern int push_array(Array *array, Reg reg);
 
 extern int read_item_data(Array *array, size_t index, void **value);

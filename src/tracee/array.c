@@ -305,14 +305,19 @@ int resize_array(Array *array, size_t index, ssize_t delta_nb_entries)
  * pointer are copied.  This function returns -errno when an error
  * occured, otherwise 0.
  */
-int fetch_array(Array *array, Reg reg, size_t nb_entries)
+int fetch_array(Tracee *tracee, Array **array_, Reg reg, size_t nb_entries)
 {
 	word_t pointer = (word_t)-1;
 	word_t address;
+	Array *array;
 	int i;
 
-	assert(array != NULL);
-	assert(array->_cache == NULL);
+	assert(array_ != NULL);
+
+	*array_ = talloc_zero(tracee->tmp, Array);
+	if (*array_ == NULL)
+		return -ENOMEM;
+	array = *array_;
 
 	address = peek_reg(TRACEE(array), CURRENT, reg);
 

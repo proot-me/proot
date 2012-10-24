@@ -336,11 +336,7 @@ int translate_execve(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	argv = talloc_zero(tracee->tmp, Array);
-	if (argv == NULL)
-		return -ENOMEM;
-
-	status = fetch_array(argv, SYSARG_2, 0);
+	status = fetch_array(tracee, &argv, SYSARG_2, 0);
 	if (status < 0)
 		return status;
 
@@ -354,11 +350,7 @@ int translate_execve(Tracee *tracee)
 		if (argv0 != NULL)
 			argv0 = talloc_strdup(tracee->tmp, argv0);
 
-		envp = talloc_zero(tracee->tmp, Array);
-		if (envp == NULL)
-			return -ENOMEM;
-
-		status = fetch_array(envp, SYSARG_3, 0);
+		status = fetch_array(tracee, &envp, SYSARG_3, 0);
 		if (status < 0)
 			return status;
 
