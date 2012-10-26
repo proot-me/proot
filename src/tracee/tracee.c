@@ -166,6 +166,7 @@ int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 	child->exe = talloc_reference(child, parent->exe);
 	child->cmdline = talloc_reference(child, parent->cmdline);
 
+	child->qemu_pie_workaround = parent->qemu_pie_workaround;
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
 
@@ -200,6 +201,7 @@ int swap_config(Tracee *tracee1, Tracee *tracee2)
 
 	void reparent_config(Tracee *new_parent, Tracee *old_parent) {
 		new_parent->verbose = old_parent->verbose;
+		new_parent->qemu_pie_workaround = old_parent->qemu_pie_workaround;
 
 		#define REPARENT(field) do {						\
 			talloc_reparent(old_parent, new_parent, old_parent->field);	\

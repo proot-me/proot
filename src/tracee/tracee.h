@@ -133,6 +133,9 @@ typedef struct tracee {
 	/* Runner command-line.  */
 	char **qemu;
 
+	/* Can the ELF interpreter for QEMU be safely skipped?  */
+	bool qemu_pie_workaround;
+
 	/* Path to glue between the guest rootfs and the host rootfs.  */
 	char *glue;
 
