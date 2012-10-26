@@ -198,6 +198,9 @@ const char *get_root(const Tracee* tracee)
 {
 	const Binding *binding;
 
+	if (tracee == NULL || tracee->fs == NULL)
+		return NULL;
+
 	if (tracee->fs->bindings.guest == NULL) {
 		if (tracee->fs->bindings.pending == NULL
 		    || CIRCLEQ_EMPTY(tracee->fs->bindings.pending))
