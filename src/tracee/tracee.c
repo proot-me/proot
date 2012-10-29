@@ -60,8 +60,8 @@ static Tracee *new_tracee(pid_t pid)
 	talloc_set_destructor(tracee, remove_tracee);
 
 	/* Allocate a memory collector.  */
-	tracee->tmp = talloc_new(tracee);
-	if (tracee->tmp == NULL)
+	tracee->ctx = talloc_new(tracee);
+	if (tracee->ctx == NULL)
 		goto no_mem;
 
 	/* By default new tracees have an empty file-system
@@ -76,8 +76,7 @@ static Tracee *new_tracee(pid_t pid)
 	return tracee;
 
 no_mem:
-	TALLOC_FREE(tracee->fs);
-	TALLOC_FREE(tracee->tmp);
+	TALLOC_FREE(tracee);
 	return NULL;
 }
 
@@ -93,8 +92,8 @@ Tracee *get_tracee(pid_t pid, bool create)
 	LIST_FOREACH(tracee, &tracees, link)
 		if (tracee->pid == pid) {
 			/* Flush then allocate a new memory collector.  */
-			TALLOC_FREE(tracee->tmp);
-			tracee->tmp = talloc_new(tracee);
+			TALLOC_FREE(tracee->ctx);
+			tracee->ctx = talloc_new(tracee);
 
 			return tracee;
 		}
@@ -195,7 +194,7 @@ int swap_config(Tracee *tracee1, Tracee *tracee2)
 {
 	Tracee *tmp;
 
-	tmp = talloc_zero(tracee1->tmp, Tracee);
+	tmp = talloc_zero(tracee1->ctx, Tracee);
 	if (tmp == NULL)
 		return -ENOMEM;
 

@@ -271,7 +271,7 @@ static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpat
 	do {
 		size = length + 1024;
 
-		tmp = talloc_realloc(tracee->tmp, paths, char, size);
+		tmp = talloc_realloc(tracee->ctx, paths, char, size);
 		if (!tmp)
 			return -ENOMEM;
 		paths = tmp;
@@ -285,7 +285,7 @@ static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpat
 
 	/* Concatene this list of paths to xpaths.  */
 	if (!*xpaths) {
-		*xpaths = talloc_array(tracee->tmp, char, length + 1);
+		*xpaths = talloc_array(tracee->ctx, char, length + 1);
 		if (!*xpaths)
 			return -ENOMEM;
 
@@ -295,7 +295,7 @@ static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpat
 		length += strlen(*xpaths);
 		length++; /* ":" separator */
 
-		tmp = talloc_realloc(tracee->tmp, *xpaths, char, length + 1);
+		tmp = talloc_realloc(tracee->ctx, *xpaths, char, length + 1);
 		if (!tmp)
 			return -ENOMEM;
 		*xpaths = tmp;

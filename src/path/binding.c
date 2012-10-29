@@ -488,7 +488,7 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	}
 
 	/* Allocate an empty binding.  */
-	binding = talloc_zero(tracee->tmp, Binding);
+	binding = talloc_zero(tracee->ctx, Binding);
 	if (binding == NULL)
 		return NULL;
 
@@ -663,7 +663,7 @@ static void add_induced_bindings(Tracee *tracee, const Binding *new_binding)
 		 *
 		 *     -b /home/ced:/media/local/ced
 		 */
-		induced_binding = talloc_zero(tracee->tmp, Binding);
+		induced_binding = talloc_zero(tracee->ctx, Binding);
 		if (induced_binding == NULL)
 			continue;
 

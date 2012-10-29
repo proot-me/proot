@@ -89,10 +89,9 @@ typedef struct tracee {
 		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
 	} sigstop;
 
-	/* Context used to collect all the temporary memory required
-	 * during the translation of a syscall (enter and exit
-	 * stages).  */
-	TALLOC_CTX *tmp;
+	/* Context used to collect all the temporary dynamic memory
+	 * allocations.  */
+	TALLOC_CTX *ctx;
 
 	/* Specify the type of the final component during the
 	 * initialization of a binding.  This variable is first

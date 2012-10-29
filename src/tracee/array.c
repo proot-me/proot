@@ -314,7 +314,7 @@ int fetch_array(Tracee *tracee, Array **array_, Reg reg, size_t nb_entries)
 
 	assert(array_ != NULL);
 
-	*array_ = talloc_zero(tracee->tmp, Array);
+	*array_ = talloc_zero(tracee->ctx, Array);
 	if (*array_ == NULL)
 		return -ENOMEM;
 	array = *array_;
@@ -372,13 +372,13 @@ int push_array(Array *array, Reg reg)
 	tracee = TRACEE(array);
 
 	/* The pointer table is a POD array in the tracee's memory.  */
-	pod_array = talloc_zero_size(tracee->tmp, array->length * sizeof_word(TRACEE(array)));
+	pod_array = talloc_zero_size(tracee->ctx, array->length * sizeof_word(TRACEE(array)));
 	if (pod_array == NULL)
 		return -ENOMEM;
 
 	/* There's one vector per modified item + one vector for the
 	 * pod array.  */
-	local = talloc_zero_array(tracee->tmp, struct iovec, array->length + 1);
+	local = talloc_zero_array(tracee->ctx, struct iovec, array->length + 1);
 	if (local == NULL)
 		return -ENOMEM;
 
