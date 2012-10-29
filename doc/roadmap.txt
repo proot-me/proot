@@ -5,15 +5,23 @@
 Short term
 ==========
 
-* Allow per tracee dynamic reconfiguration:
+* Fix ``mkdir foo; cd foo; rmdir ../foo; readlink -e .``.
 
-  * ``mount --bind`` under PRoot
+* Make ``mount --bind`` change the tracee's configuration dynamically.
 
-  * ``chroot`` under PRoot
+* Make ``chroot`` change the tracee's configuration dynamically (not
+  only of ``/``).
+
+* Fix remaining bugs in sub-reconfiguration support::
+
+      ./src/proot -B /usr/local/proot/centos-5-x86 make -C tests/
 
 
 Middle term
 ===========
+
+* Use a custom loader in order to avoid bugs found in the GNU ELF
+  interpreter.
 
 * Rewrite the way paths are handled in PRoot (branch "opath").
 
@@ -44,14 +52,10 @@ Not yet scheduled
 Fixes
 -----
 
-* Fix path comparison: /foo and /foo/. are equal.
-
 * Forbid rename/unlink on a mount point:
 
     $ mv mount_point elsewhere
     mv: cannot move "mount_point" to "elsewhere": Device or resource busy
-
-* Fix the feature "attach on-the-fly"
 
 * Fix support for runners that do execve()
 
@@ -109,8 +113,6 @@ Features
 Documentation
 -------------
 
-* Explain what happens with unknown syscalls when using --allow-unknown-syscalls.
-
 * Explain bindings aren't exclusive, i.e. "-b /tmp:/foo" doesn't invalidate "-b /tmp:/bar".
 
 
@@ -119,9 +121,7 @@ Clean-up
 
 * Replace "readlink(XXX, path, PATH_MAX)" with "readlink(XXX, path, PATH_MAX - 1)"
 
-* get_tracee_string should return -ENAMETOOLONG when length(XXX) >= max_size
-
-* Add a testcase for each command-line options
+* read_string should return -ENAMETOOLONG when length(XXX) >= max_size
 
 
 Misc.
@@ -141,7 +141,7 @@ Completeness
 
 * Add a stealth mode where over-the-stack content is restored.
 
-* Use Valgrind, Coverity Prevent, and AddressSanitizer.
+* Use Coverity Prevent, and AddressSanitizer.
 
 * Try Scrashme (syscall fuzzer) against PRoot
 
@@ -150,8 +150,6 @@ Performance
 -----------
 
 * prefetch_mem(): cache write-through memory access (read_string, fetch_args).
-
-* push_array(): use 1 iovec for the array + 1 iovec per item.
 
 * Fallback to /proc/<pid>/mem when process_vm_readv() isn't available.
 
@@ -162,5 +160,3 @@ Performance
     forked PRoot! (Thanks Yves for this comment)
 
 * Use a cache for translation results
-
-* Use a hash table to retrieve cached results + tracee's info

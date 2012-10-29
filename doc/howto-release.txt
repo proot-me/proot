@@ -21,7 +21,7 @@ memcheck`) shall suffer no failure on:
 - x86_64 (Slackware64)
 
 Talloc shall report no leak during all the PRoot's testsuite (`make -C
-tests V=1 2>1 | grep talloc`) on:
+tests V=1 2>&1 | grep talloc`) on:
 
 - x86_64 (Slackware64)
 
@@ -41,6 +41,12 @@ regression on:
 - x86_64
 - x86_64 with a x86 rootfs
 - x86_64 with a ARM rootfs (QEMU)
+- x86_64 with a ARM rootfs (QEMU) under a x86 rootfs (sub-reconf')
+
+The Open POSIX Test Suite package (`make`) shall suffer no regression
+on:
+
+- x86_64
 
 
 Performance Checks

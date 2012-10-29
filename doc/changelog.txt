@@ -1,3 +1,95 @@
+Release v2.3
+============
+
+This release is intended more specifically to developers and advanced
+users, it was mostly driven by the requirements of an internal
+STMicroelectronics project named "Auto-Tuning Optimization Service".
+
+New features
+------------
+
+* There's now an extension mechanism in PRoot that allows developers
+  to add their own features and/or to use PRoot as a Linux process
+  instrumentation engine.  The two following old features were moved
+  to this new extension interface: "-k *string*" and "-0"
+  (respectively: set the kernel release and compatibility level to
+  *string*"; and force some syscalls to behave as if executed by
+  "root").
+
+* It is now possible to execute PRoot under PRoot, well somewhat.
+  Actually the initial instance of PRoot detects that it is being
+  called again and recomputes the configuration for the new process
+  tree.  This feature is still experimental and was way harder to
+  implement than expected, however it was worth the effort since it
+  enforced the consistency in PRoot.  Just one example among many, in
+  PRoot the "chroot" feature is now really equivalent to the
+  "mount/bind" one, that is, ``chroot path/to/rootfs`` is similar to
+  ``mount --bind path/to/rootfs /``.
+
+* The "current working directory" (chdir(2), getcwd(2), ...) is now
+  fully emulated by PRoot.  Sadly a minor regression was introduced:
+  even if the current working directory has been removed, getcwd(2)
+  returns a "correct" value.  This should be fixed in the next
+  release.
+
+Command-line interface changes
+------------------------------
+
+* The message "proot info: started/exited" isn't printed by default
+  anymore since it might introduce noise when PRoot is used inside a
+  test-suite that compares outputs.  This message was initially added
+  to know whether the guest program has exited immediately.
+
+* The "-u" and "-W" options have disappeared.  The former wasn't
+  really useful and the latter was definitely useless since the
+  default "current working directory" is "." since v2.1, that means
+  the three examples below are equivalent ("-W" was just an alias to
+  "-b . -w .")::
+
+      proot -b . [...]
+      proot -b . -w . [...]
+      proot -W [...]
+
+Fixes
+-----
+
+* The option ``-w .`` is now really equivalent to ``-w $PWD``.
+
+* A bug almost impossible to describe here has been fixed, it appeared
+  only when specifying relative bindings, for instance: ``-b .``.
+
+Internal changes
+----------------
+
+* PRoot now relies on Talloc: a hierarchical, reference counted memory
+  pool system with destructors.  It is the core memory allocator used
+  in Samba: http://talloc.samba.org.  This is definitely a worthwhile
+  dependency for the sake of development scalability and
+  debuggability.  For example, PRoot now has an explicit garbage
+  collector (c.f. ``tracee->ctx``), and the full dynamic memory
+  hierarchy can be printed by sending the USR1 signal to PRoot::
+
+      native-shell$ proot --mount=$HOME --mount=/proc --rootfs=./slackware-14/
+      prooted-shell$ kill -s USR1 $(grep Tracer /proc/self/status | cut -f 2)
+
+      Tracee           0x6150c0  768 bytes  0 ref'    (pid = 22495)
+          talloc_new: ./tracee/tracee.c:97 0x615420  0 bytes  0 ref'
+          $exe             0x61bef0  10 bytes  0 ref'     ("/bin/bash")
+          @cmdline         0x61bf60  16 bytes  0 ref'     ("/bin/sh", )
+              /bin/sh          0x61bfd0  8 bytes  0 ref'
+          $glue            0x61bae0  24 bytes  0 ref'     ("/tmp/proot-22494-UfGAPh")
+          FileSystemNameSpace 0x615480  32 bytes  0 ref'
+              $cwd             0x61b880  13 bytes  0 ref'     ("/home/cedric")
+              Bindings         0x61b970  16 bytes  0 ref'     (host)
+                  Binding          0x615570  8280 bytes  1 ref'   (/home/cedric:/home/cedric)
+                  Binding          0x6176a0  8280 bytes  1 ref'   (/proc:/proc)
+                  Binding          0x6197d0  8280 bytes  1 ref'   (/usr/local/proot/slackware-14:/)
+              Bindings         0x61b900  16 bytes  0 ref'     (guest)
+                  Binding          -> 0x6176a0
+                  Binding          -> 0x615570
+                  Binding          -> 0x6197d0
+
+
 Release v2.2
 ============
 

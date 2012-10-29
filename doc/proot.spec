@@ -1,4 +1,4 @@
-%define version v2.2
+%define version v2.3
 
 Summary   : chroot, mount --bind, and binfmt_misc without privilege/setup
 Version   : %{version}
@@ -10,8 +10,8 @@ Buildroot : %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Prefix    : /usr
 Name      : proot
 
-# For testing purpose only
-BuildRequires: glibc-static
+Requires: libtalloc
+BuildRequires: pkgconfig libtalloc-devel glibc-static
 
 %description
 PRoot is a user-space implementation of chroot, mount --bind,

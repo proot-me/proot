@@ -15,8 +15,8 @@ Buildroot : %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Prefix    : /usr
 Name      : proot
 
-# For testing purpose only
-BuildRequires: glibc-static
+Requires: libtalloc
+BuildRequires: pkgconfig libtalloc-devel glibc-static
 
 %description
 <xsl:value-of select="/document/section[@names='description']/paragraph[1]"/>
