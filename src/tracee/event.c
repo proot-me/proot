@@ -350,7 +350,8 @@ int event_loop()
 			continue; /* Skip the call to ptrace(SYSCALL). */
 		}
 		else if (WIFSIGNALED(tracee_status)) {
-			VERBOSE(tracee, 1, "pid %d: terminated with signal %d",
+			VERBOSE(tracee, (int) (last_exit_status != -1),
+				"pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
 			TALLOC_FREE(tracee);
 			continue; /* Skip the call to ptrace(SYSCALL). */
