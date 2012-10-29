@@ -35,6 +35,8 @@
 #include "path/path.h"
 #include "notice.h"
 
+#include "compat.h"
+
 /**
  * Delete only empty files and directories from the glue: the files
  * created by the user inside this glue are left.

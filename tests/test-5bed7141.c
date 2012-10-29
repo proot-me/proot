@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 	pthread_t thread;
 	char path[PATH_MAX];
 
-	status = pthread_create(&thread, NULL, routine, "/bin");
+	status = pthread_create(&thread, NULL, routine, "/etc");
 	if (status != 0) {
 		pterror("pthread_create", status);
 		exit(EXIT_FAILURE);
@@ -48,8 +48,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (strcmp(path, "/bin") != 0) {
-		fprintf(stderr, "getcwd: %s != %s\n", path, "/bin");
+	if (strcmp(path, "/etc") != 0) {
+		fprintf(stderr, "getcwd: %s != %s\n", path, "/etc");
 		exit(EXIT_FAILURE);
 	}
 
@@ -60,8 +60,8 @@ int main(int argc, char *argv[])
 	}
 	path[status] = '\0';
 
-	if (strcmp(path, "/bin") != 0) {
-		fprintf(stderr, "readlink /proc/self/cwd: %s != %s\n", path, "/bin");
+	if (strcmp(path, "/etc") != 0) {
+		fprintf(stderr, "readlink /proc/self/cwd: %s != %s\n", path, "/etc");
 		exit(EXIT_FAILURE);
 	}
 

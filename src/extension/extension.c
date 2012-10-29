@@ -28,6 +28,8 @@
 #include "extension/extension.h"
 #include "notice.h"
 
+#include "compat.h"
+
 /**
  * Remove an @extension from its tracee's list, then send it the
  * "REMOVED" event.

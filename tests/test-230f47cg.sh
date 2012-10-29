@@ -2,6 +2,11 @@ if [ ! -x  ${ROOTFS}/bin/cat ] || [ -z `which mcookie` ] || [ -z `which echo` ] 
     exit 125;
 fi
 
+! ${PROOT} ${PROOT_RAW} /bin/true
+if [ $? -eq 0 ]; then
+    exit 125;
+fi
+
 FOO1=/tmp/$(mcookie)
 FOO2=/tmp/$(mcookie)
 ROOTFS2=/$(mcookie)

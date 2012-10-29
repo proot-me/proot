@@ -32,6 +32,7 @@
 #include <talloc.h>    /* talloc_*, */
 
 #include "arch.h" /* word_t, user_regs_struct, */
+#include "compat.h"
 
 typedef enum {
 	CURRENT  = 0,

@@ -35,6 +35,8 @@
 #include "path/canon.h"
 #include "notice.h"
 
+#include "compat.h"
+
 #define HEAD(tracee, side)						\
 	(side == GUEST							\
 		? (tracee)->fs->bindings.guest				\

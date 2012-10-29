@@ -81,5 +81,10 @@
 #    ifndef ADDR_NO_RANDOMIZE
 #        define ADDR_NO_RANDOMIZE	0x0040000
 #    endif
-
+#    ifndef TALLOC_FREE
+#        define TALLOC_FREE(ctx) do { talloc_free(ctx); ctx = NULL; } while(0)
+#    endif
+#    ifndef talloc_get_type_abort
+#        define talloc_get_type_abort talloc_get_type
+#    endif
 #endif /* COMPAT_H */

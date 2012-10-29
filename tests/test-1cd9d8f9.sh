@@ -1,4 +1,4 @@
-if [ -z `which pwd` ] || [ -z `which grep` ] ; then
+if ! `which pwd` -P || [ -z `which grep` ] ; then
     exit 125;
 fi
 

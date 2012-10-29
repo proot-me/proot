@@ -45,6 +45,8 @@
 #include "extension/extension.h"
 #include "build.h"
 
+#include "compat.h"
+
 static int handle_option_r(Tracee *tracee, char *value)
 {
 	Binding *binding;
@@ -633,7 +635,10 @@ int main(int argc, char *argv[])
 
 	/* Configure the memory allocator.  */
 	talloc_enable_leak_report();
+
+#if defined(TALLOC_VERSION_MAJOR) && TALLOC_VERSION_MAJOR >= 2
 	talloc_set_log_stderr();
+#endif
 
 	/* Pre-create the first tracee (pid == 0).  */
 	tracee = get_tracee(0, true);

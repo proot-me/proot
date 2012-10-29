@@ -35,6 +35,8 @@
 #include "extension/extension.h"
 #include "notice.h"
 
+#include "compat.h"
+
 typedef LIST_HEAD(tracees, tracee) Tracees;
 static Tracees tracees;
 
@@ -198,6 +200,7 @@ int swap_config(Tracee *tracee1, Tracee *tracee2)
 	if (tmp == NULL)
 		return -ENOMEM;
 
+#if defined(TALLOC_VERSION_MAJOR) && TALLOC_VERSION_MAJOR >= 2
 	void reparent_config(Tracee *new_parent, Tracee *old_parent) {
 		new_parent->verbose = old_parent->verbose;
 		new_parent->qemu_pie_workaround = old_parent->qemu_pie_workaround;
@@ -220,6 +223,9 @@ int swap_config(Tracee *tracee1, Tracee *tracee2)
 	reparent_config(tracee2, tmp);
 
 	return 0;
+#else
+	return -ENOSYS;
+#endif
 }
 
 /* Send the KILL signal to all tracees.  */
