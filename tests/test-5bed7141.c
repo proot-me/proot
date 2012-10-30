@@ -21,12 +21,41 @@ static void pterror(const char *message, int error)
 	fprintf(stderr, "%s: %s\n", message, strerror(error));
 }
 
+void check_cwd(const char *expected)
+{
+	char path[PATH_MAX];
+	int status;
+
+	if (getcwd(path, PATH_MAX) == NULL) {
+		perror("getcwd");
+		exit(EXIT_FAILURE);
+	}
+
+	if (strcmp(path, expected) != 0) {
+		fprintf(stderr, "getcwd: %s != %s\n", path, expected);
+		exit(EXIT_FAILURE);
+	}
+
+	status = readlink("/proc/self/cwd", path, PATH_MAX - 1);
+	if (status < 0) {
+		perror("readlink");
+		exit(EXIT_FAILURE);
+	}
+	path[status] = '\0';
+
+	if (strcmp(path, expected) != 0) {
+		fprintf(stderr, "readlink /proc/self/cwd: %s != %s\n", path, expected);
+		exit(EXIT_FAILURE);
+	}
+
+}
+
 int main(int argc, char *argv[])
 {
-	int status;
-	void *result;
 	pthread_t thread;
-	char path[PATH_MAX];
+	int child_status;
+	void *result;
+	int status;
 
 	status = pthread_create(&thread, NULL, routine, "/etc");
 	if (status != 0) {
@@ -43,26 +72,29 @@ int main(int argc, char *argv[])
 	if (result != NULL)
 		exit(EXIT_FAILURE);
 
-	if (getcwd(path, PATH_MAX) == NULL) {
-		perror("getcwd");
-		exit(EXIT_FAILURE);
-	}
+	check_cwd("/etc");
 
-	if (strcmp(path, "/etc") != 0) {
-		fprintf(stderr, "getcwd: %s != %s\n", path, "/etc");
-		exit(EXIT_FAILURE);
-	}
-
-	status = readlink("/proc/self/cwd", path, PATH_MAX - 1);
-	if (status < 0) {
+	switch (fork()) {
+	case -1:
 		perror("readlink");
 		exit(EXIT_FAILURE);
-	}
-	path[status] = '\0';
 
-	if (strcmp(path, "/etc") != 0) {
-		fprintf(stderr, "readlink /proc/self/cwd: %s != %s\n", path, "/etc");
-		exit(EXIT_FAILURE);
+	case 0: /* child */
+		status = chdir("/usr");
+		if (status < 0) {
+			perror("chdir");
+			exit(EXIT_FAILURE);
+		}
+		exit(EXIT_SUCCESS);
+
+	default:
+		status = wait(&child_status);
+		if (status < 0 || child_status != 0) {
+			perror("wait()");
+			exit(EXIT_FAILURE);
+		}
+		check_cwd("/etc");
+		break;
 	}
 
 	exit(EXIT_SUCCESS);

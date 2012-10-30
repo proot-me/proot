@@ -232,7 +232,7 @@ case PR_clone: {
 	}
 
 	if (peek_reg(tracee, ORIGINAL, SYSARG_NUM) == PR_clone)
-		flags = peek_reg(tracee, ORIGINAL, SYSARG_2);
+		flags = peek_reg(tracee, ORIGINAL, SYSARG_1);
 	else
 		flags = 0;
 
