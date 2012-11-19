@@ -354,7 +354,7 @@
 #define PR_writev 146
 
 /*
- * These following syscalls do not exist on x86_64.  Note that syscall
+ * These following syscalls do not exist on i386.  Note that syscall
  * numbers from -1 to -10 are reserved for PRoot internal usage.
  */
 
