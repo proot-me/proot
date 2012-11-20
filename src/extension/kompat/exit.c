@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  */
 
-switch (peek_reg(tracee, CURRENT, SYSARG_NUM)) {
+switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
 case PR_uname: {
 	struct utsname utsname;
 	word_t address;
@@ -42,7 +42,7 @@ case PR_uname: {
 		return status;
 
 	/* Note: on x86_64, we can handle the two modes (32/64) with
-	 * the same code since struct utsname as always the same
+	 * the same code since struct utsname has always the same
 	 * layout.  */
 	size = sizeof(utsname.release);
 	strncpy(utsname.release, config->release, size);
