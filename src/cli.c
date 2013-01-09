@@ -641,7 +641,7 @@ int main(int argc, char *argv[])
 #endif
 
 	/* Pre-create the first tracee (pid == 0).  */
-	tracee = get_tracee(0, true);
+	tracee = get_tracee(NULL, 0, true);
 	if (tracee == NULL)
 		goto error;
 	tracee->pid = getpid();

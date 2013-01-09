@@ -225,7 +225,7 @@ case PR_clone: {
 		goto end;
 	}
 
-	child = get_tracee(result, true);
+	child = get_tracee(tracee, result, true);
 	if (child == NULL) {
 		status = -ENOMEM;
 		break;

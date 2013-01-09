@@ -87,9 +87,15 @@ no_mem:
  * found, a new one is created if @create is true, otherwise NULL is
  * returned.
  */
-Tracee *get_tracee(pid_t pid, bool create)
+Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
 {
 	Tracee *tracee;
+
+	/* Don't reset the memory collector if the searched tracee is
+	 * the current one: there's likely pointers to the
+	 * sub-allocated data in the caller.  */
+	if (current_tracee != NULL && current_tracee->pid == pid)
+		return (Tracee *)current_tracee;
 
 	LIST_FOREACH(tracee, &tracees, link)
 		if (tracee->pid == pid) {

@@ -76,7 +76,7 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 	if (pid == 0)
 		return DEFAULT;
 
-	known_tracee = get_tracee(pid, false);
+	known_tracee = get_tracee(tracee, pid, false);
 	if (!known_tracee)
 		return DEFAULT;
 

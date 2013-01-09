@@ -335,7 +335,7 @@ int event_loop()
 		}
 
 		/* Get the information about this tracee. */
-		tracee = get_tracee(pid, true);
+		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
@@ -422,7 +422,7 @@ int event_loop()
 					break;
 				}
 
-				child_tracee = get_tracee(child_pid, true);
+				child_tracee = get_tracee(tracee, child_pid, true);
 				if (child_tracee == NULL) {
 					notice(tracee, WARNING, SYSTEM, "running out of memory");
 					break;
