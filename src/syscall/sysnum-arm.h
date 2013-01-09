@@ -355,7 +355,7 @@
 #define PR_ARM_usr32 (PR_ARM_BASE+4)
 
 /*
- * These following syscalls do not exist on x86_64.  Note that syscall
+ * These following syscalls do not exist on ARM.  Note that syscall
  * numbers from -1 to -10 are reserved for PRoot internal usage.
  */
 
