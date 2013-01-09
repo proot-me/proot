@@ -20,49 +20,85 @@
  * 02110-1301 USA.
  */
 
-Config *config = talloc_get_type_abort(extension->config, Config);
-const char *path = (char*)data1;
+{
+	ModifiedNode *node;
+	struct stat perms;
+	const char *path;
+	mode_t new_mode;
+	bool is_final;
+	int status;
 
-
-/* If the syscall is flaged as 'interesting', record the current file
- * permissions */
-if (config->interesting_syscall) {
-
-	/* Create the list of nodes if needed */
-	if (config->modified_nodes == NULL) {
-		config->modified_nodes = talloc_zero(config, ModifiedNodes);
-		if (config->modified_nodes == NULL)
-			return 0;
-		talloc_set_destructor(config->modified_nodes, modified_nodes_free);
-	}
+	path = (char*) data1;
+	is_final = (bool) data2;
 
 	/* Get the meta-data */
-	struct stat perms;
-	if (stat(path, &perms))
+	status = stat(path, &perms);
+	if (status < 0)
 		return 0;
 
 	/* Copy the current permissions */
-	mode_t new_mode = perms.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
+	new_mode = perms.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO);
 
-	/* Add read and wite permissions to everything */
+	/* Add read and write permissions to everything.  */
 	new_mode |= (S_IRUSR | S_IWUSR);
 
 	/* Always add 'x' bit to directories */
 	if (S_ISDIR(perms.st_mode))
 		new_mode |= S_IXUSR;
 
+	/* Patch the permissions only if needed.  */
+	if (new_mode == (perms.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO)))
+		return 0;
 
-	/* Patch the permissions if needed */
-	if (new_mode != (perms.st_mode & (S_IRWXU | S_IRWXG | S_IRWXO))) {
-		chmod(path, new_mode);
+	node = talloc_zero(tracee->ctx, ModifiedNode);
+	if (node == NULL)
+		return 0;
 
-		/* Add the path to the list of modified nodes */
-		ModifiedNode *node = talloc_zero(NULL, ModifiedNode);
-		if (node == NULL)
+	if (!is_final) {
+		/* Restore the previous mode of any non final components.  */
+		node->mode = perms.st_mode;
+	}
+	else {
+		switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
+		/* For chmod syscalls: restore the new mode of the final component.  */
+		case PR_chmod:
+			node->mode = peek_reg(tracee, ORIGINAL, SYSARG_2);
+			break;
+
+		case PR_fchmodat:
+			node->mode = peek_reg(tracee, ORIGINAL, SYSARG_3);
+			break;
+
+		/* For stat syscalls: don't touch the mode of the final component.  */
+		case PR_fstatat64:
+		case PR_lstat:
+		case PR_lstat64:
+		case PR_newfstatat:
+		case PR_oldlstat:
+		case PR_oldstat:
+		case PR_stat:
+		case PR_stat64:
+		case PR_statfs:
+		case PR_statfs64:
 			return 0;
 
-		node->path = talloc_strdup(node, path);
-		node->old_mode = perms.st_mode;
-		SLIST_INSERT_HEAD(config->modified_nodes, node, link);
+		/* Otherwise: restore the previous mode of the final component.  */
+		default:
+			node->mode = perms.st_mode;
+			break;
+		}
 	}
+
+	node->path = talloc_strdup(node, path);
+	if (node->path == NULL) {
+		/* Keep only consistent nodes.  */
+		TALLOC_FREE(node);
+		return 0;
+	}
+
+	/* The mode restoration works because Talloc destructors are
+	 * called in reverse order.  */
+	talloc_set_destructor(node, restore_mode);
+
+	(void) chmod(path, new_mode);
 }

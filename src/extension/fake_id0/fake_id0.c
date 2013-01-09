@@ -30,61 +30,37 @@
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
-#include "tracee/reg.h"
-#include "path/path.h"
 #include "path/binding.h"
-
-typedef struct ModifiedNode {
-	SLIST_ENTRY(ModifiedNode) link;
-	char *path;
-	mode_t old_mode;
-} ModifiedNode;
-
-typedef SLIST_HEAD(ModifiedNodes, ModifiedNode) ModifiedNodes;
+#include "notice.h"
 
 typedef struct {
-	int interesting_syscall;
-	ModifiedNodes *modified_nodes;
-} Config;
-
+	char *path;
+	mode_t mode;
+} ModifiedNode;
 
 /**
- * Free the list of ModifiedNode and undo the modifications
+ * Restore the @node->mode for the given @node->path.
+ *
+ * Note: this is a Talloc destructor.
  */
-static int modified_nodes_free(ModifiedNodes *nodes_list) {
-	/* Empty the list of nodes the last added first */
-	while (!SLIST_EMPTY(nodes_list)) {
-		ModifiedNode *node = SLIST_FIRST(nodes_list);
-		SLIST_REMOVE_HEAD(nodes_list, link);
-
-		/* Undo the modifications */
-		chmod(node->path, node->old_mode);
-		talloc_free(node);
-	}
-
+static int restore_mode(ModifiedNode *node)
+{
+	(void) chmod(node->path, node->mode);
 	return 0;
 }
 
-
 /**
  * Handler for this @extension.  It is triggered each time an @event
- * occured.  See ExtensionEvent for the meaning of @data1 and @data2.
+ * occurred.  See ExtensionEvent for the meaning of @data1 and @data2.
  */
 int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
 {
 	switch (event) {
-	/* Create the config structure for each new tracee */
-	case INITIALIZATION:
-	case INHERIT_CHILD: {
-		extension->config = talloc_zero(extension, Config);
-		if (extension->config == NULL)
-			return -1;
-		return 0;
-	}
-
-	/* The extension if attached to every new tracee with a new configuration */
-	case INHERIT_PARENT:
+	case INHERIT_PARENT: /* Inheritable for sub reconfiguration ...  */
 		return 1;
+
+	case INHERIT_CHILD:  /* ... but there's nothing else to do.  */
+		return 0;
 
 	case HOST_PATH: {
 		Tracee *tracee = TRACEE(extension);
@@ -106,28 +82,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 			assert(0);
 		}
 		#include "syscall/sysnum-undefined.h"
-	}
-
-	case SYSCALL_ENTER_START: {
-		Tracee *tracee = TRACEE(extension);
-
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/fake_id0/enter.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/fake_id0/enter.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
+		return 0;
 	}
 
 	case SYSCALL_EXIT_END: {
@@ -150,6 +105,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 			assert(0);
 		}
 		#include "syscall/sysnum-undefined.h"
+		return 0;
 	}
 
 	default:

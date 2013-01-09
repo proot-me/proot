@@ -20,13 +20,6 @@
  * 02110-1301 USA.
  */
 
-
-/* Free the list of nodes and undo the modifications thanks to the
-   destructor */
-Config *config = talloc_get_type_abort(extension->config, Config);
-if (config->modified_nodes && !SLIST_EMPTY(config->modified_nodes))
-	TALLOC_FREE(config->modified_nodes);
-
 switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
 case PR_chroot: {
 	char path[PATH_MAX];
