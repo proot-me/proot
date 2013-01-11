@@ -54,20 +54,22 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality is_final,
 	if (status < 0)
 		return status;
 
-	/* Build the glue between the hostfs and the guestfs during
-	 * the initialization of a binding.  */
-	if (tracee->glue_type != 0) {
-		statl.st_mode = build_glue(tracee, guest_path, host_path, is_final);
-		if (statl.st_mode == 0)
-			status = -1;
-	}
-	else {
+	/* Don't notify extensions during the initialization of a binding.  */
+	if (tracee->glue_type == 0) {
 		status = notify_extensions(tracee, HOST_PATH, (intptr_t)host_path, is_final);
 		if (status < 0)
 			return status;
+	}
 
-		statl.st_mode = 0;
-		status = lstat(host_path, &statl);
+	statl.st_mode = 0;
+	status = lstat(host_path, &statl);
+
+	/* Build the glue between the hostfs and the guestfs during
+	 * the initialization of a binding.  */
+	if (status < 0 && tracee->glue_type != 0) {
+		statl.st_mode = build_glue(tracee, guest_path, host_path, is_final);
+		if (statl.st_mode == 0)
+			status = -1;
 	}
 
 	/* Return an error if a non-final component isn't a
