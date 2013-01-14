@@ -16,12 +16,17 @@ Short term
 
       ./src/proot -B /usr/local/proot/centos-5-x86 make -C tests/
 
+* Use a custom loader in order to avoid bugs found in the GNU ELF
+  interpreter.
+
+* Provide static binaries for all supported platforms (take care of
+  the kernel version requirement):
+
+    https://groups.google.com/forum/?fromgroups=#!topic/proot_me/pbkgC-a66n4
+
 
 Middle term
 ===========
-
-* Use a custom loader in order to avoid bugs found in the GNU ELF
-  interpreter.
 
 * Rewrite the way paths are handled in PRoot (branch "opath").
 

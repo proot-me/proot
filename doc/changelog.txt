@@ -1,3 +1,33 @@
+Release v2.3.1
+==============
+
+New feature
+-----------
+
+* The "fake id0" feature was improved by Rémi Duraffort in order to
+  support privileged write operations in read-only files/directories.
+  Some package managers (Fedora, Debian, ...) relies on this special
+  behavior::
+
+      # ls -ld /usr/lib
+      dr-xr-xr-x 22 root root 40960 Jan  2 11:19 /usr/lib/
+      # install -v something.so /usr/lib/
+      removed ‘/usr/lib/something.so‘
+      ‘something.so‘ -> ‘/usr/lib/something.so‘
+
+Fixes
+-----
+
+* Fix bindings to a guest path that contains a symbolic link.  For
+  example when the given guest path ``/var/run/dbus`` is a symbolic
+  link to ``/run/dbus``.
+
+* Fix a memory corruption when accessing files in "/proc/self/"
+
+Special thanks to Rémi Duraffort for the improved "fake id0" feature
+and for the bug reports.
+
+
 Release v2.3
 ============
 
