@@ -446,4 +446,4 @@ Colophon
 ========
 
 Visit http://proot.me for help, bug reports, suggestions, patchs, ...
-Copyright (C) 2012 STMicroelectronics, licensed under GPL v2 or later.
+Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.
