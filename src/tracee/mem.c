@@ -20,6 +20,8 @@
  * 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
+
 #include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <sys/types.h>  /* pid_t, size_t, */
 #include <stdlib.h>     /* NULL, */
