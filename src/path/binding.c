@@ -381,10 +381,13 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 				break;
 			}
 
-			notice(tracee, WARNING, USER,
-				"both '%s' and '%s' are bound to '%s', "
-				"only the last binding is active.",
-				iterator->host.path, binding->host.path, binding->guest.path);
+			if (tracee->verbose > 0) {
+				notice(tracee, WARNING, USER,
+					"both '%s' and '%s' are bound to '%s', "
+					"only the last binding is active.",
+					iterator->host.path, binding->host.path,
+					binding->guest.path);
+			}
 
 			/* Replace this iterator with the new binding.  */
 			CIRCLEQ_INSERT_AFTER_(tracee, iterator, binding, side);

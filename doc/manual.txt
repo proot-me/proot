@@ -417,6 +417,10 @@ required when PRoot is used as a ``mount --bind`` equivalent only.
   * http://download.openvz.org/template/precreated/
   * http://download.openvz.org/template/precreated/contrib/
 
+* Gentoo for a lot of architectures:
+
+  * http://distfiles.gentoo.org/releases/
+
 Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution::
 

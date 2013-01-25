@@ -24,6 +24,7 @@
 #include <stdint.h>  /* intptr_t, */
 #include <errno.h>   /* E*, */
 #include <sys/stat.h>   /* chmod(2), stat(2) */
+#include <unistd.h>  /* get*id(2),  */
 
 #include "extension/extension.h"
 #include "syscall/syscall.h"

@@ -30,6 +30,7 @@
 #include <assert.h> /* assert(3), */
 #include <string.h> /* strnlen(3), */
 #include <talloc.h> /* talloc_*, */
+#include <stdbool.h> /* bool, true, false,  */
 
 #include "execve/elf.h"
 #include "tracee/tracee.h"
