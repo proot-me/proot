@@ -82,6 +82,7 @@ static int remove_glue(char *path)
  */
 mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final)
 {
+	static bool skip_component_creation = true;
 	Comparison comparison;
 	Binding *binding;
 	mode_t type;
@@ -114,6 +115,11 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	else
 		type = S_IFDIR;
 
+	if (getenv("PROOT_DONT_POLLUTE_ROOTFS") != NULL && skip_component_creation) {
+		skip_component_creation = false;
+		goto create_binding;
+	}
+
 	/* Try to create this component into the "guest" or "glue"
 	 * rootfs (depending if there were a glue previously).  */
 	if (S_ISDIR(type))
@@ -136,6 +142,8 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 		notice(tracee, WARNING, SYSTEM, "mkdir/mknod");
 		return 0;
 	}
+
+create_binding:
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */

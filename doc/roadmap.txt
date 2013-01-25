@@ -24,6 +24,9 @@ Short term
 
     https://groups.google.com/forum/?fromgroups=#!topic/proot_me/pbkgC-a66n4
 
+* Emulate getdents in order to glue the "fake" branches with their
+  parent directories without polluting the rootfs, c.f. build_glue().
+
 
 Middle term
 ===========
@@ -110,9 +113,6 @@ Features
 * Emulate get*id() and set*id() accurately when -0 is activated.
 
 * Allow a per-module verbose level
-
-* Emulate getdents in order to glue the "fake" branches with their
-  parent directories, c.f. create_missing_components().
 
 * Emulate chown, chmod, and mknod when -0 (fake_id0) is enabled.
 
