@@ -5,10 +5,12 @@ fi
 TMP=/tmp/$(mcookie)
 mkdir ${TMP}
 
-env PROOT_DONT_POLLUTE_ROOTFS=1 ${PROOT} -b /bin:${TMP}/do/not/create true
+env PROOT_DONT_POLLUTE_ROOTFS=1 ${PROOT} -b /bin:${TMP}/do/not/create -b /bin:${TMP}/dont/create true
 test ! -e ${TMP}/do
+test ! -e ${TMP}/dont
 
-${PROOT} -b /bin:${TMP}/do/create true
+${PROOT} -b /bin:${TMP}/do/create -b /bin:${TMP}/dont/create true
 test -e ${TMP}/do
+test -e ${TMP}/dont
 
 rm -r ${TMP}

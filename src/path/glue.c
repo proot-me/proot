@@ -82,7 +82,7 @@ static int remove_glue(char *path)
  */
 mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final)
 {
-	static bool skip_component_creation = true;
+	bool belongs_to_gluefs;
 	Comparison comparison;
 	Binding *binding;
 	mode_t type;
@@ -115,10 +115,11 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	else
 		type = S_IFDIR;
 
-	if (getenv("PROOT_DONT_POLLUTE_ROOTFS") != NULL && skip_component_creation) {
-		skip_component_creation = false;
+	comparison = compare_paths(tracee->glue, host_path);
+	belongs_to_gluefs = (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
+
+	if (getenv("PROOT_DONT_POLLUTE_ROOTFS") != NULL && !belongs_to_gluefs)
 		goto create_binding;
-	}
 
 	/* Try to create this component into the "guest" or "glue"
 	 * rootfs (depending if there were a glue previously).  */
@@ -136,9 +137,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 
 	/* mkdir/mknod are supposed to always succeed in
 	 * tracee->glue.  */
-	comparison = compare_paths(tracee->glue, host_path);
-	if (   comparison == PATHS_ARE_EQUAL
-	    || comparison == PATH1_IS_PREFIX) {
+	if (belongs_to_gluefs) {
 		notice(tracee, WARNING, SYSTEM, "mkdir/mknod");
 		return 0;
 	}

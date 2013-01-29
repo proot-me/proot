@@ -412,10 +412,10 @@ required when PRoot is used as a ``mount --bind`` equivalent only.
 
 * CentOS, Debian, Fedora, Scientific, Suse, Ubuntu, ALT, Arch, CERN,
   Gentoo, OpenSuse, Openwall, Slackware, SLES, and etc. for x86 and
-  x86_64 CPUs, from the OpenVZ project and community:
+  x86_64 CPUs:
 
   * http://download.openvz.org/template/precreated/
-  * http://download.openvz.org/template/precreated/contrib/
+  * http://cdimage.ubuntu.com/ubuntu-core/releases/
 
 * Gentoo for a lot of architectures:
 
