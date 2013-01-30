@@ -39,6 +39,9 @@
 #    ifndef IN_DONT_FOLLOW
 #        define IN_DONT_FOLLOW		0x02000000
 #    endif
+#    ifndef WIFCONTINUED
+#        define WIFCONTINUED(status)	((status) == 0xffff)
+#    endif
 #    ifndef PTRACE_SETOPTIONS
 #        define PTRACE_SETOPTIONS	0x4200
 #    endif
