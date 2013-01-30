@@ -235,7 +235,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 		strcat(path, "/");
 		strcat(path, command);
 
-		status = realpath2(tracee, host_path, path, false);
+		status = realpath2(tracee, host_path, path, true);
 		if (status == 0
 		    && stat(host_path, &statr) == 0
 		    && S_ISREG(statr.st_mode)
