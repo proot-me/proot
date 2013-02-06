@@ -2,7 +2,7 @@
  *
  * This file was generated thanks to the following command:
  *
- *     cpp -dM -D__ARM_EABI__=1 linux/arch/arm/include/asm/unistd.h | grep #define __NR_ | sed s/__NR_/PR_/g | sort -u
+ *     cpp -dM -D__ARM_EABI__=1 linux/arch/arm/include/asm/unistd.h | grep '#define __NR_' | sed s/__NR_/PR_/g | sort -u
  */
 
 #include "syscall/sysnum-undefined.h"
