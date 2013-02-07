@@ -72,6 +72,9 @@ typedef struct tracee {
 	/* Process identifier. */
 	pid_t pid;
 
+	/* Parent of this tracee, NULL if none.  */
+	struct tracee *parent;
+
 	/* Current status:
 	 *        0: enter syscall
 	 *        1: exit syscall no error

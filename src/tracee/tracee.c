@@ -30,7 +30,7 @@
 #include <sys/queue.h>  /* LIST_*,  */
 #include <talloc.h>     /* talloc_*, */
 #include <signal.h>     /* kill(2), SIGKILL, */
-#include <sys/ptrace.h>  /* ptrace(2), PTRACE_*, */
+#include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <errno.h>      /* E*, */
 
 #include "tracee/tracee.h"
@@ -49,7 +49,16 @@ static Tracees tracees;
  */
 static int remove_tracee(Tracee *tracee)
 {
+	Tracee *child;
+
 	LIST_REMOVE(tracee, link);
+
+	/* Its children are now orphan.  This could be optimize by
+	 * using a list of children per tracee.  */
+	LIST_FOREACH(child, &tracees, link)
+		if (child->parent == tracee)
+			child->parent = NULL;
+
 	return 0;
 }
 
@@ -164,6 +173,20 @@ int new_child(Tracee *parent, word_t clone_flags)
 
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
+
+	/* If CLONE_PARENT is set, then the parent of the new child
+	 * (as returned by getppid(2)) will be the same as that of the
+	 * calling process.
+	 *
+	 * If CLONE_PARENT is not set, then (as with fork(2)) the
+	 * child's parent is the calling process.
+	 *
+	 * -- clone(2) man-page
+	 */
+	if ((clone_flags & CLONE_PARENT) != 0)
+		child->parent = parent->parent;
+	else
+		child->parent = parent;
 
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root

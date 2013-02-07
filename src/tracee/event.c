@@ -229,7 +229,8 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED, void *
 				fprintf(stderr, ")");
 			}
 			else if (strcmp(name, "Tracee") == 0) {
-				fprintf(stderr, "\t(pid = %d)", ((Tracee *)ptr)->pid);
+				fprintf(stderr, "\t(pid = %d, parent = %p)",
+					((Tracee *)ptr)->pid, ((Tracee *)ptr)->parent);
 			}
 			else if (strcmp(name, "Bindings") == 0) {
 				 Tracee *tracee;
