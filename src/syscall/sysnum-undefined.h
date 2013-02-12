@@ -17,6 +17,7 @@
 #undef PR_afs_syscall
 #undef PR_alarm
 #undef PR_arch_prctl
+#undef PR_arch_specific_syscall
 #undef PR_arm_fadvise64_64
 #undef PR_arm_sync_file_range
 #undef PR_bdflush
@@ -350,6 +351,7 @@
 #undef PR_sync_file_range
 #undef PR_sync_file_range2
 #undef PR_syncfs
+#undef PR_syscalls
 #undef PR_sysfs
 #undef PR_sysinfo
 #undef PR_syslog

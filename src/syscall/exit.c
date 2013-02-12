@@ -207,15 +207,24 @@ case PR_sigreturn:
 
 case PR_fork:
 case PR_clone: {
-	/* Note: vfork can't be handled here since the parent don't
+	Tracee *child;
+	word_t result;
+	word_t flags;
+
+	if (peek_reg(tracee, ORIGINAL, SYSARG_NUM) == PR_clone)
+		flags = peek_reg(tracee, ORIGINAL, SYSARG_1);
+	else
+		flags = 0;
+
+	/* Note: vfork can't be handled here since the parent doesn't
 	 * return until the child does a call to execve(2) and the
 	 * child would be stopped by PRoot until the parent returns
 	 * (deak-lock).  Instead it is handled asynchronously in
 	 * event.c.  */
-
-	Tracee *child;
-	word_t result;
-	word_t flags;
+	if ((flags & CLONE_VFORK) != 0) {
+		status = 0;
+		goto end;
+	}
 
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
@@ -230,11 +239,6 @@ case PR_clone: {
 		status = -ENOMEM;
 		break;
 	}
-
-	if (peek_reg(tracee, ORIGINAL, SYSARG_NUM) == PR_clone)
-		flags = peek_reg(tracee, ORIGINAL, SYSARG_1);
-	else
-		flags = 0;
 
 	status = inherit_config(child, tracee, (flags & CLONE_FS) != 0);
 	if (status < 0)

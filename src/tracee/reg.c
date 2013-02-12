@@ -29,6 +29,8 @@
 #include <stdint.h>     /* *int*_t(), */
 #include <limits.h>     /* ULONG_MAX, */
 #include <string.h>     /* memcpy(3), */
+#include <sys/uio.h>    /* struct iovec, */
+#include <linux/elf.h>  /* NT_PRSTATUS */
 
 #include "tracee/reg.h"
 #include "tracee/abi.h"
@@ -39,6 +41,9 @@
 #define USER_REGS_OFFSET(reg_name)			\
 	(offsetof(struct user, regs)			\
 	 + offsetof(struct user_regs_struct, reg_name))
+
+#define REG(tracee, version, index)			\
+	(*(word_t*) (((uint8_t *) &tracee->_regs[version]) + reg_offset[index]))
 
 /* Specify the ABI registers (syscall argument passing, stack pointer).
  * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */
@@ -68,6 +73,7 @@
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
     };
 
+    #undef  REG
     #define REG(tracee, version, index)					\
 	(*(word_t*) (tracee->_regs[ORIGINAL].cs == 0x23			\
 		? (((uint8_t *) &tracee->_regs[version]) + reg_offset_x86[index]) \
@@ -85,6 +91,23 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(uregs[5]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(uregs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(uregs[13]),
+    };
+
+#elif defined(ARCH_ARM64)
+
+    #undef  USER_REGS_OFFSET
+    #define USER_REGS_OFFSET(reg_name) offsetof(struct user_regs_struct, reg_name)
+
+    static off_t reg_offset[] = {
+	[SYSARG_NUM]    = USER_REGS_OFFSET(regs[8]),
+	[SYSARG_1]      = USER_REGS_OFFSET(regs[0]),
+	[SYSARG_2]      = USER_REGS_OFFSET(regs[1]),
+	[SYSARG_3]      = USER_REGS_OFFSET(regs[2]),
+	[SYSARG_4]      = USER_REGS_OFFSET(regs[3]),
+	[SYSARG_5]      = USER_REGS_OFFSET(regs[4]),
+	[SYSARG_6]      = USER_REGS_OFFSET(regs[5]),
+	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
+	[STACK_POINTER] = USER_REGS_OFFSET(sp),
     };
 
 #elif defined(ARCH_X86)
@@ -119,11 +142,6 @@
 
     #error "Unsupported architecture"
 
-#endif
-
-#if !defined(REG)
-    #define REG(tracee, version, index)					\
-	(*(word_t*) (((uint8_t *) &tracee->_regs[version]) + reg_offset[index]))
 #endif
 
 /**
@@ -166,7 +184,16 @@ int fetch_regs(Tracee *tracee)
 {
 	int status;
 
+#if defined(ARCH_ARM64)
+	struct iovec regs;
+
+	regs.iov_base = &tracee->_regs[CURRENT];
+	regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
+
+	status = ptrace(PTRACE_GETREGSET, tracee->pid, NT_PRSTATUS, &regs);
+#else
 	status = ptrace(PTRACE_GETREGS, tracee->pid, NULL, &tracee->_regs[CURRENT]);
+#endif
 	if (status < 0)
 		return status;
 	tracee->_regs_have_changed = false;
@@ -187,7 +214,16 @@ int push_regs(Tracee *tracee)
 	int status;
 
 	if (tracee->_regs_have_changed) {
+#if defined(ARCH_ARM64)
+		struct iovec regs;
+
+		regs.iov_base = &tracee->_regs[CURRENT];
+		regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
+
+		status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_PRSTATUS, &regs);
+#else
 		status = ptrace(PTRACE_SETREGS, tracee->pid, NULL, &tracee->_regs[CURRENT]);
+#endif
 		if (status < 0)
 			return status;
 	}
