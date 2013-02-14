@@ -7,6 +7,17 @@ Short term
 
 * Fix ``mkdir foo; cd foo; rmdir ../foo; readlink -e .``.
 
+* Document the compatibility with the old command-line interface
+  (without "-r")::
+
+       proot [options] <root> <command> [args...]
+
+* Make /proc/$PID/cmdline return tracee->cmdline.  Actually this could
+  be solved by the custom loader: execv(loader, tracee->cmdline, ...)
+
+* Use a custom loader in order to avoid bugs found in the GNU ELF
+  interpreter.
+
 * Make ``mount --bind`` change the tracee's configuration dynamically.
 
 * Make ``chroot`` change the tracee's configuration dynamically (not
@@ -15,9 +26,6 @@ Short term
 * Fix remaining bugs in sub-reconfiguration support::
 
       ./src/proot -B /usr/local/proot/centos-5-x86 make -C tests/
-
-* Use a custom loader in order to avoid bugs found in the GNU ELF
-  interpreter.
 
 * Provide static binaries for all supported platforms (take care of
   the kernel version requirement):

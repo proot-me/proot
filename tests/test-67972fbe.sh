@@ -1,4 +1,4 @@
-if [ ! -x ${ROOTFS}/bin/readdir ] || [ ! -e /bin/true ] || [ -z `which mkdir` ] || [ -z `which ln` ]  || [ -z `which rm` ] || [ -z `which grep` ]; then
+if [ ! -x ${ROOTFS}/bin/readdir ] || [ ! -e /bin/true ] || [ -z `which mkdir` ] || [ -z `which ln` ]  || [ -z `which rm` ] || [ -z `which grep` ] || [ -z `which mcookie` ]; then
     exit 125;
 fi
 
