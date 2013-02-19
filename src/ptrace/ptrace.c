@@ -160,6 +160,14 @@ int translate_ptrace_exit(Tracee *tracee)
 		}
 		return 0;
 
+	case PTRACE_POKETEXT:
+	case PTRACE_POKEDATA:
+	case PTRACE_POKEUSER:
+		status = ptrace(request, pid, address, data);
+		if (status < 0)
+			goto wake_tracee;
+		return 0;
+
 	case PTRACE_GETSIGINFO: {
 		siginfo_t siginfo;
 
