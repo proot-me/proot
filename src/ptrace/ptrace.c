@@ -25,6 +25,7 @@
 #include <errno.h>      /* E*, */
 #include <assert.h>     /* assert(3), */
 #include <stdbool.h>    /* bool, true, false, */
+#include <signal.h>     /* siginfo_t, */
 
 #include "ptrace/ptrace.h"
 #include "ptrace/event.h"
@@ -125,6 +126,7 @@ int translate_ptrace_exit(Tracee *tracee)
 	if (PTRACEE.tracer != ptracer || pid == -1)
 		return -ESRCH;
 
+	errno = 0;
 	switch (request) {
 	case PTRACE_SYSCALL:
 		/* Restart the stopped ptracee, and stop at the next
@@ -140,12 +142,11 @@ int translate_ptrace_exit(Tracee *tracee)
 		status = 0;
 		break;
 
+	/* Fulfill these requests on behalve of the emulated
+	 * ptracer.  */
 	case PTRACE_PEEKTEXT:
 	case PTRACE_PEEKDATA:
 	case PTRACE_PEEKUSER:
-		/* Fulfill these requests on behalve of the emulated
-		 * ptracer.  */
-		errno = 0;
 		result = (word_t) ptrace(request, pid, address, NULL);
 		if (errno != 0) {
 			status = -errno;
@@ -158,6 +159,20 @@ int translate_ptrace_exit(Tracee *tracee)
 			goto wake_tracee;
 		}
 		return 0;
+
+	case PTRACE_GETSIGINFO: {
+		siginfo_t siginfo;
+
+		status = ptrace(request, pid, NULL, &siginfo);
+		if (status < 0)
+			goto wake_tracee;
+
+		status = write_data(ptracer, data, &siginfo, sizeof(siginfo));
+		if (status < 0)
+			goto wake_tracee;
+
+		return 0;
+	}
 
 	default:
 		notice(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
