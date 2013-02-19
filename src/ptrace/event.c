@@ -78,6 +78,7 @@ bool notify_ptracer(Tracee *ptracee)
 	Tracee *ptracer = PTRACEE.tracer;
 	word_t wait_status;
 	word_t address;
+	int status;
 
 	assert(PTRACEE.waits_tracer);
 
@@ -124,11 +125,16 @@ bool notify_ptracer(Tracee *ptracee)
 	if (PTRACER.wait_pid == 0)
 		return false;
 
+	/* Don't forget to write its register cache back.  */
+	status = push_regs(ptracer);
+	if (status < 0) {
+		TALLOC_FREE(ptracer);
+		return false;
+	}
+
 	/* The pending wait* syscall is done: restart the ptracer.  */
 	PTRACER.wait_pid = 0;
-	restart_tracee(ptracer, 0);
-
-	return true;
+	return restart_tracee(ptracer, 0);
 }
 
 /**

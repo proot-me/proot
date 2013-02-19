@@ -54,6 +54,7 @@ static int remove_tracee(Tracee *tracee)
 {
 	Tracee *relative;
 	Tracee *ptracer;
+	int status;
 
 	LIST_REMOVE(tracee, link);
 
@@ -86,7 +87,16 @@ static int remove_tracee(Tracee *tracee)
 	/* Wake its ptracer if there's nothing else to wait for.  */
 	PTRACER.nb_tracees--;
 	if (PTRACER.nb_tracees == 0 && PTRACER.wait_pid != 0) {
+		/* Update the return value of ptracer's wait(2).  */
 		poke_reg(ptracer, SYSARG_RESULT, -ECHILD);
+
+		/* Don't forget to write its register cache back.  */
+		status = push_regs(ptracer);
+		if (status < 0) {
+			TALLOC_FREE(ptracer);
+			return 0;
+		}
+
 		PTRACER.wait_pid = 0;
 		restart_tracee(ptracer, 0);
 	}
