@@ -53,8 +53,10 @@ int translate_wait_enter(Tracee *ptracer)
 	 * However, this syscall will be canceled later if a ptracee
 	 * is attached to this ptracer.  */
 	ptracee = get_ptracee(ptracer, pid, false);
-	if (ptracee == NULL)
+	if (ptracee == NULL) {
+		PTRACER.waits_in_kernel = true;
 		return 0;
+	}
 
 	/* Only the __WALL option is supported so far.  */
 	options = peek_reg(ptracer, ORIGINAL, SYSARG_3);

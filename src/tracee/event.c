@@ -397,6 +397,9 @@ int event_loop()
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
+		/* Clean this state unconditionally.  */
+		tracee->as_ptracer.waits_in_kernel = false;
+
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
 			continue;

@@ -112,6 +112,12 @@ int translate_ptrace_exit(Tracee *tracee)
 		PTRACEE.tracer = ptracer;
 		PTRACER.nb_tracees++;
 
+		/* Detect when the ptracer has gone to wait before the
+		 * ptracee has did the ptrace(ATTACHME) request.  */
+		if (PTRACER.waits_in_kernel)
+			notice(tracee, ERROR, INTERNAL,
+				"unsupported condition detected (to be fixed)");
+
 		return 0;
 	}
 
