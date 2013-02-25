@@ -24,15 +24,12 @@ switch (peek_reg(tracee, CURRENT, SYSARG_NUM)) {
 case PR__llseek:
 case PR__newselect:
 case PR__sysctl:
-case PR_accept:
-case PR_accept4:
 case PR_add_key:
 case PR_adjtimex:
 case PR_afs_syscall:
 case PR_alarm:
 case PR_arch_prctl:
 case PR_bdflush:
-case PR_bind:
 case PR_break:
 case PR_brk:
 case PR_cacheflush:
@@ -45,7 +42,6 @@ case PR_clock_nanosleep:
 case PR_clock_settime:
 case PR_clone:
 case PR_close:
-case PR_connect:
 case PR_create_module:
 case PR_delete_module:
 case PR_dup:
@@ -105,7 +101,6 @@ case PR_getgid32:
 case PR_getgroups:
 case PR_getgroups32:
 case PR_getitimer:
-case PR_getpeername:
 case PR_getpgid:
 case PR_getpgrp:
 case PR_getpid:
@@ -119,7 +114,6 @@ case PR_getresuid32:
 case PR_getrlimit:
 case PR_getrusage:
 case PR_getsid:
-case PR_getsockname:
 case PR_getsockopt:
 case PR_gettid:
 case PR_gettimeofday:
@@ -427,6 +421,87 @@ case PR_chdir: {
 	talloc_set_name_const(tracee->fs->cwd, "$cwd");
 
 	poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
+	status = 0;
+	break;
+}
+
+case PR_bind:
+case PR_connect: {
+	/* The sockaddr_un structure has exactly the same layout on
+	 * all architectures.  */
+	struct sockaddr_un sockaddr;
+	word_t address, size;
+
+	address = peek_reg(tracee, CURRENT, SYSARG_2);
+	size    = peek_reg(tracee, CURRENT, SYSARG_3);
+
+	/* If the sockaddr has different size, let the kernel decides
+	 * whether it's an error or another type of socket.  */
+	if (size > sizeof(sockaddr)) {
+		status = 0;
+		break;
+	}
+
+	/* Fetch the guest sockaddr to check if it's a named Unix
+	 * domain socket.  */
+	status = read_data(tracee, &sockaddr, address, size);
+	if (status < 0)
+		break;
+
+	if ((sockaddr.sun_family != AF_UNIX && sockaddr.sun_family != AF_LOCAL)
+	    || sockaddr.sun_path[0] == '\0') {
+		status = 0;
+		break;
+	}
+
+	/* Translate and update the socket pathname.  */
+	status = translate_path(tracee, path, AT_FDCWD, sockaddr.sun_path, true);
+	if (status < 0)
+		break;
+
+	if (strlen(path) >= UNIX_PATH_MAX) {
+		status = -ENAMETOOLONG;
+		break;
+	}
+
+	strcpy(sockaddr.sun_path, path);
+
+	/* Push the updated sockaddr to a newly allocated space.  */
+	address = alloc_mem(tracee, sizeof(sockaddr));
+	if (address == 0) {
+		status = -EFAULT;
+		break;
+	}
+
+	status = write_data(tracee, address, &sockaddr, sizeof(sockaddr));
+	if (status < 0)
+		break;
+
+	poke_reg(tracee, SYSARG_2, address);
+
+	status = 0;
+	break;
+}
+
+case PR_accept:
+case PR_accept4:
+case PR_getsockname:
+case PR_getpeername:{
+	int size;
+
+	size = (int) peek_mem(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3));
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
+	/* The "size" argument is both used as an input parameter
+	 * (max. size) and as an output parameter (actual size).  The
+	 * exit stage needs to know the max. size to not overwrite
+	 * anything, that's why it is copied in the 6th argument
+	 * (unused) before the kernel updates it.  */
+	poke_reg(tracee, SYSARG_6, size);
+
 	status = 0;
 	break;
 }

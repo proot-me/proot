@@ -68,6 +68,92 @@ case PR_getcwd: {
 	break;
 }
 
+case PR_accept:
+case PR_accept4:
+case PR_getsockname:
+case PR_getpeername:{
+	/* The sockaddr_un structure has exactly the same layout on
+	 * all architectures.  */
+	const size_t offsetof_sun_path = offsetof(struct sockaddr_un, sun_path);
+	struct sockaddr_un sockaddr;
+	word_t result, address;
+	char path[PATH_MAX];
+	word_t max_size;
+	int size;
+
+	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+
+	/* Error reported by the kernel.  */
+	if ((int) result < 0) {
+		status = 0;
+		goto end;
+	}
+
+	/* Get the address and the size of the guest sockaddr.  */
+	address = peek_reg(tracee, ORIGINAL, SYSARG_2);
+	size    = (int) peek_mem(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3));
+	if (errno != 0) {
+		status = -errno;
+		break;
+	}
+
+	/* Nothing to do for "unnamed" sockets or for the ones with an
+	 * unexpected size.  */
+	if (size <= offsetof_sun_path || size > sizeof(sockaddr)) {
+		status = 0;
+		break;
+	}
+
+	/* Fetch the guest sockaddr to check if it's a named Unix
+	 * domain socket.  */
+	status = read_data(tracee, &sockaddr, address, size);
+	if (status < 0)
+		break;
+
+	if (sockaddr.sun_family != AF_UNIX && sockaddr.sun_family != AF_LOCAL) {
+		status = 0;
+		break;
+	}
+
+	/* Nothing to do for "abstract" sockets or for the ones
+	 * without a null-terminated name. */
+	if (   sockaddr.sun_path[0] == '\0'
+	    || sockaddr.sun_path[size - offsetof_sun_path - 1] != '\0') {
+		status = 0;
+		break;
+	}
+
+	/* Replace the host path with the guest one, if there's enough
+	 * room.  */
+	strcpy(path, sockaddr.sun_path);
+	status = detranslate_path(tracee, path, NULL);
+	if (status < 0)
+		break;
+
+	/* Check il will fit both our sockaddr and user's one.  */
+	max_size = peek_reg(tracee, MODIFIED, SYSARG_6);
+	size = offsetof_sun_path + strlen(path) + 1;
+	if (size > sizeof(sockaddr) || size > max_size) {
+		status = -ENAMETOOLONG;
+		break;
+	}
+
+	assert(strlen(path) < UNIX_PATH_MAX);
+	strcpy(sockaddr.sun_path, path);
+
+	/* Overwrite the current sockaddr.  */
+	status = write_data(tracee, address, &sockaddr, size);
+	if (status < 0)
+		break;
+
+	status = write_data(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3), &size, sizeof(size));
+	if (status < 0)
+		break;
+
+	status = 0;
+	break;
+}
+
 case PR_fchdir:
 case PR_chdir:
 	/* These syscalls are fully emulated, see enter.c for details
