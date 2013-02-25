@@ -5,6 +5,7 @@
 #include <strings.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <errno.h>
 
 int main()
 {
@@ -33,6 +34,9 @@ int main()
 
 	status = bind(fd, (const struct sockaddr *) &sockaddr, sizeof(sockaddr));
 	if (status < 0) {
+		if (errno == EACCES)
+			return 125;
+
 		perror("bind");
 		exit(EXIT_FAILURE);
 	}
