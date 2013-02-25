@@ -179,7 +179,6 @@ The following options are aliases for handy sets of options.
     * /etc/nsswitch.conf
     * /etc/resolv.conf
     * /etc/localtime
-    * /run/
     * /dev/
     * /sys/
     * /proc/
