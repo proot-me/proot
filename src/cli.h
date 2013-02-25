@@ -40,7 +40,6 @@ static char *recommended_bindings[] = {
 	"/etc/netgroup",
 	"/etc/networks",
 	"/etc/passwd",
-	"/etc/group",
 	"/etc/nsswitch.conf",
 	"/etc/resolv.conf",
 	"/etc/localtime",
@@ -202,7 +201,6 @@ static Option options[] = {
 \t    * /etc/netgroup\n\
 \t    * /etc/networks\n\
 \t    * /etc/passwd\n\
-\t    * /etc/group\n\
 \t    * /etc/nsswitch.conf\n\
 \t    * /etc/resolv.conf\n\
 \t    * /etc/localtime\n\
