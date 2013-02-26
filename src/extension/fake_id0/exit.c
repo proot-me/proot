@@ -48,12 +48,15 @@ case PR_chroot: {
 	return 0;
 }
 
+case PR_chmod:
 case PR_chown:
+case PR_fchmod:
 case PR_fchown:
 case PR_lchown:
 case PR_chown32:
 case PR_fchown32:
 case PR_lchown32:
+case PR_fchmodat:
 case PR_fchownat: {
 	word_t result;
 
@@ -138,6 +141,10 @@ case PR_setfsgid32:
 	poke_reg(tracee, SYSARG_RESULT, 0);
 	return 0;
 
+case PR_setresuid:
+case PR_setresgid:
+case PR_setresuid32:
+case PR_setresgid32:
 case PR_getresuid:
 case PR_getresuid32:
 case PR_getresgid:
