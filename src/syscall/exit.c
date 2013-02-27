@@ -25,8 +25,7 @@
  *
  * - break: update the syscall result register with "status"
  *
- * - goto end: "status < 0" means the tracee is dead, otherwise do
- *             nothing.
+ * - goto end: nothing else to do.
  */
 switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
 case PR_getcwd: {
@@ -38,10 +37,8 @@ case PR_getcwd: {
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0) {
-		status = 0;
+	if ((int) result < 0)
 		goto end;
-	}
 
 	output = peek_reg(tracee, ORIGINAL, SYSARG_1);
 
@@ -60,7 +57,7 @@ case PR_getcwd: {
 	/* Overwrite the path.  */
 	status = write_data(tracee, output, tracee->fs->cwd, new_size);
 	if (status < 0)
-		goto end;
+		break;
 
 	/* The value of "status" is used to update the returned value
 	 * in translate_syscall_exit().  */
@@ -80,10 +77,8 @@ case PR_getpeername:{
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0) {
-		status = 0;
+	if ((int) result < 0)
 		goto end;
-	}
 
 	sock_addr = peek_reg(tracee, ORIGINAL, SYSARG_2);
 	size_addr = peek_reg(tracee, MODIFIED, SYSARG_3);
@@ -114,10 +109,8 @@ case PR_readlinkat: {
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0) {
-		status = 0;
+	if ((int) result < 0)
 		goto end;
-	}
 
 	old_size = result;
 
@@ -144,13 +137,13 @@ case PR_readlinkat: {
 	 * getcwd(2).  */
 	status = read_data(tracee, referee, output, old_size);
 	if (status < 0)
-		goto end;
+		break;
 	referee[old_size] = '\0';
 
 	/* Not optimal but safe (path is fully translated).  */
 	status = read_string(tracee, referer, input, PATH_MAX);
 	if (status < 0)
-		goto end;
+		break;
 
 	if (status >= PATH_MAX) {
 		status = -ENAMETOOLONG;
@@ -171,7 +164,7 @@ case PR_readlinkat: {
 	/* Overwrite the path.  */
 	status = write_data(tracee, output, referee, new_size);
 	if (status < 0)
-		goto end;
+		break;
 
 	/* The value of "status" is used to update the returned value
 	 * in translate_syscall_exit().  */
@@ -186,25 +179,20 @@ case PR_uname: {
 	word_t result;
 	size_t size;
 
-	if (get_abi(tracee) != ABI_2) {
-		/* Nothing to do.  */
-		status = 0;
+	if (get_abi(tracee) != ABI_2)
 		goto end;
-	}
 
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0) {
-		status = 0;
+	if ((int) result < 0)
 		goto end;
-	}
 
 	address = peek_reg(tracee, ORIGINAL, SYSARG_1);
 
 	status = read_data(tracee, &utsname, address, sizeof(utsname));
 	if (status < 0)
-		goto end;
+		break;
 
 	/* Some 32-bit programs like package managers can be
 	 * confused when the kernel reports "x86_64".  */
@@ -214,7 +202,7 @@ case PR_uname: {
 
 	status = write_data(tracee, address, &utsname, sizeof(utsname));
 	if (status < 0)
-		goto end;
+		break;
 
 	status = 0;
 	break;
@@ -227,7 +215,6 @@ case PR_rt_sigreturn:
 case PR_sigreturn:
 		restore_original_sp = false;
 	}
-	status = 0;
 	goto end;
 
 case PR_fork:
@@ -246,18 +233,14 @@ case PR_clone: {
 	 * child would be stopped by PRoot until the parent returns
 	 * (deak-lock).  Instead it is handled asynchronously in
 	 * event.c.  */
-	if ((flags & CLONE_VFORK) != 0) {
-		status = 0;
+	if ((flags & CLONE_VFORK) != 0)
 		goto end;
-	}
 
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0) {
-		status = 0;
+	if ((int) result < 0)
 		goto end;
-	}
 
 	child = get_tracee(tracee, result, true);
 	if (child == NULL) {
@@ -269,11 +252,9 @@ case PR_clone: {
 	if (status < 0)
 		break;
 
-	status = 0;
 	goto end;
 }
 
 default:
-	status = 0;
 	goto end;
 }

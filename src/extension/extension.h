@@ -53,23 +53,23 @@ typedef enum {
 	/* The tracee enters a syscall, and PRoot hasn't do anything
 	 * yet.  If the extension returns > 0, then PRoot skips its
 	 * own handling.  If the extension returns < 0, then PRoot
-	 * reports this errno as-is.  */
+	 * reports this errno to the tracee.  */
 	SYSCALL_ENTER_START,
 
 	/* The tracee enters a syscall, and PRoot has already handled
 	 * it.  If the extension returns < 0, then PRoot reports this
-	 * errno as-is.  */
+	 * errno to the tracee.  */
 	SYSCALL_ENTER_END,
 
 	/* The tracee exits a syscall, and PRoot hasn't do anything
 	 * yet.  If the extension returns > 0, then PRoot skips its
 	 * own handling.  If the extension returns < 0, then PRoot
-	 * reports this errno as-is.  */
+	 * reports this errno to the tracee.  */
 	SYSCALL_EXIT_START,
 
 	/* The tracee exits a syscall, and PRoot has already handled
-	 * it.  If the extension returns < 0, then PRoot reports
-	 * this errno as-is.  */
+	 * it.  If the extension returns < 0, then PRoot reports this
+	 * errno to the tracee.  */
 	SYSCALL_EXIT_END,
 
 	/* The tracee is stopped either because of a syscall or a

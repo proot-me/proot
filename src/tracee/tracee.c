@@ -186,10 +186,8 @@ int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 
 		child->sigstop = SIGSTOP_ALLOWED;
 		status = ptrace(PTRACE_SYSCALL, child->pid, NULL, 0);
-		if (status < 0) {
-			notice(child, WARNING, SYSTEM, "ptrace(SYSCALL, %d) [1]", child->pid);
+		if (status < 0)
 			TALLOC_FREE(child);
-		}
 	}
 
 	return 0;

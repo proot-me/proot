@@ -253,9 +253,7 @@ end:
 
 /**
  * Resize the @array at the given @index by the @delta_nb_entries.
- * Please, note that *no* item is de/allocated, the caller has to call
- * free/write_item by iteself.  This function returns -errno when an
- * error occured, otherwise 0.
+ * This function returns -errno when an error occured, otherwise 0.
  */
 int resize_array(Array *array, size_t index, ssize_t delta_nb_entries)
 {
