@@ -32,7 +32,7 @@ int main()
 	sockaddr.sun_family = AF_UNIX;
 	strcpy(sockaddr.sun_path, sockname);
 
-	status = bind(fd, (const struct sockaddr *) &sockaddr, sizeof(sockaddr));
+	status = bind(fd, (const struct sockaddr *) &sockaddr, SUN_LEN(&sockaddr));
 	if (status < 0) {
 		if (errno == EACCES)
 			return 125;
@@ -50,12 +50,22 @@ int main()
 		exit(EXIT_FAILURE);
 	}
 
+	if (socklen != SUN_LEN(&sockaddr) + 1) {
+		fprintf(stderr, "socklen: %d != %d + 1\n", socklen, SUN_LEN(&sockaddr));
+		exit(EXIT_FAILURE);
+	}
+
 	if (sockaddr.sun_family != AF_UNIX) {
 		fprintf(stderr, "! AF_UNIX\n");
 		exit(EXIT_FAILURE);
 	}
 
-	if (strcmp(sockaddr.sun_path, sockname) != 0) {
+	if (socklen == sizeof(sockaddr) + 1)
+		status = strncmp(sockaddr.sun_path, sockname, sizeof(sockaddr.sun_path));
+	else
+		status = strcmp(sockaddr.sun_path, sockname);
+
+	if (status != 0) {
 		fprintf(stderr, "! %s\n", sockname);
 		exit(EXIT_FAILURE);
 	}

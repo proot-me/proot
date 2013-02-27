@@ -430,20 +430,23 @@ case PR_connect: {
 	/* The sockaddr_un structure has exactly the same layout on
 	 * all architectures.  */
 	struct sockaddr_un sockaddr;
+	const off_t offsetof_path = offsetof(struct sockaddr_un, sun_path);
+	const size_t sizeof_path  = sizeof(sockaddr.sun_path);
 	word_t address, size;
 
 	address = peek_reg(tracee, CURRENT, SYSARG_2);
 	size    = peek_reg(tracee, CURRENT, SYSARG_3);
 
-	/* If the sockaddr has different size, let the kernel decides
-	 * whether it's an error or another type of socket.  */
-	if (size > sizeof(sockaddr)) {
+	/* If the sockaddr has an unexpected size, let the kernel
+	 * decides whether it's an error or another type of socket.  */
+	if (size <= offsetof_path || size > sizeof(sockaddr)) {
 		status = 0;
 		break;
 	}
 
-	/* Fetch the guest sockaddr to check if it's a named Unix
-	 * domain socket.  */
+	/* Fetch the guest sockaddr to check if it's a valid named
+	 * Unix domain socket.  */
+	bzero(&sockaddr, sizeof(sockaddr));
 	status = read_data(tracee, &sockaddr, address, size);
 	if (status < 0)
 		break;
@@ -454,17 +457,22 @@ case PR_connect: {
 		break;
 	}
 
+	/* sun_path doesn't have to be null-terminated.  */
+	assert(sizeof(oldpath) > sizeof_path);
+	strncpy(oldpath, sockaddr.sun_path, sizeof_path);
+	oldpath[sizeof_path] = '\0';
+
 	/* Translate and update the socket pathname.  */
-	status = translate_path(tracee, path, AT_FDCWD, sockaddr.sun_path, true);
+	status = translate_path(tracee, path, AT_FDCWD, oldpath, true);
 	if (status < 0)
 		break;
 
-	if (strlen(path) >= UNIX_PATH_MAX) {
-		status = -ENAMETOOLONG;
+	/* Remember: sun_path doesn't have to be null-terminated.  */
+	if (strlen(path) > sizeof_path) {
+		status = -EINVAL;
 		break;
 	}
-
-	strcpy(sockaddr.sun_path, path);
+	strncpy(sockaddr.sun_path, path, sizeof_path);
 
 	/* Push the updated sockaddr to a newly allocated space.  */
 	address = alloc_mem(tracee, sizeof(sockaddr));
@@ -478,6 +486,7 @@ case PR_connect: {
 		break;
 
 	poke_reg(tracee, SYSARG_2, address);
+	poke_reg(tracee, SYSARG_3, sizeof(sockaddr));
 
 	status = 0;
 	break;
