@@ -32,10 +32,10 @@
 #include <sys/utsname.h> /* struct utsname, */
 #include <stdarg.h>      /* va_*, */
 #include <talloc.h>      /* talloc_*, */
-#include <sys/socket.h>  /* struct sockaddr_un, AF_UNIX, */
-#include <linux/un.h>    /* struct sockaddr_un, UNIX_PATH_MAX, */
+#include <linux/un.h>    /* struct sockaddr_un, */
 
 #include "syscall/syscall.h"
+#include "syscall/socket.h"
 #include "arch.h"
 #include "tracee/mem.h"
 #include "tracee/tracee.h"

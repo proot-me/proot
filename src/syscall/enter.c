@@ -427,66 +427,18 @@ case PR_chdir: {
 
 case PR_bind:
 case PR_connect: {
-	/* The sockaddr_un structure has exactly the same layout on
-	 * all architectures.  */
-	struct sockaddr_un sockaddr;
-	const off_t offsetof_path = offsetof(struct sockaddr_un, sun_path);
-	const size_t sizeof_path  = sizeof(sockaddr.sun_path);
-	word_t address, size;
+	word_t address;
+	word_t size;
 
 	address = peek_reg(tracee, CURRENT, SYSARG_2);
 	size    = peek_reg(tracee, CURRENT, SYSARG_3);
 
-	/* If the sockaddr has an unexpected size, let the kernel
-	 * decides whether it's an error or another type of socket.  */
-	if (size <= offsetof_path || size > sizeof(sockaddr)) {
-		status = 0;
-		break;
-	}
-
-	/* Fetch the guest sockaddr to check if it's a valid named
-	 * Unix domain socket.  */
-	bzero(&sockaddr, sizeof(sockaddr));
-	status = read_data(tracee, &sockaddr, address, size);
-	if (status < 0)
-		break;
-
-	if ((sockaddr.sun_family != AF_UNIX && sockaddr.sun_family != AF_LOCAL)
-	    || sockaddr.sun_path[0] == '\0') {
-		status = 0;
-		break;
-	}
-
-	/* sun_path doesn't have to be null-terminated.  */
-	assert(sizeof(oldpath) > sizeof_path);
-	strncpy(oldpath, sockaddr.sun_path, sizeof_path);
-	oldpath[sizeof_path] = '\0';
-
-	/* Translate and update the socket pathname.  */
-	status = translate_path(tracee, path, AT_FDCWD, oldpath, true);
-	if (status < 0)
-		break;
-
-	/* Remember: sun_path doesn't have to be null-terminated.  */
-	if (strlen(path) > sizeof_path) {
-		status = -EINVAL;
-		break;
-	}
-	strncpy(sockaddr.sun_path, path, sizeof_path);
-
-	/* Push the updated sockaddr to a newly allocated space.  */
-	address = alloc_mem(tracee, sizeof(sockaddr));
-	if (address == 0) {
-		status = -EFAULT;
-		break;
-	}
-
-	status = write_data(tracee, address, &sockaddr, sizeof(sockaddr));
-	if (status < 0)
+	status = translate_socketcall_enter(tracee, &address, size);
+	if (status <= 0)
 		break;
 
 	poke_reg(tracee, SYSARG_2, address);
-	poke_reg(tracee, SYSARG_3, sizeof(sockaddr));
+	poke_reg(tracee, SYSARG_3, sizeof(struct sockaddr_un));
 
 	status = 0;
 	break;

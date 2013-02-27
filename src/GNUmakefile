@@ -24,6 +24,7 @@ OBJECTS = cli.o			\
 	path/path.o		\
 	path/proc.o		\
 	syscall/syscall.o	\
+	syscall/socket.o	\
 	tracee/tracee.o		\
 	tracee/array.o		\
 	tracee/mem.o		\

@@ -72,16 +72,10 @@ case PR_accept:
 case PR_accept4:
 case PR_getsockname:
 case PR_getpeername:{
-	/* The sockaddr_un structure has exactly the same layout on
-	 * all architectures.  */
-	struct sockaddr_un sockaddr;
-	const off_t offsetof_path = offsetof(struct sockaddr_un, sun_path);
-	const size_t sizeof_path  = sizeof(sockaddr.sun_path);
-	bool is_truncated = false;
-	word_t result, address;
-	char path[PATH_MAX];
+	word_t result;
+	word_t sock_addr;
+	word_t size_addr;
 	word_t max_size;
-	int size;
 
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
@@ -91,75 +85,11 @@ case PR_getpeername:{
 		goto end;
 	}
 
-	/* Get the address and the size of the guest sockaddr.  */
-	address  = peek_reg(tracee, ORIGINAL, SYSARG_2);
-	max_size = peek_reg(tracee, MODIFIED, SYSARG_6);
-	size     = (int) peek_mem(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3));
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	sock_addr = peek_reg(tracee, ORIGINAL, SYSARG_2);
+	size_addr = peek_reg(tracee, MODIFIED, SYSARG_3);
+	max_size  = peek_reg(tracee, MODIFIED, SYSARG_6);
 
-	/* Quote:
-	 *      The returned [sockaddr] is truncated if the buffer
-	 *      provided is too small; in this case, addrlen will
-	 *      return a value greater than was supplied to the call.
-	 *      -- man 2 accept
-	 */
-
-	/* Nothing to do for "unnamed" sockets or for truncated
-	 * ones.  */
-	if (size <= offsetof_path || size > max_size) {
-		status = 0;
-		break;
-	}
-
-	/* Fetch the guest sockaddr to check if it's a valid named
-	 * Unix domain socket.  */
-	bzero(&sockaddr, sizeof(sockaddr));
-	status = read_data(tracee, &sockaddr, address, size);
-	if (status < 0)
-		break;
-
-	if ((sockaddr.sun_family != AF_UNIX && sockaddr.sun_family != AF_LOCAL)
-	    || sockaddr.sun_path[0] == '\0') {
-		status = 0;
-		break;
-	}
-
-	/* sun_path doesn't have to be null-terminated.  */
-	assert(sizeof(path) > sizeof_path);
-	strncpy(path, sockaddr.sun_path, sizeof_path);
-	path[sizeof_path] = '\0';
-
-	/* Detranslate and update the socket pathname.  */
-	status = detranslate_path(tracee, path, NULL);
-	if (status < 0)
-		break;
-
-	/* Remember: addrlen will return a value greater than was
-	 * supplied to the call if the returned sockaddr is
-	 * truncated.  */
-	size = offsetof_path + strlen(path) + 1;
-	if (size > sizeof(sockaddr) || size > max_size) {
-		size = sizeof(sockaddr) < max_size ? sizeof(sockaddr) : max_size;
-		is_truncated = true;
-	}
-	strncpy(sockaddr.sun_path, path, sizeof_path);
-
-	/* Overwrite the current sockaddr.  */
-	status = write_data(tracee, address, &sockaddr, size);
-	if (status < 0)
-		break;
-
-	if (is_truncated)
-		size = max_size + 1;
-
-	status = write_data(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3), &size, sizeof(size));
-	if (status < 0)
-		break;
-
-	status = 0;
+	status = translate_socketcall_exit(tracee, sock_addr, size_addr, max_size);
 	break;
 }
 
