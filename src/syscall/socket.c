@@ -44,14 +44,17 @@ static const size_t sizeof_path  = sizeof(sockaddr_un__.sun_path);
  * Copy in @sockaddr the struct sockaddr_un stored in the @tracee
  * memory at the given @address.  Also, its pathname is copied to the
  * null-terminated @path.  Only @size bytes are read from the @tracee
- * memory (should be less than @max_size).  This function returns
- * -errno if an error occurred, 0 if the structure was not found (not
- * a sockaddr_un or @size > @max_size), otherwise 1.
+ * memory (should be <= @max_size <= sizeof(struct sockaddr_un)).
+ * This function returns -errno if an error occurred, 0 if the
+ * structure was not found (not a sockaddr_un or @size > @max_size),
+ * otherwise 1.
  */
 static int read_sockaddr_un(Tracee *tracee, struct sockaddr_un *sockaddr, word_t max_size,
 			char path[PATH_MAX], word_t address, int size)
 {
 	int status;
+
+	assert(max_size <= sizeof(struct sockaddr_un));
 
 	/* Nothing to do if the sockaddr has an unexpected size.  */
 	if (size <= offsetof_path || size > max_size)
@@ -138,6 +141,7 @@ int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr
 	if (errno != 0)
 		return -errno;
 
+	max_size = MIN(max_size, sizeof(sockaddr));
 	status = read_sockaddr_un(tracee, &sockaddr, max_size, path, sock_addr, size);
 	if (status <= 0)
 		return status;
@@ -148,8 +152,8 @@ int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr
 
 	/* Be careful: sun_path doesn't have to be null-terminated.  */
 	size = offsetof_path + strlen(path) + 1;
-	if (size > sizeof(sockaddr) || size > max_size) {
-		size = MIN(sizeof(sockaddr), max_size);
+	if (size > max_size) {
+		size = max_size;
 		is_truncated = true;
 	}
 	strncpy(sockaddr.sun_path, path, sizeof_path);
