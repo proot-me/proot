@@ -168,6 +168,13 @@ int kompat_callback(Extension *extension, ExtensionEvent event, intptr_t data1, 
 			return 0;
 		}
 		#endif
+		#ifdef SYSNUM_HEADER3
+		case ABI_3: {
+			#include SYSNUM_HEADER3
+			#include "extension/kompat/enter.c"
+			return 0;
+		}
+		#endif
 		default:
 			assert(0);
 		}
@@ -188,6 +195,13 @@ int kompat_callback(Extension *extension, ExtensionEvent event, intptr_t data1, 
 		#ifdef SYSNUM_HEADER2
 		case ABI_2: {
 			#include SYSNUM_HEADER2
+			#include "extension/kompat/exit.c"
+			return 0;
+		}
+		#endif
+		#ifdef SYSNUM_HEADER3
+		case ABI_3: {
+			#include SYSNUM_HEADER3
 			#include "extension/kompat/exit.c"
 			return 0;
 		}
