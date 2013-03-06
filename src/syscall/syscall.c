@@ -178,6 +178,8 @@ static void translate_syscall_enter(Tracee *tracee)
 	char oldpath[PATH_MAX];
 	char newpath[PATH_MAX];
 
+	word_t syscall_number;
+
 	if (tracee->verbose >= 3)
 		VERBOSE(tracee, 3,
 			"pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
@@ -248,6 +250,7 @@ end:
 static void translate_syscall_exit(Tracee *tracee)
 {
 	bool restore_original_sp = true;
+	word_t syscall_number;
 	int status;
 
 	status = notify_extensions(tracee, SYSCALL_EXIT_START, 0, 0);

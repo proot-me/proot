@@ -27,7 +27,8 @@
  *
  * - goto end: nothing else to do.
  */
-switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
+syscall_number = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
+switch (syscall_number) {
 case PR_getcwd: {
 	size_t new_size;
 	size_t size;
@@ -114,7 +115,7 @@ case PR_readlinkat: {
 
 	old_size = result;
 
-	if (peek_reg(tracee, ORIGINAL, SYSARG_NUM) == PR_readlink) {
+	if (syscall_number == PR_readlink) {
 		output   = peek_reg(tracee, ORIGINAL, SYSARG_2);
 		max_size = peek_reg(tracee, ORIGINAL, SYSARG_3);
 		input    = peek_reg(tracee, MODIFIED, SYSARG_1);
@@ -223,7 +224,7 @@ case PR_clone: {
 	word_t result;
 	word_t flags;
 
-	if (peek_reg(tracee, ORIGINAL, SYSARG_NUM) == PR_clone)
+	if (syscall_number == PR_clone)
 		flags = peek_reg(tracee, ORIGINAL, SYSARG_1);
 	else
 		flags = 0;

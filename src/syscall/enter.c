@@ -20,7 +20,8 @@
  * 02110-1301 USA.
  */
 
-switch (peek_reg(tracee, CURRENT, SYSARG_NUM)) {
+syscall_number = peek_reg(tracee, CURRENT, SYSARG_NUM);
+switch (syscall_number) {
 case PR__llseek:
 case PR__newselect:
 case PR__sysctl:
@@ -359,7 +360,7 @@ case PR_fchdir:
 case PR_chdir: {
 	char *tmp;
 
-	if (peek_reg(tracee, CURRENT, SYSARG_NUM) == PR_chdir) {
+	if (syscall_number == PR_chdir) {
 		status = get_sysarg_path(tracee, path, SYSARG_1);
 		if (status < 0)
 			break;
@@ -519,8 +520,8 @@ case PR_name_to_handle_at:
 	if (status < 0)
 		break;
 
-	flags = (   peek_reg(tracee, CURRENT, SYSARG_NUM) == PR_fchownat
-		 || peek_reg(tracee, CURRENT, SYSARG_NUM) == PR_name_to_handle_at)
+	flags = (   syscall_number == PR_fchownat
+		 || syscall_number == PR_name_to_handle_at)
 		? peek_reg(tracee, CURRENT, SYSARG_5)
 		: peek_reg(tracee, CURRENT, SYSARG_4);
 
@@ -682,8 +683,7 @@ case PR_symlinkat:
 	break;
 
 default:
-	notice(tracee, WARNING, INTERNAL, "unknown syscall %ld",
-		peek_reg(tracee, CURRENT, SYSARG_NUM));
+	notice(tracee, WARNING, INTERNAL, "unknown syscall %ld", syscall_number);
 	status = 0;
 	break;
 }
