@@ -86,6 +86,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	Comparison comparison;
 	Binding *binding;
 	mode_t type;
+	mode_t mode;
 	int status;
 
 	assert(tracee->glue_type != 0);
@@ -107,13 +108,17 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	}
 
 	/* If it's not a final component then it is a directory.  I definitely
-	 * hate how the protential type of the final component is propagated
+	 * hate how the potential type of the final component is propagated
 	 * from initialize_binding() down to here, sadly there's no elegant way
 	 * to know its type at this stage.  */
-	if (is_final)
+	if (is_final) {
 		type = tracee->glue_type;
-	else
+		mode = 0;
+	}
+	else {
 		type = S_IFDIR;
+		mode = 0777;
+	}
 
 	comparison = compare_paths(tracee->glue, host_path);
 	belongs_to_gluefs = (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
@@ -124,9 +129,9 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* Try to create this component into the "guest" or "glue"
 	 * rootfs (depending if there were a glue previously).  */
 	if (S_ISDIR(type))
-		status = mkdir(host_path, 0777);
+		status = mkdir(host_path, mode);
 	else /* S_IFREG, S_IFCHR, S_IFBLK, S_IFIFO or S_IFSOCK.  */
-		status = mknod(host_path, 0777 | type, 0);
+		status = mknod(host_path, mode | type, 0);
 
 	/* Nothing else to do if the path already exists or if it is
 	 * the final component since it will be pointed to by the

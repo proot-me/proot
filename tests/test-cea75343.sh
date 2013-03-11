@@ -37,4 +37,4 @@ ${PROOT} ${BINDINGS} / cat ${TMP3}/c/d | grep '^binding 2$'
 
 rm ${TMP1}
 rm ${TMP2}
-rm -r ${TMP3}
+rm -fr ${TMP3}
