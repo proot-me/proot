@@ -93,6 +93,9 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 	char path[PATH_MAX];
 	int status;
 
+	if (*address == 0)
+		return 0;
+
 	status = read_sockaddr_un(tracee, &sockaddr, sizeof(sockaddr), path2, *address, size);
 	if (status <= 0)
 		return status;
@@ -126,22 +129,26 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
  * Detranslate the pathname of the struct sockaddr_un currently stored
  * in the @tracee memory at the given @sock_addr.  See the
  * documentation of read_sockaddr_un() for the meaning of the
- * @size_addr and @max_size parameters.  This function returns -errno
- * if an error occurred, otherwise 0.
+ * @size_addr parameter.  This function returns -errno if an error
+ * occurred, otherwise 0.
  */
-int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr, word_t max_size)
+int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr)
 {
 	struct sockaddr_un sockaddr;
 	bool is_truncated = false;
 	char path[PATH_MAX];
+	word_t max_size;
 	int status;
 	int size;
+
+	if (sock_addr == 0)
+		return 0;
 
 	size = (int) peek_mem(tracee, size_addr);
 	if (errno != 0)
 		return -errno;
 
-	max_size = MIN(max_size, sizeof(sockaddr));
+	max_size = MIN(tracee->socketcall.size, sizeof(sockaddr));
 	status = read_sockaddr_un(tracee, &sockaddr, max_size, path, sock_addr, size);
 	if (status <= 0)
 		return status;

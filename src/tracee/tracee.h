@@ -150,6 +150,13 @@ typedef struct tracee {
 	/* Verbose level.  */
 	int verbose;
 
+	/* Pass "volatile" information for socket syscalls from the
+	 * enter stage to the exit stage.  */
+	struct {
+		word_t addr;
+		int size;
+	} socketcall;
+
 } Tracee;
 
 #define HOST_ROOTFS "/host-rootfs"

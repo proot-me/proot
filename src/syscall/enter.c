@@ -293,7 +293,6 @@ case PR_sigprocmask:
 case PR_sigreturn:
 case PR_sigsuspend:
 case PR_socket:
-case PR_socketcall:
 case PR_socketpair:
 case PR_splice:
 case PR_ssetmask:
@@ -451,18 +450,75 @@ case PR_getsockname:
 case PR_getpeername:{
 	int size;
 
-	size = (int) peek_mem(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3));
-	if (errno != 0) {
-		status = -errno;
-		break;
-	}
+	/* Remember: PEEK_MEM puts -errno in status and breaks if an
+	 * error occured.  */
+	size = (int) PEEK_MEM(peek_reg(tracee, ORIGINAL, SYSARG_3));
 
 	/* The "size" argument is both used as an input parameter
 	 * (max. size) and as an output parameter (actual size).  The
 	 * exit stage needs to know the max. size to not overwrite
-	 * anything, that's why it is copied in the 6th argument
-	 * (unused) before the kernel updates it.  */
-	poke_reg(tracee, SYSARG_6, size);
+	 * anything.  */
+	tracee->socketcall.size = size;
+
+	status = 0;
+	break;
+}
+
+case PR_socketcall: {
+	word_t args_addr;
+	word_t sock_addr;
+	word_t size_addr;
+	word_t size;
+
+	args_addr = peek_reg(tracee, CURRENT, SYSARG_2);
+
+	switch (peek_reg(tracee, CURRENT, SYSARG_1)) {
+	case SYS_BIND:
+	case SYS_CONNECT:
+		/* Handle these cases below.  */
+		status = 1;
+		break;
+
+	case SYS_ACCEPT:
+	case SYS_ACCEPT4:
+	case SYS_GETSOCKNAME:
+	case SYS_GETPEERNAME:
+		/* Remember: PEEK_MEM puts -errno in status and breaks
+		 * if an error occured.  */
+		size_addr =  PEEK_MEM(SYSARG_ADDR(3));
+		size = (int) PEEK_MEM(size_addr);
+
+		/* See case PR_accept for explanation.  */
+		tracee->socketcall.size = size;
+		status = 0;
+		break;
+
+	default:
+		status = 0;
+		break;
+	}
+
+	/* An error occured or there's nothing else to do.  */
+	if (status <= 0)
+		break;
+
+	/* Remember: PEEK_MEM puts -errno in status and breaks if an
+	 * error occured.  */
+	sock_addr = PEEK_MEM(SYSARG_ADDR(2));
+	size      = PEEK_MEM(SYSARG_ADDR(3));
+
+	/* These parameters are used/restored at the exit stage.  */
+	tracee->socketcall.addr = sock_addr;
+	tracee->socketcall.size = size;
+
+	status = translate_socketcall_enter(tracee, &sock_addr, size);
+	if (status <= 0)
+		break;
+
+	/* Remember: POKE_MEM puts -errno in status and breaks if an
+	 * error occured.  */
+	POKE_MEM(SYSARG_ADDR(2), sock_addr);
+	POKE_MEM(SYSARG_ADDR(3), sizeof(struct sockaddr_un));
 
 	status = 0;
 	break;

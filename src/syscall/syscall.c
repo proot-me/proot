@@ -33,6 +33,7 @@
 #include <stdarg.h>      /* va_*, */
 #include <talloc.h>      /* talloc_*, */
 #include <linux/un.h>    /* struct sockaddr_un, */
+#include <linux/net.h>   /* SYS_*, */
 
 #include "syscall/syscall.h"
 #include "syscall/socket.h"
@@ -157,6 +158,20 @@ static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
 
 	return translate_path2(tracee, AT_FDCWD, old_path, reg, type);
 }
+
+#define SYSARG_ADDR(n) (args_addr + ((n) - 1) * sizeof_word(tracee))
+
+#define PEEK_MEM(addr) peek_mem(tracee, addr);			\
+	if (errno != 0) {					\
+		status = -errno;				\
+		break;						\
+	}
+
+#define POKE_MEM(addr, value) poke_mem(tracee, addr, value);	\
+	if (errno != 0) {					\
+		status = -errno;				\
+		break;						\
+	}
 
 /**
  * Translate the input arguments of the current @tracee's syscall in the
@@ -313,6 +328,10 @@ end:
 	/* Reset the tracee's status. */
 	tracee->status = 0;
 }
+
+#undef SYSARG_ADDR
+#undef PEEK_MEM
+#undef POKE_MEM
 
 int translate_syscall(Tracee *tracee)
 {

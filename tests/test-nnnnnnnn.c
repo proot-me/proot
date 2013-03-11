@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <stdlib.h>
@@ -12,6 +13,7 @@ int main()
 	const char *sockname = "/test-nnnnnnnn-socket";
 	struct sockaddr_un sockaddr;
 	socklen_t socklen;
+	mode_t mask;
 	int status;
 	int fd;
 
@@ -32,12 +34,17 @@ int main()
 	sockaddr.sun_family = AF_UNIX;
 	strcpy(sockaddr.sun_path, sockname);
 
+	mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
 	status = bind(fd, (const struct sockaddr *) &sockaddr, SUN_LEN(&sockaddr));
 	if (status < 0) {
-		if (errno == EACCES)
-			return 125;
-
 		perror("bind");
+		exit(EXIT_FAILURE);
+	}
+	umask(mask);
+
+	status = listen(fd, 50);
+	if (status < 0) {
+		perror("listen");
 		exit(EXIT_FAILURE);
 	}
 

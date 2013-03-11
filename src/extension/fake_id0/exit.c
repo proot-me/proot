@@ -114,9 +114,9 @@ case PR_fstat: {
 	/* Override only if the file is owned by the current user.
 	 * Errors are not fatal here.  */
 	if (uid == getuid())
-		(void) poke_mem(tracee, address + offsetof_stat_uid(tracee), 0);
+		poke_mem(tracee, address + offsetof_stat_uid(tracee), 0);
 	if (gid == getgid())
-		(void) poke_mem(tracee, address + offsetof_stat_gid(tracee), 0);
+		poke_mem(tracee, address + offsetof_stat_gid(tracee), 0);
 
 	return 0;
 }
