@@ -134,8 +134,8 @@ case PR_readlinkat: {
 		break;
 	}
 
-	/* The kernel does NOT put the terminating NULL byte for
-	 * getcwd(2).  */
+	/* The kernel does NOT put the NULL terminating byte for
+	 * readlink(2).  */
 	status = read_data(tracee, referee, output, old_size);
 	if (status < 0)
 		break;
@@ -160,10 +160,20 @@ case PR_readlinkat: {
 	if (status == 0)
 		goto end;
 
-	new_size = (status - 1 < max_size ? status - 1 : max_size);
-
-	/* Overwrite the path.  */
-	status = write_data(tracee, output, referee, new_size);
+	/* Overwrite the path.  Note: the output buffer might be
+	 * initialized with zeros but it was updated with the kernel
+	 * result, and then with the detranslated result.  This later
+	 * might be shorter than the former, so it's safier to add a
+	 * NULL terminating byte when possible.  This problem was
+	 * exposed by IDA Demo 6.3.  */
+	if (status < max_size) {
+		new_size = status - 1;
+		status = write_data(tracee, output, referee, status);
+	}
+	else {
+		new_size = max_size;
+		status = write_data(tracee, output, referee, max_size);
+	}
 	if (status < 0)
 		break;
 

@@ -37,6 +37,9 @@ check-test-af062114.c: test-af062114
 check-test-5bed7141.c: test-5bed7141
 	$(call check_c,$<,$(PROOT) $<)
 
+chec-test-d2175fc4.c: test-d2175fc3
+	$(call check_c,$<,$(PROOT) -b /proc -r $(ROOTFS) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
