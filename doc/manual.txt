@@ -175,6 +175,7 @@ The following options are aliases for handy sets of options.
     * /etc/netgroup
     * /etc/networks
     * /etc/passwd
+    * /etc/group
     * /etc/nsswitch.conf
     * /etc/resolv.conf
     * /etc/localtime
