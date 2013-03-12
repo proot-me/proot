@@ -264,7 +264,6 @@ end:
  */
 static void translate_syscall_exit(Tracee *tracee)
 {
-	bool restore_original_sp = true;
 	word_t syscall_number;
 	word_t syscall_result;
 	int status;
@@ -317,10 +316,6 @@ end:
 	status = notify_extensions(tracee, SYSCALL_EXIT_END, 0, 0);
 	if (status < 0)
 		poke_reg(tracee, SYSARG_RESULT, (word_t) status);
-
-	/* "restore_original_sp" was updated in syscall/exit.c.  */
-	if (restore_original_sp)
-		poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
 
 	VERBOSE(tracee, 3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
 		peek_reg(tracee, CURRENT, SYSARG_RESULT),

@@ -81,7 +81,8 @@ typedef struct tracee {
 
 	/* Value of the tracee's general purpose registers.  */
 	struct user_regs_struct _regs[NB_REG_VERSION];
-	bool _regs_have_changed;
+	bool _regs_were_changed;
+	bool keep_current_regs;
 
 	/* State for the special handling of SIGSTOP.  */
 	enum {

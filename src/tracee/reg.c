@@ -172,7 +172,7 @@ void poke_reg(Tracee *tracee, Reg reg, word_t value)
 		return;
 
 	REG(tracee, CURRENT, reg) = value;
-	tracee->_regs_have_changed = true;
+	tracee->_regs_were_changed = true;
 }
 
 /**
@@ -182,6 +182,7 @@ void poke_reg(Tracee *tracee, Reg reg, word_t value)
  */
 int fetch_regs(Tracee *tracee)
 {
+	const bool is_exit_stage = (tracee->status != 0);
 	int status;
 
 #if defined(ARCH_ARM64)
@@ -196,10 +197,14 @@ int fetch_regs(Tracee *tracee)
 #endif
 	if (status < 0)
 		return status;
-	tracee->_regs_have_changed = false;
 
-	if (tracee->status == 0)
-		memcpy(&tracee->_regs[ORIGINAL], &tracee->_regs[CURRENT], sizeof(struct user_regs_struct));
+	tracee->keep_current_regs = false;
+
+	if (!is_exit_stage) {
+		memcpy(&tracee->_regs[ORIGINAL], &tracee->_regs[CURRENT],
+			sizeof(tracee->_regs[CURRENT]));
+		tracee->_regs_were_changed = false;
+	}
 
 	return 0;
 }
@@ -211,9 +216,22 @@ int fetch_regs(Tracee *tracee)
  */
 int push_regs(Tracee *tracee)
 {
+	const bool is_exit_stage = (tracee->status == 0);
 	int status;
 
-	if (tracee->_regs_have_changed) {
+	if (tracee->_regs_were_changed) {
+		/* At very the end of a syscall, with regard to the
+		 * entry, only the result register can be modified by
+		 * a syscall (except for very special cases).  */
+		if (is_exit_stage && !tracee->keep_current_regs) {
+			word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+
+			memcpy(&tracee->_regs[CURRENT], &tracee->_regs[ORIGINAL],
+				sizeof(tracee->_regs[ORIGINAL]));
+
+			poke_reg(tracee, SYSARG_RESULT, result);
+		}
+
 #if defined(ARCH_ARM64)
 		struct iovec regs;
 
@@ -228,8 +246,9 @@ int push_regs(Tracee *tracee)
 			return status;
 	}
 
-	if (tracee->status != 0)
-		memcpy(&tracee->_regs[MODIFIED], &tracee->_regs[CURRENT], sizeof(struct user_regs_struct));
+	if (!is_exit_stage)
+		memcpy(&tracee->_regs[MODIFIED], &tracee->_regs[CURRENT],
+			sizeof(tracee->_regs[CURRENT]));
 
 	return 0;
 }
