@@ -457,8 +457,9 @@ case PR_getpeername:{
 	/* The "size" argument is both used as an input parameter
 	 * (max. size) and as an output parameter (actual size).  The
 	 * exit stage needs to know the max. size to not overwrite
-	 * anything.  */
-	tracee->socketcall.size = size;
+	 * anything, that's why it is copied in the 6th argument
+	 * (unused) before the kernel updates it.  */
+	poke_reg(tracee, SYSARG_6, size);
 
 	status = 0;
 	break;
@@ -489,7 +490,7 @@ case PR_socketcall: {
 		size = (int) PEEK_MEM(size_addr);
 
 		/* See case PR_accept for explanation.  */
-		tracee->socketcall.size = size;
+		poke_reg(tracee, SYSARG_6, size);
 		status = 0;
 		break;
 
@@ -508,8 +509,8 @@ case PR_socketcall: {
 	size      = PEEK_MEM(SYSARG_ADDR(3));
 
 	/* These parameters are used/restored at the exit stage.  */
-	tracee->socketcall.addr = sock_addr;
-	tracee->socketcall.size = size;
+	poke_reg(tracee, SYSARG_5, sock_addr);
+	poke_reg(tracee, SYSARG_6, size);
 
 	status = translate_socketcall_enter(tracee, &sock_addr, size);
 	if (status <= 0)

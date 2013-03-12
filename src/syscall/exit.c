@@ -70,6 +70,7 @@ case PR_getsockname:
 case PR_getpeername: {
 	word_t sock_addr;
 	word_t size_addr;
+	word_t max_size;
 
 	/* Error reported by the kernel.  */
 	if ((int) syscall_result < 0)
@@ -77,8 +78,9 @@ case PR_getpeername: {
 
 	sock_addr = peek_reg(tracee, ORIGINAL, SYSARG_2);
 	size_addr = peek_reg(tracee, MODIFIED, SYSARG_3);
+	max_size  = peek_reg(tracee, MODIFIED, SYSARG_6);
 
-	status = translate_socketcall_exit(tracee, sock_addr, size_addr);
+	status = translate_socketcall_exit(tracee, sock_addr, size_addr, max_size);
 	break;
 }
 
@@ -86,6 +88,7 @@ case PR_socketcall: {
 	word_t args_addr;
 	word_t sock_addr;
 	word_t size_addr;
+	word_t max_size;
 
 	args_addr = peek_reg(tracee, ORIGINAL, SYSARG_2);
 
@@ -104,8 +107,8 @@ case PR_socketcall: {
 		 * overwritten at the enter stage.  Remember: POKE_MEM
 		 * puts -errno in status and breaks if an error
 		 * occured.  */
-		POKE_MEM(SYSARG_ADDR(2), tracee->socketcall.addr);
-		POKE_MEM(SYSARG_ADDR(3), tracee->socketcall.size);
+		POKE_MEM(SYSARG_ADDR(2), peek_reg(tracee, MODIFIED, SYSARG_5));
+		POKE_MEM(SYSARG_ADDR(3), peek_reg(tracee, MODIFIED, SYSARG_6));
 
 		status = 0;
 		break;
@@ -127,8 +130,9 @@ case PR_socketcall: {
 	 * error occured.  */
 	sock_addr = PEEK_MEM(SYSARG_ADDR(2));
 	size_addr = PEEK_MEM(SYSARG_ADDR(3));
+	max_size  = peek_reg(tracee, MODIFIED, SYSARG_6);
 
-	status = translate_socketcall_exit(tracee, sock_addr, size_addr);
+	status = translate_socketcall_exit(tracee, sock_addr, size_addr, max_size);
 
 	break;
 }
