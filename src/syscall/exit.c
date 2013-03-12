@@ -81,7 +81,11 @@ case PR_getpeername: {
 	max_size  = peek_reg(tracee, MODIFIED, SYSARG_6);
 
 	status = translate_socketcall_exit(tracee, sock_addr, size_addr, max_size);
-	break;
+	if (status < 0)
+		break;
+
+	/* Don't overwrite the syscall result.  */
+	goto end;
 }
 
 case PR_socketcall: {
@@ -133,8 +137,11 @@ case PR_socketcall: {
 	max_size  = peek_reg(tracee, MODIFIED, SYSARG_6);
 
 	status = translate_socketcall_exit(tracee, sock_addr, size_addr, max_size);
+	if (status < 0)
+		break;
 
-	break;
+	/* Don't overwrite the syscall result.  */
+	goto end;
 }
 
 case PR_fchdir:

@@ -66,7 +66,7 @@ static int read_sockaddr_un(Tracee *tracee, struct sockaddr_un *sockaddr, word_t
 		return status;
 
 	/* Nothing to do if it's not a named Unix domain socket.  */
-	if ((sockaddr->sun_family != AF_UNIX && sockaddr->sun_family != AF_LOCAL)
+	if ((sockaddr->sun_family != AF_UNIX)
 	    || sockaddr->sun_path[0] == '\0')
 		return 0;
 
