@@ -266,6 +266,7 @@ static void translate_syscall_exit(Tracee *tracee)
 {
 	bool restore_original_sp = true;
 	word_t syscall_number;
+	word_t syscall_result;
 	int status;
 
 	status = notify_extensions(tracee, SYSCALL_EXIT_START, 0, 0);

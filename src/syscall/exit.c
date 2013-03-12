@@ -28,17 +28,15 @@
  * - goto end: nothing else to do.
  */
 syscall_number = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
+syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 switch (syscall_number) {
 case PR_getcwd: {
 	size_t new_size;
 	size_t size;
 	word_t output;
-	word_t result;
-
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0)
+	if ((int) syscall_result < 0)
 		goto end;
 
 	output = peek_reg(tracee, ORIGINAL, SYSARG_1);
@@ -70,14 +68,11 @@ case PR_accept:
 case PR_accept4:
 case PR_getsockname:
 case PR_getpeername: {
-	word_t result;
 	word_t sock_addr;
 	word_t size_addr;
 
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-
 	/* Error reported by the kernel.  */
-	if ((int) result < 0)
+	if ((int) syscall_result < 0)
 		goto end;
 
 	sock_addr = peek_reg(tracee, ORIGINAL, SYSARG_2);
@@ -88,7 +83,6 @@ case PR_getpeername: {
 }
 
 case PR_socketcall: {
-	word_t result;
 	word_t args_addr;
 	word_t sock_addr;
 	word_t size_addr;
@@ -121,10 +115,8 @@ case PR_socketcall: {
 		break;
 	}
 
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-
 	/* Error reported by the kernel or there's nothing else to do.  */
-	if ((int) result < 0 || status == 0)
+	if ((int) syscall_result < 0 || status == 0)
 		goto end;
 
 	/* An error occured in SYS_BIND or SYS_CONNECT.  */
@@ -157,15 +149,12 @@ case PR_readlinkat: {
 	size_t max_size;
 	word_t input;
 	word_t output;
-	word_t result;
-
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0)
+	if ((int) syscall_result < 0)
 		goto end;
 
-	old_size = result;
+	old_size = syscall_result;
 
 	if (syscall_number == PR_readlink) {
 		output   = peek_reg(tracee, ORIGINAL, SYSARG_2);
@@ -239,16 +228,13 @@ case PR_readlinkat: {
 case PR_uname: {
 	struct utsname utsname;
 	word_t address;
-	word_t result;
 	size_t size;
 
 	if (get_abi(tracee) != ABI_2)
 		goto end;
 
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-
 	/* Error reported by the kernel.  */
-	if ((int) result < 0)
+	if ((int) syscall_result < 0)
 		goto end;
 
 	address = peek_reg(tracee, ORIGINAL, SYSARG_1);
@@ -273,7 +259,7 @@ case PR_uname: {
 #endif
 
 case PR_execve:
-	if ((int) peek_reg(tracee, CURRENT, SYSARG_RESULT) >= 0) {
+	if ((int) syscall_result >= 0) {
 case PR_rt_sigreturn:
 case PR_sigreturn:
 		restore_original_sp = false;
@@ -283,7 +269,6 @@ case PR_sigreturn:
 case PR_fork:
 case PR_clone: {
 	Tracee *child;
-	word_t result;
 	word_t flags;
 
 	if (syscall_number == PR_clone)
@@ -299,13 +284,11 @@ case PR_clone: {
 	if ((flags & CLONE_VFORK) != 0)
 		goto end;
 
-	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-
 	/* Error reported by the kernel.  */
-	if ((int) result < 0)
+	if ((int) syscall_result < 0)
 		goto end;
 
-	child = get_tracee(tracee, result, true);
+	child = get_tracee(tracee, syscall_result, true);
 	if (child == NULL) {
 		status = -ENOMEM;
 		break;
