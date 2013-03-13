@@ -220,16 +220,18 @@ int push_regs(Tracee *tracee)
 	int status;
 
 	if (tracee->_regs_were_changed) {
-		/* At very the end of a syscall, with regard to the
+		/* At the very end of a syscall, with regard to the
 		 * entry, only the result register can be modified by
-		 * a syscall (except for very special cases).  */
+		 * PRoot.  */
 		if (is_exit_stage && !tracee->keep_current_regs) {
-			word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-
-			memcpy(&tracee->_regs[CURRENT], &tracee->_regs[ORIGINAL],
-				sizeof(tracee->_regs[ORIGINAL]));
-
-			poke_reg(tracee, SYSARG_RESULT, result);
+			REG(tracee, CURRENT, SYSARG_NUM) = REG(tracee, ORIGINAL, SYSARG_NUM);
+			REG(tracee, CURRENT, SYSARG_1)   = REG(tracee, ORIGINAL, SYSARG_1);
+			REG(tracee, CURRENT, SYSARG_2)   = REG(tracee, ORIGINAL, SYSARG_2);
+			REG(tracee, CURRENT, SYSARG_3)   = REG(tracee, ORIGINAL, SYSARG_3);
+			REG(tracee, CURRENT, SYSARG_4)   = REG(tracee, ORIGINAL, SYSARG_4);
+			REG(tracee, CURRENT, SYSARG_5)   = REG(tracee, ORIGINAL, SYSARG_5);
+			REG(tracee, CURRENT, SYSARG_6)   = REG(tracee, ORIGINAL, SYSARG_6);
+			REG(tracee, CURRENT, STACK_POINTER) = REG(tracee, ORIGINAL, STACK_POINTER);
 		}
 
 #if defined(ARCH_ARM64)
