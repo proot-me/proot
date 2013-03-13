@@ -32,7 +32,7 @@
 #include <sys/utsname.h> /* struct utsname, */
 #include <stdarg.h>      /* va_*, */
 #include <talloc.h>      /* talloc_*, */
-#include <linux/un.h>    /* struct sockaddr_un, */
+#include <sys/un.h>      /* struct sockaddr_un, */
 #include <linux/net.h>   /* SYS_*, */
 
 #include "syscall/syscall.h"

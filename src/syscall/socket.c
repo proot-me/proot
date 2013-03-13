@@ -26,7 +26,7 @@
 #include <assert.h>      /* assert(3), */
 #include <errno.h>       /* E*, */
 #include <sys/socket.h>  /* struct sockaddr_un, AF_UNIX, */
-#include <linux/un.h>    /* struct sockaddr_un, */
+#include <sys/un.h>      /* struct sockaddr_un, */
 
 #include "syscall/socket.h"
 #include "tracee/tracee.h"

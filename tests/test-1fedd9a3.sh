@@ -1,4 +1,8 @@
-if [ -z `which mcookie` ] || [ -z `which mkdir` ] || [ -z `which touch` ] || [ -z `which chmod` ] || [ -z `which stat` ] || [ -z `which grep` ]; then
+if [ -z `which mcookie` ] || [ -z `which id` ] || [ -z `which mkdir` ] || [ -z `which touch` ] || [ -z `which chmod` ] || [ -z `which stat` ] || [ -z `which grep` ]; then
+    exit 125;
+fi
+
+if [ `id -u` == 0 ]; then
     exit 125;
 fi
 

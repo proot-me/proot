@@ -30,7 +30,10 @@
 #include <limits.h>     /* ULONG_MAX, */
 #include <string.h>     /* memcpy(3), */
 #include <sys/uio.h>    /* struct iovec, */
+
+#if defined(ARCH_ARM64)
 #include <linux/elf.h>  /* NT_PRSTATUS */
+#endif
 
 #include "tracee/reg.h"
 #include "tracee/abi.h"
