@@ -30,6 +30,7 @@
 #include "execve/interp.h"
 #include "execve/elf.h"
 
+#include "attribute.h"
 #include "compat.h"
 
 /**
@@ -43,7 +44,7 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-int extract_script_interp(const Tracee *tracee, const char *t_path,
+int extract_script_interp(const Tracee *tracee UNUSED, const char *t_path,
 			char u_interp[PATH_MAX], char argument[ARG_MAX])
 {
 	char tmp;
@@ -64,7 +65,7 @@ int extract_script_interp(const Tracee *tracee, const char *t_path,
 		status = -errno;
 		goto end;
 	}
-	if (status < 2 * sizeof(char)) { /* EOF */
+	if ((size_t) status < 2 * sizeof(char)) { /* EOF */
 		status = 0;
 		goto end;
 	}
@@ -82,7 +83,7 @@ int extract_script_interp(const Tracee *tracee, const char *t_path,
 			status = -errno;
 			goto end;
 		}
-		if (status < sizeof(char)) { /* EOF */
+		if ((size_t) status < sizeof(char)) { /* EOF */
 			status = 0;
 			goto end;
 		}
@@ -121,7 +122,7 @@ int extract_script_interp(const Tracee *tracee, const char *t_path,
 			status = -errno;
 			goto end;
 		}
-		if (status < sizeof(char)) { /* EOF */
+		if ((size_t) status < sizeof(char)) { /* EOF */
 			u_interp[i] = '\0';
 			argument[0] = '\0';
 			status = 1;
@@ -158,7 +159,7 @@ argument:
 			status = -errno;
 			goto end;
 		}
-		if (status < sizeof(char)) { /* EOF */
+		if ((size_t) status < sizeof(char)) { /* EOF */
 			argument[0] = '\0';
 			status = 1;
 			goto end;
@@ -204,11 +205,7 @@ int extract_elf_interp(const Tracee *tracee, const char *t_path,
 
 	status = find_program_header(tracee, fd, &elf_header, &program_header,
 				PT_INTERP, (uint64_t) -1);
-	if (status < 0) {
-		status = -EACCES;
-		goto end;
-	}
-	if (status == 0)
+	if (status <= 0)
 		goto end;
 
 	segment_offset = PROGRAM_FIELD(elf_header, program_header, offset);
@@ -233,7 +230,9 @@ int extract_elf_interp(const Tracee *tracee, const char *t_path,
 	}
 
 	status = pread(fd, u_interp + extra_size, segment_size, segment_offset);
-	if (status != segment_size) {
+	if (status < 0)
+		goto end;
+	if ((size_t) status != segment_size) { /* Unexpected size.  */
 		status = -EACCES;
 		goto end;
 	}

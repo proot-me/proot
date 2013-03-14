@@ -59,7 +59,9 @@ int open_elf(const char *t_path, ElfHeader *elf_header)
 
 	/* Check if it is an ELF file.  */
 	status = read(fd, elf_header, sizeof(ElfHeader));
-	if (status < sizeof(ElfHeader)
+	if (status < 0)
+		goto end;
+	if ((size_t) status < sizeof(ElfHeader)
 	    || ELF_IDENT(*elf_header, 0) != 0x7f
 	    || ELF_IDENT(*elf_header, 1) != 'E'
 	    || ELF_IDENT(*elf_header, 2) != 'L'
@@ -206,7 +208,7 @@ static int foreach_dynamic_entry(int fd, const ElfHeader *elf_header,
 	size_t sizeof_dynamic_entry;
 	uint64_t offset;
 	uint64_t size;
-	int i;
+	size_t i;
 
 	assert(elf_header);
 	assert(program_header);
@@ -357,14 +359,14 @@ int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_header,
 
 	int add_rpaths(uint64_t index)
 	{
-		if (strtab_offset > UINT64_MAX - index)
+		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - index)
 			return -ENOEXEC;
 		return add_xpaths(tracee, fd, strtab_offset + index, rpaths);
 	}
 
 	int add_runpaths(uint64_t index)
 	{
-		if (strtab_offset > UINT64_MAX - index)
+		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - index)
 			return -ENOEXEC;
 		return add_xpaths(tracee, fd, strtab_offset + index, runpaths);
 	}

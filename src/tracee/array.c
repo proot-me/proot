@@ -192,7 +192,7 @@ int compare_item_generic(Array *array, size_t index, const void *reference)
  */
 int find_item(Array *array, const void *reference)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < array->length; i++) {
 		int status;
@@ -232,7 +232,7 @@ int write_items(Array *array, size_t index, size_t nb_items, ...)
 {
 	va_list va_items;
 	int status;
-	int i;
+	size_t i;
 
 	va_start(va_items, nb_items);
 
@@ -281,7 +281,8 @@ int resize_array(Array *array, size_t index, ssize_t delta_nb_entries)
 		bzero(array->_cache + index, delta_nb_entries * sizeof(ArrayEntry));
 	}
 	else {
-		assert(index + delta_nb_entries >= 0);
+		assert(delta_nb_entries <= 0);
+		assert(index >= (size_t) -delta_nb_entries);
 
 		memmove(array->_cache + index + delta_nb_entries, array->_cache + index,
 			nb_moved_entries * sizeof(ArrayEntry));
@@ -308,7 +309,7 @@ int fetch_array(Tracee *tracee, Array **array_, Reg reg, size_t nb_entries)
 	word_t pointer = (word_t)-1;
 	word_t address;
 	Array *array;
-	int i;
+	size_t i;
 
 	assert(array_ != NULL);
 
@@ -361,7 +362,7 @@ int push_array(Array *array, Reg reg)
 	word_t *pod_array;
 	word_t tracee_ptr;
 	int status;
-	int i;
+	size_t i;
 
 	/* Nothing to do, for sure.  */
 	if (array == NULL)

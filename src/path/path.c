@@ -345,7 +345,7 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 		status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	tracee->pid, dir_fd);
 		if (status < 0)
 			return -EPERM;
-		if (status >= sizeof(link))
+		if ((size_t) status >= sizeof(link))
 			return -EPERM;
 
 		/* Read the value of this "virtual" link. */
@@ -603,7 +603,7 @@ static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 
 	/* Format the path to the "virtual" directory. */
 	status = snprintf(proc_fd, sizeof(proc_fd), "/proc/%d/fd", tracee->pid);
-	if (status < 0 || status >= sizeof(proc_fd))
+	if (status < 0 || (size_t) status >= sizeof(proc_fd))
 		return 0;
 
 	/* Open the virtual directory "/proc/$pid/fd". */

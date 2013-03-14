@@ -290,135 +290,135 @@
  * numbers from -1 to -10 are reserved for PRoot internal usage.
  */
 
-#define PR__llseek -10
-#define PR__newselect -11
-#define PR__sysctl -12
-#define PR_access -13
-#define PR_afs_syscall -14
-#define PR_alarm -15
-#define PR_arch_prctl -16
-#define PR_arm_fadvise64_64 -17
-#define PR_arm_sync_file_range -18
-#define PR_bdflush -19
-#define PR_break -20
-#define PR_cacheflush -21
-#define PR_chmod -22
-#define PR_chown -23
-#define PR_chown32 -24
-#define PR_creat -25
-#define PR_create_module -26
-#define PR_dup2 -27
-#define PR_epoll_create -28
-#define PR_epoll_ctl_old -29
-#define PR_epoll_wait -30
-#define PR_epoll_wait_old -31
-#define PR_eventfd -32
-#define PR_fadvise64_64 -33
-#define PR_fchown32 -34
-#define PR_fcntl64 -35
-#define PR_fork -36
-#define PR_fstat64 -37
-#define PR_fstatat64 -38
-#define PR_fstatfs64 -39
-#define PR_ftime -40
-#define PR_ftruncate64 -41
-#define PR_futimesat -42
-#define PR_get_kernel_syms -43
-#define PR_get_thread_area -44
-#define PR_getdents -45
-#define PR_getegid32 -46
-#define PR_geteuid32 -47
-#define PR_getgid32 -48
-#define PR_getgroups32 -49
-#define PR_getpgrp -50
-#define PR_getpmsg -51
-#define PR_getresgid32 -52
-#define PR_getresuid32 -53
-#define PR_getuid32 -54
-#define PR_gtty -55
-#define PR_idle -56
-#define PR_inotify_init -57
-#define PR_ioperm -58
-#define PR_iopl -59
-#define PR_ipc -60
-#define PR_lchown -61
-#define PR_lchown32 -62
-#define PR_link -63
-#define PR_lock -64
-#define PR_lstat -65
-#define PR_lstat64 -66
-#define PR_mkdir -67
-#define PR_mknod -68
-#define PR_mmap2 -69
-#define PR_modify_ldt -70
-#define PR_mpx -71
-#define PR_nice -72
-#define PR_oldfstat -73
-#define PR_oldlstat -74
-#define PR_oldolduname -75
-#define PR_oldstat -76
-#define PR_olduname -77
-#define PR_open -78
-#define PR_pause -79
-#define PR_pciconfig_iobase -80
-#define PR_pciconfig_read -81
-#define PR_pciconfig_write -82
-#define PR_pipe -83
-#define PR_poll -84
-#define PR_prof -85
-#define PR_profil -86
-#define PR_putpmsg -87
-#define PR_query_module -88
-#define PR_readdir -89
-#define PR_readlink -90
-#define PR_recv -91
-#define PR_rename -92
-#define PR_rmdir -93
-#define PR_security -94
-#define PR_select -95
-#define PR_send -96
-#define PR_sendfile64 -97
-#define PR_set_thread_area -98
-#define PR_setfsgid32 -99
-#define PR_setfsuid32 -100
-#define PR_setgid32 -101
-#define PR_setgroups32 -102
-#define PR_setregid32 -103
-#define PR_setresgid32 -104
-#define PR_setresuid32 -105
-#define PR_setreuid32 -106
-#define PR_setuid32 -107
-#define PR_sgetmask -108
-#define PR_sigaction -109
-#define PR_signal -110
-#define PR_signalfd -111
-#define PR_sigpending -112
-#define PR_sigprocmask -113
-#define PR_sigreturn -114
-#define PR_sigsuspend -115
-#define PR_socketcall -116
-#define PR_ssetmask -117
-#define PR_stat -118
-#define PR_stat64 -119
-#define PR_statfs64 -120
-#define PR_stime -121
-#define PR_stty -122
-#define PR_symlink -123
-#define PR_sync_file_range2 -124
-#define PR_sysfs -125
-#define PR_time -126
-#define PR_truncate64 -127
-#define PR_tuxcall -128
-#define PR_ugetrlimit -129
-#define PR_ulimit -130
-#define PR_umount -131
-#define PR_unlink -132
-#define PR_uselib -133
-#define PR_ustat -134
-#define PR_utime -135
-#define PR_utimes -136
-#define PR_vfork -137
-#define PR_vm86 -138
-#define PR_vm86old -139
-#define PR_vserver -140
-#define PR_waitpid -141
+#define PR__llseek ((word_t) -10)
+#define PR__newselect ((word_t) -11)
+#define PR__sysctl ((word_t) -12)
+#define PR_access ((word_t) -13)
+#define PR_afs_syscall ((word_t) -14)
+#define PR_alarm ((word_t) -15)
+#define PR_arch_prctl ((word_t) -16)
+#define PR_arm_fadvise64_64 ((word_t) -17)
+#define PR_arm_sync_file_range ((word_t) -18)
+#define PR_bdflush ((word_t) -19)
+#define PR_break ((word_t) -20)
+#define PR_cacheflush ((word_t) -21)
+#define PR_chmod ((word_t) -22)
+#define PR_chown ((word_t) -23)
+#define PR_chown32 ((word_t) -24)
+#define PR_creat ((word_t) -25)
+#define PR_create_module ((word_t) -26)
+#define PR_dup2 ((word_t) -27)
+#define PR_epoll_create ((word_t) -28)
+#define PR_epoll_ctl_old ((word_t) -29)
+#define PR_epoll_wait ((word_t) -30)
+#define PR_epoll_wait_old ((word_t) -31)
+#define PR_eventfd ((word_t) -32)
+#define PR_fadvise64_64 ((word_t) -33)
+#define PR_fchown32 ((word_t) -34)
+#define PR_fcntl64 ((word_t) -35)
+#define PR_fork ((word_t) -36)
+#define PR_fstat64 ((word_t) -37)
+#define PR_fstatat64 ((word_t) -38)
+#define PR_fstatfs64 ((word_t) -39)
+#define PR_ftime ((word_t) -40)
+#define PR_ftruncate64 ((word_t) -41)
+#define PR_futimesat ((word_t) -42)
+#define PR_get_kernel_syms ((word_t) -43)
+#define PR_get_thread_area ((word_t) -44)
+#define PR_getdents ((word_t) -45)
+#define PR_getegid32 ((word_t) -46)
+#define PR_geteuid32 ((word_t) -47)
+#define PR_getgid32 ((word_t) -48)
+#define PR_getgroups32 ((word_t) -49)
+#define PR_getpgrp ((word_t) -50)
+#define PR_getpmsg ((word_t) -51)
+#define PR_getresgid32 ((word_t) -52)
+#define PR_getresuid32 ((word_t) -53)
+#define PR_getuid32 ((word_t) -54)
+#define PR_gtty ((word_t) -55)
+#define PR_idle ((word_t) -56)
+#define PR_inotify_init ((word_t) -57)
+#define PR_ioperm ((word_t) -58)
+#define PR_iopl ((word_t) -59)
+#define PR_ipc ((word_t) -60)
+#define PR_lchown ((word_t) -61)
+#define PR_lchown32 ((word_t) -62)
+#define PR_link ((word_t) -63)
+#define PR_lock ((word_t) -64)
+#define PR_lstat ((word_t) -65)
+#define PR_lstat64 ((word_t) -66)
+#define PR_mkdir ((word_t) -67)
+#define PR_mknod ((word_t) -68)
+#define PR_mmap2 ((word_t) -69)
+#define PR_modify_ldt ((word_t) -70)
+#define PR_mpx ((word_t) -71)
+#define PR_nice ((word_t) -72)
+#define PR_oldfstat ((word_t) -73)
+#define PR_oldlstat ((word_t) -74)
+#define PR_oldolduname ((word_t) -75)
+#define PR_oldstat ((word_t) -76)
+#define PR_olduname ((word_t) -77)
+#define PR_open ((word_t) -78)
+#define PR_pause ((word_t) -79)
+#define PR_pciconfig_iobase ((word_t) -80)
+#define PR_pciconfig_read ((word_t) -81)
+#define PR_pciconfig_write ((word_t) -82)
+#define PR_pipe ((word_t) -83)
+#define PR_poll ((word_t) -84)
+#define PR_prof ((word_t) -85)
+#define PR_profil ((word_t) -86)
+#define PR_putpmsg ((word_t) -87)
+#define PR_query_module ((word_t) -88)
+#define PR_readdir ((word_t) -89)
+#define PR_readlink ((word_t) -90)
+#define PR_recv ((word_t) -91)
+#define PR_rename ((word_t) -92)
+#define PR_rmdir ((word_t) -93)
+#define PR_security ((word_t) -94)
+#define PR_select ((word_t) -95)
+#define PR_send ((word_t) -96)
+#define PR_sendfile64 ((word_t) -97)
+#define PR_set_thread_area ((word_t) -98)
+#define PR_setfsgid32 ((word_t) -99)
+#define PR_setfsuid32 ((word_t) -100)
+#define PR_setgid32 ((word_t) -101)
+#define PR_setgroups32 ((word_t) -102)
+#define PR_setregid32 ((word_t) -103)
+#define PR_setresgid32 ((word_t) -104)
+#define PR_setresuid32 ((word_t) -105)
+#define PR_setreuid32 ((word_t) -106)
+#define PR_setuid32 ((word_t) -107)
+#define PR_sgetmask ((word_t) -108)
+#define PR_sigaction ((word_t) -109)
+#define PR_signal ((word_t) -110)
+#define PR_signalfd ((word_t) -111)
+#define PR_sigpending ((word_t) -112)
+#define PR_sigprocmask ((word_t) -113)
+#define PR_sigreturn ((word_t) -114)
+#define PR_sigsuspend ((word_t) -115)
+#define PR_socketcall ((word_t) -116)
+#define PR_ssetmask ((word_t) -117)
+#define PR_stat ((word_t) -118)
+#define PR_stat64 ((word_t) -119)
+#define PR_statfs64 ((word_t) -120)
+#define PR_stime ((word_t) -121)
+#define PR_stty ((word_t) -122)
+#define PR_symlink ((word_t) -123)
+#define PR_sync_file_range2 ((word_t) -124)
+#define PR_sysfs ((word_t) -125)
+#define PR_time ((word_t) -126)
+#define PR_truncate64 ((word_t) -127)
+#define PR_tuxcall ((word_t) -128)
+#define PR_ugetrlimit ((word_t) -129)
+#define PR_ulimit ((word_t) -130)
+#define PR_umount ((word_t) -131)
+#define PR_unlink ((word_t) -132)
+#define PR_uselib ((word_t) -133)
+#define PR_ustat ((word_t) -134)
+#define PR_utime ((word_t) -135)
+#define PR_utimes ((word_t) -136)
+#define PR_vfork ((word_t) -137)
+#define PR_vm86 ((word_t) -138)
+#define PR_vm86old ((word_t) -139)
+#define PR_vserver ((word_t) -140)
+#define PR_waitpid ((word_t) -141)

@@ -20,7 +20,8 @@
  * 02110-1301 USA.
  */
 
-switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
+syscall_number = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
+switch (syscall_number) {
 case PR_chroot: {
 	char path[PATH_MAX];
 	word_t result;
@@ -90,8 +91,7 @@ case PR_fstat: {
 		return 0;
 
 	/* Get the address of the 'stat' structure.  */
-	sysarg = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
-	if (sysarg == PR_fstatat64 || sysarg == PR_newfstatat)
+	if (syscall_number == PR_fstatat64 || syscall_number == PR_newfstatat)
 		sysarg = SYSARG_3;
 	else
 		sysarg = SYSARG_2;

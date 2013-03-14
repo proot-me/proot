@@ -169,14 +169,14 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
  * -errno if an error occured, 0 if the binary isn't PRoot, and 1 if @tracee was
  * reconfigured correctly.
  */
-static int handle_sub_reconf(Tracee *tracee, Array *argv, Array *envp, const char *host_path)
+static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 {
 	static char *self_exe = NULL;
 	Tracee *dummy = NULL;
 	char path[PATH_MAX];
 	char **argv_pod;
 	int status;
-	int i;
+	size_t i;
 
 	/* The path to PRoot itself is cached.  */
 	if (self_exe == NULL) {
@@ -325,7 +325,7 @@ int translate_execve(Tracee *tracee)
 
 	char **new_cmdline;
 	char *new_exe;
-	int i;
+	size_t i;
 
 	bool ignore_elf_interpreter;
 	bool inhibit_rpath = false;
@@ -366,7 +366,7 @@ int translate_execve(Tracee *tracee)
 	is_script = (status > 0);
 
 	/* It's the rigth place to check if the binary is PRoot itself.  */
-	status = handle_sub_reconf(tracee, argv, envp, t_interp);
+	status = handle_sub_reconf(tracee, argv, t_interp);
 	if (status < 0)
 		return status;
 	if (status > 0)

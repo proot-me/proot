@@ -45,6 +45,7 @@
 #include "extension/extension.h"
 #include "build.h"
 
+#include "attribute.h"
 #include "compat.h"
 
 static int handle_option_r(Tracee *tracee, char *value)
@@ -76,7 +77,7 @@ static int handle_option_q(Tracee *tracee, char *value)
 {
 	size_t nb_args;
 	char *ptr;
-	int i;
+	size_t i;
 
 	nb_args = 0;
 	ptr = value;
@@ -177,7 +178,7 @@ static int handle_option_v(Tracee *tracee, char *value)
 
 static bool exit_failure = true;
 
-static int handle_option_V(Tracee *tracee, char *value)
+static int handle_option_V(Tracee *tracee UNUSED, char *value UNUSED)
 {
 	printf("PRoot %s: %s.\n", version, subtitle);
 	printf("%s\n", colophon);
@@ -186,14 +187,14 @@ static int handle_option_V(Tracee *tracee, char *value)
 }
 
 static void print_usage(Tracee *, bool);
-static int handle_option_h(Tracee *tracee, char *value)
+static int handle_option_h(Tracee *tracee, char *value UNUSED)
 {
 	print_usage(tracee, true);
 	exit_failure = false;
 	return -1;
 }
 
-static int handle_option_B(Tracee *tracee, char *value)
+static int handle_option_B(Tracee *tracee, char *value UNUSED)
 {
 	int i;
 	for (i = 0; recommended_bindings[i] != NULL; i++)
@@ -224,7 +225,7 @@ static int handle_option_Q(Tracee *tracee, char *value)
 static void print_usage(Tracee *tracee, bool detailed)
 {
 	const char *current_class = "none";
-	int i, j;
+	size_t i, j;
 
 #define DETAIL(a) if (detailed) a
 
@@ -293,8 +294,8 @@ static void print_error_separator(const Tracee *tracee, Argument *argument)
 
 static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 {
-	int i;
 	char string[ARG_MAX] = "";
+	size_t i;
 
 	if (!argv)
 		return;
@@ -492,10 +493,10 @@ static char *default_command[] = { "/bin/sh", NULL };
  * @argv[].  This function returns -1 if an error occured, otherwise
  * 0.
  */
-int parse_config(Tracee *tracee, int argc, char *argv[])
+int parse_config(Tracee *tracee, size_t argc, char *argv[])
 {
 	option_handler_t handler = NULL;
-	int i, j, k;
+	size_t i, j, k;
 	int status;
 
 	if (argc == 1) {

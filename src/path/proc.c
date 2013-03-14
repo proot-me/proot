@@ -82,7 +82,7 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 
 	/* Handle links in "/proc/<PID>/".  */
 	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
-	if (status < 0 || status >= sizeof(proc_path))
+	if (status < 0 || (size_t) status >= sizeof(proc_path))
 		return -EPERM;
 
 	comparison = compare_paths(proc_path, base);
@@ -119,7 +119,7 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 
 	/* Handle links in "/proc/<PID>/fd/".  */
 	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d/fd", pid);
-	if (status < 0 || status >= sizeof(proc_path))
+	if (status < 0 || (size_t) status >= sizeof(proc_path))
 		return -EPERM;
 
 	comparison = compare_paths(proc_path, base);

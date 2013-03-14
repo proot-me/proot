@@ -95,6 +95,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 
 	case SYSCALL_EXIT_END: {
 		Tracee *tracee = TRACEE(extension);
+		word_t syscall_number;
 
 		switch (get_abi(tracee)) {
 		case ABI_DEFAULT: {

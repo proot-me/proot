@@ -57,7 +57,7 @@ static int read_sockaddr_un(Tracee *tracee, struct sockaddr_un *sockaddr, word_t
 	assert(max_size <= sizeof(struct sockaddr_un));
 
 	/* Nothing to do if the sockaddr has an unexpected size.  */
-	if (size <= offsetof_path || size > max_size)
+	if (size <= offsetof_path || (word_t) size > max_size)
 		return 0;
 
 	bzero(sockaddr, sizeof(struct sockaddr_un));
@@ -158,7 +158,7 @@ int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr
 
 	/* Be careful: sun_path doesn't have to be null-terminated.  */
 	size = offsetof_path + strlen(path) + 1;
-	if (size > max_size) {
+	if (size < 0 || (word_t) size > max_size) {
 		size = max_size;
 		is_truncated = true;
 	}

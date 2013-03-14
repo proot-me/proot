@@ -359,58 +359,58 @@
  * numbers from -1 to -10 are reserved for PRoot internal usage.
  */
 
-#define PR_afs_syscall -11
-#define PR_alarm -12
-#define PR_arch_prctl -13
-#define PR_break -14
-#define PR_cacheflush -15
-#define PR_create_module -16
-#define PR_epoll_ctl_old -17
-#define PR_epoll_wait_old -18
-#define PR_fadvise64 -19
-#define PR_fadvise64_64 -20
-#define PR_ftime -21
-#define PR_get_kernel_syms -22
-#define PR_get_thread_area -23
-#define PR_getpmsg -24
-#define PR_getrlimit -25
-#define PR_gtty -26
-#define PR_idle -27
-#define PR_ioperm -28
-#define PR_iopl -29
-#define PR_ipc -30
-#define PR_lock -31
-#define PR_migrate_pages -32
-#define PR_mmap -33
-#define PR_modify_ldt -34
-#define PR_mpx -35
-#define PR_newfstatat -36
-#define PR_oldfstat -37
-#define PR_oldlstat -38
-#define PR_oldolduname -39
-#define PR_oldstat -40
-#define PR_olduname -41
-#define PR_prof -42
-#define PR_profil -43
-#define PR_putpmsg -44
-#define PR_query_module -45
-#define PR_readdir -46
-#define PR_security -47
-#define PR_select -48
-#define PR_set_thread_area -49
-#define PR_sgetmask -50
-#define PR_signal -51
-#define PR_socketcall -52
-#define PR_ssetmask -53
-#define PR_stime -54
-#define PR_stty -55
-#define PR_sync_file_range -56
-#define PR_time -57
-#define PR_tuxcall -58
-#define PR_ulimit -59
-#define PR_umount -60
-#define PR_utime -61
-#define PR_vm86 -62
-#define PR_vm86old -63
-#define PR_waitpid -64
-#define PR_sync_file_range2 -65
+#define PR_afs_syscall ((word_t) -11)
+#define PR_alarm ((word_t) -12)
+#define PR_arch_prctl ((word_t) -13)
+#define PR_break ((word_t) -14)
+#define PR_cacheflush ((word_t) -15)
+#define PR_create_module ((word_t) -16)
+#define PR_epoll_ctl_old ((word_t) -17)
+#define PR_epoll_wait_old ((word_t) -18)
+#define PR_fadvise64 ((word_t) -19)
+#define PR_fadvise64_64 ((word_t) -20)
+#define PR_ftime ((word_t) -21)
+#define PR_get_kernel_syms ((word_t) -22)
+#define PR_get_thread_area ((word_t) -23)
+#define PR_getpmsg ((word_t) -24)
+#define PR_getrlimit ((word_t) -25)
+#define PR_gtty ((word_t) -26)
+#define PR_idle ((word_t) -27)
+#define PR_ioperm ((word_t) -28)
+#define PR_iopl ((word_t) -29)
+#define PR_ipc ((word_t) -30)
+#define PR_lock ((word_t) -31)
+#define PR_migrate_pages ((word_t) -32)
+#define PR_mmap ((word_t) -33)
+#define PR_modify_ldt ((word_t) -34)
+#define PR_mpx ((word_t) -35)
+#define PR_newfstatat ((word_t) -36)
+#define PR_oldfstat ((word_t) -37)
+#define PR_oldlstat ((word_t) -38)
+#define PR_oldolduname ((word_t) -39)
+#define PR_oldstat ((word_t) -40)
+#define PR_olduname ((word_t) -41)
+#define PR_prof ((word_t) -42)
+#define PR_profil ((word_t) -43)
+#define PR_putpmsg ((word_t) -44)
+#define PR_query_module ((word_t) -45)
+#define PR_readdir ((word_t) -46)
+#define PR_security ((word_t) -47)
+#define PR_select ((word_t) -48)
+#define PR_set_thread_area ((word_t) -49)
+#define PR_sgetmask ((word_t) -50)
+#define PR_signal ((word_t) -51)
+#define PR_socketcall ((word_t) -52)
+#define PR_ssetmask ((word_t) -53)
+#define PR_stime ((word_t) -54)
+#define PR_stty ((word_t) -55)
+#define PR_sync_file_range ((word_t) -56)
+#define PR_time ((word_t) -57)
+#define PR_tuxcall ((word_t) -58)
+#define PR_ulimit ((word_t) -59)
+#define PR_umount ((word_t) -60)
+#define PR_utime ((word_t) -61)
+#define PR_vm86 ((word_t) -62)
+#define PR_vm86old ((word_t) -63)
+#define PR_waitpid ((word_t) -64)
+#define PR_sync_file_range2 ((word_t) -65)

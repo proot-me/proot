@@ -351,53 +351,53 @@
  * numbers from -1 to -10 are reserved for PRoot internal usage.
  */
 
-#define PR_afs_syscall -16
-#define PR_arch_prctl -17
-#define PR_arm_fadvise64_64 -18
-#define PR_arm_sync_file_range -19
-#define PR_break -20
-#define PR_create_module -21
-#define PR_epoll_ctl_old -22
-#define PR_epoll_wait_old -23
-#define PR_ftime -24
-#define PR_get_kernel_syms -25
-#define PR_get_thread_area -26
-#define PR_getpmsg -27
-#define PR_gtty -28
-#define PR_idle -29
-#define PR_ioperm -30
-#define PR_iopl -31
-#define PR_lock -32
-#define PR_modify_ldt -33
-#define PR_mpx -34
-#define PR_msgctl -35
-#define PR_msgget -36
-#define PR_msgrcv -37
-#define PR_msgsnd -38
-#define PR_newfstatat -39
-#define PR_oldolduname -40
-#define PR_pciconfig_iobase -41
-#define PR_pciconfig_read -42
-#define PR_pciconfig_write -43
-#define PR_prof -44
-#define PR_profil -45
-#define PR_putpmsg -46
-#define PR_query_module -47
-#define PR_security -48
-#define PR_select -49
-#define PR_semctl -50
-#define PR_semget -51
-#define PR_semop -52
-#define PR_semtimedop -53
-#define PR_set_thread_area -54
-#define PR_shmat -55
-#define PR_shmctl -56
-#define PR_shmdt -57
-#define PR_shmget -58
-#define PR_stty -59
-#define PR_sync_file_range2 -60
-#define PR_tuxcall -61
-#define PR_ulimit -62
-#define PR_vm86 -63
-#define PR_vm86old -64
-#define PR_vserver -65
+#define PR_afs_syscall ((word_t) -16)
+#define PR_arch_prctl ((word_t) -17)
+#define PR_arm_fadvise64_64 ((word_t) -18)
+#define PR_arm_sync_file_range ((word_t) -19)
+#define PR_break ((word_t) -20)
+#define PR_create_module ((word_t) -21)
+#define PR_epoll_ctl_old ((word_t) -22)
+#define PR_epoll_wait_old ((word_t) -23)
+#define PR_ftime ((word_t) -24)
+#define PR_get_kernel_syms ((word_t) -25)
+#define PR_get_thread_area ((word_t) -26)
+#define PR_getpmsg ((word_t) -27)
+#define PR_gtty ((word_t) -28)
+#define PR_idle ((word_t) -29)
+#define PR_ioperm ((word_t) -30)
+#define PR_iopl ((word_t) -31)
+#define PR_lock ((word_t) -32)
+#define PR_modify_ldt ((word_t) -33)
+#define PR_mpx ((word_t) -34)
+#define PR_msgctl ((word_t) -35)
+#define PR_msgget ((word_t) -36)
+#define PR_msgrcv ((word_t) -37)
+#define PR_msgsnd ((word_t) -38)
+#define PR_newfstatat ((word_t) -39)
+#define PR_oldolduname ((word_t) -40)
+#define PR_pciconfig_iobase ((word_t) -41)
+#define PR_pciconfig_read ((word_t) -42)
+#define PR_pciconfig_write ((word_t) -43)
+#define PR_prof ((word_t) -44)
+#define PR_profil ((word_t) -45)
+#define PR_putpmsg ((word_t) -46)
+#define PR_query_module ((word_t) -47)
+#define PR_security ((word_t) -48)
+#define PR_select ((word_t) -49)
+#define PR_semctl ((word_t) -50)
+#define PR_semget ((word_t) -51)
+#define PR_semop ((word_t) -52)
+#define PR_semtimedop ((word_t) -53)
+#define PR_set_thread_area ((word_t) -54)
+#define PR_shmat ((word_t) -55)
+#define PR_shmctl ((word_t) -56)
+#define PR_shmdt ((word_t) -57)
+#define PR_shmget ((word_t) -58)
+#define PR_stty ((word_t) -59)
+#define PR_sync_file_range2 ((word_t) -60)
+#define PR_tuxcall ((word_t) -61)
+#define PR_ulimit ((word_t) -62)
+#define PR_vm86 ((word_t) -63)
+#define PR_vm86old ((word_t) -64)
+#define PR_vserver ((word_t) -65)

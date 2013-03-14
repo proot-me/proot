@@ -45,6 +45,7 @@
 #include "syscall/syscall.h"
 #include "extension/extension.h"
 
+#include "attribute.h"
 #include "compat.h"
 
 /**
@@ -160,7 +161,7 @@ int launch_process(Tracee *tracee)
 
 /* Send the KILL signal to all tracees when PRoot has received a fatal
  * signal.  */
-static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
+static void kill_all_tracees2(int signum, siginfo_t *siginfo UNUSED, void *ucontext UNUSED)
 {
 	notice(NULL, WARNING, INTERNAL, "signal %d received from process %d",
 		signum, siginfo->si_pid);
@@ -174,9 +175,10 @@ static void kill_all_tracees2(int signum, siginfo_t *siginfo, void *ucontext)
 }
 
 /* Print on stderr the complete talloc hierarchy.  */
-static void print_talloc_hierarchy(int signum, siginfo_t *siginfo, void *ucontext)
+static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED, void *ucontext UNUSED)
 {
-	void print_talloc_chunk(const void *ptr, int depth, int max_depth, int is_ref, void *data)
+	void print_talloc_chunk(const void *ptr, int depth, int max_depth UNUSED,
+				int is_ref, void *data UNUSED)
 	{
 		const char *name;
 		size_t count;

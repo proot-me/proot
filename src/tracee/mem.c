@@ -104,7 +104,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 	remote.iov_len  = size;
 
 	status = process_vm_writev(tracee->pid, &local, 1, &remote, 1, 0);
-	if (status == size)
+	if ((size_t) status == size)
 		return 0;
 	/* Fallback to ptrace if something went wrong.  */
 
@@ -168,7 +168,7 @@ int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *sr
 	remote.iov_len  = size;
 
 	status = process_vm_writev(tracee->pid, src_tracer, src_tracer_count, &remote, 1, 0);
-	if (status == size)
+	if ((size_t) status == size)
 		return 0;
 	/* Fallback to iterative-write if something went wrong.  */
 
@@ -215,7 +215,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 	remote.iov_len  = size;
 
 	status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
-	if (status == size)
+	if ((size_t) status == size)
 		return 0;
 	/* Fallback to ptrace if something went wrong.  */
 
@@ -327,12 +327,11 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word
 		remote.iov_len  = size;
 
 		status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
-		if (status < 0)
+		if ((size_t) status != size)
 			goto fallback;
 
-		assert(status == size);
 		status = strnlen(local.iov_base, size);
-		if (status < size) {
+		if ((size_t) status < size) {
 			size = offset + status + 1;
 			assert(size <= max_size);
 			return size;
@@ -484,7 +483,7 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 		size += RED_ZONE_SIZE;
 
 	/* Sanity check. */
-	if (   (size > 0 && stack_pointer <= size)
+	if (   (size > 0 && stack_pointer <= (word_t) size)
 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
 		notice(tracee, WARNING, INTERNAL, "integer under/overflow detected in %s",
 			__FUNCTION__);

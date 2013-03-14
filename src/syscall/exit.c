@@ -218,7 +218,7 @@ case PR_readlinkat: {
 	 * might be shorter than the former, so it's safier to add a
 	 * NULL terminating byte when possible.  This problem was
 	 * exposed by IDA Demo 6.3.  */
-	if (status < max_size) {
+	if ((size_t) status < max_size) {
 		new_size = status - 1;
 		status = write_data(tracee, output, referee, status);
 	}

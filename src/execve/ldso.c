@@ -102,7 +102,7 @@ int ldso_env_passthru(Array *envp, Array *argv, const char *define, const char *
 {
 	bool has_seen_library_path = false;
 	int status;
-	int i;
+	size_t i;
 
 	for (i = 0; i < envp->length; i++) {
 		bool is_known = false;
@@ -241,8 +241,8 @@ int rebuild_host_ldso_paths(const Tracee *tracee, const char t_program[PATH_MAX]
 	size_t length1;
 	size_t length2;
 
+	size_t index;
 	int status;
-	int index;
 	int fd;
 
 	fd = open_elf(t_program, &elf_header);
@@ -300,15 +300,16 @@ int rebuild_host_ldso_paths(const Tracee *tracee, const char t_program[PATH_MAX]
 	if (status < 0)
 		return 0; /* Not fatal.  */
 
-	index = find_item(envp, "LD_LIBRARY_PATH");
-	if (index < 0)
+	status = find_item(envp, "LD_LIBRARY_PATH");
+	if (status < 0)
 		return 0; /* Not fatal.  */
+	index = (size_t) status;
 
 	/* Allocate a new entry at the end of envp[] if
 	 * LD_LIBRARY_PATH was not found.  */
 	if (index == envp->length) {
-		index = envp->length - 1;
-		resize_array(envp, envp->length - 1, 1);
+		index = (envp->length > 0 ? envp->length - 1 : 0);
+		resize_array(envp, index, 1);
 	}
 
 	/* Forge the new LD_LIBRARY_PATH variable from

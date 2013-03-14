@@ -9,7 +9,7 @@ INSTALL  = install
 CC       = gcc
 LD       = $(CC)
 CPPFLAGS = -I. -I$(VPATH)
-CFLAGS   = -Wall -O2
+CFLAGS   = -Wall -Wextra -O2
 LDFLAGS  = -ltalloc
 
 OBJECTS = cli.o			\
