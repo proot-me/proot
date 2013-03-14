@@ -195,18 +195,6 @@ static void translate_syscall_enter(Tracee *tracee)
 
 	word_t syscall_number;
 
-	if (tracee->verbose >= 3)
-		VERBOSE(tracee, 3,
-			"pid %d: syscall(%ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) [0x%lx]",
-			tracee->pid, peek_reg(tracee, CURRENT, SYSARG_NUM),
-			peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
-			peek_reg(tracee, CURRENT, SYSARG_3), peek_reg(tracee, CURRENT, SYSARG_4),
-			peek_reg(tracee, CURRENT, SYSARG_5), peek_reg(tracee, CURRENT, SYSARG_6),
-			peek_reg(tracee, CURRENT, STACK_POINTER));
-	else
-		VERBOSE(tracee, 2, "pid %d: syscall(%ld)", tracee->pid,
-			peek_reg(tracee, CURRENT, SYSARG_NUM));
-
 	status = notify_extensions(tracee, SYSCALL_ENTER_START, 0, 0);
 	if (status < 0)
 		goto end;
@@ -316,10 +304,6 @@ end:
 	status = notify_extensions(tracee, SYSCALL_EXIT_END, 0, 0);
 	if (status < 0)
 		poke_reg(tracee, SYSARG_RESULT, (word_t) status);
-
-	VERBOSE(tracee, 3, "pid %d:        -> 0x%lx [0x%lx]", tracee->pid,
-		peek_reg(tracee, CURRENT, SYSARG_RESULT),
-		peek_reg(tracee, CURRENT, STACK_POINTER));
 
 	/* Reset the tracee's status. */
 	tracee->status = 0;

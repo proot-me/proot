@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  */
 
-syscall_number = peek_reg(tracee, CURRENT, SYSARG_NUM);
+syscall_number = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
 switch (syscall_number) {
 case PR__llseek:
 case PR__newselect:

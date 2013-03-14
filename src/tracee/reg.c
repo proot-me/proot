@@ -37,6 +37,7 @@
 
 #include "tracee/reg.h"
 #include "tracee/abi.h"
+#include "notice.h"
 
 /**
  * Compute the offset of the register @reg_name in the USER area.
@@ -179,6 +180,22 @@ void poke_reg(Tracee *tracee, Reg reg, word_t value)
 }
 
 /**
+ * Dump (notification) the value of the current @tracee's registers.
+ * @message is mixed to the output.
+ */
+static inline void dump_current_regs(Tracee *tracee, const char *message)
+{
+	notice(tracee, INFO, INTERNAL,
+		"pid %d: %s: %ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx]",
+		tracee->pid, message, peek_reg(tracee, CURRENT, SYSARG_NUM),
+		peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
+		peek_reg(tracee, CURRENT, SYSARG_3), peek_reg(tracee, CURRENT, SYSARG_4),
+		peek_reg(tracee, CURRENT, SYSARG_5), peek_reg(tracee, CURRENT, SYSARG_6),
+		peek_reg(tracee, CURRENT, SYSARG_RESULT),
+		peek_reg(tracee, CURRENT, STACK_POINTER));
+}
+
+/**
  * Copy all @tracee's general purpose registers into a dedicated
  * cache.  This function returns -errno if an error occured, 0
  * otherwise.
@@ -204,10 +221,14 @@ int fetch_regs(Tracee *tracee)
 	tracee->keep_current_regs = false;
 
 	if (!is_exit_stage) {
+		if (tracee->verbose >= 3)
+			dump_current_regs(tracee, "sysenter start");
+
 		memcpy(&tracee->_regs[ORIGINAL], &tracee->_regs[CURRENT],
 			sizeof(tracee->_regs[CURRENT]));
 		tracee->_regs_were_changed = false;
-	}
+	} else if (tracee->verbose >= 5)
+		dump_current_regs(tracee, "sysexit start");
 
 	return 0;
 }
@@ -251,9 +272,15 @@ int push_regs(Tracee *tracee)
 			return status;
 	}
 
-	if (!is_exit_stage)
+	if (!is_exit_stage) {
+		if (tracee->verbose >= 5)
+			dump_current_regs(tracee, "sysenter end");
+
 		memcpy(&tracee->_regs[MODIFIED], &tracee->_regs[CURRENT],
 			sizeof(tracee->_regs[CURRENT]));
+	}
+	else if (tracee->verbose >= 4)
+		dump_current_regs(tracee, "sysexit end");
 
 	return 0;
 }
