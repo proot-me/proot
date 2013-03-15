@@ -248,14 +248,27 @@ int push_regs(Tracee *tracee)
 		 * entry, only the result register can be modified by
 		 * PRoot.  */
 		if (is_exit_stage && !tracee->keep_current_regs) {
-			REG(tracee, CURRENT, SYSARG_NUM) = REG(tracee, ORIGINAL, SYSARG_NUM);
-			REG(tracee, CURRENT, SYSARG_1)   = REG(tracee, ORIGINAL, SYSARG_1);
-			REG(tracee, CURRENT, SYSARG_2)   = REG(tracee, ORIGINAL, SYSARG_2);
-			REG(tracee, CURRENT, SYSARG_3)   = REG(tracee, ORIGINAL, SYSARG_3);
-			REG(tracee, CURRENT, SYSARG_4)   = REG(tracee, ORIGINAL, SYSARG_4);
-			REG(tracee, CURRENT, SYSARG_5)   = REG(tracee, ORIGINAL, SYSARG_5);
-			REG(tracee, CURRENT, SYSARG_6)   = REG(tracee, ORIGINAL, SYSARG_6);
-			REG(tracee, CURRENT, STACK_POINTER) = REG(tracee, ORIGINAL, STACK_POINTER);
+			/* Restore the sysarg register only if it is
+			 * not the same as the result register.  Note:
+			 * it's never the case on x86 architectures,
+			 * so don't make this check, otherwise it
+			 * would introduce useless complexity because
+			 * of the multiple ABI support.  */
+#if defined(ARCH_X86) || defined(ARCH_X86_64)
+#    define		RESTORE(sysarg)	(REG(tracee, CURRENT, sysarg) = REG(tracee, ORIGINAL, sysarg))
+#else
+#    define	 	RESTORE(sysarg) (void) (reg_offset[SYSARG_RESULT] != reg_offset[sysarg] && \
+				(REG(tracee, CURRENT, sysarg) = REG(tracee, ORIGINAL, sysarg)))
+#endif
+
+			RESTORE(SYSARG_NUM);
+			RESTORE(SYSARG_1);
+			RESTORE(SYSARG_2);
+			RESTORE(SYSARG_3);
+			RESTORE(SYSARG_4);
+			RESTORE(SYSARG_5);
+			RESTORE(SYSARG_6);
+			RESTORE(STACK_POINTER);
 		}
 
 #if defined(ARCH_ARM64)
