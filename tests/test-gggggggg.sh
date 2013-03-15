@@ -13,4 +13,5 @@ ${PROOT} -b /bin:${TMP}/do/create -b /bin:${TMP}/dont/create true
 test -e ${TMP}/do
 test -e ${TMP}/dont
 
+chmod +rx -R ${TMP}
 rm -fr ${TMP}
