@@ -1,3 +1,56 @@
+Release v2.4
+============
+
+New architectures
+-----------------
+
+* PRoot now works natively on Linux ARM64 systems (a.k.a AArch64).
+  Note that PRoot/AArch64 doesn't support 32-bit binaries yet.
+
+* PRoot/x86_64 now supports x32 binaries/rootfs.
+
+Fixes
+-----
+
+* Paths from Unix domain sockets are now translated.  For example, it
+  wasn't possible previously to use "tmux" in the guest rootfs if
+  another instance were running in the host rootfs.
+
+* When a host path is bound to a nonexistent guest path, PRoot tries
+  to create this latter in the guest rootfs, for some technical
+  reasons.  Previously, this "dummy" guest path was created with RWX
+  permissions but this might cause troubles when re-using the rootfs
+  for other purpose.  Now, this "dummy" guest path is created with
+  minimal permissions, and it is also possible to avoid its creation
+  by defining the PROOT_DONT_POLLUTE_ROOTFS environment variable.
+
+Command-line interface changes
+------------------------------
+
+* The directory "/run" is removed from the list of recommended
+  bindings (-B option) because this creates to much conflicts with
+  programs that write in the "/run/var" directory.
+
+* The -0 option now makes user's files appear as if they were actually
+  owned by root, and it also fakes the success of any mode changes
+  (chmod* syscalls).  This is typically useful to create packages
+  where the files belong to the root user (it's almost always the
+  case).
+
+Internal changes
+----------------
+
+* PRoot should be even more portable now.  For instance, there's no
+  need to worry about syscallee-saved registers anymore.
+
+Thanks
+------
+
+This release was made possible thanks to, in no special order: Yvan
+Roux, Jerôme Audu, Heehooman, Yann Droneaud, and James Le Cuirot.  See
+"git log" for details.
+
+
 Release v2.3.1
 ==============
 
