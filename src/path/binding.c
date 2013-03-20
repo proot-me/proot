@@ -84,7 +84,7 @@
 } while (0)
 
 #define IS_LINKED(binding, link)					\
-	((binding)->link.cqe_next != NULL || (binding)->link.cqe_prev != NULL)
+	((binding)->link.cqe_next != NULL && (binding)->link.cqe_prev != NULL)
 
 #define CIRCLEQ_REMOVE_(tracee, binding, name) do {			\
 	CIRCLEQ_REMOVE((tracee)->fs->bindings.name, binding, link.name);\

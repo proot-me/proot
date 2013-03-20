@@ -48,9 +48,11 @@ static inline Abi get_abi(const Tracee *tracee)
 	switch (tracee->_regs[ORIGINAL].cs) {
 	case 0x23:
 		return ABI_2;
+
 	case 0x33:
 		if (tracee->_regs[ORIGINAL].ds == 0x2B)
 			return ABI_3;
+		/* Fall through.  */
 	default:
 		return ABI_DEFAULT;
 	}

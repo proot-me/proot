@@ -27,7 +27,6 @@
 #include <stdint.h>    /* intptr_t, */
 #include <stdbool.h>   /* bool, */
 
-#include "extension/extension.h"
 #include "tracee/tracee.h"
 
 /* List of possible events.  */

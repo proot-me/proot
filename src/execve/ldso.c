@@ -309,7 +309,9 @@ int rebuild_host_ldso_paths(const Tracee *tracee, const char t_program[PATH_MAX]
 	 * LD_LIBRARY_PATH was not found.  */
 	if (index == envp->length) {
 		index = (envp->length > 0 ? envp->length - 1 : 0);
-		resize_array(envp, index, 1);
+		status = resize_array(envp, index, 1);
+		if (status < 0)
+			return 0; /* Not fatal.  */
 	}
 
 	/* Forge the new LD_LIBRARY_PATH variable from

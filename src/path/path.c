@@ -368,7 +368,8 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 			return status;
 	}
 
-	VERBOSE(tracee, 2, "pid %d: translate(\"%s\" + \"%s\")", tracee->pid, host_path, guest_path);
+	VERBOSE(tracee, 2, "pid %d: translate(\"%s\" + \"%s\")",
+		tracee != NULL ? tracee->pid : 0, host_path, guest_path);
 
 	status = notify_extensions(tracee, GUEST_PATH, (intptr_t)host_path, (intptr_t)guest_path);
 	if (status < 0)
@@ -389,7 +390,8 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 		return status;
 
 skip:
-	VERBOSE(tracee, 2, "pid %d:          -> \"%s\"", tracee->pid, host_path);
+	VERBOSE(tracee, 2, "pid %d:          -> \"%s\"",
+		tracee != NULL ? tracee->pid : 0, host_path);
 	return 0;
 }
 
