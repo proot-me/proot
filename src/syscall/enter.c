@@ -467,6 +467,7 @@ case PR_getpeername:{
 
 case PR_socketcall: {
 	word_t args_addr;
+	word_t sock_addr_saved;
 	word_t sock_addr;
 	word_t size_addr;
 	word_t size;
@@ -508,13 +509,14 @@ case PR_socketcall: {
 	sock_addr = PEEK_MEM(SYSARG_ADDR(2));
 	size      = PEEK_MEM(SYSARG_ADDR(3));
 
-	/* These parameters are used/restored at the exit stage.  */
-	poke_reg(tracee, SYSARG_5, sock_addr);
-	poke_reg(tracee, SYSARG_6, size);
-
+	sock_addr_saved = sock_addr;
 	status = translate_socketcall_enter(tracee, &sock_addr, size);
 	if (status <= 0)
 		break;
+
+	/* These parameters are used/restored at the exit stage.  */
+	poke_reg(tracee, SYSARG_5, sock_addr_saved);
+	poke_reg(tracee, SYSARG_6, size);
 
 	/* Remember: POKE_MEM puts -errno in status and breaks if an
 	 * error occured.  */
