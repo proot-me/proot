@@ -57,8 +57,9 @@ typedef enum {
 	SYSCALL_ENTER_START,
 
 	/* The tracee enters a syscall, and PRoot has already handled
-	 * it.  If the extension returns < 0, then PRoot reports this
-	 * errno to the tracee.  */
+	 * it: "(int) data1" is the current status, it is < 0 when
+	 * something went wrong.  If the extension returns < 0, then
+	 * PRoot reports this errno to the tracee.  */
 	SYSCALL_ENTER_END,
 
 	/* The tracee exits a syscall, and PRoot hasn't do anything

@@ -154,7 +154,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 
 		/* Nothing to do if this syscall is being discarded
 		 * (because of an error detected by PRoot).  */
-		if (tracee->status != 1)
+		if ((int) data1 < 0)
 			return 0;
 
 		switch (get_abi(tracee)) {

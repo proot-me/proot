@@ -228,7 +228,7 @@ static void translate_syscall_enter(Tracee *tracee)
 	#include "syscall/sysnum-undefined.h"
 
 end:
-	status2 = notify_extensions(tracee, SYSCALL_ENTER_END, 0, 0);
+	status2 = notify_extensions(tracee, SYSCALL_ENTER_END, status, 0);
 	if (status2 < 0)
 		status = status2;
 
