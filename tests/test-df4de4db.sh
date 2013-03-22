@@ -1,10 +1,10 @@
-if [ ! -x  ${ROOTFS}/bin/fork-wait-1 ] || [ ! -x  ${ROOTFS}/bin/fork-wait-2 ] || [ -z `which strace` ]; then
+if [ ! -x  ${ROOTFS}/bin/fork-wait ] || [ ! -x  ${ROOTFS}/bin/fork-wait ] || [ -z `which strace` ]; then
     exit 125;
 fi
 
-${PROOT} strace ${ROOTFS}/bin/fork-wait-1
-${PROOT} strace ${ROOTFS}/bin/fork-wait-2
+${PROOT} strace ${ROOTFS}/bin/fork-wait
+${PROOT} strace ${ROOTFS}/bin/fork-wait 2
 
-# TODO: ${PROOT} strace -f ${ROOTFS}/bin/fork-wait-1
-# TODO: ${PROOT} strace -f ${ROOTFS}/bin/fork-wait-2
+# TODO: ${PROOT} strace -f ${ROOTFS}/bin/fork-wait
+# TODO: ${PROOT} strace -f ${ROOTFS}/bin/fork-wait 2
 

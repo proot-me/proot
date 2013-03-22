@@ -1,5 +1,6 @@
-if [ ! -x  ${ROOTFS}/bin/ptrace1 ]; then
+if [ ! -x  ${ROOTFS}/bin/ptrace ] || [ -z `which true` ]; then
     exit 125;
 fi
 
-${PROOT} -r ${ROOTFS} ptrace1
+${PROOT} -r ${ROOTFS} ptrace
+# TODO: ${PROOT} -r ${ROOTFS} ptrace 2

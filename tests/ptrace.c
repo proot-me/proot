@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 	long status;
 	pid_t pid;
 
-	pid = fork();
+	pid = (argc <= 1 ? fork() : vfork());
 	switch(pid) {
 	case -1:
 		perror("fork()");
@@ -26,8 +26,14 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 
-		kill(getpid(), SIGSTOP);
-		exit(EXIT_SUCCESS);
+		if (argc <= 1) {
+			kill(getpid(), SIGSTOP);
+			exit(EXIT_SUCCESS);
+		}
+		else {
+			execl("true", "true", NULL);
+			exit(EXIT_FAILURE);
+		}
 
 	default: /* parent */
 		pid = waitpid(-1, &child_status, __WALL);
@@ -36,10 +42,10 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		}
 
-		printf("%d\n", pid);
-
-		if (!WIFSTOPPED(child_status))
-			exit(EXIT_FAILURE);
+		if (argc <= 1) {
+			if (!WIFSTOPPED(child_status))
+				exit(EXIT_FAILURE);
+		}
 
 		exit(EXIT_SUCCESS);
 	}
