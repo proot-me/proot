@@ -313,14 +313,14 @@ end:
 #undef PEEK_MEM
 #undef POKE_MEM
 
-int translate_syscall(Tracee *tracee)
+void translate_syscall(Tracee *tracee)
 {
 	const bool is_enter_stage = (tracee->status == 0);
 	int status;
 
 	status = fetch_regs(tracee);
 	if (status < 0)
-		return status;
+		return;
 
 	if (is_enter_stage) {
 		/* Never restore original register values at the end
@@ -347,9 +347,5 @@ int translate_syscall(Tracee *tracee)
 		print_current_regs(tracee, 4, "sysexit end");
 	}
 
-	status = push_regs(tracee);
-	if (status < 0)
-		return status;
-
-	return 0;
+	(void) push_regs(tracee);
 }

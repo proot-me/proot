@@ -348,15 +348,13 @@ int event_loop()
 			VERBOSE(tracee, 1, "pid %d: exited with status %d",
 				pid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
-			TALLOC_FREE(tracee);
-			continue; /* Skip the call to ptrace(SYSCALL). */
+			signal = 0;
 		}
 		else if (WIFSIGNALED(tracee_status)) {
 			VERBOSE(tracee, (int) (last_exit_status != -1),
 				"pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
-			TALLOC_FREE(tracee);
-			continue; /* Skip the call to ptrace(SYSCALL). */
+			signal = 0;
 		}
 		else if (WIFCONTINUED(tracee_status)) {
 			VERBOSE(tracee, 1, "pid %d: continued", pid);
@@ -399,12 +397,7 @@ int event_loop()
 				/* Fall through. */
 			case SIGTRAP | 0x80:
 				assert(tracee->exe != NULL);
-				status = translate_syscall(tracee);
-				if (status < 0) {
-					/* The process died in a syscall. */
-					TALLOC_FREE(tracee);
-					continue; /* Skip the call to ptrace(SYSCALL). */
-				}
+				translate_syscall(tracee);
 				signal = 0;
 				break;
 
