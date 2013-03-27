@@ -65,7 +65,7 @@ setup: $(ROOTFS)/bin/true $(ROOTFS)/bin/false    \
        $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true $(ROOTFS)/bin/echo \
        $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat $(ROOTFS)/tmp \
        $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd \
-       $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace
+       $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2
 
 $(ROOTFS)/tmp:
 	@mkdir $@

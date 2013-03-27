@@ -77,7 +77,7 @@ typedef struct tracee {
 
 	/* Support for ptrace emulation (tracer side).  */
 	struct {
-		size_t nb_tracees;
+		size_t nb_ptracees;
 		pid_t wait_pid;
 		bool waits_in_kernel;
 		bool waits_in_proot;
@@ -85,10 +85,11 @@ typedef struct tracee {
 
 	/* Support for ptrace emulation (tracee side).  */
 	struct {
-		struct tracee *tracer;
+		struct tracee *ptracer;
 
-		bool waits_tracer;
-		int wait_status;
+		bool has_event;
+		int modified_event;
+		int initial_event;
 
 		bool ignore_syscall;
 		word_t options;

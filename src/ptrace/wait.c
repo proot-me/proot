@@ -27,11 +27,12 @@
 #include <stdbool.h>    /* bool, true, false, */
 
 #include "ptrace/wait.h"
-#include "ptrace/event.h"
 #include "ptrace/ptrace.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
+#include "tracee/event.h"
 #include "tracee/reg.h"
+#include "tracee/mem.h"
 #include "notice.h"
 
 /**
@@ -49,7 +50,7 @@ int translate_wait_enter(Tracee *ptracer)
 
 	pid = peek_reg(ptracer, ORIGINAL, SYSARG_1);
 
-	/* Don't emulate the ptrace mechanism if its not a a ptracee.
+	/* Don't emulate the ptrace mechanism if it's not a ptracee.
 	 * However, this syscall will be canceled later if a ptracee
 	 * is attached to this ptracer.  */
 	ptracee = get_ptracee(ptracer, pid, false);
@@ -81,10 +82,12 @@ int translate_wait_enter(Tracee *ptracer)
 int translate_wait_exit(Tracee *ptracer)
 {
 	Tracee *ptracee;
+	word_t address;
 	word_t pid;
 
 	assert(PTRACER.waits_in_proot);
-	PTRACER.waits_in_proot = false;
+	PTRACER.waits_in_proot  = false;
+	PTRACER.waits_in_kernel = false;
 
 	pid = peek_reg(ptracer, ORIGINAL, SYSARG_1);
 
@@ -92,19 +95,112 @@ int translate_wait_exit(Tracee *ptracer)
 	ptracee = get_ptracee(ptracer, pid, true);
 	if (ptracee == NULL) {
 		/* Is there still living ptracees?  */
-		if (PTRACER.nb_tracees == 0)
+		if (PTRACER.nb_ptracees == 0)
 			return -ECHILD;
 
 		/* Otherwise put this ptracer in the "waiting for
-		 * ptracee" state.  */
+		 * ptracee" state, it will be woken up in
+		 * handle_ptracee_event() later.  */
 		PTRACER.wait_pid = pid;
 		return 0;
 	}
 
-	/* Update ptracer's registers & memory according to this
-	 * ptracee state.  */
-	PTRACER.wait_pid = 0;
-	(void) notify_ptracer(ptracee);
+	/* Update the child status of ptracer's wait(2), if any.  */
+	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
+	if (address != 0)
+		poke_mem(ptracer, address, PTRACEE.modified_event);
 
 	return ptracee->pid;
+}
+
+/**
+ * For the given @ptracee, pass its current @event to its ptracer if
+ * this latter is waiting for it, otherwise put the @ptracee in the
+ * "waiting for ptracer" state.  This function returns whether
+ * @ptracee shall be kept in the stop state or not.
+ */
+bool handle_ptracee_event(Tracee *ptracee, int event)
+{
+	Tracee *ptracer = PTRACEE.ptracer;
+	bool keep_stopped;
+
+	assert(ptracer != NULL);
+
+	/* Remember what the event initially was, this will be
+	 * required by PRoot to handle this event later.  */
+	PTRACEE.initial_event = event;
+
+	/* By default, this ptracee should be kept stopped until its
+	 * ptracer restarts it.  */
+	keep_stopped = true;
+
+	/* Not all events are expected for this ptracee.  */
+	if (WIFSTOPPED(event)) {
+		switch ((event & 0xfff00) >> 8) {
+		case SIGTRAP | 0x80:
+			if (PTRACEE.ignore_syscall)
+				return false;
+
+			if ((PTRACEE.options & PTRACE_O_TRACESYSGOOD) == 0)
+				event &= ~(0x80 << 8);
+			break;
+
+#define PTRACE_EVENT_VFORKDONE PTRACE_EVENT_VFORK_DONE
+#define CASE_FILTER_EVENT(name) case SIGTRAP | PTRACE_EVENT_ ##name << 8:	\
+			if ((PTRACEE.options & PTRACE_O_TRACE ##name) == 0)	\
+				return false;					\
+			break;
+
+			CASE_FILTER_EVENT(FORK);
+			CASE_FILTER_EVENT(VFORK);
+			CASE_FILTER_EVENT(VFORKDONE);
+			CASE_FILTER_EVENT(CLONE);
+			CASE_FILTER_EVENT(EXEC);
+			CASE_FILTER_EVENT(EXIT);
+
+		default:
+			break;
+		}
+	}
+	/* In these cases, the ptracee isn't really alive anymore.  To
+	 * ensure it will not be in limbo, PRoot restarts it whether
+	 * its ptracer is waiting for it or not.  */
+	else if (WIFEXITED(event) || WIFSIGNALED(event))
+		keep_stopped = false;
+
+	/* Remember what the new event is, this will be required by
+	   the ptracer in translate_ptrace_exit() in order to restart
+	   this ptracee.  */
+	if (keep_stopped) {
+		PTRACEE.has_event = true;
+		PTRACEE.modified_event = event;
+	}
+
+	/* Note: wait_pid is set in translate_wait_exit() if no
+	 * ptracee event was pending when the ptracer started to
+	 * wait.  */
+	if (PTRACER.wait_pid == -1 || PTRACER.wait_pid == ptracee->pid) {
+		word_t address;
+		bool restarted;
+
+		/* Update pid & wait status of the ptracer's
+		 * wait(2).  */
+		poke_reg(ptracer, SYSARG_RESULT, ptracee->pid);
+		address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
+		if (address != 0)
+			poke_mem(ptracer, address, PTRACEE.modified_event);
+
+		/* Write ptracer's register cache back.  */
+		(void) push_regs(ptracer);
+
+		/* Restart the ptracer.  */
+		PTRACER.wait_pid = 0;
+		restarted = restart_tracee(ptracer, 0);
+		if (!restarted)
+			keep_stopped = false;
+
+		return keep_stopped;
+	}
+
+	return keep_stopped;
 }

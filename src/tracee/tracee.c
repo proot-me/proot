@@ -66,27 +66,27 @@ static int remove_tracee(Tracee *tracee)
 			relative->parent = NULL;
 
 		/* Its tracees are now free.  */
-		if (relative->as_ptracee.tracer == tracee) {
+		if (relative->as_ptracee.ptracer == tracee) {
 			/* Release the pending event, if any.  */
-			relative->as_ptracee.tracer = NULL;
-			if (relative->as_ptracee.waits_tracer)
-				handle_tracee_event(relative, relative->as_ptracee.wait_status);
+			relative->as_ptracee.ptracer = NULL;
+			if (relative->as_ptracee.has_event)
+				handle_tracee_event(relative, relative->as_ptracee.initial_event);
 			bzero(&relative->as_ptracee, sizeof(relative->as_ptracee));
 		}
 	}
 
 	/* Nothing else to do if it's not a ptracee.  */
-	ptracer = tracee->as_ptracee.tracer;
+	ptracer = tracee->as_ptracee.ptracer;
 	if (ptracer == NULL)
 		return 0;
 
 	/* Sanity checks.  */
 	assert(ptracer != tracee);
-	assert(PTRACER.nb_tracees > 0);
+	assert(PTRACER.nb_ptracees > 0);
 
 	/* Wake its ptracer if there's nothing else to wait for.  */
-	PTRACER.nb_tracees--;
-	if (PTRACER.nb_tracees == 0 && PTRACER.wait_pid != 0) {
+	PTRACER.nb_ptracees--;
+	if (PTRACER.nb_ptracees == 0 && PTRACER.wait_pid != 0) {
 		/* Update the return value of ptracer's wait(2).  */
 		poke_reg(ptracer, SYSARG_RESULT, -ECHILD);
 
@@ -98,7 +98,7 @@ static int remove_tracee(Tracee *tracee)
 		}
 
 		PTRACER.wait_pid = 0;
-		restart_tracee(ptracer, 0);
+		(void) restart_tracee(ptracer, 0);
 	}
 
 	return 0;
@@ -149,7 +149,7 @@ Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting)
 
 	LIST_FOREACH(ptracee, &tracees, link) {
 		/* Discard tracees that don't have this ptracer.  */
-		if (PTRACEE.tracer != ptracer)
+		if (PTRACEE.ptracer != ptracer)
 			continue;
 
 		/* Not the ptracee you're looking for?  */
@@ -157,7 +157,7 @@ Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting)
 			continue;
 
 		/* Is in the waiting state or don't care about it?  */
-		if (PTRACEE.waits_tracer || !only_if_waiting)
+		if (PTRACEE.has_event || !only_if_waiting)
 			return ptracee;
 
 		/* No need to go further if the specific tracee isn't
@@ -248,7 +248,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	    && child->qemu == NULL
 	    && child->glue == NULL
 	    && child->parent == NULL
-	    && child->as_ptracee.tracer == NULL);
+	    && child->as_ptracee.ptracer == NULL);
 
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
@@ -273,7 +273,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 			: (clone_flags & CLONE_VFORK)	? PTRACE_O_TRACEVFORK
 			: 				  PTRACE_O_TRACECLONE);
 	if ((ptrace_options & parent->as_ptracee.options) != 0) {
-		child->as_ptracee.tracer = parent->as_ptracee.tracer;
+		child->as_ptracee.ptracer = parent->as_ptracee.ptracer;
 
 		/* All these flags are inheritable, no matter why this
 		 * child is being traced.  */
@@ -340,7 +340,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	 * stopped until that moment.  */
 	if (child->sigstop == SIGSTOP_PENDING) {
 		child->sigstop = SIGSTOP_ALLOWED;
-		restart_tracee(child, 0);
+		(void) restart_tracee(child, 0);
 	}
 
 	return 0;

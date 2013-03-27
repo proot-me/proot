@@ -35,7 +35,6 @@ OBJECTS = cli.o			\
 	tracee/reg.o		\
 	tracee/event.o		\
 	ptrace/ptrace.o		\
-	ptrace/event.o		\
 	ptrace/wait.o		\
 	extension/extension.o	\
 	extension/kompat/kompat.o \

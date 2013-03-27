@@ -28,7 +28,6 @@
 #include <signal.h>     /* siginfo_t, */
 
 #include "ptrace/ptrace.h"
-#include "ptrace/event.h"
 #include "tracee/tracee.h"
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
@@ -106,11 +105,11 @@ int translate_ptrace_exit(Tracee *tracee)
 		/* The emulated ptrace in PRoot has the same
 		 * limitation as the real ptrace in the Linux kernel:
 		 * only one tracer per process.  */
-		if (PTRACEE.tracer != NULL || ptracee == ptracer)
+		if (PTRACEE.ptracer != NULL || ptracee == ptracer)
 			return -EPERM;
 
-		PTRACEE.tracer = ptracer;
-		PTRACER.nb_tracees++;
+		PTRACEE.ptracer = ptracer;
+		PTRACER.nb_ptracees++;
 
 		/* Detect when the ptracer has gone to wait before the
 		 * ptracee has did the ptrace(ATTACHME) request.  */
@@ -136,7 +135,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		return -ESRCH;
 
 	/* Sanity checks.  */
-	if (PTRACEE.tracer != ptracer || pid == (word_t) -1)
+	if (PTRACEE.ptracer != ptracer || pid == (word_t) -1)
 		return -ESRCH;
 
 	errno = 0;
@@ -152,9 +151,9 @@ int translate_ptrace_exit(Tracee *tracee)
 		break;  /* Restart the ptracee.  */
 
 	case PTRACE_DETACH:
-		assert(PTRACER.nb_tracees > 0);
-		PTRACER.nb_tracees--;
-		PTRACEE.tracer = NULL;
+		assert(PTRACER.nb_ptracees > 0);
+		PTRACER.nb_ptracees--;
+		PTRACEE.ptracer = NULL;
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
@@ -237,7 +236,7 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	/* Now, the initial tracee's event can be handled.  */
-	handle_tracee_event(ptracee, PTRACEE.wait_status);
+	handle_tracee_event(ptracee, PTRACEE.initial_event);
 
 	return status;
 }

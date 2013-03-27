@@ -45,8 +45,7 @@
 #include "path/binding.h"
 #include "syscall/syscall.h"
 #include "syscall/seccomp.h"
-#include "ptrace/event.h"
-#include "ptrace/ptrace.h"
+#include "ptrace/wait.h"
 #include "extension/extension.h"
 #include "execve/elf.h"
 
@@ -397,18 +396,17 @@ int event_loop()
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
-		/* Clean this state unconditionally.  */
-		tracee->as_ptracer.waits_in_kernel = false;
-
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
 			continue;
 
 		/* The ptracer is notified before any changes made by
 		 * PRoot.  TODO: to be fixed for the exit stage.  */
-		if (tracee->as_ptracee.tracer != NULL) {
-			bool skip = handle_ptracee_event(tracee, tracee_status);
-			if (skip)
+		if (tracee->as_ptracee.ptracer != NULL) {
+			bool keep_stopped;
+
+			keep_stopped = handle_ptracee_event(tracee, tracee_status);
+			if (keep_stopped)
 				continue;
 		}
 
@@ -610,7 +608,7 @@ void handle_tracee_event(Tracee *tracee, int tracee_status)
 			}
 		}
 
-		restart_tracee(tracee, signal);
+		(void) restart_tracee(tracee, signal);
 	} while (0);
 }
 
@@ -636,9 +634,10 @@ bool restart_tracee(Tracee *tracee, int signal)
 		return false;
 	}
 
-	/* Clear the "waiting for ptracer" state.  */
-	tracee->as_ptracee.waits_tracer = false;
-	tracee->as_ptracee.wait_status  = 0;
+	/* Clean the pending event, if any.  */
+	tracee->as_ptracee.has_event = false;
+	tracee->as_ptracee.modified_event = 0;
+	tracee->as_ptracee.initial_event  = 0;
 
 	return true;
 }
