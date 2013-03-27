@@ -34,6 +34,8 @@
 #include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
 #include <sys/queue.h> /* LIST_*, */
 #include <talloc.h>    /* talloc_*, */
+#include <execinfo.h>  /* backtrace_symbols(3), */
+#include <limits.h>    /* INT_MAX, */
 
 #include "cli.h"
 #include "notice.h"
@@ -705,4 +707,38 @@ error:
 	}
 	else
 		exit(EXIT_SUCCESS);
+}
+
+
+/* Here follows the support for GCC function instrumentation.  Build
+ * with CFLAGS='-finstrument-functions -O0 -g' and LDFLAGS='-rdynamic'
+ * to enable this mechanism.  */
+
+static int indent_level = 0;
+
+void __cyg_profile_func_enter(void *this_function, void *call_site) DONT_INSTRUMENT;
+void __cyg_profile_func_enter(void *this_function, void *call_site)
+{
+	void *const pointers[] = { this_function, call_site };
+	char **symbols = NULL;
+
+	symbols = backtrace_symbols(pointers, 2);
+	if (symbols == NULL)
+		goto end;
+
+	fprintf(stderr, "%*s from %s\n", (int) strlen(symbols[0]) + indent_level, symbols[0], symbols[1]);
+
+end:
+	if (symbols != NULL)
+		free(symbols);
+
+	if (indent_level < INT_MAX)
+		indent_level++;
+}
+
+void __cyg_profile_func_exit(void *this_function UNUSED, void *call_site UNUSED) DONT_INSTRUMENT;
+void __cyg_profile_func_exit(void *this_function UNUSED, void *call_site UNUSED)
+{
+	if (indent_level > 0)
+		indent_level--;
 }
