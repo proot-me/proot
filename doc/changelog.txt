@@ -1,3 +1,20 @@
+Release v2.4.1
+==============
+
+Fixes
+-----
+
+* Fix all warnings reported by GCC-4.8 "-Wall -Wextra" and Coverity
+  Prevent 4.5.
+
+* Fix Unix sockets path translation for some x86_64 systems.
+
+* Make the "kompat" extension (-k option) work again.
+
+* Fix spurious "can't delete /tmp/proot-$PID-XXXXX" messages.
+
+
+
 Release v2.4
 ============
 
