@@ -107,21 +107,21 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 		talloc_set_destructor(tracee->glue, remove_glue);
 	}
 
+	comparison = compare_paths(tracee->glue, host_path);
+	belongs_to_gluefs = (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
+
 	/* If it's not a final component then it is a directory.  I definitely
 	 * hate how the potential type of the final component is propagated
 	 * from initialize_binding() down to here, sadly there's no elegant way
 	 * to know its type at this stage.  */
 	if (is_final) {
 		type = tracee->glue_type;
-		mode = 0;
+		mode = (belongs_to_gluefs ? 0777 : 0);
 	}
 	else {
 		type = S_IFDIR;
 		mode = 0777;
 	}
-
-	comparison = compare_paths(tracee->glue, host_path);
-	belongs_to_gluefs = (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
 
 	if (getenv("PROOT_DONT_POLLUTE_ROOTFS") != NULL && !belongs_to_gluefs)
 		goto create_binding;
