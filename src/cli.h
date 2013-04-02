@@ -24,7 +24,7 @@ typedef struct {
 } Option;
 
 #ifndef VERSION
-#define VERSION "2.4"
+#define VERSION "2.4.1"
 #endif
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
