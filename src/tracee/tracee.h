@@ -79,8 +79,11 @@ typedef struct tracee {
 	struct {
 		size_t nb_ptracees;
 		pid_t wait_pid;
-		bool waits_in_kernel;
-		bool waits_in_proot;
+		enum {
+			DOESNT_WAIT = 0,
+			WAITS_IN_KERNEL,
+			WAITS_IN_PROOT
+		} waits_in;
 	} as_ptracer;
 
 	/* Support for ptrace emulation (tracee side).  */

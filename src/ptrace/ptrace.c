@@ -113,14 +113,14 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		/* Detect when the ptracer has gone to wait before the
 		 * ptracee has did the ptrace(ATTACHME) request.  */
-		if (PTRACER.waits_in_kernel) {
+		if (PTRACER.waits_in == WAITS_IN_KERNEL) {
 			status = kill(ptracer->pid, SIGSTOP);
 			if (status < 0)
 				notice(tracee, WARNING, INTERNAL,
 					"can't wake ptracer %d", ptracer->pid);
 			else {
 				ptracer->sigstop = SIGSTOP_IGNORED;
-				PTRACER.waits_in_proot = true;
+				PTRACER.waits_in = WAITS_IN_PROOT;
 			}
 		}
 

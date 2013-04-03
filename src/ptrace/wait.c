@@ -55,7 +55,7 @@ int translate_wait_enter(Tracee *ptracer)
 	 * is attached to this ptracer.  */
 	ptracee = get_ptracee(ptracer, pid, false);
 	if (ptracee == NULL) {
-		PTRACER.waits_in_kernel = true;
+		PTRACER.waits_in = WAITS_IN_KERNEL;
 		return 0;
 	}
 
@@ -69,7 +69,7 @@ int translate_wait_enter(Tracee *ptracer)
 	/* This syscall is canceled at the enter stage in order to be
 	 * handled at the exit stage.  */
 	set_sysnum(ptracer, PR_void);
-	PTRACER.waits_in_proot = true;
+	PTRACER.waits_in = WAITS_IN_PROOT;
 
 	return 0;
 }
@@ -85,9 +85,8 @@ int translate_wait_exit(Tracee *ptracer)
 	word_t address;
 	word_t pid;
 
-	assert(PTRACER.waits_in_proot);
-	PTRACER.waits_in_proot  = false;
-	PTRACER.waits_in_kernel = false;
+	assert(PTRACER.waits_in == WAITS_IN_PROOT);
+	PTRACER.waits_in = DOESNT_WAIT;
 
 	pid = peek_reg(ptracer, ORIGINAL, SYSARG_1);
 
