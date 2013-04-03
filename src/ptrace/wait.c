@@ -35,6 +35,44 @@
 #include "tracee/mem.h"
 #include "notice.h"
 
+#include "attribute.h"
+
+static const char *stringify_event(int event) UNUSED;
+static const char *stringify_event(int event)
+{
+	if (WIFEXITED(event))
+		return "exited";
+	else if (WIFSIGNALED(event))
+		return "signaled";
+	else if (WIFCONTINUED(event))
+		return "continued";
+	else if (WIFSTOPPED(event)) {
+		switch ((event & 0xfff00) >> 8) {
+		case SIGTRAP:
+			return "stopped: SIGTRAP";
+		case SIGTRAP | 0x80:
+			return "stopped: SIGTRAP: 0x80";
+		case SIGTRAP | PTRACE_EVENT_VFORK << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_VFORK";
+		case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_FORK";
+		case SIGTRAP | PTRACE_EVENT_VFORK_DONE  << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_FORK_DONE";
+		case SIGTRAP | PTRACE_EVENT_CLONE << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_CLONE";
+		case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_EXEC";
+		case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_EXIT";
+		case SIGSTOP:
+			return "stopped: SIGSTOP";
+		default:
+			return "stopped: unknown";
+		}
+	}
+	return "unknown";
+}
+
 /**
  * Translate the wait syscall made by @ptracer into a "void" syscall
  * if the expected pid is one of its ptracees, in order to emulate the
@@ -93,9 +131,16 @@ int translate_wait_exit(Tracee *ptracer)
 	/* Is the expected pracee waiting for this ptracer?  */
 	ptracee = get_ptracee(ptracer, pid, true);
 	if (ptracee == NULL) {
+		word_t options;
+
 		/* Is there still living ptracees?  */
 		if (PTRACER.nb_ptracees == 0)
 			return -ECHILD;
+
+		/* Non blocking wait(2) ?  */
+		options = peek_reg(ptracer, ORIGINAL, SYSARG_3);
+		if ((options & WNOHANG) != 0)
+			return 0;
 
 		/* Otherwise put this ptracer in the "waiting for
 		 * ptracee" state, it will be woken up in
@@ -106,8 +151,11 @@ int translate_wait_exit(Tracee *ptracer)
 
 	/* Update the child status of ptracer's wait(2), if any.  */
 	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
-	if (address != 0)
+	if (address != 0) {
 		poke_mem(ptracer, address, PTRACEE.modified_event);
+		if (errno != 0)
+			return -errno;
+	}
 
 	return ptracee->pid;
 }
@@ -187,8 +235,11 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		 * wait(2).  */
 		poke_reg(ptracer, SYSARG_RESULT, ptracee->pid);
 		address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
-		if (address != 0)
+		if (address != 0) {
 			poke_mem(ptracer, address, PTRACEE.modified_event);
+			if (errno != 0)
+				poke_reg(ptracer, SYSARG_RESULT, (word_t) -errno);
+		}
 
 		/* Write ptracer's register cache back.  */
 		(void) push_regs(ptracer);
