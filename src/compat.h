@@ -48,6 +48,12 @@
 #    ifndef PTRACE_GETEVENTMSG
 #        define PTRACE_GETEVENTMSG	0x4201
 #    endif
+#    ifndef PTRACE_GETREGSET
+#        define PTRACE_GETREGSET	0x4204
+#    endif
+#    ifndef PTRACE_SETREGSET
+#        define PTRACE_SETREGSET	0x4205
+#    endif
 #    ifndef PTRACE_O_TRACESYSGOOD
 #        define PTRACE_O_TRACESYSGOOD	0x00000001
 #    endif
@@ -116,5 +122,8 @@
 #    endif
 #    ifndef talloc_get_type_abort
 #        define talloc_get_type_abort talloc_get_type
+#    endif
+#    ifndef MIN
+#        define MIN(a, b) ((a) < (b) ? (a) : (b))
 #    endif
 #endif /* COMPAT_H */

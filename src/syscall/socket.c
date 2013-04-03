@@ -34,6 +34,8 @@
 #include "path/path.h"
 #include "arch.h"
 
+#include "compat.h"
+
 /* The sockaddr_un structure has exactly the same layout on all
  * architectures.  */
 static const off_t offsetof_path = offsetof(struct sockaddr_un, sun_path);
@@ -120,10 +122,6 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 
 	return 1;
 }
-
-#if !defined(MIN)
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#endif
 
 /**
  * Detranslate the pathname of the struct sockaddr_un currently stored

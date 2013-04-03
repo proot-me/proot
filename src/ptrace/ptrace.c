@@ -26,14 +26,18 @@
 #include <assert.h>     /* assert(3), */
 #include <stdbool.h>    /* bool, true, false, */
 #include <signal.h>     /* siginfo_t, */
+#include <sys/uio.h>    /* struct iovec, */
 
 #include "ptrace/ptrace.h"
 #include "tracee/tracee.h"
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
+#include "tracee/abi.h"
 #include "tracee/event.h"
 #include "notice.h"
+
+#include "compat.h"
 
 static const char *stringify_ptrace(enum __ptrace_request request)
 {
@@ -67,8 +71,6 @@ int translate_ptrace_enter(Tracee *tracee)
 	request = peek_reg(tracee, CURRENT, SYSARG_1);
 	switch (request) {
 	case PTRACE_ATTACH:
-	case PTRACE_KILL:
-		/* Asynchronous requests.  */
 		notice(tracee, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
 			stringify_ptrace(request));
 		return -ENOTSUP;
@@ -157,6 +159,10 @@ int translate_ptrace_exit(Tracee *tracee)
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
+	case PTRACE_KILL:
+		status = ptrace(request, pid, NULL, NULL);
+		break;  /* Restart the ptracee.  */
+
 	case PTRACE_SETOPTIONS:
 		PTRACEE.options = data;
 		return 0;  /* Don't restart the ptracee.  */
@@ -225,6 +231,44 @@ int translate_ptrace_exit(Tracee *tracee)
 		status = ptrace(request, pid, NULL, &buffer);
 		if (status < 0)
 			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_GETREGSET: {
+		struct iovec iovec;
+		word_t remote_iovec_base;
+		word_t remote_iovec_len;
+
+		remote_iovec_base = peek_mem(ptracer, data);
+		if (errno != 0)
+			return -errno;
+
+		remote_iovec_len = peek_mem(ptracer, data + sizeof_word(tracee));
+		if (errno != 0)
+			return -errno;
+
+		iovec.iov_len  = remote_iovec_len;
+		iovec.iov_base = talloc_zero(ptracer->ctx, struct iovec);
+		if (iovec.iov_base == NULL)
+			return -ENOMEM;
+
+		status = ptrace(PTRACE_GETREGSET, pid, address, &iovec);
+		if (status < 0)
+			return status;
+
+		/* Sanity check.  */
+		remote_iovec_len = iovec.iov_len = MIN(remote_iovec_len, iovec.iov_len);
+
+		/* Update the remote vector content.  */
+		status = writev_data(ptracer, remote_iovec_base, &iovec, 1);
+		if (status < 0)
+			return status;
+
+		/* Update the remote vector length.  */
+		poke_mem(ptracer, data + sizeof_word(tracee), remote_iovec_len);
+		if (errno != 0)
+			return  -errno;
 
 		return 0;  /* Don't restart the ptracee.  */
 	}
