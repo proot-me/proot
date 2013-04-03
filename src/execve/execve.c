@@ -38,6 +38,7 @@
 #include "path/path.h"
 #include "path/binding.h"
 #include "extension/extension.h"
+#include "ptrace/ptrace.h"
 
 #include "compat.h"
 

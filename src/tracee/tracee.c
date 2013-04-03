@@ -224,6 +224,9 @@ int new_child(Tracee *parent, word_t clone_flags)
 	if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone)
 		clone_flags = peek_reg(parent, CURRENT, SYSARG_1);
 
+	if ((clone_flags & CLONE_VFORK) != 0)
+		parent->as_ptracer.blocked_by_vfork = true;
+
 	/* Get the pid of the parent's new child.  */
 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);
 	if (status < 0) {

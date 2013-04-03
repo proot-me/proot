@@ -124,6 +124,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	bool keep_stopped;
 
 	assert(ptracer != NULL);
+	assert(!PTRACER.blocked_by_vfork);
 
 	/* Remember what the event initially was, this will be
 	 * required by PRoot to handle this event later.  */
