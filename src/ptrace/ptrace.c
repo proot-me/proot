@@ -132,7 +132,7 @@ int translate_ptrace_exit(Tracee *tracee)
 	/* Here, the tracee is a ptracer.  Also, the requested ptracee
 	 * has to be in the "waiting for ptracer" state.  */
 	ptracer = tracee;
-	ptracee = get_ptracee(ptracer, pid, true);
+	ptracee = get_waiting_ptracee(ptracer, pid, false);
 	if (ptracee == NULL)
 		return -ESRCH;
 
@@ -280,7 +280,7 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	/* Now, the initial tracee's event can be handled.  */
-	handle_tracee_event(ptracee, PTRACEE.initial_event);
+	handle_tracee_event(ptracee, PTRACEE.event4.proot.value);
 
 	return status;
 }

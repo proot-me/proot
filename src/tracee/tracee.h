@@ -72,6 +72,9 @@ typedef struct tracee {
 	/* Process identifier. */
 	pid_t pid;
 
+	/* Is it currently running or not?  */
+	bool running;
+
 	/* Parent of this tracee, NULL if none.  */
 	struct tracee *parent;
 
@@ -91,9 +94,12 @@ typedef struct tracee {
 	struct {
 		struct tracee *ptracer;
 
-		bool has_event;
-		int modified_event;
-		int initial_event;
+		struct {
+			#define STRUCT_EVENT struct { int value; bool cleared; }
+
+			STRUCT_EVENT proot;
+			STRUCT_EVENT ptracer;
+		} event4;
 
 		bool ignore_syscall;
 		word_t options;
@@ -203,7 +209,7 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
-extern Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting);
+extern Tracee *get_waiting_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern int parse_config(Tracee *tracee, size_t argc, char *argv[]);

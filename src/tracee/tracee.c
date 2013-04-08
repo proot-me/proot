@@ -69,8 +69,8 @@ static int remove_tracee(Tracee *tracee)
 		if (relative->as_ptracee.ptracer == tracee) {
 			/* Release the pending event, if any.  */
 			relative->as_ptracee.ptracer = NULL;
-			if (relative->as_ptracee.has_event)
-				handle_tracee_event(relative, relative->as_ptracee.initial_event);
+			if (!relative->as_ptracee.event4.proot.cleared)
+				handle_tracee_event(relative, relative->as_ptracee.event4.proot.value);
 			bzero(&relative->as_ptracee, sizeof(relative->as_ptracee));
 		}
 	}
@@ -138,12 +138,12 @@ no_mem:
 }
 
 /**
- * Return the (first) tracee with the given @pid (-1 for any) which
- * has the given @ptracer, and is in the "waiting for ptracer" state
- * if @only_if_waiting is true.  This function returns NULL if there's
- * no such ptracee.
+ * Return the first waiting (i.e. not running) tracee with the given
+ * @pid (-1 for any) which has the given @ptracer, and which has a
+ * pending event for its ptracer if @only_with_pevent is true.  This
+ * function returns NULL if there's no such ptracee.
  */
-Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting)
+Tracee *get_waiting_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pevent)
 {
 	Tracee *ptracee;
 
@@ -156,13 +156,17 @@ Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting)
 		if (pid != ptracee->pid && pid != -1)
 			continue;
 
-		/* Is in the waiting state or don't care about it?  */
-		if (PTRACEE.has_event || !only_if_waiting)
+		/* Is this tracee in the waiting state?  */
+		if (ptracee->running)
+			continue;
+
+		/* Has a pending event for its ptracer?  */
+		if (!PTRACEE.event4.ptracer.cleared || !only_with_pevent)
 			return ptracee;
 
 		/* No need to go further if the specific tracee isn't
 		 * in the expected state?  */
-		if (pid == ptracee->pid && only_if_waiting)
+		if (pid == ptracee->pid)
 			return NULL;
 	}
 

@@ -398,6 +398,8 @@ int event_loop()
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
+		tracee->running = false;
+
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
 			continue;
@@ -613,6 +615,9 @@ void handle_tracee_event(Tracee *tracee, int tracee_status)
 			}
 		}
 
+		/* Clear the pending event, if any.  */
+		tracee->as_ptracee.event4.proot.cleared = true;
+
 		(void) restart_tracee(tracee, signal);
 	} while (0);
 }
@@ -639,10 +644,6 @@ bool restart_tracee(Tracee *tracee, int signal)
 		return false;
 	}
 
-	/* Clean the pending event, if any.  */
-	tracee->as_ptracee.has_event = false;
-	tracee->as_ptracee.modified_event = 0;
-	tracee->as_ptracee.initial_event  = 0;
-
+	tracee->running = true;
 	return true;
 }

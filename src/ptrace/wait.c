@@ -84,17 +84,21 @@ int translate_wait_enter(Tracee *ptracer)
 	static bool warned = false;
 	Tracee *ptracee;
 	word_t options;
-	word_t pid;
+	pid_t pid;
 
-	pid = peek_reg(ptracer, ORIGINAL, SYSARG_1);
+	PTRACER.waits_in = WAITS_IN_KERNEL;
 
-	/* Don't emulate the ptrace mechanism if it's not a ptracee.
-	 * However, this syscall will be canceled later if a ptracee
-	 * is attached to this ptracer.  */
-	ptracee = get_ptracee(ptracer, pid, false);
-	if (ptracee == NULL) {
-		PTRACER.waits_in = WAITS_IN_KERNEL;
+	/* Don't emulate the ptrace mechanism if it's not a ptracer.  */
+	if (PTRACER.nb_ptracees == 0)
 		return 0;
+
+	/* Don't emulate the ptrace mechanism if the requested pid is
+	 * not a ptracee.  */
+	pid = (pid_t) peek_reg(ptracer, ORIGINAL, SYSARG_1);
+	if (pid != -1) {
+		ptracee = get_tracee(ptracer, pid, false);
+		if (ptracee == NULL || PTRACEE.ptracer != ptracer)
+			return 0;
 	}
 
 	/* Only the __WALL option is supported so far.  */
@@ -121,15 +125,16 @@ int translate_wait_exit(Tracee *ptracer)
 {
 	Tracee *ptracee;
 	word_t address;
-	word_t pid;
+	pid_t pid;
 
 	assert(PTRACER.waits_in == WAITS_IN_PROOT);
 	PTRACER.waits_in = DOESNT_WAIT;
 
-	pid = peek_reg(ptracer, ORIGINAL, SYSARG_1);
+	pid = (pid_t) peek_reg(ptracer, ORIGINAL, SYSARG_1);
 
-	/* Is the expected pracee waiting for this ptracer?  */
-	ptracee = get_ptracee(ptracer, pid, true);
+	/* Is there such a waiting ptracee with an event not yet
+	 * passed to its ptracer?  */
+	ptracee = get_waiting_ptracee(ptracer, pid, true);
 	if (ptracee == NULL) {
 		word_t options;
 
@@ -152,9 +157,11 @@ int translate_wait_exit(Tracee *ptracer)
 	/* Update the child status of ptracer's wait(2), if any.  */
 	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
 	if (address != 0) {
-		poke_mem(ptracer, address, PTRACEE.modified_event);
+		poke_mem(ptracer, address, PTRACEE.event4.ptracer.value);
 		if (errno != 0)
 			return -errno;
+
+		PTRACEE.event4.ptracer.cleared = true;
 	}
 
 	return ptracee->pid;
@@ -176,7 +183,8 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 
 	/* Remember what the event initially was, this will be
 	 * required by PRoot to handle this event later.  */
-	PTRACEE.initial_event = event;
+	PTRACEE.event4.proot.value   = event;
+	PTRACEE.event4.proot.cleared = false;
 
 	/* By default, this ptracee should be kept stopped until its
 	 * ptracer restarts it.  */
@@ -220,8 +228,8 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	   the ptracer in translate_ptrace_exit() in order to restart
 	   this ptracee.  */
 	if (keep_stopped) {
-		PTRACEE.has_event = true;
-		PTRACEE.modified_event = event;
+		PTRACEE.event4.ptracer.value   = event;
+		PTRACEE.event4.ptracer.cleared = false;
 	}
 
 	/* Note: wait_pid is set in translate_wait_exit() if no
@@ -236,9 +244,11 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		poke_reg(ptracer, SYSARG_RESULT, ptracee->pid);
 		address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
 		if (address != 0) {
-			poke_mem(ptracer, address, PTRACEE.modified_event);
+			poke_mem(ptracer, address, PTRACEE.event4.ptracer.value);
 			if (errno != 0)
 				poke_reg(ptracer, SYSARG_RESULT, (word_t) -errno);
+
+			PTRACEE.event4.ptracer.cleared = true;
 		}
 
 		/* Write ptracer's register cache back.  */
