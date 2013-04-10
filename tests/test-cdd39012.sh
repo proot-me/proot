@@ -6,3 +6,6 @@ ${PROOT} -r ${ROOTFS} ptrace
 ${PROOT} -r ${ROOTFS} ptrace 2
 
 ${PROOT} -r ${ROOTFS} ptrace-2 /bin/true
+
+${PROOT} -r ${ROOTFS} ptrace-2 /bin/fork-wait
+${PROOT} -r ${ROOTFS} ptrace-2 /bin/fork-wait 2

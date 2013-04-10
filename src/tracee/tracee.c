@@ -69,7 +69,7 @@ static int remove_tracee(Tracee *tracee)
 		if (relative->as_ptracee.ptracer == tracee) {
 			/* Release the pending event, if any.  */
 			relative->as_ptracee.ptracer = NULL;
-			if (!relative->as_ptracee.event4.proot.cleared)
+			if (relative->as_ptracee.event4.proot.pending)
 				handle_tracee_event(relative, relative->as_ptracee.event4.proot.value);
 			bzero(&relative->as_ptracee, sizeof(relative->as_ptracee));
 		}
@@ -161,7 +161,7 @@ Tracee *get_waiting_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pev
 			continue;
 
 		/* Has a pending event for its ptracer?  */
-		if (!PTRACEE.event4.ptracer.cleared || !only_with_pevent)
+		if (PTRACEE.event4.ptracer.pending || !only_with_pevent)
 			return ptracee;
 
 		/* No need to go further if the specific tracee isn't
@@ -279,15 +279,22 @@ int new_child(Tracee *parent, word_t clone_flags)
 	ptrace_options = ( clone_flags == 0		? PTRACE_O_TRACEFORK
 			: (clone_flags & CLONE_VFORK)	? PTRACE_O_TRACEVFORK
 			: 				  PTRACE_O_TRACECLONE);
-	if ((ptrace_options & parent->as_ptracee.options) != 0) {
-		child->as_ptracee.ptracer = parent->as_ptracee.ptracer;
+	if (   (ptrace_options & parent->as_ptracee.options) != 0
+	    || (clone_flags & CLONE_PTRACE) != 0) {
+		Tracee *ptracer = parent->as_ptracee.ptracer;
+		child->as_ptracee.ptracer = ptracer;
+		PTRACER.nb_ptracees++;
 
 		/* All these flags are inheritable, no matter why this
 		 * child is being traced.  */
 		child->as_ptracee.options |= (parent->as_ptracee.options
-					      & ( PTRACE_O_TRACEFORK
+					      & ( PTRACE_O_TRACECLONE
+						| PTRACE_O_TRACEEXEC
+						| PTRACE_O_TRACEEXIT
+						| PTRACE_O_TRACEFORK
+						| PTRACE_O_TRACESYSGOOD
 						| PTRACE_O_TRACEVFORK
-						| PTRACE_O_TRACECLONE));
+						| PTRACE_O_TRACEVFORKDONE));
 	}
 
 	/* If CLONE_FS is set, the parent and the child process share

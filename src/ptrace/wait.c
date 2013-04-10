@@ -161,7 +161,7 @@ int translate_wait_exit(Tracee *ptracer)
 		if (errno != 0)
 			return -errno;
 
-		PTRACEE.event4.ptracer.cleared = true;
+		PTRACEE.event4.ptracer.pending = false;
 	}
 
 	return ptracee->pid;
@@ -184,7 +184,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	/* Remember what the event initially was, this will be
 	 * required by PRoot to handle this event later.  */
 	PTRACEE.event4.proot.value   = event;
-	PTRACEE.event4.proot.cleared = false;
+	PTRACEE.event4.proot.pending = true;
 
 	/* By default, this ptracee should be kept stopped until its
 	 * ptracer restarts it.  */
@@ -227,10 +227,8 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	/* Remember what the new event is, this will be required by
 	   the ptracer in translate_ptrace_exit() in order to restart
 	   this ptracee.  */
-	if (keep_stopped) {
-		PTRACEE.event4.ptracer.value   = event;
-		PTRACEE.event4.ptracer.cleared = false;
-	}
+	PTRACEE.event4.ptracer.value   = event;
+	PTRACEE.event4.ptracer.pending = true;
 
 	/* Note: wait_pid is set in translate_wait_exit() if no
 	 * ptracee event was pending when the ptracer started to
@@ -248,7 +246,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			if (errno != 0)
 				poke_reg(ptracer, SYSARG_RESULT, (word_t) -errno);
 
-			PTRACEE.event4.ptracer.cleared = true;
+			PTRACEE.event4.ptracer.pending = false;
 		}
 
 		/* Write ptracer's register cache back.  */

@@ -104,6 +104,8 @@ int main(int argc, char *argv[])
 				static bool skip_bare_sigtrap = false;
 
 			case SIGTRAP:
+				fprintf(stderr, "pid %d: SIGTRAP\n", pid);
+
 				/* Distinguish some events from others and
 				 * automatically trace each new process with
 				 * the same options.
@@ -121,6 +123,7 @@ int main(int argc, char *argv[])
 						PTRACE_O_TRACESYSGOOD |
 						PTRACE_O_TRACEFORK    |
 						PTRACE_O_TRACEVFORK   |
+						PTRACE_O_TRACEVFORKDONE |
 						PTRACE_O_TRACEEXEC    |
 						PTRACE_O_TRACECLONE   |
 						PTRACE_O_TRACEEXIT);
@@ -130,12 +133,42 @@ int main(int argc, char *argv[])
 				}
 				/* Fall through. */
 			case SIGTRAP | 0x80:
+				fprintf(stderr, "pid %d: PTRACE_EVENT_SYSGOOD\n", pid);
+				signal = 0;
+				break;
+
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
+				fprintf(stderr, "pid %d: PTRACE_EVENT_VFORK\n", pid);
+				signal = 0;
+				break;
+
+			case SIGTRAP | PTRACE_EVENT_VFORKDONE << 8:
+				fprintf(stderr, "pid %d: PTRACE_EVENT_VFORK\n", pid);
+				signal = 0;
+				break;
+
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+				fprintf(stderr, "pid %d: PTRACE_EVENT_FORK\n", pid);
+				signal = 0;
+				break;
+
 			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
+				fprintf(stderr, "pid %d: PTRACE_EVENT_CLONE\n", pid);
+				signal = 0;
+				break;
+
 			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
+				fprintf(stderr, "pid %d: PTRACE_EVENT_EXEC\n", pid);
+				signal = 0;
+				break;
+
 			case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
+				fprintf(stderr, "pid %d: PTRACE_EVENT_EXIT\n", pid);
+				signal = 0;
+				break;
+
 			case SIGSTOP:
+				fprintf(stderr, "pid %d: SIGSTOP\n", pid);
 				signal = 0;
 				break;
 
@@ -144,7 +177,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		else {
-			fprintf(stderr, "unknown trace event\n");
+			fprintf(stderr, "pid %d: unknown trace event\n", pid);
 			signal = 0;
 		}
 

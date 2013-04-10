@@ -95,7 +95,7 @@ typedef struct tracee {
 		struct tracee *ptracer;
 
 		struct {
-			#define STRUCT_EVENT struct { int value; bool cleared; }
+			#define STRUCT_EVENT struct { int value; bool pending; }
 
 			STRUCT_EVENT proot;
 			STRUCT_EVENT ptracer;

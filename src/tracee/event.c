@@ -616,7 +616,7 @@ void handle_tracee_event(Tracee *tracee, int tracee_status)
 		}
 
 		/* Clear the pending event, if any.  */
-		tracee->as_ptracee.event4.proot.cleared = true;
+		tracee->as_ptracee.event4.proot.pending = false;
 
 		(void) restart_tracee(tracee, signal);
 	} while (0);
