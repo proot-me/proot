@@ -24,6 +24,7 @@
 #define NOTICE_H
 
 #include "tracee/tracee.h"
+#include "attribute.h"
 
 /* Specify where a notice is coming from. */
 typedef enum {
@@ -45,6 +46,6 @@ typedef enum {
 			notice(tracee, INFO, INTERNAL, (message), ## args); \
 	} while (0)
 
-extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...);
+extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(gnu_printf, 4, 5);
 
 #endif /* NOTICE_H */

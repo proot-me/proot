@@ -236,7 +236,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 
 	/* Sanity checks.  */
 	if (i < 1 || i >= argv->length) {
-		notice(tracee, WARNING, INTERNAL, "wrong number of arguments (%d)", i);
+		notice(tracee, WARNING, INTERNAL, "wrong number of arguments (%zd)", i);
 		return -ECANCELED;
 	}
 

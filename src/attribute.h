@@ -24,5 +24,6 @@
 #define ATTRIBUTE_H
 
 #define UNUSED __attribute__((unused))
+#define FORMAT(a, b, c) __attribute__ ((format (a, b, c)))
 
 #endif /* ATTRIBUTE_H */
