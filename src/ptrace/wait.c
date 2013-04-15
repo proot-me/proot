@@ -179,7 +179,6 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	bool keep_stopped;
 
 	assert(ptracer != NULL);
-	assert(!PTRACER.blocked_by_vfork);
 
 	/* Remember what the event initially was, this will be
 	 * required by PRoot to handle this event later.  */
@@ -203,6 +202,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 
 #define PTRACE_EVENT_VFORKDONE PTRACE_EVENT_VFORK_DONE
 #define CASE_FILTER_EVENT(name) case SIGTRAP | PTRACE_EVENT_ ##name << 8:	\
+			PTRACEE.tracing_started = true;				\
 			if ((PTRACEE.options & PTRACE_O_TRACE ##name) == 0)	\
 				return false;					\
 			break;
@@ -214,6 +214,10 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			CASE_FILTER_EVENT(EXEC);
 			CASE_FILTER_EVENT(EXIT);
 
+		case SIGSTOP:
+			PTRACEE.tracing_started = true;
+			break;
+
 		default:
 			break;
 		}
@@ -223,6 +227,13 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	 * its ptracer is waiting for it or not.  */
 	else if (WIFEXITED(event) || WIFSIGNALED(event))
 		keep_stopped = false;
+
+	/* A process is not traced right from the TRACEME request; it
+	 * is traced from its first SIGSTOP, whether this signal was
+	 * sent by itself with raise(2) or it was induced by a
+	 * PTRACE_EVENT_*.  */
+	if (!PTRACEE.tracing_started)
+		return false;
 
 	/* Remember what the new event is, this will be required by
 	   the ptracer in translate_ptrace_exit() in order to restart

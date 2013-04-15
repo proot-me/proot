@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 				signal = 0;
 				break;
 
-			case SIGTRAP | PTRACE_EVENT_VFORKDONE << 8:
+			case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
 				fprintf(stderr, "pid %d: PTRACE_EVENT_VFORK\n", pid);
 				signal = 0;
 				break;

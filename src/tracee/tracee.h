@@ -87,7 +87,6 @@ typedef struct tracee {
 			WAITS_IN_KERNEL,
 			WAITS_IN_PROOT
 		} waits_in;
-		bool blocked_by_vfork;
 	} as_ptracer;
 
 	/* Support for ptrace emulation (tracee side).  */
@@ -101,6 +100,7 @@ typedef struct tracee {
 			STRUCT_EVENT ptracer;
 		} event4;
 
+		bool tracing_started;
 		bool ignore_syscall;
 		word_t options;
 	} as_ptracee;

@@ -46,7 +46,6 @@
 #include "syscall/syscall.h"
 #include "syscall/seccomp.h"
 #include "ptrace/wait.h"
-#include "ptrace/ptrace.h"
 #include "extension/extension.h"
 #include "execve/elf.h"
 
@@ -380,7 +379,6 @@ int event_loop()
 
 	while (1) {
 		int tracee_status;
-		Tracee *ptracer;
 		Tracee *tracee;
 		pid_t pid;
 
@@ -405,11 +403,8 @@ int event_loop()
 			continue;
 
 		/* The ptracer is notified before any changes made by
-		 * PRoot.  Note: the ptracer can't handle any events
-		 * until the vfork/execve flow is completed.  TODO: to
-		 * be fixed for the exit stage.  */
-		ptracer = tracee->as_ptracee.ptracer;
-		if (ptracer != NULL && !PTRACER.blocked_by_vfork) {
+		 * PRoot.  TODO: to be fixed for the exit stage.  */
+		if (tracee->as_ptracee.ptracer != NULL) {
 			bool keep_stopped;
 
 			keep_stopped = handle_ptracee_event(tracee, tracee_status);

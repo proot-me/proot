@@ -328,12 +328,7 @@ void translate_syscall_exit(Tracee *tracee)
 	}
 #endif
 
-	case PR_execve: {
-		/* Its ptracer isn't block because of vfork anymore.  */
-		Tracee *ptracer = tracee->as_ptracee.ptracer;
-		if (ptracer != NULL)
-			PTRACER.blocked_by_vfork = false;
-	}
+	case PR_execve:
 		if ((int) syscall_result >= 0) {
 	case PR_rt_sigreturn:
 	case PR_sigreturn:
