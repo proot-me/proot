@@ -101,6 +101,8 @@ int translate_ptrace_exit(Tracee *tracee)
 
 	/* The TRACEME request is the only one used by a tracee.  */
 	if (request == PTRACE_TRACEME) {
+		static bool warned = false;
+
 		ptracer = tracee->parent;
 		ptracee = tracee;
 
@@ -109,6 +111,13 @@ int translate_ptrace_exit(Tracee *tracee)
 		 * only one tracer per process.  */
 		if (PTRACEE.ptracer != NULL || ptracee == ptracer)
 			return -EPERM;
+
+		if (!warned) {
+			notice(tracee, WARNING, INTERNAL,
+				"'%s' is using ptrace(2); it is still incomplete and slow!",
+				tracee->exe);
+			warned = true;
+		}
 
 		PTRACEE.ptracer = ptracer;
 		PTRACER.nb_ptracees++;
