@@ -366,6 +366,9 @@ int new_child(Tracee *parent, word_t clone_flags)
 			 * PRoot since child->as_ptracee.ptracer was
 			 * NULL up to now.  */
 			child->as_ptracee.event4.proot.pending = false;
+
+			/* Starting SIGSTOP are never propagated.  */
+			child->as_ptracee.event4.proot.value   = 0;
 		}
 
 		if (!keep_stopped)

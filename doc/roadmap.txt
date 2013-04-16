@@ -15,13 +15,19 @@ process.  The solution is to emulate this syscall in PRoot.
 
 TODO:
 
-* Distinguish sysenter/sysexit.
+Remaining issues:
 
-* Fix interaction with vfork to support gdb.
-
-* Support multi-ptracees.
-
-* Support 32-bit ptracee on 64-bit systems.
+- strace -f
+    - WIFEXITED expected once
+- gdb
+    - wait(__WCLONE/__WALL)
+- gdb follow-fork/exec-mode
+- proot
+    - nested syscall enter/exit
+- 32-bit on 64-bit
+- ptrace-tests from utrace
+    - PTRACE_ATTACH
+- performance
 
 * support under seccomp.
 

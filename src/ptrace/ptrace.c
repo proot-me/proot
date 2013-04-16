@@ -280,7 +280,10 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	/* Now, the initial tracee's event can be handled.  */
-	handle_tracee_event(ptracee, PTRACEE.event4.proot.value);
+	if (PTRACEE.event4.proot.pending)
+		handle_tracee_event(ptracee, PTRACEE.event4.proot.value);
+	else
+		(void) restart_tracee(ptracee, PTRACEE.event4.proot.value);
 
 	return status;
 }

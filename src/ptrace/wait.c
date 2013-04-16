@@ -218,7 +218,12 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			assert(0);
 
 		case SIGSTOP:
-			PTRACEE.tracing_started = true;
+			if (!PTRACEE.tracing_started) {
+				PTRACEE.tracing_started = true;
+
+				/* Starting SIGSTOP are never propagated.  */
+				PTRACEE.event4.proot.value = 0;
+			}
 			break;
 
 		default:
