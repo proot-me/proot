@@ -177,6 +177,18 @@ int translate_ptrace_exit(Tracee *tracee)
 		PTRACEE.options = data;
 		return 0;  /* Don't restart the ptracee.  */
 
+	case PTRACE_GETEVENTMSG: {
+		status = ptrace(request, pid, NULL, &result);
+		if (status < 0)
+			return -errno;
+
+		poke_mem(ptracer, data, result);
+		if (errno != 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
 	case PTRACE_PEEKTEXT:
 	case PTRACE_PEEKDATA:
 	case PTRACE_PEEKUSER:

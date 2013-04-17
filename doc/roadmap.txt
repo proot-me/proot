@@ -17,7 +17,7 @@ TODO:
 
 Remaining issues:
 
-* strace-v4.7
+* strace-v4.7+ & proot-v2.3+
 
     * WIFEXITED expected exactly once
 
@@ -26,19 +26,6 @@ Remaining issues:
     * wait(__WCLONE/__WALL)
 
     * follow-fork/exec-mode
-
-* proot
-
-    * PTRACE_GETEVENTMSG
-
-    * fix memory leak:
-
-          $ proot $(which proot) /
-          $ tar -xf ~/tmp/perl-5.16.1.tar.xz
-          $ exit
-          talloc report on 'null_context' (total  10066 bytes in  24 blocks)
-              Tracee                         contains   9163 bytes in  12 blocks (ref 0) 0x61c620
-              Tracee                         contains    903 bytes in  11 blocks (ref 0) 0x61bd40
 
 * 32-bit on 64-bit
 
