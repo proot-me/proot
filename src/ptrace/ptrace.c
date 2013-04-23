@@ -270,7 +270,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			return -errno;
 
 		iovec.iov_len  = remote_iovec_len;
-		iovec.iov_base = talloc_zero(ptracer->ctx, struct iovec);
+		iovec.iov_base = talloc_zero_size(ptracer->ctx, remote_iovec_len);
 		if (iovec.iov_base == NULL)
 			return -ENOMEM;
 
