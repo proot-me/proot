@@ -21,7 +21,6 @@
  */
 
 #include <sys/ptrace.h> /* PTRACE_*,  */
-#include <sys/wait.h>   /* WIFSTOPPED,  */
 #include <errno.h>      /* E*, */
 #include <assert.h>     /* assert(3), */
 #include <stdbool.h>    /* bool, true, false, */

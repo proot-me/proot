@@ -200,23 +200,22 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			if ((PTRACEE.options & PTRACE_O_TRACESYSGOOD) == 0)
 				event &= ~(0x80 << 8);
 
-			/* XXX.  */
 			handled_by_proot_first = (ptracee->status != 0);
 			break;
 
 #define PTRACE_EVENT_VFORKDONE PTRACE_EVENT_VFORK_DONE
-#define CASE_FILTER_EVENT(name) case SIGTRAP | PTRACE_EVENT_ ##name << 8:	\
+#define CASE_FILTER_EVENT(name, statement) case SIGTRAP | PTRACE_EVENT_ ##name << 8: \
 			PTRACEE.tracing_started = true;				\
 			if ((PTRACEE.options & PTRACE_O_TRACE ##name) == 0)	\
-				return false;					\
+				statement;					\
 			break;
 
-			CASE_FILTER_EVENT(FORK);
-			CASE_FILTER_EVENT(VFORK);
-			CASE_FILTER_EVENT(VFORKDONE);
-			CASE_FILTER_EVENT(CLONE);
-			CASE_FILTER_EVENT(EXEC);
-			CASE_FILTER_EVENT(EXIT);
+			CASE_FILTER_EVENT(FORK,      return false);
+			CASE_FILTER_EVENT(VFORK,     return false);
+			CASE_FILTER_EVENT(VFORKDONE, return false);
+			CASE_FILTER_EVENT(CLONE,     return false);
+			CASE_FILTER_EVENT(EXIT,      return false);
+			CASE_FILTER_EVENT(EXEC,      event = __W_STOPCODE(SIGTRAP));
 
 			/* Never reached.  */
 			assert(0);
@@ -264,6 +263,10 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	   this ptracee.  */
 	PTRACEE.event4.ptracer.value   = event;
 	PTRACEE.event4.ptracer.pending = true;
+
+	/* Notify asynchronously the ptracer about this event, as the
+	 * kernel does.  */
+	kill(ptracer->pid, SIGCHLD);
 
 	/* Note: wait_pid is set in translate_wait_exit() if no
 	 * ptracee event was pending when the ptracer started to
