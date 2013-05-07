@@ -30,6 +30,8 @@
 #include "tracee/reg.h"
 #include "arch.h"
 
+#include "attribute.h"
+
 typedef enum {
 	ABI_DEFAULT,
 	ABI_2, /* x86_32 on x86_64.  */
@@ -39,9 +41,9 @@ typedef enum {
 /**
  * Return the ABI currently used by the given @tracee.
  */
+#if defined(ARCH_X86_64)
 static inline Abi get_abi(const Tracee *tracee)
 {
-#if defined(ARCH_X86_64)
 	/* The ABI can be changed by a syscall ("execve" typically),
 	 * however the change is only effective once the syscall has
 	 * *fully* returned, hence the use of _regs[ORIGINAL].  */
@@ -56,10 +58,13 @@ static inline Abi get_abi(const Tracee *tracee)
 	default:
 		return ABI_DEFAULT;
 	}
-#else
-	return ABI_DEFAULT;
-#endif
 }
+#else
+static inline Abi get_abi(const Tracee *tracee UNUSED)
+{
+	return ABI_DEFAULT;
+}
+#endif
 
 /**
  * Return true if @tracee is a 32-bit process running on a 64-bit
