@@ -237,6 +237,7 @@ end:
 	 * translation. */
 	if (status < 0) {
 		poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
+		poke_reg(tracee, SYSARG_RESULT, status);
 		tracee->status = status;
 	}
 	else
@@ -317,6 +318,8 @@ void translate_syscall(Tracee *tracee)
 {
 	const bool is_enter_stage = (tracee->status == 0);
 	int status;
+
+	assert(tracee->exe != NULL);
 
 	status = fetch_regs(tracee);
 	if (status < 0)

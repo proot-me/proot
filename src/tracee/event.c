@@ -36,7 +36,7 @@
 #include <errno.h>      /* errno(3), */
 #include <stdbool.h>    /* bool, true, false, */
 #include <assert.h>     /* assert(3), */
-#include <stdlib.h>     /* atexit(3), */
+#include <stdlib.h>     /* atexit(3), getenv(3), */
 #include <sys/queue.h>  /* LIST_*, */
 #include <talloc.h>     /* talloc_*, */
 
@@ -44,6 +44,7 @@
 #include "notice.h"
 #include "path/path.h"
 #include "path/binding.h"
+#include "tracee/seccomp.h"
 #include "syscall/syscall.h"
 #include "extension/extension.h"
 
@@ -143,6 +144,11 @@ int launch_process(Tracee *tracee)
 		 * interpreter/runner.  I also verified that strace
 		 * does the same thing. */
 		kill(getpid(), SIGSTOP);
+
+		/* Improve performance by using seccomp mode 2, unless
+		 * this support is explicitly disabled.  */
+		if (getenv("PROOT_NO_SECCOMP") == NULL)
+			configure_seccomp_filter(tracee);
 
 		/* Now process is ptraced, so the current rootfs is already the
 		 * guest rootfs.  Note: Valgrind can't handle execve(2) on
@@ -259,6 +265,7 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED, void *
  */
 int event_loop()
 {
+	enum __ptrace_request default_restart_how = PTRACE_SYSCALL;
 	struct sigaction signal_action;
 	int last_exit_status = -1;
 	long status;
@@ -322,6 +329,8 @@ int event_loop()
 	}
 
 	while (1) {
+		enum __ptrace_request restart_how = default_restart_how;
+		static bool seccomp_enabled = false;
 		int tracee_status;
 		Tracee *tracee;
 		pid_t pid;
@@ -388,6 +397,7 @@ int event_loop()
 						PTRACE_O_TRACEVFORKDONE |
 						PTRACE_O_TRACEEXEC    |
 						PTRACE_O_TRACECLONE   |
+						PTRACE_O_TRACESECCOMP |
 						PTRACE_O_TRACEEXIT);
 				if (status < 0) {
 					notice(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
@@ -398,9 +408,53 @@ int event_loop()
 			case SIGTRAP | 0x80:
 				signal = 0;
 
-				assert(tracee->exe != NULL);
 				translate_syscall(tracee);
+
+				/* Ensure the sysexit stage will be
+				 * reached under seccomp, since
+				 * PTRACE_EVENT_SECCOMP appears only
+				 * for the sysenter stage.
+				 *
+				 * TODO: restart with PTRACE_SYSCALL
+				 *       on demand.  */
+				if (restart_how == PTRACE_CONT && tracee->status != 0)
+					restart_how = PTRACE_SYSCALL;
 				break;
+
+			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
+				int translate_syscall_now = 0;
+
+				signal = 0;
+
+				if (!seccomp_enabled) {
+					VERBOSE(tracee, 1, "seccomp mode 2 enabled");
+					default_restart_how = PTRACE_CONT;
+					seccomp_enabled = true;
+				}
+
+				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL,
+						&translate_syscall_now);
+				if (status < 0)
+					break;
+
+				/* For yet unknown reasons, execve(2)
+				 * behaves differently under seccomp:
+				 * its sysenter stage has to be
+				 * handled right now.  All other
+				 * syscalls are handled as usual.  */
+				if (translate_syscall_now == 0) {
+					restart_how = PTRACE_SYSCALL;
+					break;
+				}
+
+				translate_syscall(tracee);
+
+				/* No need for its sysexit stage.  */
+				restart_how = PTRACE_CONT;
+				tracee->status = 0;
+
+				break;
+			}
 
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 				signal = 0;
@@ -460,7 +514,7 @@ int event_loop()
 
 		/* Restart the tracee and stop it at the next entry or
 		 * exit of a system call. */
-		status = ptrace(PTRACE_SYSCALL, tracee->pid, NULL, signal);
+		status = ptrace(restart_how, tracee->pid, NULL, signal);
 		if (status < 0)
 			TALLOC_FREE(tracee);
 	} while (0);
