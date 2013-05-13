@@ -82,7 +82,7 @@ typedef struct tracee {
 	/* Value of the tracee's general purpose registers.  */
 	struct user_regs_struct _regs[NB_REG_VERSION];
 	bool _regs_were_changed;
-	bool keep_current_regs;
+	bool restore_original_regs;
 
 	/* State for the special handling of SIGSTOP.  */
 	enum {
@@ -108,6 +108,7 @@ typedef struct tracee {
 		struct tracee *tracee;
 		const char *paths;
 	} reconf;
+
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the CLONE_FS flag.       *

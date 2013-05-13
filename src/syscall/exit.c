@@ -273,7 +273,7 @@ case PR_execve:
 	if ((int) syscall_result >= 0) {
 case PR_rt_sigreturn:
 case PR_sigreturn:
-		tracee->keep_current_regs = true;
+		tracee->restore_original_regs = false;
 	}
 	goto end;
 

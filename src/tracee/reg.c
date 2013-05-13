@@ -182,11 +182,14 @@ void poke_reg(Tracee *tracee, Reg reg, word_t value)
 }
 
 /**
- * Dump (notification) the value of the current @tracee's registers.
- * @message is mixed to the output.
+ * Print the value of the current @tracee's registers according
+ * to the @verbose_level.  Note: @message is mixed to the output.
  */
-static inline void dump_current_regs(Tracee *tracee, const char *message)
+void print_current_regs(Tracee *tracee, int verbose_level, const char *message)
 {
+	if (tracee->verbose < verbose_level)
+		return;
+
 	notice(tracee, INFO, INTERNAL,
 		"pid %d: %s: %ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx]",
 		tracee->pid, message, peek_reg(tracee, CURRENT, SYSARG_NUM),
@@ -198,13 +201,26 @@ static inline void dump_current_regs(Tracee *tracee, const char *message)
 }
 
 /**
+ * Save the @tracee's current register bank into the @version register
+ * bank.
+ */
+void save_current_regs(Tracee *tracee, RegVersion version)
+{
+	/* Optimization: don't restore original register values if
+	 * they were never changed.  */
+	if (version == ORIGINAL)
+		tracee->_regs_were_changed = false;
+
+	memcpy(&tracee->_regs[version], &tracee->_regs[CURRENT], sizeof(tracee->_regs[CURRENT]));
+}
+
+/**
  * Copy all @tracee's general purpose registers into a dedicated
  * cache.  This function returns -errno if an error occured, 0
  * otherwise.
  */
 int fetch_regs(Tracee *tracee)
 {
-	const bool is_exit_stage = (tracee->status != 0);
 	int status;
 
 #if defined(ARCH_ARM64)
@@ -220,18 +236,6 @@ int fetch_regs(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	tracee->keep_current_regs = false;
-
-	if (!is_exit_stage) {
-		if (tracee->verbose >= 3)
-			dump_current_regs(tracee, "sysenter start");
-
-		memcpy(&tracee->_regs[ORIGINAL], &tracee->_regs[CURRENT],
-			sizeof(tracee->_regs[CURRENT]));
-		tracee->_regs_were_changed = false;
-	} else if (tracee->verbose >= 5)
-		dump_current_regs(tracee, "sysexit start");
-
 	return 0;
 }
 
@@ -242,14 +246,13 @@ int fetch_regs(Tracee *tracee)
  */
 int push_regs(Tracee *tracee)
 {
-	const bool is_exit_stage = (tracee->status == 0);
 	int status;
 
 	if (tracee->_regs_were_changed) {
 		/* At the very end of a syscall, with regard to the
 		 * entry, only the result register can be modified by
 		 * PRoot.  */
-		if (is_exit_stage && !tracee->keep_current_regs) {
+		if (tracee->restore_original_regs) {
 			/* Restore the sysarg register only if it is
 			 * not the same as the result register.  Note:
 			 * it's never the case on x86 architectures,
@@ -286,16 +289,6 @@ int push_regs(Tracee *tracee)
 		if (status < 0)
 			return status;
 	}
-
-	if (!is_exit_stage) {
-		if (tracee->verbose >= 5)
-			dump_current_regs(tracee, "sysenter end");
-
-		memcpy(&tracee->_regs[MODIFIED], &tracee->_regs[CURRENT],
-			sizeof(tracee->_regs[CURRENT]));
-	}
-	else if (tracee->verbose >= 4)
-		dump_current_regs(tracee, "sysexit end");
 
 	return 0;
 }

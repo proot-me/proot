@@ -315,16 +315,37 @@ end:
 
 int translate_syscall(Tracee *tracee)
 {
+	const bool is_enter_stage = (tracee->status == 0);
 	int status;
 
 	status = fetch_regs(tracee);
 	if (status < 0)
 		return status;
 
-	/* Check if we are either entering or exiting a syscall. */
-	(tracee->status == 0
-		  ? translate_syscall_enter(tracee)
-		  : translate_syscall_exit(tracee));
+	if (is_enter_stage) {
+		/* Never restore original register values at the end
+		 * of this stage.  */
+		tracee->restore_original_regs = false;
+
+		print_current_regs(tracee, 3, "sysenter start");
+		save_current_regs(tracee, ORIGINAL);
+
+		translate_syscall_enter(tracee);
+
+		print_current_regs(tracee, 5, "sysenter end");
+		save_current_regs(tracee, MODIFIED);
+	}
+	else {
+		/* By default, restore original register values at the
+		 * end of this stage.  */
+		tracee->restore_original_regs = true;
+
+		print_current_regs(tracee, 5, "sysexit start");
+
+		translate_syscall_exit(tracee);
+
+		print_current_regs(tracee, 4, "sysexit end");
+	}
 
 	status = push_regs(tracee);
 	if (status < 0)
