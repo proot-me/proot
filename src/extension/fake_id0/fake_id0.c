@@ -93,6 +93,37 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		return 0;
 	}
 
+	case SYSCALL_ENTER_END: {
+		Tracee *tracee = TRACEE(extension);
+		word_t syscall_number;
+
+		switch (get_abi(tracee)) {
+		case ABI_DEFAULT: {
+			#include SYSNUM_HEADER
+			#include "extension/fake_id0/enter.c"
+			return 0;
+		}
+		#ifdef SYSNUM_HEADER2
+		case ABI_2: {
+			#include SYSNUM_HEADER2
+			#include "extension/fake_id0/enter.c"
+			return 0;
+		}
+		#endif
+		#ifdef SYSNUM_HEADER3
+		case ABI_3: {
+			#include SYSNUM_HEADER3
+			#include "extension/fake_id0/enter.c"
+			return 0;
+		}
+		#endif
+		default:
+			assert(0);
+		}
+		#include "syscall/sysnum-undefined.h"
+		return 0;
+	}
+
 	case SYSCALL_EXIT_END: {
 		Tracee *tracee = TRACEE(extension);
 		word_t syscall_number;

@@ -27,8 +27,7 @@
 #include <sys/user.h>  /* struct user*, */
 #include <stdbool.h>
 #include <sys/queue.h> /* LIST_*, */
-
-#include <sys/queue.h> /* LIST_*, */
+#include <sys/ptrace.h>/* enum __ptrace_request */
 #include <talloc.h>    /* talloc_*, */
 
 #include "arch.h" /* word_t, user_regs_struct, */
@@ -78,6 +77,9 @@ typedef struct tracee {
 	 *        1: exit syscall no error
 	 *   -errno: exit syscall with error.  */
 	int status;
+
+	/* How this tracee is restarted.  */
+	enum __ptrace_request restart_how;
 
 	/* Value of the tracee's general purpose registers.  */
 	struct user_regs_struct _regs[NB_REG_VERSION];

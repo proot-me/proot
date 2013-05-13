@@ -337,6 +337,14 @@ void translate_syscall(Tracee *tracee)
 
 		print_current_regs(tracee, 5, "sysenter end");
 		save_current_regs(tracee, MODIFIED);
+
+		/* Restore tracee's stack pointer now if it won't hit
+		 * the sysexit stage (i.e. when seccomp is enabled and
+		 * there's nothing else to do).  */
+		if (tracee->restart_how == PTRACE_CONT) {
+			tracee->status = 0;
+			poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
+		}
 	}
 	else {
 		/* By default, restore original register values at the

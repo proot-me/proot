@@ -90,7 +90,6 @@ case PR_get_mempolicy:
 case PR_get_robust_list:
 case PR_get_thread_area:
 case PR_getcpu:
-case PR_getcwd:
 case PR_getdents:
 case PR_getdents64:
 case PR_getegid:
@@ -219,7 +218,6 @@ case PR_rt_sigaction:
 case PR_rt_sigpending:
 case PR_rt_sigprocmask:
 case PR_rt_sigqueueinfo:
-case PR_rt_sigreturn:
 case PR_rt_sigsuspend:
 case PR_rt_sigtimedwait:
 case PR_rt_tgsigqueueinfo:
@@ -290,7 +288,6 @@ case PR_signalfd:
 case PR_signalfd4:
 case PR_sigpending:
 case PR_sigprocmask:
-case PR_sigreturn:
 case PR_sigsuspend:
 case PR_socket:
 case PR_socketpair:
@@ -322,7 +319,6 @@ case PR_tuxcall:
 case PR_ugetrlimit:
 case PR_ulimit:
 case PR_umask:
-case PR_uname:
 case PR_unshare:
 case PR_ustat:
 case PR_vfork:
@@ -352,12 +348,18 @@ case PR_arm_sync_file_range:
 	break;
 
 case PR_execve:
+	/* Force the sysexit stage under seccomp.  */
+	tracee->restart_how = PTRACE_SYSCALL;
+
 	status = translate_execve(tracee);
 	break;
 
 case PR_fchdir:
 case PR_chdir: {
 	char *tmp;
+
+	/* Force the sysexit stage under seccomp.  */
+	tracee->restart_how = PTRACE_SYSCALL;
 
 	if (syscall_number == PR_chdir) {
 		status = get_sysarg_path(tracee, path, SYSARG_1);
@@ -450,6 +452,9 @@ case PR_getsockname:
 case PR_getpeername:{
 	int size;
 
+	/* Force the sysexit stage under seccomp.  */
+	tracee->restart_how = PTRACE_SYSCALL;
+
 	/* Remember: PEEK_MEM puts -errno in status and breaks if an
 	 * error occured.  */
 	size = (int) PEEK_MEM(peek_reg(tracee, ORIGINAL, SYSARG_3));
@@ -471,6 +476,9 @@ case PR_socketcall: {
 	word_t sock_addr;
 	word_t size_addr;
 	word_t size;
+
+	/* Force the sysexit stage under seccomp.  */
+	tracee->restart_how = PTRACE_SYSCALL;
 
 	args_addr = peek_reg(tracee, CURRENT, SYSARG_2);
 
@@ -610,6 +618,9 @@ case PR_inotify_add_watch:
 		status = translate_sysarg(tracee, SYSARG_2, REGULAR);
 	break;
 
+case PR_readlink:
+	/* Force the sysexit stage under seccomp.  */
+	tracee->restart_how = PTRACE_SYSCALL;
 case PR_lchown:
 case PR_lchown32:
 case PR_lgetxattr:
@@ -620,7 +631,6 @@ case PR_lstat:
 case PR_lstat64:
 case PR_oldlstat:
 case PR_unlink:
-case PR_readlink:
 case PR_rmdir:
 case PR_mkdir:
 	status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
@@ -687,8 +697,10 @@ case PR_openat:
 		status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
 	break;
 
-case PR_unlinkat:
 case PR_readlinkat:
+	/* Force the sysexit stage under seccomp.  */
+	tracee->restart_how = PTRACE_SYSCALL;
+case PR_unlinkat:
 case PR_mkdirat:
 	dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
 
@@ -739,6 +751,15 @@ case PR_symlinkat:
 		break;
 
 	status = translate_path2(tracee, newdirfd, newpath, SYSARG_3, SYMLINK);
+	break;
+
+case PR_getcwd:
+case PR_uname:
+case PR_rt_sigreturn:
+case PR_sigreturn:
+	/* Force the sysexit stage under seccomp.  */
+	tracee->restart_how = PTRACE_SYSCALL;
+	status = 0;
 	break;
 
 default:

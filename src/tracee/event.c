@@ -22,7 +22,6 @@
 
 #define _GNU_SOURCE     /* CLONE_*,  */
 #include <sched.h>      /* CLONE_*,  */
-#include <limits.h>     /* PATH_MAX, */
 #include <sys/types.h>  /* pid_t, */
 #include <sys/ptrace.h> /* ptrace(3), PTRACE_*, */
 #include <sys/types.h>  /* waitpid(2), */
@@ -30,14 +29,12 @@
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 #include <sys/time.h>   /* *rlimit(2), */
 #include <sys/resource.h> /* *rlimit(2), */
-#include <fcntl.h>      /* AT_FDCWD, */
 #include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
-#include <string.h>     /* strcpy(3), */
+#include <string.h>     /* strcmp(3), */
 #include <errno.h>      /* errno(3), */
 #include <stdbool.h>    /* bool, true, false, */
 #include <assert.h>     /* assert(3), */
 #include <stdlib.h>     /* atexit(3), getenv(3), */
-#include <sys/queue.h>  /* LIST_*, */
 #include <talloc.h>     /* talloc_*, */
 
 #include "tracee/event.h"
@@ -332,7 +329,6 @@ int event_loop()
 	}
 
 	while (1) {
-		enum __ptrace_request restart_how = default_restart_how;
 		static bool seccomp_enabled = false;
 		int tracee_status;
 		Tracee *tracee;
@@ -354,6 +350,8 @@ int event_loop()
 		/* Get the information about this tracee. */
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
+
+		tracee->restart_how = default_restart_how;
 
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
@@ -412,16 +410,6 @@ int event_loop()
 				signal = 0;
 
 				translate_syscall(tracee);
-
-				/* Ensure the sysexit stage will be
-				 * reached under seccomp, since
-				 * PTRACE_EVENT_SECCOMP appears only
-				 * for the sysenter stage.
-				 *
-				 * TODO: restart with PTRACE_SYSCALL
-				 *       on demand.  */
-				if (restart_how == PTRACE_CONT && tracee->status != 0)
-					restart_how = PTRACE_SYSCALL;
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
@@ -446,14 +434,14 @@ int event_loop()
 				 * handled right now.  All other
 				 * syscalls are handled as usual.  */
 				if (translate_syscall_now == 0) {
-					restart_how = PTRACE_SYSCALL;
+					tracee->restart_how = PTRACE_SYSCALL;
 					break;
 				}
 
 				translate_syscall(tracee);
 
 				/* No need for its sysexit stage.  */
-				restart_how = PTRACE_CONT;
+				tracee->restart_how = PTRACE_CONT;
 				tracee->status = 0;
 
 				break;
@@ -517,7 +505,7 @@ int event_loop()
 
 		/* Restart the tracee and stop it at the next entry or
 		 * exit of a system call. */
-		status = ptrace(restart_how, tracee->pid, NULL, signal);
+		status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
 		if (status < 0)
 			TALLOC_FREE(tracee);
 	} while (0);
