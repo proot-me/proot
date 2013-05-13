@@ -159,7 +159,7 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
-extern int inherit_config(Tracee *child, Tracee *parent, bool shared_fs);
+extern int new_child(Tracee *parent, word_t clone_flags);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern int parse_config(Tracee *tracee, size_t argc, char *argv[]);
 extern void kill_all_tracees();

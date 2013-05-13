@@ -63,6 +63,9 @@
 #    ifndef PTRACE_O_TRACEEXEC
 #        define PTRACE_O_TRACEEXEC	0x00000010
 #    endif
+#    ifndef PTRACE_O_TRACEVFORKDONE
+#        define PTRACE_O_TRACEVFORKDONE	0x00000020
+#    endif
 #    ifndef PTRACE_O_TRACEEXIT
 #        define PTRACE_O_TRACEEXIT	0x00000040
 #    endif
@@ -77,6 +80,9 @@
 #    endif
 #    ifndef PTRACE_EVENT_EXEC
 #        define PTRACE_EVENT_EXEC	4
+#    endif
+#    ifndef PTRACE_EVENT_VFORK_DONE
+#        define PTRACE_EVENT_VFORK_DONE	5
 #    endif
 #    ifndef PTRACE_EVENT_EXIT
 #        define PTRACE_EVENT_EXIT	6

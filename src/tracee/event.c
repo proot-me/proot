@@ -20,6 +20,8 @@
  * 02110-1301 USA.
  */
 
+#define _GNU_SOURCE     /* CLONE_*,  */
+#include <sched.h>      /* CLONE_*,  */
 #include <limits.h>     /* PATH_MAX, */
 #include <sys/types.h>  /* pid_t, */
 #include <sys/ptrace.h> /* ptrace(3), PTRACE_*, */
@@ -383,6 +385,7 @@ int event_loop()
 						PTRACE_O_TRACESYSGOOD |
 						PTRACE_O_TRACEFORK    |
 						PTRACE_O_TRACEVFORK   |
+						PTRACE_O_TRACEVFORKDONE |
 						PTRACE_O_TRACEEXEC    |
 						PTRACE_O_TRACECLONE   |
 						PTRACE_O_TRACEEXIT);
@@ -399,37 +402,31 @@ int event_loop()
 				translate_syscall(tracee);
 				break;
 
-			case SIGTRAP | PTRACE_EVENT_VFORK << 8: {
-				/* Note: clone(2) and fork(2) are
-				 * handle in syscall/exit.c.  */
+			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
+				signal = 0;
+				(void) new_child(tracee, CLONE_VFORK);
+				break;
 
-				Tracee *child_tracee;
-				pid_t child_pid;
+			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+				signal = 0;
+				(void) new_child(tracee, 0);
+				break;
+
+			case SIGTRAP | PTRACE_EVENT_CLONE << 8: {
+				word_t clone_flags;
 
 				signal = 0;
 
-				/* Get the pid of the tracee's new child.  */
-				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &child_pid);
-				if (status < 0) {
-					notice(tracee, WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
-					break;
-				}
-
-				child_tracee = get_tracee(tracee, child_pid, true);
-				if (child_tracee == NULL) {
-					notice(tracee, WARNING, SYSTEM, "running out of memory");
-					break;
-				}
-
-				status = inherit_config(child_tracee, tracee, false);
+				status = fetch_regs(tracee);
 				if (status < 0)
 					break;
 
+				clone_flags = peek_reg(tracee, CURRENT, SYSARG_1);
+				(void) new_child(tracee, clone_flags);
 				break;
 			}
 
-			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
-			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
+			case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
 			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
 			case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
 				signal = 0;
