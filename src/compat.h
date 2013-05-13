@@ -102,6 +102,15 @@
 #    ifndef TALLOC_FREE
 #        define TALLOC_FREE(ctx) do { talloc_free(ctx); ctx = NULL; } while(0)
 #    endif
+#    ifndef PR_SET_NO_NEW_PRIVS
+#        define PR_SET_NO_NEW_PRIVS	38
+#    endif
+#    ifndef PR_SET_SECCOMP
+#        define PR_SET_SECCOMP		22
+#    endif
+#    ifndef SECCOMP_MODE_FILTER
+#        define SECCOMP_MODE_FILTER	2
+#    endif
 #    ifndef talloc_get_type_abort
 #        define talloc_get_type_abort talloc_get_type
 #    endif

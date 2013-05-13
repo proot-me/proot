@@ -44,12 +44,13 @@
 #include "notice.h"
 #include "path/path.h"
 #include "path/binding.h"
-#include "tracee/seccomp.h"
+#include "seccomp/seccomp.h"
 #include "syscall/syscall.h"
 #include "extension/extension.h"
 
 #include "attribute.h"
 #include "compat.h"
+#include "build.h"
 
 /**
  * Launch the first process as specified by @tracee->cmdline[].  This
@@ -145,10 +146,12 @@ int launch_process(Tracee *tracee)
 		 * does the same thing. */
 		kill(getpid(), SIGSTOP);
 
+#if defined(HAVE_SECCOMP_FILTER)
 		/* Improve performance by using seccomp mode 2, unless
 		 * this support is explicitly disabled.  */
 		if (getenv("PROOT_NO_SECCOMP") == NULL)
 			configure_seccomp_filter(tracee);
+#endif
 
 		/* Now process is ptraced, so the current rootfs is already the
 		 * guest rootfs.  Note: Valgrind can't handle execve(2) on
@@ -427,7 +430,7 @@ int event_loop()
 				signal = 0;
 
 				if (!seccomp_enabled) {
-					VERBOSE(tracee, 1, "seccomp mode 2 enabled");
+					VERBOSE(tracee, 1, "ptrace acceleration (seccomp mode 2) enabled");
 					default_restart_how = PTRACE_CONT;
 					seccomp_enabled = true;
 				}

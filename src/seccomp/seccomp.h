@@ -26,6 +26,6 @@
 #include "tracee/tracee.h"
 #include "attribute.h"
 
-static inline void configure_seccomp_filter(const Tracee *tracee UNUSED) { }
+extern void configure_seccomp_filter(const Tracee *tracee);
 
 #endif /* SECCOMP_H */

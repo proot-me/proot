@@ -30,6 +30,8 @@ OBJECTS = cli.o			\
 	tracee/mem.o		\
 	tracee/reg.o		\
 	tracee/event.o		\
+	seccomp/filter.o	\
+	seccomp/seccomp.o	\
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o
@@ -64,26 +66,24 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 		then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
 		fi;
 
-CHECK_OBJECTS = .check_readlinkat .check_readlinkat.o .check_process_vm .check_process_vm.o
+CHECK_FEATURES = readlinkat process_vm seccomp_filter
+CHECK_PROGRAMS = $(foreach feature,$(CHECK_FEATURES),.check_$(feature))
+CHECK_OBJECTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).o)
+
 .SILENT .IGNORE .INTERMEDIATE: $(CHECK_OBJECTS)
 
-.check_readlinkat.o: .check_readlinkat.c
+.check_%.o: .check_%.c
 	$(COMPILE:echo=false) $(silently) || true
 
-.check_readlinkat: .check_readlinkat.o
+.check_%: .check_%.o
 	$(LINK:echo=false) $(silently) || true
 
+# TODO: generate these lines automatically from $(CHECK_FEATURES)
 CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
-
-.check_process_vm.o: .check_process_vm.c
-	$(COMPILE:echo=false) $(silently) || true
-
-.check_process_vm: .check_process_vm.o
-	$(LINK:echo=false) $(silently) || true
-
 CHECK_PROCESS_VM = if [ -e .check_process_vm ]; then echo "\#define HAVE_PROCESS_VM"; fi
+CHECK_SECCOMP_FILTER = if [ -e .check_seccomp_filter ]; then echo "\#define HAVE_SECCOMP_FILTER"; fi
 
-build.h: .check_readlinkat .check_process_vm
+build.h: $(CHECK_PROGRAMS)
 	$($(quiet)GEN)
 	$(Q)echo "/* This file is auto-generated, edit at your own risk.  */" > $@
 	$(Q)echo "#ifndef BUILD_H"      >> $@
@@ -91,13 +91,14 @@ build.h: .check_readlinkat .check_process_vm
 	$(Q)sh -c '$(CHECK_VERSION)'     >> $@
 	$(Q)sh -c '$(CHECK_READLINKAT)'  >> $@
 	$(Q)sh -c '$(CHECK_PROCESS_VM)'  >> $@
+	$(Q)sh -c '$(CHECK_SECCOMP_FILTER)' >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
 ######################################################################
 # Build rules
 
 SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
-COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$*.c -o $@
+COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$(@:.o=.c) -o $@
 LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
 proot: $(OBJECTS)
@@ -118,7 +119,7 @@ $(USE_BUILD_H): build.h
 .DELETE_ON_ERROR:
 $(OBJECTS) build.h: $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d) .check_readlinkat.d .check_process_vm.d
+DEPS = $(OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 -include $(DEPS)
 
 ######################################################################
@@ -129,7 +130,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(OBJECTS) proot $(DEPS) build.h
+	-$(RM) -f $(CHECK_PROGRAMS) $(CHECK_OBJECTS) $(OBJECTS) proot $(DEPS) build.h
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
