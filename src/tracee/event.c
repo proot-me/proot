@@ -261,7 +261,6 @@ int event_loop()
 	int last_exit_status = -1;
 	long status;
 	int signum;
-	int signal;
 
 	/* Kill all tracees when exiting.  */
 	status = atexit(kill_all_tracees);
@@ -320,11 +319,13 @@ int event_loop()
 			notice(NULL, WARNING, SYSTEM, "sigaction(%d)", signum);
 	}
 
-	signal = 0;
 	while (1) {
 		int tracee_status;
 		Tracee *tracee;
 		pid_t pid;
+
+		/* Not a signal-stop by default.  */
+		int signal = 0;
 
 		/* Wait for the next tracee's stop. */
 		pid = waitpid(-1, &tracee_status, __WALL);
@@ -345,20 +346,14 @@ int event_loop()
 			continue;
 
 		if (WIFEXITED(tracee_status)) {
-			VERBOSE(tracee, 1, "pid %d: exited with status %d",
-				pid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
-			signal = 0;
+			VERBOSE(tracee, 1, "pid %d: exited with status %d",
+				pid, last_exit_status);
 		}
 		else if (WIFSIGNALED(tracee_status)) {
 			VERBOSE(tracee, (int) (last_exit_status != -1),
 				"pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
-			signal = 0;
-		}
-		else if (WIFCONTINUED(tracee_status)) {
-			VERBOSE(tracee, 1, "pid %d: continued", pid);
-			signal = SIGCONT;
 		}
 		else if (WIFSTOPPED(tracee_status)) {
 
@@ -367,7 +362,7 @@ int event_loop()
 			signal = (tracee_status & 0xfff00) >> 8;
 
 			switch (signal) {
-				static bool skip_bare_sigtrap = false;
+				static bool deliver_sigtrap = false;
 
 			case SIGTRAP:
 				/* Distinguish some events from others and
@@ -379,9 +374,10 @@ int event_loop()
 				 * carry tracing information because of
 				 * TRACE*FORK/CLONE/EXEC.
 				 */
-				if (skip_bare_sigtrap)
-					break;
-				skip_bare_sigtrap = true;
+				if (deliver_sigtrap)
+					break;  /* Deliver this signal as-is.  */
+
+				deliver_sigtrap = true;
 
 				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
 						PTRACE_O_TRACESYSGOOD |
@@ -395,10 +391,12 @@ int event_loop()
 					return EXIT_FAILURE;
 				}
 				/* Fall through. */
+
 			case SIGTRAP | 0x80:
+				signal = 0;
+
 				assert(tracee->exe != NULL);
 				translate_syscall(tracee);
-				signal = 0;
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8: {
@@ -427,7 +425,6 @@ int event_loop()
 				if (status < 0)
 					break;
 
-				signal = 0;
 				break;
 			}
 
@@ -443,7 +440,7 @@ int event_loop()
 				 * the EVENT_*FORK|CLONE notification.  */
 				if (tracee->exe == NULL) {
 					tracee->sigstop = SIGSTOP_PENDING;
-					continue;
+					signal = -1;
 				}
 
 				/* For each tracee, the first SIGSTOP
@@ -455,20 +452,21 @@ int event_loop()
 				break;
 
 			default:
+				/* Deliver this signal as-is.  */
 				break;
 			}
 		}
-		else {
-			notice(tracee, WARNING, INTERNAL, "unknown trace event");
-			signal = 0;
-		}
+
+		/* Keep in the stopped state?.  */
+		if (signal == -1)
+			continue;
 
 		/* Restart the tracee and stop it at the next entry or
 		 * exit of a system call. */
 		status = ptrace(PTRACE_SYSCALL, tracee->pid, NULL, signal);
 		if (status < 0)
 			TALLOC_FREE(tracee);
-	}
+	} while (0);
 
 	return last_exit_status;
 }
