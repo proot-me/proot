@@ -208,9 +208,36 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 	    && (statr.st_mode & S_IXUSR) != 0)
 		return 0;
 
-	paths = paths ?: getenv("PATH");
-	if (paths == NULL)
+	/* Is it an absolute path and it wasn't found?  */
+	if (command[0] == '/') {
+		notice(tracee, WARNING, USER, "'%s' not found (root = %s)",
+			command, get_root(tracee));
 		return -1;
+	}
+
+	/* Is it a relative path and it wasn't found?  */
+	if (command[0] == '.') {
+		status = getcwd2(tracee, path);
+		if (status < 0)
+			strcpy(path, "<unknown>");
+
+		notice(tracee, WARNING, USER, "'%s' not found (root = %s, cwd = %s)",
+			command, get_root(tracee), path);
+		return -1;
+	}
+
+	/* Otherwise search the command in $PATH.  */
+	paths = paths ?: getenv("PATH");
+	if (paths == NULL) {
+		status = getcwd2(tracee, path);
+		if (status < 0)
+			strcpy(path, "<unknown>");
+
+		notice(tracee, WARNING, USER,
+			"'%s' not found (root = %s, cwd = %s) and $PATH isn't set",
+			command, get_root(tracee), path);
+		return -1;
+	}
 
 	cursor = paths;
 	do {
@@ -243,7 +270,8 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 				return 0;
 	} while (*(cursor - 1) != '\0');
 
-	notice(tracee, WARNING, USER, "no %s in %s (root = %s)", command, paths, get_root(tracee));
+	notice(tracee, WARNING, USER, "'%s' not found in $PATH=%s (root = %s)",
+		command, paths, get_root(tracee));
 	return -1;
 }
 
