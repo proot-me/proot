@@ -28,6 +28,7 @@
 #include <stdbool.h>   /* bool, */
 
 #include "tracee/tracee.h"
+#include "syscall/seccomp.h"
 
 /* List of possible events.  */
 typedef enum {
@@ -123,6 +124,9 @@ typedef struct extension {
 	/* A chunk of memory allocated by any talloc functions.
 	 * Mainly useful to store a configuration.  */
 	TALLOC_CTX *config;
+
+	/* List of syscalls handled by this extension.  */
+	const Filter *filters;
 
 	/* Link to the next and previous extensions.  Note the order
 	 * is *never* garantee.  */

@@ -27,11 +27,6 @@ Short term
 
       ./src/proot -B /usr/local/proot/centos-5-x86 make -C tests/
 
-* Provide static binaries for all supported platforms (take care of
-  the kernel version requirement):
-
-    https://groups.google.com/forum/?fromgroups=#!topic/proot_me/pbkgC-a66n4
-
 * Emulate getdents in order to glue the "fake" branches with their
   parent directories without polluting the rootfs, c.f. build_glue().
 

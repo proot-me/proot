@@ -28,12 +28,15 @@
 #include <string.h>        /* strncpy(3), */
 #include <talloc.h>        /* talloc_*, */
 #include <fcntl.h>         /* AT_*,  */
+#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 
 #include "extension/extension.h"
+#include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
+#include "arch.h"
 
 #include "attribute.h"
 #include "compat.h"
@@ -113,6 +116,46 @@ static int parse_kernel_release(const char *release)
 	return KERNEL_VERSION(major, minor, revision);
 }
 
+/* List of syscalls handled by this extensions.  */
+#if defined(ARCH_X86_64)
+static const FilteredSyscall syscalls64[] = {
+	#include SYSNUM_HEADER
+	#include "extension/kompat/filter.h"
+	#include SYSNUM_HEADER3
+	#include "extension/kompat/filter.h"
+	FILTERED_SYSCALL_END
+};
+
+static const FilteredSyscall syscalls32[] = {
+	#include SYSNUM_HEADER2
+	#include "extension/kompat/filter.h"
+	FILTERED_SYSCALL_END
+};
+
+static const Filter filters[] = {
+	{ .architecture = AUDIT_ARCH_X86_64,
+	  .syscalls     = syscalls64 },
+	{ .architecture = AUDIT_ARCH_I386,
+	  .syscalls     = syscalls32 },
+	{ 0 }
+};
+#elif defined(AUDIT_ARCH_NUM)
+static const FilteredSyscall syscalls[] = {
+	#include SYSNUM_HEADER
+	#include "extension/kompat/filter.h"
+	FILTERED_SYSCALL_END
+};
+
+static const Filter filters[] = {
+	{ .architecture = AUDIT_ARCH_NUM,
+	  .syscalls     = syscalls },
+	{ 0 }
+};
+#else
+static const Filter filters[] = { 0 }
+#endif
+#include "syscall/sysnum-undefined.h"
+
 /**
  * Handler for this @extension.  It is triggered each time an @event
  * occured.  See ExtensionEvent for the meaning of @data1 and @data2.
@@ -145,6 +188,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		else
 			config->actual_release = parse_kernel_release(utsname.release);
 
+		extension->filters = filters;
 		return 0;
 	}
 
@@ -219,4 +263,3 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		return 0;
 	}
 }
-

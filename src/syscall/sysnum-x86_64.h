@@ -7,9 +7,6 @@
 
 #include "syscall/sysnum-undefined.h"
 
-#include <linux/audit.h>
-#define PR_SECCOMP_ARCH AUDIT_ARCH_X86_64
-
 #define PR__sysctl 156
 #define PR_accept 43
 #define PR_accept4 288

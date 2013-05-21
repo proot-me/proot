@@ -27,6 +27,7 @@
 
 #include "extension/extension.h"
 #include "notice.h"
+#include "build.h"
 
 #include "compat.h"
 
@@ -97,6 +98,13 @@ int initialize_extension(Tracee *tracee, extension_callback_t callback, const ch
 		TALLOC_FREE(extension);
 		return status;
 	}
+
+#if defined(HAVE_SECCOMP_FILTER)
+	if (tracee->reconf.tracee != NULL && getenv("PROOT_NO_SECCOMP") == NULL)
+		notice(tracee, WARNING, INTERNAL,
+			"define the env. var. PROOT_NO_SECCOMP before executing the "
+			"outer PRoot to ensure the inner extensions will correctly work");
+#endif
 
 	return 0;
 }

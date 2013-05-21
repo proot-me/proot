@@ -7,6 +7,8 @@ if [ $? -eq 0 ]; then
     exit 125;
 fi
 
+export PROOT_NO_SECCOMP=1
+
 ${PROOT} ${PROOT_RAW} -0 id -u                 | grep ^0$
 ${PROOT} ${PROOT_RAW} -k 3.33.333 uname -r     | grep ^3\.33\.333$
 

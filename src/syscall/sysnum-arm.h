@@ -7,9 +7,6 @@
 
 #include "syscall/sysnum-undefined.h"
 
-#include <linux/audit.h>
-#define PR_SECCOMP_ARCH AUDIT_ARCH_ARM
-
 #define PR__llseek 140
 #define PR__newselect 142
 #define PR__sysctl 149

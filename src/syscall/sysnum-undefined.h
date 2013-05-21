@@ -4,7 +4,6 @@
 #undef PR_ARM_set_tls
 #undef PR_ARM_usr26
 #undef PR_ARM_usr32
-#undef PR_SECCOMP_ARCH
 #undef PR_X32_SYSCALL_BIT
 #undef PR__llseek
 #undef PR__newselect

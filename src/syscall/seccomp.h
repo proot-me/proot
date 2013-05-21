@@ -25,7 +25,20 @@
 
 #include "tracee/tracee.h"
 #include "attribute.h"
+#include "arch.h"
 
-extern void configure_seccomp_filter(const Tracee *tracee);
+typedef struct {
+	word_t value;
+	int flag;
+} FilteredSyscall;
+
+typedef struct {
+	int architecture;
+	const FilteredSyscall *syscalls;
+} Filter;
+
+#define FILTERED_SYSCALL_END { SYSCALL_AVOIDER, -1 }
+
+extern int enable_syscall_filtering(const Tracee *tracee);
 
 #endif /* SECCOMP_H */

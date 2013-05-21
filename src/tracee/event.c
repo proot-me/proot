@@ -41,8 +41,8 @@
 #include "notice.h"
 #include "path/path.h"
 #include "path/binding.h"
-#include "seccomp/seccomp.h"
 #include "syscall/syscall.h"
+#include "syscall/seccomp.h"
 #include "extension/extension.h"
 
 #include "attribute.h"
@@ -146,8 +146,12 @@ int launch_process(Tracee *tracee)
 #if defined(HAVE_SECCOMP_FILTER)
 		/* Improve performance by using seccomp mode 2, unless
 		 * this support is explicitly disabled.  */
-		if (getenv("PROOT_NO_SECCOMP") == NULL)
-			configure_seccomp_filter(tracee);
+		if (getenv("PROOT_NO_SECCOMP") == NULL) {
+			status = enable_syscall_filtering(tracee);
+			if (status < 0)
+				notice(tracee, WARNING, INTERNAL,
+					"can't enable ptrace acceleration (seccomp mode 2)");
+		}
 #endif
 
 		/* Now process is ptraced, so the current rootfs is already the
@@ -418,7 +422,8 @@ int event_loop()
 				signal = 0;
 
 				if (!seccomp_enabled) {
-					VERBOSE(tracee, 1, "ptrace acceleration (seccomp mode 2) enabled");
+					VERBOSE(tracee, 1,
+						"ptrace acceleration (seccomp mode 2) enabled");
 					default_restart_how = PTRACE_CONT;
 					seccomp_enabled = true;
 				}

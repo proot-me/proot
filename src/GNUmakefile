@@ -23,6 +23,7 @@ OBJECTS = cli.o			\
 	path/canon.o		\
 	path/path.o		\
 	path/proc.o		\
+	syscall/seccomp.o	\
 	syscall/syscall.o	\
 	syscall/socket.o	\
 	tracee/tracee.o		\
@@ -30,8 +31,6 @@ OBJECTS = cli.o			\
 	tracee/mem.o		\
 	tracee/reg.o		\
 	tracee/event.o		\
-	seccomp/filter.o	\
-	seccomp/seccomp.o	\
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o
