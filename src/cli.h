@@ -91,7 +91,14 @@ static Option options[] = {
 \taccessible in the confined environment just as if it were part of\n\
 \tthe guest rootfs.  By default the host path is bound to the same\n\
 \tpath in the guest rootfs but users can specify any other location\n\
-\twith the syntax: -b *host_path*:*guest_location*.",
+\twith the syntax: -b *host_path*:*guest_location*.  If the\n\
+\tguest location is a symbolic link, it is dereferenced to ensure\n\
+\tthe new content is accessible through all the symbolic links that\n\
+\tpoint to the overlaid content.  In most cases this default\n\
+\tbehavior shouldn't be a problem, although it is possible to\n\
+\texplicitly not dereference the guest location by prepending it the\n\
+\t! character: -b *host_path*:!*guest_location*.",
+
 	},
 	{ .class = "Regular options",
 	  .arguments = {

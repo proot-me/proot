@@ -88,7 +88,13 @@ Regular options
     accessible in the confined environment just as if it were part of
     the guest rootfs.  By default the host path is bound to the same
     path in the guest rootfs but users can specify any other location
-    with the syntax: ``-b *host_path*:*guest_location*``.
+    with the syntax: ``-b *host_path*:*guest_location*``.  If the
+    guest location is a symbolic link, it is dereferenced to ensure
+    the new content is accessible through all the symbolic links that
+    point to the overlaid content.  In most cases this default
+    behavior shouldn't be a problem, although it is possible to
+    explicitly not dereference the guest location by prepending it the
+    ``!`` character: ``-b *host_path*:!*guest_location*``.
 
 -q command, --qemu=command
     Execute guest programs through QEMU as specified by *command*.
@@ -271,6 +277,40 @@ files, for instance the DNS setting::
     $ echo '5.6.7.8 google.com' > /etc/hosts
     $ resolveip google.com
     IP address of google.com is 5.6.7.8
+
+Another example: on most Linux distributions ``/bin/sh`` is a symbolic
+link to ``/bin/bash``, whereas it points to ``/bin/dash`` on Debian
+and Ubuntu.  As a consequence a ``#!/bin/sh`` script tested with Bash
+might not work with Dash.  In this case, the binding mechanism of
+PRoot can be used to set non-disruptively ``/bin/bash`` as the default
+``/bin/sh`` on these two Linux distributions::
+
+    proot -b /bin/bash:/bin/sh [...]
+
+Because ``/bin/sh`` is initially a symbolic link to ``/bin/dash``, the
+content of ``/bin/bash`` is actually bound over this latter::
+
+    proot -b /bin/bash:/bin/sh
+    
+    $ md5sum /bin/sh
+    089ed56cd74e63f461bef0fdfc2d159a  /bin/sh
+    $ md5sum /bin/bash
+    089ed56cd74e63f461bef0fdfc2d159a  /bin/bash
+    $ md5sum /bin/dash
+    089ed56cd74e63f461bef0fdfc2d159a  /bin/dash
+
+In most cases this shouldn't be a problem, but it is still possible to
+strictly bind ``/bin/bash`` over ``/bin/sh`` -- without dereferencing
+it -- by specifying the ``!`` character::
+
+    proot -b '/bin/bash:!/bin/sh'
+    
+    $ md5sum /bin/sh
+    089ed56cd74e63f461bef0fdfc2d159a  /bin/sh
+    $ md5sum /bin/bash
+    089ed56cd74e63f461bef0fdfc2d159a  /bin/bash
+    $ md5sum /bin/dash
+    c229085928dc19e8d9bd29fe88268504  /bin/dash
 
 
 ``chroot`` + ``mount --bind`` equivalent

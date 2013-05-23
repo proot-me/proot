@@ -563,8 +563,20 @@ static void initialize_binding(Tracee *tracee, Binding *binding)
 	/* All bindings but "/" must be canonicalized.  The exception
 	 * for "/" is required to bootstrap the canonicalization.  */
 	if (compare_paths(binding->guest.path, "/") != PATHS_ARE_EQUAL) {
+		bool dereference;
+
+		/* Do the user explicitly tell not to dereference
+		 * guest path?  */
+		if (binding->guest.path[0] == '!') {
+			dereference = false;
+			strcpy(path, &binding->guest.path[1]);
+		}
+		else {
+			dereference = true;
+			strcpy(path, binding->guest.path);
+		}
+
 		/* Initial state before canonicalization.  */
-		strcpy(path, binding->guest.path);
 		strcpy(binding->guest.path, "/");
 
 		/* Remember the type of the final component, it will
@@ -576,7 +588,7 @@ static void initialize_binding(Tracee *tracee, Binding *binding)
 		/* Sanitize the guest path of the binding within the
 		   alternate rootfs since it is assumed by
 		   substitute_binding().  */
-		status = canonicalize(tracee, path, true, binding->guest.path, 0);
+		status = canonicalize(tracee, path, dereference, binding->guest.path, 0);
 		if (status < 0) {
 			notice(tracee, WARNING, INTERNAL,
 				"sanitizing the guest path (binding) \"%s\": %s",

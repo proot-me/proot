@@ -98,7 +98,13 @@ This option makes any file or directory of the host rootfs
 accessible in the confined environment just as if it were part of
 the guest rootfs.  By default the host path is bound to the same
 path in the guest rootfs but users can specify any other location
-with the syntax: \fB\-b *host_path*:*guest_location*\fP.
+with the syntax: \fB\-b *host_path*:*guest_location*\fP.  If the
+guest location is a symbolic link, it is dereferenced to ensure
+the new content is accessible through all the symbolic links that
+point to the overlaid content.  In most cases this default
+behavior shouldn\(aqt be a problem, although it is possible to
+explicitly not dereference the guest location by prepending it the
+\fB!\fP character: \fB\-b *host_path*:!*guest_location*\fP.
 .TP
 .BI \-q \ command, \ \-\-qemu\fB= command
 Execute guest programs through QEMU as specified by \fIcommand\fP.
@@ -316,6 +322,64 @@ IP address of google.com is 1.2.3.4
 $ echo \(aq5.6.7.8 google.com\(aq > /etc/hosts
 $ resolveip google.com
 IP address of google.com is 5.6.7.8
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Another example: on most Linux distributions \fB/bin/sh\fP is a symbolic
+link to \fB/bin/bash\fP, whereas it points to \fB/bin/dash\fP on Debian
+and Ubuntu.  As a consequence a \fB#!/bin/sh\fP script tested with Bash
+might not work with Dash.  In this case, the binding mechanism of
+PRoot can be used to set non\-disruptively \fB/bin/bash\fP as the default
+\fB/bin/sh\fP on these two Linux distributions:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+proot \-b /bin/bash:/bin/sh [...]
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+Because \fB/bin/sh\fP is initially a symbolic link to \fB/bin/dash\fP, the
+content of \fB/bin/bash\fP is actually bound over this latter:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+proot \-b /bin/bash:/bin/sh
+
+$ md5sum /bin/sh
+089ed56cd74e63f461bef0fdfc2d159a  /bin/sh
+$ md5sum /bin/bash
+089ed56cd74e63f461bef0fdfc2d159a  /bin/bash
+$ md5sum /bin/dash
+089ed56cd74e63f461bef0fdfc2d159a  /bin/dash
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
+.sp
+In most cases this shouldn\(aqt be a problem, but it is still possible to
+strictly bind \fB/bin/bash\fP over \fB/bin/sh\fP \-\- without dereferencing
+it \-\- by specifying the \fB!\fP character:
+.INDENT 0.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+proot \-b \(aq/bin/bash:!/bin/sh\(aq
+
+$ md5sum /bin/sh
+089ed56cd74e63f461bef0fdfc2d159a  /bin/sh
+$ md5sum /bin/bash
+089ed56cd74e63f461bef0fdfc2d159a  /bin/bash
+$ md5sum /bin/dash
+c229085928dc19e8d9bd29fe88268504  /bin/dash
 .ft P
 .fi
 .UNINDENT
