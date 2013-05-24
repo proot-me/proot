@@ -273,44 +273,9 @@ case PR_execve:
 	if ((int) syscall_result >= 0) {
 case PR_rt_sigreturn:
 case PR_sigreturn:
-		tracee->keep_current_regs = true;
+		tracee->restore_original_regs = false;
 	}
 	goto end;
-
-case PR_fork:
-case PR_clone: {
-	Tracee *child;
-	word_t flags;
-
-	if (syscall_number == PR_clone)
-		flags = peek_reg(tracee, ORIGINAL, SYSARG_1);
-	else
-		flags = 0;
-
-	/* Note: vfork can't be handled here since the parent doesn't
-	 * return until the child does a call to execve(2) and the
-	 * child would be stopped by PRoot until the parent returns
-	 * (deak-lock).  Instead it is handled asynchronously in
-	 * event.c.  */
-	if ((flags & CLONE_VFORK) != 0)
-		goto end;
-
-	/* Error reported by the kernel.  */
-	if ((int) syscall_result < 0)
-		goto end;
-
-	child = get_tracee(tracee, syscall_result, true);
-	if (child == NULL) {
-		status = -ENOMEM;
-		break;
-	}
-
-	status = inherit_config(child, tracee, (flags & CLONE_FS) != 0);
-	if (status < 0)
-		break;
-
-	goto end;
-}
 
 default:
 	goto end;

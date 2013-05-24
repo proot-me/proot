@@ -20,6 +20,8 @@
  * 02110-1301 USA.
  */
 
+#define _GNU_SOURCE     /* CLONE_*,  */
+#include <sched.h>      /* CLONE_*,  */
 #include <sys/types.h>  /* pid_t, size_t, */
 #include <stdlib.h>     /* NULL, */
 #include <assert.h>     /* assert(3), */
@@ -110,22 +112,39 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
 }
 
 /**
- * Make the @child tracee inherit from the @parent tracee.  Depending
- * on @shared_fs, some information are copied or shared.  This
- * function returns -errno if an error occured, otherwise 0.
+ * Make new @parent's child inherit from it.  Depending on
+ * @clone_flags, some information are copied or shared.  This function
+ * returns -errno if an error occured, otherwise 0.
  */
-int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
+int new_child(Tracee *parent, word_t clone_flags)
 {
-	assert(parent != NULL);
+	Tracee *child;
+	int status;
+	pid_t pid;
 
-	assert(child->exe == NULL && parent->exe != NULL);
-	assert(child->cmdline == NULL && parent->cmdline != NULL);
-	assert(child->fs->cwd == NULL && parent->fs->cwd != NULL);
-	assert(child->fs->bindings.pending == NULL && parent->fs->bindings.pending == NULL);
-	assert(child->fs->bindings.guest == NULL   && parent->fs->bindings.guest != NULL);
-	assert(child->fs->bindings.host == NULL    && parent->fs->bindings.host != NULL);
-	assert(child->qemu == NULL);
-	assert(child->glue == NULL);
+	/* Get the pid of the parent's new child.  */
+	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);
+	if (status < 0) {
+		notice(parent, WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
+		return status;
+	}
+
+	child = get_tracee(parent, pid, true);
+	if (child == NULL) {
+		notice(parent, WARNING, SYSTEM, "running out of memory");
+		return -ENOMEM;
+	}
+
+	/* Sanity checks.  */
+	assert(child != NULL
+	    && child->exe == NULL
+	    && child->cmdline == NULL
+	    && child->fs->cwd == NULL
+	    && child->fs->bindings.pending == NULL
+	    && child->fs->bindings.guest == NULL
+	    && child->fs->bindings.host == NULL
+	    && child->qemu == NULL
+	    && child->glue == NULL);
 
 	child->verbose = parent->verbose;
 
@@ -145,7 +164,7 @@ int inherit_config(Tracee *child, Tracee *parent, bool shared_fs)
 	 * -- clone(2) man-page
 	 */
 	TALLOC_FREE(child->fs);
-	if (shared_fs) {
+	if ((clone_flags & CLONE_FS) != 0) {
 		/* File-system name-space is shared.  */
 		child->fs = talloc_reference(child, parent->fs);
 	}

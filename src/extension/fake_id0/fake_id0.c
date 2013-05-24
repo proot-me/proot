@@ -25,14 +25,17 @@
 #include <errno.h>   /* E*, */
 #include <sys/stat.h>   /* chmod(2), stat(2) */
 #include <unistd.h>  /* get*id(2),  */
+#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 
 #include "extension/extension.h"
 #include "syscall/syscall.h"
+#include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
 #include "path/binding.h"
 #include "notice.h"
+#include "arch.h"
 
 typedef struct {
 	char *path;
@@ -50,6 +53,46 @@ static int restore_mode(ModifiedNode *node)
 	return 0;
 }
 
+/* List of syscalls handled by this extensions.  */
+#if defined(ARCH_X86_64)
+static const FilteredSyscall syscalls64[] = {
+	#include SYSNUM_HEADER
+	#include "extension/fake_id0/filter.h"
+	#include SYSNUM_HEADER3
+	#include "extension/fake_id0/filter.h"
+	FILTERED_SYSCALL_END
+};
+
+static const FilteredSyscall syscalls32[] = {
+	#include SYSNUM_HEADER2
+	#include "extension/fake_id0/filter.h"
+	FILTERED_SYSCALL_END
+};
+
+static const Filter filters[] = {
+	{ .architecture = AUDIT_ARCH_X86_64,
+	  .syscalls     = syscalls64 },
+	{ .architecture = AUDIT_ARCH_I386,
+	  .syscalls     = syscalls32 },
+	{ 0 }
+};
+#elif defined(AUDIT_ARCH_NUM)
+static const FilteredSyscall syscalls[] = {
+	#include SYSNUM_HEADER
+	#include "extension/fake_id0/filter.h"
+	FILTERED_SYSCALL_END
+};
+
+static const Filter filters[] = {
+	{ .architecture = AUDIT_ARCH_NUM,
+	  .syscalls     = syscalls },
+	{ 0 }
+};
+#else
+static const Filter filters[] = { 0 }
+#endif
+#include "syscall/sysnum-undefined.h"
+
 /**
  * Handler for this @extension.  It is triggered each time an @event
  * occurred.  See ExtensionEvent for the meaning of @data1 and @data2.
@@ -57,6 +100,10 @@ static int restore_mode(ModifiedNode *node)
 int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
 {
 	switch (event) {
+	case INITIALIZATION:
+		extension->filters = filters;
+		return 0;
+
 	case INHERIT_PARENT: /* Inheritable for sub reconfiguration ...  */
 		return 1;
 
@@ -83,6 +130,37 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		case ABI_3: {
 			#include SYSNUM_HEADER3
 			#include "extension/fake_id0/host_path.c"
+			return 0;
+		}
+		#endif
+		default:
+			assert(0);
+		}
+		#include "syscall/sysnum-undefined.h"
+		return 0;
+	}
+
+	case SYSCALL_ENTER_END: {
+		Tracee *tracee = TRACEE(extension);
+		word_t syscall_number;
+
+		switch (get_abi(tracee)) {
+		case ABI_DEFAULT: {
+			#include SYSNUM_HEADER
+			#include "extension/fake_id0/enter.c"
+			return 0;
+		}
+		#ifdef SYSNUM_HEADER2
+		case ABI_2: {
+			#include SYSNUM_HEADER2
+			#include "extension/fake_id0/enter.c"
+			return 0;
+		}
+		#endif
+		#ifdef SYSNUM_HEADER3
+		case ABI_3: {
+			#include SYSNUM_HEADER3
+			#include "extension/fake_id0/enter.c"
 			return 0;
 		}
 		#endif

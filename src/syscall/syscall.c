@@ -237,6 +237,7 @@ end:
 	 * translation. */
 	if (status < 0) {
 		poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
+		poke_reg(tracee, SYSARG_RESULT, status);
 		tracee->status = status;
 	}
 	else
@@ -313,22 +314,49 @@ end:
 #undef PEEK_MEM
 #undef POKE_MEM
 
-int translate_syscall(Tracee *tracee)
+void translate_syscall(Tracee *tracee)
 {
+	const bool is_enter_stage = (tracee->status == 0);
 	int status;
+
+	assert(tracee->exe != NULL);
 
 	status = fetch_regs(tracee);
 	if (status < 0)
-		return status;
+		return;
 
-	/* Check if we are either entering or exiting a syscall. */
-	(tracee->status == 0
-		  ? translate_syscall_enter(tracee)
-		  : translate_syscall_exit(tracee));
+	if (is_enter_stage) {
+		/* Never restore original register values at the end
+		 * of this stage.  */
+		tracee->restore_original_regs = false;
 
-	status = push_regs(tracee);
-	if (status < 0)
-		return status;
+		print_current_regs(tracee, 3, "sysenter start");
+		save_current_regs(tracee, ORIGINAL);
 
-	return 0;
+		translate_syscall_enter(tracee);
+
+		print_current_regs(tracee, 5, "sysenter end");
+		save_current_regs(tracee, MODIFIED);
+
+		/* Restore tracee's stack pointer now if it won't hit
+		 * the sysexit stage (i.e. when seccomp is enabled and
+		 * there's nothing else to do).  */
+		if (tracee->restart_how == PTRACE_CONT) {
+			tracee->status = 0;
+			poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
+		}
+	}
+	else {
+		/* By default, restore original register values at the
+		 * end of this stage.  */
+		tracee->restore_original_regs = true;
+
+		print_current_regs(tracee, 5, "sysexit start");
+
+		translate_syscall_exit(tracee);
+
+		print_current_regs(tracee, 4, "sysexit end");
+	}
+
+	(void) push_regs(tracee);
 }

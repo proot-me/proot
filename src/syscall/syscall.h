@@ -30,7 +30,7 @@
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 
-extern int translate_syscall(Tracee *tracee);
+extern void translate_syscall(Tracee *tracee);
 extern int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg);
 extern int set_sysarg_path(Tracee *tracee, char path[PATH_MAX], Reg reg);
 extern int set_sysarg_data(Tracee *tracee, void *tracer_ptr, word_t size, Reg reg);

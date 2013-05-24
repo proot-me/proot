@@ -37,8 +37,9 @@ check-test-af062114.c: test-af062114
 check-test-5bed7141.c: test-5bed7141
 	$(call check_c,$<,$(PROOT) $<)
 
-chec-test-d2175fc4.c: test-d2175fc3
-	$(call check_c,$<,$(PROOT) -b /proc -r $(ROOTFS) ./$<)
+check-test-16573e73.c: test-16573e73
+	$(call check_c,$<,$(PROOT) ./$<)
+	$(call check_c,$<,$(PROOT) ./$< 1)
 
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
@@ -85,6 +86,9 @@ test-af062114: test-af062114.c
 
 test-5bed7141: test-5bed7141.c
 	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
+
+test-16573e73: test-16573e73.c
+	$(Q)$(CC) $< -static -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

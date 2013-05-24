@@ -9,7 +9,6 @@
 
 #define PR_X32_SYSCALL_BIT 0x40000000
 
-
 #define PR_accept (PR_X32_SYSCALL_BIT + 43)
 #define PR_accept4 (PR_X32_SYSCALL_BIT + 288)
 #define PR_access (PR_X32_SYSCALL_BIT + 21)

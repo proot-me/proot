@@ -20,6 +20,12 @@ memcheck`) shall suffer no failure on:
 
 - x86_64 (Slackware64)
 
+The PRoot's testsuite with AddressSanitizer enabled
+(`CFLAGS=-fsanitize=address LDFLAGS=-lasan`) shall suffer no failure
+on:
+
+- x86_64 (Slackware64)
+
 Talloc shall report no leak during all the PRoot's testsuite (`make -C
 tests V=1 2>&1 | grep talloc`) on:
 

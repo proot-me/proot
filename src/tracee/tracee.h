@@ -27,8 +27,7 @@
 #include <sys/user.h>  /* struct user*, */
 #include <stdbool.h>
 #include <sys/queue.h> /* LIST_*, */
-
-#include <sys/queue.h> /* LIST_*, */
+#include <sys/ptrace.h>/* enum __ptrace_request */
 #include <talloc.h>    /* talloc_*, */
 
 #include "arch.h" /* word_t, user_regs_struct, */
@@ -79,10 +78,13 @@ typedef struct tracee {
 	 *   -errno: exit syscall with error.  */
 	int status;
 
+	/* How this tracee is restarted.  */
+	enum __ptrace_request restart_how;
+
 	/* Value of the tracee's general purpose registers.  */
 	struct user_regs_struct _regs[NB_REG_VERSION];
 	bool _regs_were_changed;
-	bool keep_current_regs;
+	bool restore_original_regs;
 
 	/* State for the special handling of SIGSTOP.  */
 	enum {
@@ -108,6 +110,7 @@ typedef struct tracee {
 		struct tracee *tracee;
 		const char *paths;
 	} reconf;
+
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the CLONE_FS flag.       *
@@ -158,7 +161,7 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
-extern int inherit_config(Tracee *child, Tracee *parent, bool shared_fs);
+extern int new_child(Tracee *parent, word_t clone_flags);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern int parse_config(Tracee *tracee, size_t argc, char *argv[]);
 extern void kill_all_tracees();

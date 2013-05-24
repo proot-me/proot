@@ -63,8 +63,14 @@
 #    ifndef PTRACE_O_TRACEEXEC
 #        define PTRACE_O_TRACEEXEC	0x00000010
 #    endif
+#    ifndef PTRACE_O_TRACEVFORKDONE
+#        define PTRACE_O_TRACEVFORKDONE	0x00000020
+#    endif
 #    ifndef PTRACE_O_TRACEEXIT
 #        define PTRACE_O_TRACEEXIT	0x00000040
+#    endif
+#    ifndef PTRACE_O_TRACESECCOMP
+#        define PTRACE_O_TRACESECCOMP	0x00000080
 #    endif
 #    ifndef PTRACE_EVENT_FORK
 #        define PTRACE_EVENT_FORK	1
@@ -78,8 +84,14 @@
 #    ifndef PTRACE_EVENT_EXEC
 #        define PTRACE_EVENT_EXEC	4
 #    endif
+#    ifndef PTRACE_EVENT_VFORK_DONE
+#        define PTRACE_EVENT_VFORK_DONE	5
+#    endif
 #    ifndef PTRACE_EVENT_EXIT
 #        define PTRACE_EVENT_EXIT	6
+#    endif
+#    ifndef PTRACE_EVENT_SECCOMP
+#        define PTRACE_EVENT_SECCOMP	7
 #    endif
 #    ifndef ADDR_NO_RANDOMIZE
 #        define ADDR_NO_RANDOMIZE	0x0040000
@@ -89,6 +101,15 @@
 #    endif
 #    ifndef TALLOC_FREE
 #        define TALLOC_FREE(ctx) do { talloc_free(ctx); ctx = NULL; } while(0)
+#    endif
+#    ifndef PR_SET_NO_NEW_PRIVS
+#        define PR_SET_NO_NEW_PRIVS	38
+#    endif
+#    ifndef PR_SET_SECCOMP
+#        define PR_SET_SECCOMP		22
+#    endif
+#    ifndef SECCOMP_MODE_FILTER
+#        define SECCOMP_MODE_FILTER	2
 #    endif
 #    ifndef talloc_get_type_abort
 #        define talloc_get_type_abort talloc_get_type
