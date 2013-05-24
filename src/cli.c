@@ -181,7 +181,19 @@ static bool exit_failure = true;
 static int handle_option_V(Tracee *tracee UNUSED, char *value UNUSED)
 {
 	printf("PRoot %s: %s.\n", version, subtitle);
-	printf("%s\n", colophon);
+	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s",
+#if defined(HAVE_PROCESS_VM)
+		"yes",
+#else
+		"no",
+#endif
+#if defined(HAVE_SECCOMP_FILTER)
+		"yes"
+#else
+		"no"
+#endif
+		);
+	printf("\n%s\n", colophon);
 	exit_failure = false;
 	return -1;
 }
