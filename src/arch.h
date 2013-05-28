@@ -20,6 +20,7 @@
  * 02110-1301 USA.
  */
 
+#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 
 #ifndef ARCH_H

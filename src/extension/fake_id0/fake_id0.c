@@ -25,6 +25,7 @@
 #include <errno.h>   /* E*, */
 #include <sys/stat.h>   /* chmod(2), stat(2) */
 #include <unistd.h>  /* get*id(2),  */
+#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 
 #include "extension/extension.h"

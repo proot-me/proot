@@ -28,6 +28,7 @@
 #include <string.h>        /* strncpy(3), */
 #include <talloc.h>        /* talloc_*, */
 #include <fcntl.h>         /* AT_*,  */
+#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 
 #include "extension/extension.h"
