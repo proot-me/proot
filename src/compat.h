@@ -70,7 +70,7 @@
 #        define PTRACE_O_TRACEEXIT	0x00000040
 #    endif
 #    ifndef PTRACE_O_TRACESECCOMP
-#        define PTRACE_O_TRACESECCOMP	0x00000080
+#        define PTRACE_O_TRACESECCOMP	0 /* Optional */
 #    endif
 #    ifndef PTRACE_EVENT_FORK
 #        define PTRACE_EVENT_FORK	1
@@ -92,6 +92,9 @@
 #    endif
 #    ifndef PTRACE_EVENT_SECCOMP
 #        define PTRACE_EVENT_SECCOMP	7
+#    endif
+#    ifndef PTRACE_EVENT_SECCOMP2
+#        define PTRACE_EVENT_SECCOMP2	7
 #    endif
 #    ifndef ADDR_NO_RANDOMIZE
 #        define ADDR_NO_RANDOMIZE	0x0040000

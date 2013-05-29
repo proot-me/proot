@@ -417,6 +417,10 @@ int event_loop()
 				translate_syscall(tracee);
 				break;
 
+/* With *vanilla* kernels PTRACE_EVENT_SECCOMP == 7.  */
+#if PTRACE_EVENT_SECCOMP == 8
+			case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
+#endif
 			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
 				int translate_syscall_now = 0;
 
