@@ -118,9 +118,9 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
  */
 int new_child(Tracee *parent, word_t clone_flags)
 {
+	unsigned long pid;
 	Tracee *child;
 	int status;
-	pid_t pid;
 
 	/* Get the pid of the parent's new child.  */
 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);
@@ -129,7 +129,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 		return status;
 	}
 
-	child = get_tracee(parent, pid, true);
+	child = get_tracee(parent, (pid_t) pid, true);
 	if (child == NULL) {
 		notice(parent, WARNING, SYSTEM, "running out of memory");
 		return -ENOMEM;

@@ -422,7 +422,7 @@ int event_loop()
 			case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
 #endif
 			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
-				int translate_syscall_now = 0;
+				unsigned long translate_syscall_now = 0;
 
 				signal = 0;
 
