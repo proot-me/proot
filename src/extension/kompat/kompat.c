@@ -153,7 +153,7 @@ static const Filter filters[] = {
 	{ 0 }
 };
 #else
-static const Filter filters[] = { 0 }
+static const Filter filters[] = { 0 };
 #endif
 #include "syscall/sysnum-undefined.h"
 
