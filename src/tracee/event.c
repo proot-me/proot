@@ -373,7 +373,6 @@ int event_loop()
 				pid, WTERMSIG(tracee_status));
 		}
 		else if (WIFSTOPPED(tracee_status)) {
-
 			/* Don't use WSTOPSIG() to extract the signal
 			 * since it clears the PTRACE_EVENT_* bits. */
 			signal = (tracee_status & 0xfff00) >> 8;
@@ -381,7 +380,16 @@ int event_loop()
 			switch (signal) {
 				static bool deliver_sigtrap = false;
 
-			case SIGTRAP:
+			case SIGTRAP: {
+				const unsigned long default_ptrace_options = (
+					PTRACE_O_TRACESYSGOOD	|
+					PTRACE_O_TRACEFORK	|
+					PTRACE_O_TRACEVFORK	|
+					PTRACE_O_TRACEVFORKDONE	|
+					PTRACE_O_TRACEEXEC	|
+					PTRACE_O_TRACECLONE	|
+					PTRACE_O_TRACEEXIT);
+
 				/* Distinguish some events from others and
 				 * automatically trace each new process with
 				 * the same options.
@@ -396,21 +404,19 @@ int event_loop()
 
 				deliver_sigtrap = true;
 
+				/* Try to enable seccomp mode 2...  */
 				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
-						PTRACE_O_TRACESYSGOOD |
-						PTRACE_O_TRACEFORK    |
-						PTRACE_O_TRACEVFORK   |
-						PTRACE_O_TRACEVFORKDONE |
-						PTRACE_O_TRACEEXEC    |
-						PTRACE_O_TRACECLONE   |
-						PTRACE_O_TRACESECCOMP |
-						PTRACE_O_TRACEEXIT);
+						default_ptrace_options | PTRACE_O_TRACESECCOMP);
 				if (status < 0) {
-					notice(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
-					return EXIT_FAILURE;
+					/* ... otherwise use default options only.  */
+					status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
+							default_ptrace_options);
+					if (status < 0)
+						notice(tracee, ERROR, SYSTEM,
+							"ptrace(PTRACE_SETOPTIONS)");
 				}
+			}
 				/* Fall through. */
-
 			case SIGTRAP | 0x80:
 				signal = 0;
 
