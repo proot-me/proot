@@ -166,21 +166,26 @@ static int start_arch_section(struct sock_fprog *program, uint32_t architecture,
 	/* Sanity checks.  */
 	if (   arch_offset    > UINT32_MAX
 	    || syscall_offset > UINT32_MAX
-	    || section_length > UINT8_MAX)
+	    || section_length > UINT32_MAX - 1)
 		return -ERANGE;
 
-	#define LENGTH_START_SECTION 3
+	#define LENGTH_START_SECTION 4
 	struct sock_filter statements[LENGTH_START_SECTION] = {
 		/* Load the current architecture into the
 		 * accumulator.  */
 		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, arch_offset),
 
 		/* Compare the accumulator with the expected
-		 * architecture: skip the following "section" if not
+		 * architecture: skip the following statement if
 		 * equal.  */
-		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, architecture, 0, section_length + 1),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, architecture, 1, 0),
 
-		/* Load the current syscall into the accumulator.  */
+		/* This is not the expected architecture, so jump
+		 * unconditionally to the end of this section.  */
+		BPF_STMT(BPF_JMP + BPF_JA + BPF_K, section_length + 1),
+
+		/* This is the expected architecture, so load the
+		 * current syscall into the accumulator.  */
 		BPF_STMT(BPF_LD + BPF_W + BPF_ABS, syscall_offset)
 	};
 
