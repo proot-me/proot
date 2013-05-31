@@ -67,6 +67,7 @@ typedef unsigned long word_t;
     #define RED_ZONE_SIZE 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
+    #define EM_ARM 40
     #define AUDIT_ARCH_NUM AUDIT_ARCH_ARM
 
 #elif defined(ARCH_ARM64)
