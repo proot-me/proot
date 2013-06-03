@@ -24,7 +24,7 @@ typedef struct {
 } Option;
 
 #ifndef VERSION
-#define VERSION "2.4.1"
+#define VERSION "3.0"
 #endif
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
@@ -98,7 +98,6 @@ static Option options[] = {
 \tbehavior shouldn't be a problem, although it is possible to\n\
 \texplicitly not dereference the guest location by prepending it the\n\
 \t! character: -b *host_path*:!*guest_location*.",
-
 	},
 	{ .class = "Regular options",
 	  .arguments = {

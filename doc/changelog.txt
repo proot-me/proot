@@ -1,3 +1,85 @@
+Release v3.0
+============
+
+New features
+------------
+
+* PRoot can now use the kernel feature named "seccomp-filter", a.k.a
+  "seccomp mode 2", to improve its own performance significantly.  For
+  examples, the tables below show the time overhead induced by PRoot
+  compared to a native execution:
+
+  - when generating the Perl 5.16.1 package:
+
+    ===============  ===========  ==========
+    command          seccomp off  seccomp on
+    ===============  ===========  ==========
+    ./configure.gnu          75%         25%
+    make -j4                 70%         45%
+    make -j4 check           25%          9%
+    ===============  ===========  ==========
+
+  - when generating the Coreutils 8.19 package:
+
+    ===============  ===========  ==========
+    command          seccomp off  seccomp on
+    ===============  ===========  ==========
+    ./configure              80%         33%
+    make -j4                 75%         33%
+    make -j4 check           80%          8%
+    ===============  ===========  ==========
+
+* It is now possible to explicitly not dereference the guest location
+  of a binding by specifying ``!`` as the first character.  For
+  instance::
+
+      proot -b /bin/bash:!/bin/sh
+
+  will not overlay ``/bin/dash`` when this latter is pointed to by
+  ``/bin/sh`` (it's typically the case on Ubuntu and Debian).
+
+Fix
+---
+
+* The initial command is not search in $PATH anymore when it starts
+  with ``/`` or ``./``, and it doesn't exist.  For instance::
+
+      $ rm test
+      $ proot ./test
+      proot warning: './test not found (root = /, cwd = /usr/local/cedric/git/proot)
+      proot error: see `proot --help` or `man proot`.
+
+Thanks
+------
+
+Many thanks to Will Drewry and Indan Zupancic, who made possible to
+accelerate PTRACE_SYSCALL with seccomp-filter.  Also, thanks to Paul
+Moore for his valuable set of seccomp tools.
+
+Notes
+-----
+
+* Unlike what I said, this release is not shipped with a ptrace
+  emulator.  It's planned for the next one, though.
+
+* Seccomp-filter was first introduced in Linux 3.5 a year ago, it was
+  also officially back-ported to Ubuntu 12.04 (Linux 3.2).  To know if
+  PRoot is actually using this accelerator on your system, check the
+  verbose output.  For intance::
+
+    $ proot -v 1 true
+    ...
+    proot info: ptrace acceleration (seccomp mode 2) enabled
+    ...
+
+  But first, be sure it was built with this support::
+
+    $ proot -V
+    ...
+    built-in accelerators: process_vm = yes, seccomp_filter = yes
+    ...
+
+
 Release v2.4.1
 ==============
 
