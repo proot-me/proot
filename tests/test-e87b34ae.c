@@ -3,6 +3,7 @@
 #include <limits.h> /* PATH_MAX, */
 #include <stdlib.h> /* exit(3), */
 #include <sys/syscall.h> /* SYS_readlink, SYS_getcwd, */
+#include <errno.h> /* errno, */
 
 int main(void)
 {
@@ -14,6 +15,10 @@ int main(void)
 		pid = fork();
 		switch (pid) {
 		case -1:
+			/* Is the maximum number of processes
+			 * reached?  */
+			if (errno == EAGAIN)
+				break;
 			perror("fork()");
 			exit(EXIT_FAILURE);
 
