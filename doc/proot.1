@@ -103,8 +103,8 @@ guest location is a symbolic link, it is dereferenced to ensure
 the new content is accessible through all the symbolic links that
 point to the overlaid content.  In most cases this default
 behavior shouldn\(aqt be a problem, although it is possible to
-explicitly not dereference the guest location by prepending it the
-\fB!\fP character: \fB\-b *host_path*:!*guest_location*\fP.
+explicitly not dereference the guest location by appending it the
+\fB!\fP character: \fB\-b *host_path*:*guest_location!*\fP.
 .TP
 .BI \-q \ command, \ \-\-qemu\fB= command
 Execute guest programs through QEMU as specified by \fIcommand\fP.
@@ -366,13 +366,13 @@ $ md5sum /bin/dash
 .sp
 In most cases this shouldn\(aqt be a problem, but it is still possible to
 strictly bind \fB/bin/bash\fP over \fB/bin/sh\fP \-\- without dereferencing
-it \-\- by specifying the \fB!\fP character:
+it \-\- by specifying the \fB!\fP character at the end:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-proot \-b \(aq/bin/bash:!/bin/sh\(aq
+proot \-b \(aq/bin/bash:/bin/sh!\(aq
 
 $ md5sum /bin/sh
 089ed56cd74e63f461bef0fdfc2d159a  /bin/sh

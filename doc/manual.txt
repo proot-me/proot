@@ -93,8 +93,8 @@ Regular options
     the new content is accessible through all the symbolic links that
     point to the overlaid content.  In most cases this default
     behavior shouldn't be a problem, although it is possible to
-    explicitly not dereference the guest location by prepending it the
-    ``!`` character: ``-b *host_path*:!*guest_location*``.
+    explicitly not dereference the guest location by appending it the
+    ``!`` character: ``-b *host_path*:*guest_location!*``.
 
 -q command, --qemu=command
     Execute guest programs through QEMU as specified by *command*.
@@ -301,9 +301,9 @@ content of ``/bin/bash`` is actually bound over this latter::
 
 In most cases this shouldn't be a problem, but it is still possible to
 strictly bind ``/bin/bash`` over ``/bin/sh`` -- without dereferencing
-it -- by specifying the ``!`` character::
+it -- by specifying the ``!`` character at the end::
 
-    proot -b '/bin/bash:!/bin/sh'
+    proot -b '/bin/bash:/bin/sh!'
     
     $ md5sum /bin/sh
     089ed56cd74e63f461bef0fdfc2d159a  /bin/sh

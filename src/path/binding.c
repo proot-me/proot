@@ -564,17 +564,17 @@ static void initialize_binding(Tracee *tracee, Binding *binding)
 	 * for "/" is required to bootstrap the canonicalization.  */
 	if (compare_paths(binding->guest.path, "/") != PATHS_ARE_EQUAL) {
 		bool dereference;
+		size_t length;
+
+		strcpy(path, binding->guest.path);
+		length = strlen(path);
+		assert(length > 0);
 
 		/* Do the user explicitly tell not to dereference
 		 * guest path?  */
-		if (binding->guest.path[0] == '!') {
-			dereference = false;
-			strcpy(path, &binding->guest.path[1]);
-		}
-		else {
-			dereference = true;
-			strcpy(path, binding->guest.path);
-		}
+		dereference = (path[length - 1] != '!');
+		if (!dereference)
+			path[length - 1] = '\0';
 
 		/* Initial state before canonicalization.  */
 		strcpy(binding->guest.path, "/");

@@ -96,8 +96,8 @@ static Option options[] = {
 \tthe new content is accessible through all the symbolic links that\n\
 \tpoint to the overlaid content.  In most cases this default\n\
 \tbehavior shouldn't be a problem, although it is possible to\n\
-\texplicitly not dereference the guest location by prepending it the\n\
-\t! character: -b *host_path*:!*guest_location*.",
+\texplicitly not dereference the guest location by appending it the\n\
+\t! character: -b *host_path*:*guest_location!*.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
