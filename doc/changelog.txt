@@ -1,3 +1,14 @@
+Release v3.0.1
+==============
+
+Fix support for bindings where the guest path is explicitly not
+dereferenced.  Be careful, the syntax has changed:
+
+        before$ proot -b /bin/bash:!/bin/sh
+
+        now$ proot -b /bin/bash:/bin/sh!
+
+
 Release v3.0
 ============
 
@@ -6,8 +17,8 @@ New features
 
 * PRoot can now use the kernel feature named "seccomp-filter", a.k.a
   "seccomp mode 2", to improve its own performance significantly.  For
-  examples, the tables below show the time overhead induced by PRoot
-  compared to a native execution:
+  examples on my workstation, the tables below show the time overhead
+  induced by PRoot compared to a native execution:
 
   - when generating the Perl 5.16.1 package:
 
@@ -65,7 +76,7 @@ Notes
 * Seccomp-filter was first introduced in Linux 3.5 a year ago, it was
   also officially back-ported to Ubuntu 12.04 (Linux 3.2).  To know if
   PRoot is actually using this accelerator on your system, check the
-  verbose output.  For intance::
+  verbose output.  For instance::
 
     $ proot -v 1 true
     ...
