@@ -35,9 +35,6 @@ case PR_fchdir:
 case PR_chdir: {
 	char *tmp;
 
-	/* Force the sysexit stage under seccomp.  */
-	tracee->restart_how = PTRACE_SYSCALL;
-
 	if (syscall_number == PR_chdir) {
 		status = get_sysarg_path(tracee, path, SYSARG_1);
 		if (status < 0)
@@ -129,9 +126,6 @@ case PR_getsockname:
 case PR_getpeername:{
 	int size;
 
-	/* Force the sysexit stage under seccomp.  */
-	tracee->restart_how = PTRACE_SYSCALL;
-
 	/* Remember: PEEK_MEM puts -errno in status and breaks if an
 	 * error occured.  */
 	size = (int) PEEK_MEM(peek_reg(tracee, ORIGINAL, SYSARG_3));
@@ -153,9 +147,6 @@ case PR_socketcall: {
 	word_t sock_addr;
 	word_t size_addr;
 	word_t size;
-
-	/* Force the sysexit stage under seccomp.  */
-	tracee->restart_how = PTRACE_SYSCALL;
 
 	args_addr = peek_reg(tracee, CURRENT, SYSARG_2);
 
@@ -296,8 +287,6 @@ case PR_inotify_add_watch:
 	break;
 
 case PR_readlink:
-	/* Force the sysexit stage under seccomp.  */
-	tracee->restart_how = PTRACE_SYSCALL;
 case PR_lchown:
 case PR_lchown32:
 case PR_lgetxattr:
@@ -375,8 +364,6 @@ case PR_openat:
 	break;
 
 case PR_readlinkat:
-	/* Force the sysexit stage under seccomp.  */
-	tracee->restart_how = PTRACE_SYSCALL;
 case PR_unlinkat:
 case PR_mkdirat:
 	dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
@@ -428,14 +415,5 @@ case PR_symlinkat:
 		break;
 
 	status = translate_path2(tracee, newdirfd, newpath, SYSARG_3, SYMLINK);
-	break;
-
-case PR_getcwd:
-case PR_uname:
-case PR_rt_sigreturn:
-case PR_sigreturn:
-	/* Force the sysexit stage under seccomp.  */
-	tracee->restart_how = PTRACE_SYSCALL;
-	status = 0;
 	break;
 }

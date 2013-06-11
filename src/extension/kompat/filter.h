@@ -25,5 +25,5 @@
 { PR_renameat, 		0 },
 { PR_signalfd4, 	0 },
 { PR_symlinkat, 	0 },
-{ PR_uname, 		0 },
+{ PR_uname, 		FILTER_SYSEXIT },
 { PR_unlinkat, 		0 },

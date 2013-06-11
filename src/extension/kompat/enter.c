@@ -344,11 +344,6 @@ case PR_unlinkat: {
 	return 0;
 }
 
-case PR_uname:
-	/* Force the sysexit stage under seccomp.  */
-	tracee->restart_how = PTRACE_SYSCALL;
-	return 0;
-
 default:
 	return 0;
 }

@@ -420,7 +420,14 @@ int event_loop()
 			case SIGTRAP | 0x80:
 				signal = 0;
 
+				/* When seccomp is enabled here, it
+				 * means sysexit has to be handled,
+				 * (by Proot or an by extension).  */
+				if (seccomp_enabled && tracee->status == 0)
+					tracee->restart_how = PTRACE_SYSCALL;
+
 				translate_syscall(tracee);
+
 				break;
 
 /* With *vanilla* kernels PTRACE_EVENT_SECCOMP == 7.  */
@@ -428,7 +435,7 @@ int event_loop()
 			case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
 #endif
 			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
-				unsigned long translate_syscall_now = 0;
+				unsigned long flags = 0;
 
 				signal = 0;
 
@@ -439,25 +446,22 @@ int event_loop()
 					seccomp_enabled = true;
 				}
 
-				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL,
-						&translate_syscall_now);
+				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
 				if (status < 0)
 					break;
 
-				/* For yet unknown reasons, execve(2)
-				 * behaves differently under seccomp:
-				 * its sysenter stage has to be
-				 * handled right now.  All other
-				 * syscalls are handled as usual.  */
-				if (translate_syscall_now == 0) {
+				/* Use the common event mechanism
+				 * (SIGTRAP | 0x80) when sysexit has
+				 * to be handled.  */
+				if ((flags & FILTER_SYSEXIT) != 0) {
 					tracee->restart_how = PTRACE_SYSCALL;
 					break;
 				}
 
-				translate_syscall(tracee);
-
-				/* No need for its sysexit stage.  */
+				/* Otherwise, handle the sysenter
+				 * stage right now.  */
 				tracee->restart_how = PTRACE_CONT;
+				translate_syscall(tracee);
 				tracee->status = 0;
 
 				break;

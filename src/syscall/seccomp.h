@@ -29,15 +29,17 @@
 
 typedef struct {
 	word_t value;
-	int flag;
+	word_t flags;
 } FilteredSyscall;
 
 typedef struct {
-	int architecture;
-	const FilteredSyscall *syscalls;
+	int arch;
+	FilteredSyscall *syscalls;
 } Filter;
 
 #define FILTERED_SYSCALL_END { SYSCALL_AVOIDER, -1 }
+
+#define FILTER_SYSEXIT  0x1
 
 extern int enable_syscall_filtering(const Tracee *tracee);
 

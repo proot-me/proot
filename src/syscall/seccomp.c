@@ -37,6 +37,8 @@
 #include <string.h>        /* memcpy(3), */
 #include <stddef.h>        /* offsetof(3), */
 #include <stdint.h>        /* uint*_t, UINT*_MAX, */
+#include <talloc.h>        /* talloc_*, */
+#include <assert.h>        /* assert(3), */
 
 #include "syscall/seccomp.h"
 #include "tracee/tracee.h"
@@ -261,7 +263,7 @@ static int set_seccomp_filters(const Tracee *tracee, const Filter *filters)
 	if (status < 0)
 		goto end;
 
-	for (i = 0; filters[i].architecture != 0; i++) {
+	for (i = 0; filters[i].arch != 0; i++) {
 		nb_traced_syscalls = 0;
 
 		/* Pre-compute the number of traced syscalls for this architecture.  */
@@ -270,7 +272,7 @@ static int set_seccomp_filters(const Tracee *tracee, const Filter *filters)
 				nb_traced_syscalls++;
 
 		/* Filter: if handled architecture */
-		status = start_arch_section(&program, filters[i].architecture, nb_traced_syscalls);
+		status = start_arch_section(&program, filters[i].arch, nb_traced_syscalls);
 		if (status < 0)
 			goto end;
 
@@ -280,7 +282,7 @@ static int set_seccomp_filters(const Tracee *tracee, const Filter *filters)
 
 			/* Filter: trace if handled syscall */
 			status = add_trace_syscall(&program, filters[i].syscalls[j].value,
-							filters[i].syscalls[j].flag);
+							filters[i].syscalls[j].flags);
 			if (status < 0)
 				goto end;
 		}
@@ -320,7 +322,7 @@ end:
 
 /* List of syscalls handled by PRoot.  */
 #if defined(ARCH_X86_64)
-static const FilteredSyscall syscalls64[] = {
+static FilteredSyscall syscalls64[] = {
 	#include SYSNUM_HEADER
 	#include "syscall/filter.h"
 	#include SYSNUM_HEADER3
@@ -328,35 +330,117 @@ static const FilteredSyscall syscalls64[] = {
 	FILTERED_SYSCALL_END
 };
 
-static const FilteredSyscall syscalls32[] = {
+static FilteredSyscall syscalls32[] = {
 	#include SYSNUM_HEADER2
 	#include "syscall/filter.h"
 	FILTERED_SYSCALL_END
 };
 
-static const Filter filters[] = {
-	{ .architecture = AUDIT_ARCH_X86_64,
-	  .syscalls     = syscalls64 },
-	{ .architecture = AUDIT_ARCH_I386,
-	  .syscalls     = syscalls32 },
+static const Filter proot_filters[] = {
+	{ .arch     = AUDIT_ARCH_X86_64,
+	  .syscalls = syscalls64 },
+	{ .arch     = AUDIT_ARCH_I386,
+	  .syscalls = syscalls32 },
 	{ 0 }
 };
 #elif defined(AUDIT_ARCH_NUM)
-static const FilteredSyscall syscalls[] = {
+static FilteredSyscall syscalls[] = {
 	#include SYSNUM_HEADER
 	#include "syscall/filter.h"
 	FILTERED_SYSCALL_END
 };
 
-static const Filter filters[] = {
-	{ .architecture = AUDIT_ARCH_NUM,
-	  .syscalls     = syscalls },
+static const Filter proot_filters[] = {
+	{ .arch     = AUDIT_ARCH_NUM,
+	  .syscalls = syscalls },
 	{ 0 }
 };
 #else
-static const Filter filters[] = { 0 };
+static const Filter proot_filters[] = { 0 };
 #endif
 #include "syscall/sysnum-undefined.h"
+
+/**
+ * Merge the filtered @syscall for the given @arch into @filters ,
+ * using the given Talloc @context.  This function returns -errno if
+ * an error occurred, otherwise 0.
+ */
+static int merge_filtered_syscall(TALLOC_CTX *context, Filter **filters, int arch,
+				FilteredSyscall syscall)
+{
+	size_t i, j;
+
+	/* Search for the given architecture.  */
+	for (i = 0; (*filters)[i].arch != 0 && (*filters)[i].arch != arch; i++)
+		;
+
+	if ((*filters)[i].arch == 0) {
+		/* No such architecture, allocate a new entry.  */
+		*filters = talloc_realloc(context, *filters, Filter, i + 2);
+		if (*filters == NULL)
+			return -ENOMEM;
+
+		(*filters)[i].arch = arch;
+
+		/* Start with no syscalls but the terminator.  */
+		(*filters)[i].syscalls = talloc_array(context, FilteredSyscall, 1);
+		if (filters == NULL)
+			return -ENOMEM;
+
+		(*filters)[i].syscalls[0].value = SYSCALL_AVOIDER;
+		(*filters)[i].syscalls[0].flags = -1;
+
+		/* The last item is the terminator.  */
+		(*filters)[i + 1].arch = 0;
+	}
+
+	/* Search for the given syscall.  */
+	for (j = 0; (*filters)[i].syscalls[j].value != SYSCALL_AVOIDER
+		 && (*filters)[i].syscalls[j].value != syscall.value; j++)
+		;
+
+	if ((*filters)[i].syscalls[j].value == SYSCALL_AVOIDER) {
+		/* No such syscall, allocate a new entry.  */
+		(*filters)[i].syscalls = talloc_realloc(context, (*filters)[i].syscalls,
+							FilteredSyscall, j + 2);
+		if ((*filters)[i].syscalls == NULL)
+			return -ENOMEM;
+
+		(*filters)[i].syscalls[j] = syscall;
+
+		/* The last item is the terminator.  */
+		(*filters)[i].syscalls[j + 1].value = SYSCALL_AVOIDER;
+		(*filters)[i].syscalls[j + 1].flags = -1;
+	}
+	else
+		/* The syscall is already filtered, merge the
+		 * flags.  */
+		(*filters)[i].syscalls[j].flags |= syscall.flags;
+
+	return 0;
+}
+
+/**
+ * Merge @new_filters into @filters, using the given Talloc @context.
+ * This function returns -errno if an error occurred, otherwise 0.
+ */
+static int merge_filters(TALLOC_CTX *context, Filter **filters, const Filter *new_filters)
+{
+	size_t i, j;
+	int status;
+
+	for (i = 0; new_filters[i].arch != 0; i++) {
+		for (j = 0; new_filters[i].syscalls[j].value != SYSCALL_AVOIDER; j++) {
+			status = merge_filtered_syscall(context, filters,
+							new_filters[i].arch,
+							new_filters[i].syscalls[j]);
+			if (status < 0)
+				return status;
+		}
+	}
+
+	return 0;
+}
 
 /**
  * Tell the kernel to trace only syscalls handled by PRoot and its
@@ -367,27 +451,37 @@ static const Filter filters[] = { 0 };
 int enable_syscall_filtering(const Tracee *tracee)
 {
 	Extension *extension;
+	Filter *filters;
 	int status;
+
+	assert(tracee != NULL && tracee->ctx != NULL);
+
+	/* Start with no filters but the terminator.  */
+	filters = talloc_zero_array(tracee->ctx, Filter, 1);
+	if (filters == NULL)
+		return -ENOMEM;
+
+	/* Add the filters required by PRoot.  TODO: only if path
+	 * translation is required.  */
+	status = merge_filters(tracee->ctx, &filters, proot_filters);
+	if (status < 0)
+		return status;
+
+	/* Merge the filters required by the extensions.  */
+	if (tracee->extensions != NULL) {
+		LIST_FOREACH(extension, tracee->extensions, link) {
+			if (extension->filters == NULL)
+				continue;
+
+			status = merge_filters(tracee->ctx, &filters, extension->filters);
+			if (status < 0)
+				return status;
+		}
+	}
 
 	status = set_seccomp_filters(tracee, filters);
 	if (status < 0)
 		return status;
-
-	/* No more filters?  */
-	if (tracee->extensions == NULL)
-		return 0;
-
-	/* Filters are evaluated with the following precedence order:
-	 * KILL, TRAP, DATA, ERRNO, TRACE, then ALLOW.  For details,
-	 * see linux/Documentation/prctl/seccomp_filter.txt.  */
-	LIST_FOREACH(extension, tracee->extensions, link) {
-		if (extension->filters == NULL)
-			continue;
-
-		status = set_seccomp_filters(tracee, extension->filters);
-		if (status < 0)
-			return status;
-	}
 
 	return 0;
 }

@@ -56,7 +56,7 @@ static int restore_mode(ModifiedNode *node)
 
 /* List of syscalls handled by this extensions.  */
 #if defined(ARCH_X86_64)
-static const FilteredSyscall syscalls64[] = {
+static FilteredSyscall syscalls64[] = {
 	#include SYSNUM_HEADER
 	#include "extension/fake_id0/filter.h"
 	#include SYSNUM_HEADER3
@@ -64,29 +64,29 @@ static const FilteredSyscall syscalls64[] = {
 	FILTERED_SYSCALL_END
 };
 
-static const FilteredSyscall syscalls32[] = {
+static FilteredSyscall syscalls32[] = {
 	#include SYSNUM_HEADER2
 	#include "extension/fake_id0/filter.h"
 	FILTERED_SYSCALL_END
 };
 
 static const Filter filters[] = {
-	{ .architecture = AUDIT_ARCH_X86_64,
-	  .syscalls     = syscalls64 },
-	{ .architecture = AUDIT_ARCH_I386,
-	  .syscalls     = syscalls32 },
+	{ .arch     = AUDIT_ARCH_X86_64,
+	  .syscalls = syscalls64 },
+	{ .arch     = AUDIT_ARCH_I386,
+	  .syscalls = syscalls32 },
 	{ 0 }
 };
 #elif defined(AUDIT_ARCH_NUM)
-static const FilteredSyscall syscalls[] = {
+static FilteredSyscall syscalls[] = {
 	#include SYSNUM_HEADER
 	#include "extension/fake_id0/filter.h"
 	FILTERED_SYSCALL_END
 };
 
 static const Filter filters[] = {
-	{ .architecture = AUDIT_ARCH_NUM,
-	  .syscalls     = syscalls },
+	{ .arch     = AUDIT_ARCH_NUM,
+	  .syscalls = syscalls },
 	{ 0 }
 };
 #else
@@ -131,37 +131,6 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		case ABI_3: {
 			#include SYSNUM_HEADER3
 			#include "extension/fake_id0/host_path.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
-		return 0;
-	}
-
-	case SYSCALL_ENTER_END: {
-		Tracee *tracee = TRACEE(extension);
-		word_t syscall_number;
-
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/fake_id0/enter.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/fake_id0/enter.c"
-			return 0;
-		}
-		#endif
-		#ifdef SYSNUM_HEADER3
-		case ABI_3: {
-			#include SYSNUM_HEADER3
-			#include "extension/fake_id0/enter.c"
 			return 0;
 		}
 		#endif

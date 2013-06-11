@@ -119,7 +119,7 @@ static int parse_kernel_release(const char *release)
 
 /* List of syscalls handled by this extensions.  */
 #if defined(ARCH_X86_64)
-static const FilteredSyscall syscalls64[] = {
+static FilteredSyscall syscalls64[] = {
 	#include SYSNUM_HEADER
 	#include "extension/kompat/filter.h"
 	#include SYSNUM_HEADER3
@@ -127,17 +127,17 @@ static const FilteredSyscall syscalls64[] = {
 	FILTERED_SYSCALL_END
 };
 
-static const FilteredSyscall syscalls32[] = {
+static FilteredSyscall syscalls32[] = {
 	#include SYSNUM_HEADER2
 	#include "extension/kompat/filter.h"
 	FILTERED_SYSCALL_END
 };
 
 static const Filter filters[] = {
-	{ .architecture = AUDIT_ARCH_X86_64,
-	  .syscalls     = syscalls64 },
-	{ .architecture = AUDIT_ARCH_I386,
-	  .syscalls     = syscalls32 },
+	{ .arch     = AUDIT_ARCH_X86_64,
+	  .syscalls = syscalls64 },
+	{ .arch     = AUDIT_ARCH_I386,
+	  .syscalls = syscalls32 },
 	{ 0 }
 };
 #elif defined(AUDIT_ARCH_NUM)
@@ -148,8 +148,8 @@ static const FilteredSyscall syscalls[] = {
 };
 
 static const Filter filters[] = {
-	{ .architecture = AUDIT_ARCH_NUM,
-	  .syscalls     = syscalls },
+	{ .arch     = AUDIT_ARCH_NUM,
+	  .syscalls = syscalls },
 	{ 0 }
 };
 #else
