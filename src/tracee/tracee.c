@@ -205,6 +205,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
  */
 int new_child(Tracee *parent, word_t clone_flags)
 {
+	int ptrace_options;
 	unsigned long pid;
 	Tracee *child;
 	int status;
@@ -266,13 +267,20 @@ int new_child(Tracee *parent, word_t clone_flags)
 	else
 		child->parent = parent;
 
-	/* If one of these ptrace options is set, the newly forked
-	 * process is automatically traced by the parent's tracer.  */
-	if (parent->as_ptracee.options & (PTRACE_O_TRACEFORK
-					| PTRACE_O_TRACEVFORK
-					| PTRACE_O_TRACECLONE)) {
-		child->as_ptracee.tracer  = parent->as_ptracee.tracer;
-		child->as_ptracee.options = parent->as_ptracee.options;
+	/* Depending on how the new process is created, it may be
+	 * automatically traced by the parent's tracer.  */
+	ptrace_options = ( clone_flags == 0		? PTRACE_O_TRACEFORK
+			: (clone_flags & CLONE_VFORK)	? PTRACE_O_TRACEVFORK
+			: 				  PTRACE_O_TRACECLONE);
+	if ((ptrace_options & parent->as_ptracee.options) != 0) {
+		child->as_ptracee.tracer = parent->as_ptracee.tracer;
+
+		/* All these flags are inheritable, no matter why this
+		 * child is being traced.  */
+		child->as_ptracee.options |= (parent->as_ptracee.options
+					      & ( PTRACE_O_TRACEFORK
+						| PTRACE_O_TRACEVFORK
+						| PTRACE_O_TRACECLONE));
 	}
 
 	/* If CLONE_FS is set, the parent and the child process share

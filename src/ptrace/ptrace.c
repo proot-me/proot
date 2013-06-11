@@ -129,67 +129,100 @@ int translate_ptrace_exit(Tracee *tracee)
 	errno = 0;
 	switch (request) {
 	case PTRACE_SYSCALL:
-		/* Restart the stopped ptracee, and stop at the next
-		 * syscall.  */
 		PTRACEE.ignore_syscall = false;
 		status = 0;
-		break;
+		break;  /* Restart the ptracee.  */
 
 	case PTRACE_CONT:
-		/* Restart the stopped ptracee, but don't stop at the
-		 * next syscall.  */
 		PTRACEE.ignore_syscall = true;
 		status = 0;
-		break;
+		break;  /* Restart the ptracee.  */
 
-	/* Fulfill these requests on behalve of the emulated
-	 * ptracer.  */
+	case PTRACE_DETACH:
+		assert(PTRACER.nb_tracees > 0);
+		PTRACER.nb_tracees--;
+		PTRACEE.tracer = NULL;
+		status = 0;
+		break;  /* Restart the ptracee.  */
+
+	case PTRACE_SETOPTIONS:
+		PTRACEE.options = data;
+		return 0;  /* Don't restart the ptracee.  */
+
 	case PTRACE_PEEKTEXT:
 	case PTRACE_PEEKDATA:
 	case PTRACE_PEEKUSER:
 		result = (word_t) ptrace(request, pid, address, NULL);
-		if (errno != 0) {
-			status = -errno;
-			goto wake_tracee;
-		}
+		if (errno != 0)
+			return -errno;
 
 		poke_mem(ptracer, data, result);
-		if (errno != 0) {
-			status = -errno;
-			goto wake_tracee;
-		}
-		return 0;
+		if (errno != 0)
+			return  -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
 
 	case PTRACE_POKETEXT:
 	case PTRACE_POKEDATA:
 	case PTRACE_POKEUSER:
 		status = ptrace(request, pid, address, data);
 		if (status < 0)
-			goto wake_tracee;
-		return 0;
+			return -errno;
 
-	case PTRACE_GETSIGINFO: {
-		siginfo_t siginfo;
+		return 0;  /* Don't restart the ptracee.  */
 
-		status = ptrace(request, pid, NULL, &siginfo);
+	case PTRACE_GETSIGINFO:
+	case PTRACE_GETREGS: {
+		size_t size;
+		union {
+			siginfo_t siginfo;
+			struct user_regs_struct regs;
+		} buffer;
+
+		size = (request == PTRACE_GETSIGINFO ?
+			sizeof(buffer.siginfo) :
+			sizeof(buffer.regs));
+
+		status = ptrace(request, pid, NULL, &buffer);
 		if (status < 0)
-			goto wake_tracee;
+			return -errno;
 
-		status = write_data(ptracer, data, &siginfo, sizeof(siginfo));
+		status = write_data(ptracer, data, &buffer, size);
 		if (status < 0)
-			goto wake_tracee;
+			return status;
 
-		return 0;
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_SETSIGINFO:
+	case PTRACE_SETREGS: {
+		size_t size;
+		union {
+			siginfo_t siginfo;
+			struct user_regs_struct regs;
+		} buffer;
+
+		size = (request == PTRACE_GETSIGINFO ?
+			sizeof(buffer.siginfo) :
+			sizeof(buffer.regs));
+
+		status = read_data(ptracer, &buffer, data, size);
+		if (status < 0)
+			return status;
+
+		status = ptrace(request, pid, NULL, &buffer);
+		if (status < 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
 	}
 
 	default:
 		notice(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
 			stringify_ptrace(request));
-		status = -ENOTSUP;
-		goto wake_tracee;
+		return -ENOTSUP;
 	}
 
-wake_tracee:
 	/* Now, the initial tracee's event can be handled.  */
 	handle_tracee_event(ptracee, PTRACEE.wait_status);
 
