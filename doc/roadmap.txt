@@ -37,8 +37,6 @@ New features
 Fixes
 -----
 
-* Fix ``perf proot -w talloc/ ./configure``.
-
 * Improve code coverage of PRoot.
 
 

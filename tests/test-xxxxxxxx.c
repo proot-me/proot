@@ -16,7 +16,7 @@ int main(void)
 	int fd;
 
 	status = execve("/tmp", argv, environ);
-	if (errno != EISDIR && errno != EACCES) { /* Actually the kernel returns -EACCES */
+	if (errno != EACCES) {
 		perror("execve (1)");
 		exit(EXIT_FAILURE);
 	}

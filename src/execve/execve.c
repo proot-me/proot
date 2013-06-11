@@ -362,7 +362,10 @@ int translate_execve(Tracee *tracee)
 	status = expand_interp(tracee, u_path, t_interp, u_interp, argv,
 			       extract_script_interp, false);
 	if (status < 0)
-		return status;
+		/* The Linux kernel actually returns -EACCES when
+		 * trying to execute a directory.  */
+		return status == -EISDIR ? -EACCES : status;
+
 	is_script = (status > 0);
 
 	/* It's the rigth place to check if the binary is PRoot itself.  */
