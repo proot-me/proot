@@ -175,6 +175,7 @@ int translate_wait_exit(Tracee *ptracer)
  */
 bool handle_ptracee_event(Tracee *ptracee, int event)
 {
+	bool handled_by_proot_first = false;
 	Tracee *ptracer = PTRACEE.ptracer;
 	bool keep_stopped;
 
@@ -198,6 +199,9 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 
 			if ((PTRACEE.options & PTRACE_O_TRACESYSGOOD) == 0)
 				event &= ~(0x80 << 8);
+
+			/* XXX.  */
+			handled_by_proot_first = (ptracee->status != 0);
 			break;
 
 #define PTRACE_EVENT_VFORKDONE PTRACE_EVENT_VFORK_DONE
@@ -242,6 +246,18 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	 * PTRACE_EVENT_*.  */
 	if (!PTRACEE.tracing_started)
 		return false;
+
+	/* Under some circumstances, the event must be handled by
+	 * PRoot first.  */
+	if (handled_by_proot_first) {
+		int signal;
+		signal = handle_tracee_event(ptracee, PTRACEE.event4.proot.value);
+		PTRACEE.event4.proot.value = signal;
+
+		/* The computed signal is alwasy 0 since we can come
+		 * in this block only on sysexit (as for now).  */
+		assert(signal == 0);
+	}
 
 	/* Remember what the new event is, this will be required by
 	   the ptracer in translate_ptrace_exit() in order to restart

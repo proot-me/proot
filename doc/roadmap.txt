@@ -17,17 +17,39 @@ TODO:
 
 Remaining issues:
 
-- strace -f
-    - WIFEXITED expected once
-- gdb
-    - wait(__WCLONE/__WALL)
-- gdb follow-fork/exec-mode
-- proot
-    - nested syscall enter/exit
-- 32-bit on 64-bit
-- ptrace-tests from utrace
-    - PTRACE_ATTACH
-- performance
+* strace-v4.7
+
+    * WIFEXITED expected exactly once
+
+* gdb
+
+    * wait(__WCLONE/__WALL)
+
+    * follow-fork/exec-mode
+
+* proot
+
+    * PTRACE_GETEVENTMSG
+
+    * fix memory leak:
+
+          $ proot $(which proot) /
+          $ tar -xf ~/tmp/perl-5.16.1.tar.xz
+          $ exit
+          talloc report on 'null_context' (total  10066 bytes in  24 blocks)
+              Tracee                         contains   9163 bytes in  12 blocks (ref 0) 0x61c620
+              Tracee                         contains    903 bytes in  11 blocks (ref 0) 0x61bd40
+
+* 32-bit on 64-bit
+
+    $ proot ~/rootfs/slackware-14.0 strace /bin/true
+    upeek: ptrace(PTRACE_PEEKUSER,21919,44,0): Input/output error
+
+* ptrace-tests from utrace
+
+    * PTRACE_ATTACH
+
+* performance
 
 * support under seccomp.
 

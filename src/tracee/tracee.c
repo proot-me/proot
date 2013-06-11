@@ -68,10 +68,20 @@ static int remove_tracee(Tracee *tracee)
 
 		/* Its tracees are now free.  */
 		if (relative->as_ptracee.ptracer == tracee) {
+			int signal;
+
 			/* Release the pending event, if any.  */
 			relative->as_ptracee.ptracer = NULL;
-			if (relative->as_ptracee.event4.proot.pending)
-				handle_tracee_event(relative, relative->as_ptracee.event4.proot.value);
+
+			if (relative->as_ptracee.event4.proot.pending) {
+				signal = handle_tracee_event(relative, relative->as_ptracee.event4.proot.value);
+				(void) restart_tracee(relative, signal);
+			}
+			else if (relative->as_ptracee.event4.ptracer.pending) {
+				signal = relative->as_ptracee.event4.proot.value;
+				(void) restart_tracee(relative, signal);
+			}
+
 			bzero(&relative->as_ptracee, sizeof(relative->as_ptracee));
 		}
 	}

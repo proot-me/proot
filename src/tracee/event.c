@@ -380,6 +380,7 @@ int event_loop()
 	while (1) {
 		int tracee_status;
 		Tracee *tracee;
+		int signal;
 		pid_t pid;
 
 		/* Wait for the next tracee's stop. */
@@ -412,7 +413,8 @@ int event_loop()
 				continue;
 		}
 
-		handle_tracee_event(tracee, tracee_status);
+		signal = handle_tracee_event(tracee, tracee_status);
+		(void) restart_tracee(tracee, signal);
 	}
 
 	return last_exit_status;
@@ -420,8 +422,10 @@ int event_loop()
 
 /**
  * Handle the current event (@tracee_status) of the given @tracee.
+ * This function returns the "computed" signal that should be used to
+ * restart the given @tracee.
  */
-void handle_tracee_event(Tracee *tracee, int tracee_status)
+int handle_tracee_event(Tracee *tracee, int tracee_status)
 {
 	static bool seccomp_detected = false;
 	pid_t pid = tracee->pid;
@@ -437,7 +441,7 @@ void handle_tracee_event(Tracee *tracee, int tracee_status)
 	signal = 0;
 
 	/* A do-while block is used in order to preserve the initial
-	 * indentation and "continue" statements.  */
+	 * indentation ...  */
 	do {
 		if (WIFEXITED(tracee_status)) {
 			last_exit_status = WEXITSTATUS(tracee_status);
@@ -613,8 +617,10 @@ void handle_tracee_event(Tracee *tracee, int tracee_status)
 		/* Clear the pending event, if any.  */
 		tracee->as_ptracee.event4.proot.pending = false;
 
-		(void) restart_tracee(tracee, signal);
+		return signal;
 	} while (0);
+
+	assert(0);
 }
 
 /**

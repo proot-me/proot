@@ -91,6 +91,7 @@ int translate_ptrace_exit(Tracee *tracee)
 {
 	word_t request, pid, address, data, result;
 	Tracee *ptracee, *ptracer;
+	int signal;
 	int status;
 
 	/* Read ptrace parameters.  */
@@ -289,10 +290,11 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	/* Now, the initial tracee's event can be handled.  */
-	if (PTRACEE.event4.proot.pending)
-		handle_tracee_event(ptracee, PTRACEE.event4.proot.value);
-	else
-		(void) restart_tracee(ptracee, PTRACEE.event4.proot.value);
+	signal = PTRACEE.event4.proot.pending
+		? handle_tracee_event(ptracee, PTRACEE.event4.proot.value)
+		: PTRACEE.event4.proot.value;
+
+	(void) restart_tracee(ptracee, signal);
 
 	return status;
 }
