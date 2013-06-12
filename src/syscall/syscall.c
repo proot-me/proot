@@ -36,6 +36,7 @@
 #include <linux/net.h>   /* SYS_*, */
 
 #include "syscall/syscall.h"
+#include "syscall/sysnum.h"
 #include "syscall/socket.h"
 #include "arch.h"
 #include "tracee/mem.h"
@@ -202,30 +203,7 @@ static void translate_syscall_enter(Tracee *tracee)
 		return;
 
 	/* Translate input arguments. */
-	switch (get_abi(tracee)) {
-	case ABI_DEFAULT: {
-		#include SYSNUM_HEADER
-		#include "syscall/enter.c"
-		break;
-	}
-#ifdef SYSNUM_HEADER2
-	case ABI_2: {
-		#include SYSNUM_HEADER2
-		#include "syscall/enter.c"
-		break;
-	}
-#endif
-#ifdef SYSNUM_HEADER3
-	case ABI_3: {
-		#include SYSNUM_HEADER3
-		#include "syscall/enter.c"
-		break;
-	}
-#endif
-	default:
-		assert(0);
-	}
-	#include "syscall/sysnum-undefined.h"
+	#include "syscall/enter.c"
 
 end:
 	status2 = notify_extensions(tracee, SYSCALL_ENTER_END, status, 0);
@@ -236,7 +214,7 @@ end:
 	 * the actual syscall if an error occured during the
 	 * translation. */
 	if (status < 0) {
-		poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
+		set_sysnum(tracee, PR_void);
 		poke_reg(tracee, SYSARG_RESULT, status);
 		tracee->status = status;
 	}
@@ -273,30 +251,7 @@ static void translate_syscall_exit(Tracee *tracee)
 	}
 
 	/* Translate output arguments. */
-	switch (get_abi(tracee)) {
-	case ABI_DEFAULT: {
-		#include SYSNUM_HEADER
-		#include "syscall/exit.c"
-	}
-		break;
-#ifdef SYSNUM_HEADER2
-	case ABI_2: {
-		#include SYSNUM_HEADER2
-		#include "syscall/exit.c"
-	}
-		break;
-#endif
-#ifdef SYSNUM_HEADER3
-	case ABI_3: {
-		#include SYSNUM_HEADER3
-		#include "syscall/exit.c"
-	}
-		break;
-#endif
-	default:
-		assert(0);
-	}
-	#include "syscall/sysnum-undefined.h"
+	#include "syscall/exit.c"
 
 	/* "status" was updated in syscall/exit.c.  */
 	poke_reg(tracee, SYSARG_RESULT, (word_t) status);

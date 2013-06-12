@@ -126,7 +126,7 @@ typedef struct extension {
 	TALLOC_CTX *config;
 
 	/* List of syscalls handled by this extension.  */
-	const Filter *filters;
+	const FilteredSyscall *filtered_syscalls;
 
 	/* Link to the next and previous extensions.  Note the order
 	 * is *never* garantee.  */

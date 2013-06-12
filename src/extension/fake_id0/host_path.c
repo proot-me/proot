@@ -59,7 +59,7 @@
 		node->mode = perms.st_mode;
 	}
 	else {
-		switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
+		switch (get_sysnum(tracee)) {
 		/* For chmod syscalls: restore the new mode of the final component.  */
 		case PR_chmod:
 			node->mode = peek_reg(tracee, ORIGINAL, SYSARG_2);

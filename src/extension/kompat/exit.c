@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  */
 
-switch (peek_reg(tracee, ORIGINAL, SYSARG_NUM)) {
+switch (get_sysnum(tracee)) {
 case PR_uname: {
 	struct utsname utsname;
 	word_t address;

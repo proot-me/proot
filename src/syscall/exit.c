@@ -27,7 +27,7 @@
  *
  * - goto end: nothing else to do.
  */
-syscall_number = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
+syscall_number = get_sysnum(tracee);
 syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 switch (syscall_number) {
 case PR_getcwd: {

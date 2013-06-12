@@ -30,6 +30,7 @@
 
 #include "extension/extension.h"
 #include "syscall/syscall.h"
+#include "syscall/sysnum.h"
 #include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
@@ -55,44 +56,57 @@ static int restore_mode(ModifiedNode *node)
 }
 
 /* List of syscalls handled by this extensions.  */
-#if defined(ARCH_X86_64)
-static FilteredSyscall syscalls64[] = {
-	#include SYSNUM_HEADER
-	#include "extension/fake_id0/filter.h"
-	#include SYSNUM_HEADER3
-	#include "extension/fake_id0/filter.h"
-	FILTERED_SYSCALL_END
+static FilteredSyscall filtered_syscalls[] = {
+	{ PR_chmod,		FILTER_SYSEXIT },
+	{ PR_chown,		FILTER_SYSEXIT },
+	{ PR_chown32,		FILTER_SYSEXIT },
+	{ PR_chroot,		FILTER_SYSEXIT },
+	{ PR_fchmod,		FILTER_SYSEXIT },
+	{ PR_fchmodat,		FILTER_SYSEXIT },
+	{ PR_fchown,		FILTER_SYSEXIT },
+	{ PR_fchown32,		FILTER_SYSEXIT },
+	{ PR_fchownat,		FILTER_SYSEXIT },
+	{ PR_fchownat,		FILTER_SYSEXIT },
+	{ PR_fstat,		FILTER_SYSEXIT },
+	{ PR_fstat,		FILTER_SYSEXIT },
+	{ PR_fstat64,		FILTER_SYSEXIT },
+	{ PR_fstatat64,		FILTER_SYSEXIT },
+	{ PR_getegid,		FILTER_SYSEXIT },
+	{ PR_getegid32,		FILTER_SYSEXIT },
+	{ PR_geteuid,		FILTER_SYSEXIT },
+	{ PR_geteuid32,		FILTER_SYSEXIT },
+	{ PR_getgid,		FILTER_SYSEXIT },
+	{ PR_getgid32,		FILTER_SYSEXIT },
+	{ PR_getresgid,		FILTER_SYSEXIT },
+	{ PR_getresgid32,	FILTER_SYSEXIT },
+	{ PR_getresuid,		FILTER_SYSEXIT },
+	{ PR_getresuid32,	FILTER_SYSEXIT },
+	{ PR_getuid,		FILTER_SYSEXIT },
+	{ PR_getuid32,		FILTER_SYSEXIT },
+	{ PR_lchown,		FILTER_SYSEXIT },
+	{ PR_lchown32,		FILTER_SYSEXIT },
+	{ PR_lstat,		FILTER_SYSEXIT },
+	{ PR_lstat64,		FILTER_SYSEXIT },
+	{ PR_newfstatat,	FILTER_SYSEXIT },
+	{ PR_oldlstat,		FILTER_SYSEXIT },
+	{ PR_oldstat,		FILTER_SYSEXIT },
+	{ PR_setfsgid,		FILTER_SYSEXIT },
+	{ PR_setfsgid32,	FILTER_SYSEXIT },
+	{ PR_setfsuid,		FILTER_SYSEXIT },
+	{ PR_setfsuid32,	FILTER_SYSEXIT },
+	{ PR_setgid,		FILTER_SYSEXIT },
+	{ PR_setgid32,		FILTER_SYSEXIT },
+	{ PR_setresgid,		FILTER_SYSEXIT },
+	{ PR_setresgid32,	FILTER_SYSEXIT },
+	{ PR_setresuid,		FILTER_SYSEXIT },
+	{ PR_setresuid32,	FILTER_SYSEXIT },
+	{ PR_setuid,		FILTER_SYSEXIT },
+	{ PR_setuid32,		FILTER_SYSEXIT },
+	{ PR_stat,		FILTER_SYSEXIT },
+	{ PR_stat64,		FILTER_SYSEXIT },
+	{ PR_statfs,		FILTER_SYSEXIT },
+	{ PR_statfs64,		FILTER_SYSEXIT },
 };
-
-static FilteredSyscall syscalls32[] = {
-	#include SYSNUM_HEADER2
-	#include "extension/fake_id0/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter filters[] = {
-	{ .arch     = AUDIT_ARCH_X86_64,
-	  .syscalls = syscalls64 },
-	{ .arch     = AUDIT_ARCH_I386,
-	  .syscalls = syscalls32 },
-	{ 0 }
-};
-#elif defined(AUDIT_ARCH_NUM)
-static FilteredSyscall syscalls[] = {
-	#include SYSNUM_HEADER
-	#include "extension/fake_id0/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter filters[] = {
-	{ .arch     = AUDIT_ARCH_NUM,
-	  .syscalls = syscalls },
-	{ 0 }
-};
-#else
-static const Filter filters[] = { 0 };
-#endif
-#include "syscall/sysnum-undefined.h"
 
 /**
  * Handler for this @extension.  It is triggered each time an @event
@@ -102,7 +116,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 {
 	switch (event) {
 	case INITIALIZATION:
-		extension->filters = filters;
+		extension->filtered_syscalls = filtered_syscalls;
 		return 0;
 
 	case INHERIT_PARENT: /* Inheritable for sub reconfiguration ...  */
@@ -114,30 +128,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 	case HOST_PATH: {
 		Tracee *tracee = TRACEE(extension);
 
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/fake_id0/host_path.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/fake_id0/host_path.c"
-			return 0;
-		}
-		#endif
-		#ifdef SYSNUM_HEADER3
-		case ABI_3: {
-			#include SYSNUM_HEADER3
-			#include "extension/fake_id0/host_path.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
+		#include "extension/fake_id0/host_path.c"
 		return 0;
 	}
 
@@ -145,30 +136,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		Tracee *tracee = TRACEE(extension);
 		word_t syscall_number;
 
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/fake_id0/exit.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/fake_id0/exit.c"
-			return 0;
-		}
-		#endif
-		#ifdef SYSNUM_HEADER3
-		case ABI_3: {
-			#include SYSNUM_HEADER3
-			#include "extension/fake_id0/exit.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
+		#include "extension/fake_id0/exit.c"
 		return 0;
 	}
 

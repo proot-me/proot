@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  */
 
-syscall_number = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
+syscall_number = get_sysnum(tracee);
 switch (syscall_number) {
 case PR_chroot: {
 	char path[PATH_MAX];

@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  */
 
-syscall_number = peek_reg(tracee, ORIGINAL, SYSARG_NUM);
+syscall_number = get_sysnum(tracee);
 switch (syscall_number) {
 default:
 	/* Nothing to do. */
@@ -96,7 +96,7 @@ case PR_chdir: {
 	tracee->fs->cwd = tmp;
 	talloc_set_name_const(tracee->fs->cwd, "$cwd");
 
-	poke_reg(tracee, SYSARG_NUM, SYSCALL_AVOIDER);
+	set_sysnum(tracee, PR_void);
 	status = 0;
 	break;
 }

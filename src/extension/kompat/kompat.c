@@ -32,6 +32,7 @@
 #include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 
 #include "extension/extension.h"
+#include "syscall/sysnum.h"
 #include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -75,7 +76,7 @@ static void modify_syscall(Tracee *tracee, const Config *config, const Modif *mo
 	    || modif->expected_release > config->emulated_release)
 		return;
 
-	poke_reg(tracee, SYSARG_NUM, modif->new_sysarg_num);
+	set_sysnum(tracee, modif->new_sysarg_num);
 
 	/* Shift syscall arguments.  */
 	for (i = 0; i < MAX_ARG_SHIFT; i++) {
@@ -118,44 +119,32 @@ static int parse_kernel_release(const char *release)
 }
 
 /* List of syscalls handled by this extensions.  */
-#if defined(ARCH_X86_64)
-static FilteredSyscall syscalls64[] = {
-	#include SYSNUM_HEADER
-	#include "extension/kompat/filter.h"
-	#include SYSNUM_HEADER3
-	#include "extension/kompat/filter.h"
-	FILTERED_SYSCALL_END
+static FilteredSyscall filtered_syscalls[] = {
+	{ PR_accept4,		0 },
+	{ PR_dup3,		0 },
+	{ PR_epoll_create1,	0 },
+	{ PR_epoll_pwait, 	0 },
+	{ PR_eventfd2, 		0 },
+	{ PR_faccessat, 	0 },
+	{ PR_fchmodat, 		0 },
+	{ PR_fchownat, 		0 },
+	{ PR_fstatat64, 	0 },
+	{ PR_futimesat, 	0 },
+	{ PR_inotify_init1, 	0 },
+	{ PR_linkat, 		0 },
+	{ PR_mkdirat, 		0 },
+	{ PR_mknodat, 		0 },
+	{ PR_newfstatat, 	0 },
+	{ PR_openat, 		0 },
+	{ PR_pipe2, 		0 },
+	{ PR_pselect6, 		0 },
+	{ PR_readlinkat, 	0 },
+	{ PR_renameat, 		0 },
+	{ PR_signalfd4, 	0 },
+	{ PR_symlinkat, 	0 },
+	{ PR_uname, 		FILTER_SYSEXIT },
+	{ PR_unlinkat, 		0 },
 };
-
-static FilteredSyscall syscalls32[] = {
-	#include SYSNUM_HEADER2
-	#include "extension/kompat/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter filters[] = {
-	{ .arch     = AUDIT_ARCH_X86_64,
-	  .syscalls = syscalls64 },
-	{ .arch     = AUDIT_ARCH_I386,
-	  .syscalls = syscalls32 },
-	{ 0 }
-};
-#elif defined(AUDIT_ARCH_NUM)
-static const FilteredSyscall syscalls[] = {
-	#include SYSNUM_HEADER
-	#include "extension/kompat/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter filters[] = {
-	{ .arch     = AUDIT_ARCH_NUM,
-	  .syscalls = syscalls },
-	{ 0 }
-};
-#else
-static const Filter filters[] = { 0 };
-#endif
-#include "syscall/sysnum-undefined.h"
 
 /**
  * Handler for this @extension.  It is triggered each time an @event
@@ -189,7 +178,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		else
 			config->actual_release = parse_kernel_release(utsname.release);
 
-		extension->filters = filters;
+		extension->filtered_syscalls = filtered_syscalls;
 		return 0;
 	}
 
@@ -202,30 +191,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		if ((int) data1 < 0)
 			return 0;
 
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/kompat/enter.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/kompat/enter.c"
-			return 0;
-		}
-		#endif
-		#ifdef SYSNUM_HEADER3
-		case ABI_3: {
-			#include SYSNUM_HEADER3
-			#include "extension/kompat/enter.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
+		#include "extension/kompat/enter.c"
 		return 0;
 	}
 
@@ -233,30 +199,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		Tracee *tracee = TRACEE(extension);
 		Config *config = talloc_get_type_abort(extension->config, Config);
 
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/kompat/exit.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/kompat/exit.c"
-			return 0;
-		}
-		#endif
-		#ifdef SYSNUM_HEADER3
-		case ABI_3: {
-			#include SYSNUM_HEADER3
-			#include "extension/kompat/exit.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
+		#include "extension/kompat/exit.c"
 		return 0;
 	}
 

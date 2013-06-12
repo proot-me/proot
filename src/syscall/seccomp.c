@@ -43,6 +43,7 @@
 #include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
+#include "syscall/sysnum.h"
 #include "extension/extension.h"
 #include "notice.h"
 
@@ -321,44 +322,84 @@ end:
 }
 
 /* List of syscalls handled by PRoot.  */
-#if defined(ARCH_X86_64)
-static FilteredSyscall syscalls64[] = {
-	#include SYSNUM_HEADER
-	#include "syscall/filter.h"
-	#include SYSNUM_HEADER3
-	#include "syscall/filter.h"
-	FILTERED_SYSCALL_END
+static FilteredSyscall filtered_syscalls[] = {
+	{ PR_accept,		FILTER_SYSEXIT },
+	{ PR_accept4,		FILTER_SYSEXIT },
+	{ PR_access,		0 },
+	{ PR_acct,		0 },
+	{ PR_bind,		0 },
+	{ PR_chdir,		FILTER_SYSEXIT },
+	{ PR_chmod,		0 },
+	{ PR_chown,		0 },
+	{ PR_chown32,		0 },
+	{ PR_chroot,		0 },
+	{ PR_connect,		0 },
+	{ PR_creat,		0 },
+	{ PR_execve,		0 },
+	{ PR_faccessat,		0 },
+	{ PR_fchdir,		FILTER_SYSEXIT },
+	{ PR_fchmodat,		0 },
+	{ PR_fchownat,		0 },
+	{ PR_fstatat64,		0 },
+	{ PR_futimesat,		0 },
+	{ PR_getcwd,		FILTER_SYSEXIT },
+	{ PR_getpeername,	FILTER_SYSEXIT },
+	{ PR_getsockname,	FILTER_SYSEXIT },
+	{ PR_getxattr,		0 },
+	{ PR_inotify_add_watch,	0 },
+	{ PR_lchown,		0 },
+	{ PR_lchown32,		0 },
+	{ PR_lgetxattr,		0 },
+	{ PR_link,		0 },
+	{ PR_linkat,		0 },
+	{ PR_listxattr,		0 },
+	{ PR_llistxattr,	0 },
+	{ PR_lremovexattr,	0 },
+	{ PR_lsetxattr,		0 },
+	{ PR_lstat,		0 },
+	{ PR_lstat64,		0 },
+	{ PR_mkdir,		0 },
+	{ PR_mkdirat,		0 },
+	{ PR_mknod,		0 },
+	{ PR_mknodat,		0 },
+	{ PR_mount,		0 },
+	{ PR_name_to_handle_at,	0 },
+	{ PR_newfstatat,	0 },
+	{ PR_oldlstat,		0 },
+	{ PR_oldstat,		0 },
+	{ PR_open,		0 },
+	{ PR_openat,		0 },
+	{ PR_pivot_root,	0 },
+	{ PR_readlink,		FILTER_SYSEXIT },
+	{ PR_readlinkat,	FILTER_SYSEXIT },
+	{ PR_removexattr,	0 },
+	{ PR_rename,		0 },
+	{ PR_renameat,		0 },
+	{ PR_rmdir,		0 },
+	{ PR_rt_sigreturn,	FILTER_SYSEXIT },
+	{ PR_setxattr,		0 },
+	{ PR_sigreturn,		FILTER_SYSEXIT },
+	{ PR_socketcall,	FILTER_SYSEXIT },
+	{ PR_stat,		0 },
+	{ PR_stat64,		0 },
+	{ PR_statfs,		0 },
+	{ PR_statfs64,		0 },
+	{ PR_swapoff,		0 },
+	{ PR_swapon,		0 },
+	{ PR_symlink,		0 },
+	{ PR_symlinkat,		0 },
+	{ PR_truncate,		0 },
+	{ PR_truncate64,	0 },
+	{ PR_umount,		0 },
+	{ PR_umount2,		0 },
+	{ PR_uname,		FILTER_SYSEXIT },
+	{ PR_unlink,		0 },
+	{ PR_unlinkat,		0 },
+	{ PR_uselib,		0 },
+	{ PR_utime,		0 },
+	{ PR_utimensat,		0 },
+	{ PR_utimes,		0 },
 };
-
-static FilteredSyscall syscalls32[] = {
-	#include SYSNUM_HEADER2
-	#include "syscall/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter proot_filters[] = {
-	{ .arch     = AUDIT_ARCH_X86_64,
-	  .syscalls = syscalls64 },
-	{ .arch     = AUDIT_ARCH_I386,
-	  .syscalls = syscalls32 },
-	{ 0 }
-};
-#elif defined(AUDIT_ARCH_NUM)
-static FilteredSyscall syscalls[] = {
-	#include SYSNUM_HEADER
-	#include "syscall/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter proot_filters[] = {
-	{ .arch     = AUDIT_ARCH_NUM,
-	  .syscalls = syscalls },
-	{ 0 }
-};
-#else
-static const Filter proot_filters[] = { 0 };
-#endif
-#include "syscall/sysnum-undefined.h"
 
 /**
  * Merge the filtered @syscall for the given @arch into @filters ,
@@ -450,6 +491,8 @@ static int merge_filters(TALLOC_CTX *context, Filter **filters, const Filter *ne
  */
 int enable_syscall_filtering(const Tracee *tracee)
 {
+	return -ENOTSUP;
+#if 0
 	Extension *extension;
 	Filter *filters;
 	int status;
@@ -484,6 +527,7 @@ int enable_syscall_filtering(const Tracee *tracee)
 		return status;
 
 	return 0;
+#endif
 }
 
 #endif /* defined(HAVE_SECCOMP_FILTER) */
