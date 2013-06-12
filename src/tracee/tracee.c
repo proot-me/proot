@@ -34,6 +34,8 @@
 #include <errno.h>      /* E*, */
 
 #include "tracee/tracee.h"
+#include "tracee/reg.h"
+#include "syscall/sysnum.h"
 #include "extension/extension.h"
 #include "notice.h"
 
@@ -121,6 +123,20 @@ int new_child(Tracee *parent, word_t clone_flags)
 	unsigned long pid;
 	Tracee *child;
 	int status;
+
+	/* If the tracee calls clone(2) with the CLONE_VFORK flag,
+	 * PTRACE_EVENT_VFORK will be delivered instead [...];
+	 * otherwise if the tracee calls clone(2) with the exit signal
+	 * set to SIGCHLD, PTRACE_EVENT_FORK will be delivered [...]
+	 *
+	 * -- ptrace(2) man-page
+	 *
+	 * That means we have to check if it's actually a clone(2) in
+	 * order to get the right flags.
+	 */
+	status = fetch_regs(parent);
+	if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone)
+		clone_flags = peek_reg(parent, CURRENT, SYSARG_1);
 
 	/* Get the pid of the parent's new child.  */
 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);

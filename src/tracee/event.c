@@ -473,23 +473,10 @@ int event_loop()
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
 				signal = 0;
 				(void) new_child(tracee, 0);
 				break;
-
-			case SIGTRAP | PTRACE_EVENT_CLONE << 8: {
-				word_t clone_flags;
-
-				signal = 0;
-
-				status = fetch_regs(tracee);
-				if (status < 0)
-					break;
-
-				clone_flags = peek_reg(tracee, CURRENT, SYSARG_1);
-				(void) new_child(tracee, clone_flags);
-				break;
-			}
 
 			case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
 			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:

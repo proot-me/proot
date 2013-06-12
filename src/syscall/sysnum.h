@@ -27,6 +27,7 @@
 
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
+#include "tracee/reg.h"
 
 typedef enum {
 	PR_void = 0,
@@ -460,7 +461,7 @@ typedef enum {
 	PR_NB_SYSNUM
 } Sysnum;
 
-extern Sysnum get_sysnum(const Tracee *tracee);
+extern Sysnum get_sysnum(const Tracee *tracee, RegVersion version);
 extern void set_sysnum(Tracee *tracee, Sysnum sysnum);
 extern word_t detranslate_sysnum(Abi abi, Sysnum sysnum);
 

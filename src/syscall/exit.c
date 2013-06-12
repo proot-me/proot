@@ -66,7 +66,7 @@ void translate_syscall_exit(Tracee *tracee)
 	 * - break: update the syscall result register with "status"
 	 * - goto end: nothing else to do.
 	 */
-	syscall_number = get_sysnum(tracee);
+	syscall_number = get_sysnum(tracee, ORIGINAL);
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	switch (syscall_number) {
 	case PR_getcwd: {
