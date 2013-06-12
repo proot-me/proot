@@ -214,6 +214,9 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			CASE_FILTER_EVENT(EXEC);
 			CASE_FILTER_EVENT(EXIT);
 
+			/* Never reached.  */
+			assert(0);
+
 		case SIGSTOP:
 			PTRACEE.tracing_started = true;
 			break;

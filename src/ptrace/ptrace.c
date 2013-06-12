@@ -176,7 +176,7 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		poke_mem(ptracer, data, result);
 		if (errno != 0)
-			return  -errno;
+			return -errno;
 
 		return 0;  /* Don't restart the ptracee.  */
 
@@ -268,7 +268,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		/* Update the remote vector length.  */
 		poke_mem(ptracer, data + sizeof_word(tracee), remote_iovec_len);
 		if (errno != 0)
-			return  -errno;
+			return -errno;
 
 		return 0;  /* Don't restart the ptracee.  */
 	}

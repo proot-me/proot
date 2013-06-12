@@ -38,6 +38,7 @@
 #include "syscall/sysnum.h"
 #include "tracee/event.h"
 #include "ptrace/ptrace.h"
+#include "ptrace/wait.h"
 #include "extension/extension.h"
 #include "notice.h"
 
@@ -350,8 +351,25 @@ int new_child(Tracee *parent, word_t clone_flags)
 	/* Restart the child tracee if it was already alive but
 	 * stopped until that moment.  */
 	if (child->sigstop == SIGSTOP_PENDING) {
+		bool keep_stopped = false;
+
 		child->sigstop = SIGSTOP_ALLOWED;
-		(void) restart_tracee(child, 0);
+
+		/* Notify its ptracer if it is ready to be traced.  */
+		if (child->as_ptracee.ptracer != 0) {
+			/* Sanity check.  */
+			assert(!child->as_ptracee.tracing_started);
+
+			keep_stopped = handle_ptracee_event(child, __W_STOPCODE(SIGSTOP));
+
+			/* Note that this event was already handled by
+			 * PRoot since child->as_ptracee.ptracer was
+			 * NULL up to now.  */
+			child->as_ptracee.event4.proot.pending = false;
+		}
+
+		if (!keep_stopped)
+			(void) restart_tracee(child, 0);
 	}
 
 	return 0;
