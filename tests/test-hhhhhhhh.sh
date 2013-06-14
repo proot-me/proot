@@ -13,4 +13,7 @@ ln -s ${TMP}/${A} ${ROOTFS}/${TMP}/${B}
 
 env PATH=${TMP} ${PROOT} ${ROOTFS} ${B}
 
+rm -f ${TMP}/${B}  # just in case it also exists in the host env.
+${PROOT} ${ROOTFS} /${TMP}/${B}
+
 rm -fr ${ROOTFS}/${TMP}

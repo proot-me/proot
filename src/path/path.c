@@ -201,7 +201,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 	assert(command != NULL);
 
 	/* Is the command available without any $PATH look-up?  */
-	status = realpath2(tracee, host_path, command, false);
+	status = realpath2(tracee, host_path, command, true);
 	if (status == 0
 	    && stat(host_path, &statr) == 0
 	    && S_ISREG(statr.st_mode)
