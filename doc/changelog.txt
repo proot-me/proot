@@ -1,3 +1,30 @@
+Release v3.0.2
+==============
+
+* Fix the search of the initial command: when the initial command is a
+  symbolic link, PRoot has to dereference it in guest namespace, not
+  in the host one.
+
+* Return error code EACCESS instead of EISDIR when trying to execute a
+  directory.  Some programs, such as "env", behave differently with
+  respect to this error code.  For example:
+
+      ### setup
+      $ mkdir -p /tmp/foo/python
+      $ export PATH=/tmp/foo:$PATH
+
+      ### before (PRoot v2.3 ... v3.0.1)
+      before$ proot env python
+      env: python: Is a directory
+
+      ### now (PRoot v3.0.2 ...)
+      $ proot env python
+      Python 2.7.5 (default, May 29 2013, 02:28:51)
+      [GCC 4.8.0] on linux2
+      Type "help", "copyright", "credits" or "license" for more information.
+      >>>
+
+
 Release v3.0.1
 ==============
 
