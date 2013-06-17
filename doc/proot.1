@@ -90,6 +90,8 @@ all new programs will be confined.  The default rootfs is \fB/\fP
 when none is specified, this makes sense when the bind mechanism
 is used to relocate host files and directories, see the \fB\-b\fP
 option and the \fBExamples\fP section for details.
+.sp
+It is recommended to use the \fB\-R\fP option instead.
 .TP
 .BI \-b \ path, \ \-\-bind\fB= path, \ \-m \ path, \ \-\-mount\fB= path
 Make the content of \fIpath\fP accessible in the guest rootfs.
@@ -115,8 +117,6 @@ That way, guest programs actually run on a virtual guest CPU
 emulated by QEMU user\-mode.  The native execution of host programs
 is still effective and the whole host rootfs is bound to
 \fB/host\-rootfs\fP in the guest environment.
-.sp
-This option is automatically enabled by the \fB\-Q\fP option.
 .TP
 .BI \-w \ path, \ \-\-pwd\fB= path, \ \-\-cwd\fB= path
 Set the initial working directory to \fIpath\fP.
@@ -172,15 +172,16 @@ changing the ownership of files, changing the root directory to
 The following options are aliases for handy sets of options.
 .INDENT 0.0
 .TP
-.B \-B,  \-M
-Alias: \fB\-b\fP for each path of a recommended list
+.BI \-R \ path
+Alias: \fB\-r *path*\fP + a couple of recommended \fB\-b\fP.
 .sp
-There are a couple of bindings that are needed for most guest
-programs to behave correctly regarding the configuration part of
-the host computer which is not specific to the host Linux
-distribution, such as: user/group information, network setup,
-run\-time information, users\(aq files, ... This highly recommended
-option enables the following bindings:
+Programs isolated in \fIpath\fP, a guest rootfs, might still need to
+access information about the host system, as it is illustrated in
+the \fBExamples\fP section of the manual.  These host information
+are typically: user/group definition, network setup, run\-time
+information, users\(aq files, ...  On all Linux distributions, they
+all lie in a couple of host files and directories that are
+automatically bound by this option:
 .INDENT 7.0
 .IP \(bu 2
 /etc/host.conf
@@ -216,11 +217,11 @@ option enables the following bindings:
 $HOME
 .UNINDENT
 .TP
+.B \-B,  \-M
+obsolete, use \fB\-R\fP instead.
+.TP
 .BI \-Q \ command
-Alias: \fB\-q *command* \-B\fP
-.sp
-This option is highly recommended when using QEMU user\-mode; it
-enables all the recommended bindings.
+obsolete, use \fB\-q\fP and \fB\-R\fP instead.
 .UNINDENT
 .SH EXIT STATUS
 .sp
@@ -424,19 +425,19 @@ TT       COMMAND
 .UNINDENT
 .sp
 Actually there\(aqs a bunch of such specific files, that\(aqs why PRoot
-provides the option \fB\-B\fP to bind automatically a pre\-defined list of
+provides the option \fB\-R\fP to bind automatically a pre\-defined list of
 recommended paths:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-proot \-r /mnt/slackware\-8.0/ \-B
+proot \-R /mnt/slackware\-8.0/
 
 $ ps \-o tty,command
 TT       COMMAND
 pts/6    \-bash
-pts/6    proot \-B /mnt/slackware\-8.0/
+pts/6    proot \-R /mnt/slackware\-8.0/
 pts/6    /lib/ld\-linux.so.2 /bin/sh
 pts/6    /lib/ld\-linux.so.2 /usr/bin/ps \-o tty,command
 .ft P
@@ -450,14 +451,13 @@ architecture incompatible with the host one.  From users\(aq
 point\-of\-view, guest programs handled by QEMU user\-mode are executed
 transparently, that is, just like host programs.  To enable this
 feature users just have to specify which instance of QEMU user\-mode
-they want to use with the option \fB\-q\fP or \fB\-Q\fP (this latter implies
-\fB\-B\fP):
+they want to use with the option \fB\-q\fP:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-proot \-r /mnt/armslack\-12.2/ \-Q qemu\-arm
+proot \-R /mnt/armslack\-12.2/ \-q qemu\-arm
 
 $ cat /etc/motd
 Welcome to ARMedSlack Linux 12.2
@@ -466,15 +466,14 @@ Welcome to ARMedSlack Linux 12.2
 .UNINDENT
 .UNINDENT
 .sp
-The parameter of the \fB\-q/\-Q\fP option is actually a whole QEMU
-user\-mode command, for instance to enable its GDB server on port
-1234:
+The parameter of the \fB\-q\fP option is actually a whole QEMU user\-mode
+command, for instance to enable its GDB server on port 1234:
 .INDENT 0.0
 .INDENT 3.5
 .sp
 .nf
 .ft C
-proot \-r /mnt/armslack\-12.2/ \-Q "qemu\-arm \-g 1234" emacs
+proot \-R /mnt/armslack\-12.2/ \-q "qemu\-arm \-g 1234" emacs
 .ft P
 .fi
 .UNINDENT
@@ -492,7 +491,7 @@ through \fB/host\-rootfs\fP:
 .sp
 .nf
 .ft C
-proot \-r /mnt/armslack\-12.2/ \-Q qemu\-arm
+proot \-R /mnt/armslack\-12.2/ \-q qemu\-arm
 
 $ file /bin/echo
 [...] ELF 32\-bit LSB executable, ARM [...]
@@ -517,7 +516,7 @@ to cross\-compile to the ARM target:
 .sp
 .nf
 .ft C
-proot \-r /mnt/armslack\-12.2/ \-Q qemu\-arm
+proot \-R /mnt/armslack\-12.2/ \-q qemu\-arm
 
 $ export CC=/host\-rootfs/opt/cross\-tools/arm\-linux/bin/gcc
 $ export CFLAGS="\-\-sysroot=/"   # could be optional indeed
@@ -535,7 +534,7 @@ its guest instance.  Here is an example where the guest binary of
 .sp
 .nf
 .ft C
-proot \-r /mnt/armslack\-12.2/ \-Q qemu\-arm \-b /usr/bin/make
+proot \-R /mnt/armslack\-12.2/ \-q qemu\-arm \-b /usr/bin/make
 
 $ which make
 /usr/bin/make

@@ -61,6 +61,7 @@ static int handle_option_V(Tracee *tracee, char *value);
 static int handle_option_h(Tracee *tracee, char *value);
 static int handle_option_k(Tracee *tracee, char *value);
 static int handle_option_0(Tracee *tracee, char *value);
+static int handle_option_R(Tracee *tracee, char *value);
 static int handle_option_B(Tracee *tracee, char *value);
 static int handle_option_Q(Tracee *tracee, char *value);
 
@@ -76,7 +77,9 @@ static Option options[] = {
 \tall new programs will be confined.  The default rootfs is /\n\
 \twhen none is specified, this makes sense when the bind mechanism\n\
 \tis used to relocate host files and directories, see the -b\n\
-\toption and the Examples section for details.",
+\toption and the Examples section for details.\n\
+\t\n\
+\tIt is recommended to use the -R option instead.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -111,9 +114,7 @@ static Option options[] = {
 \tThat way, guest programs actually run on a virtual guest CPU\n\
 \temulated by QEMU user-mode.  The native execution of host programs\n\
 \tis still effective and the whole host rootfs is bound to\n\
-\t/host-rootfs in the guest environment.\n\
-\t\n\
-\tThis option is automatically enabled by the -Q option.",
+\t/host-rootfs in the guest environment.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -189,17 +190,17 @@ static Option options[] = {
 	},
 	{ .class = "Alias options",
 	  .arguments = {
-		{ .name = "-B", .separator = '\0', .value = NULL },
-		{ .name = "-M", .separator = '\0', .value = NULL },
+		{ .name = "-R", .separator = ' ', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_B,
-	  .description = "Alias: -b for each path of a recommended list",
-	  .detail = "\tThere are a couple of bindings that are needed for most guest\n\
-\tprograms to behave correctly regarding the configuration part of\n\
-\tthe host computer which is not specific to the host Linux\n\
-\tdistribution, such as: user/group information, network setup,\n\
-\trun-time information, users' files, ... This highly recommended\n\
-\toption enables the following bindings:\n\
+	  .handler = handle_option_R,
+	  .description = "Alias: -r *path* + a couple of recommended -b.",
+	  .detail = "\tPrograms isolated in *path*, a guest rootfs, might still need to\n\
+\taccess information about the host system, as it is illustrated in\n\
+\tthe Examples section of the manual.  These host information\n\
+\tare typically: user/group definition, network setup, run-time\n\
+\tinformation, users' files, ...  On all Linux distributions, they\n\
+\tall lie in a couple of host files and directories that are\n\
+\tautomatically bound by this option:\n\
 \t\n\
 \t    * /etc/host.conf\n\
 \t    * /etc/hosts\n\
@@ -220,12 +221,19 @@ static Option options[] = {
 	},
 	{ .class = "Alias options",
 	  .arguments = {
+		{ .name = "-B", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_B,
+	  .description = "obsolete, use -R instead.",
+	  .detail = "",
+	},
+	{ .class = "Alias options",
+	  .arguments = {
 		{ .name = "-Q", .separator = ' ', .value = "command" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_Q,
-	  .description = "Alias: -q *command* -B",
-	  .detail = "\tThis option is highly recommended when using QEMU user-mode; it\n\
-\tenables all the recommended bindings.",
+	  .description = "obsolete, use -q and -R instead.",
+	  .detail = "",
 	},
 };
 

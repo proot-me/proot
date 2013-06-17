@@ -41,7 +41,7 @@ static const char *version = VERSION;
     <xsl:text>
 </xsl:text>
 
-    <xsl:apply-templates select="//option_string[.='-B']" />
+    <xsl:apply-templates select="//option_string[.='-R']" />
 
     <xsl:apply-templates select="//option_group" mode="handlers" />
     <xsl:text>
@@ -82,7 +82,7 @@ static Option options[] = {
 
   <!-- Recommanded bindings declarations -->
 
-  <xsl:template match="option_string[.='-B']">
+  <xsl:template match="option_string[.='-R']">
     <xsl:text>static char *recommended_bindings[] = {
 </xsl:text>
     <xsl:apply-templates select="ancestor-or-self::option_list_item//list_item" />
