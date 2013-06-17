@@ -26,11 +26,17 @@ typedef struct {
 #ifndef VERSION
 #define VERSION "3.0.2"
 #endif
+
 static const char *version = VERSION;
 static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
 static const char *synopsis = "proot [option] ... [command]";
 static const char *colophon = "Visit http://proot.me for help, bug reports, suggestions, patchs, ...\n\
 Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.";
+static const char *logo = "\
+ _____ _____              ___\n\
+|  __ \\  __ \\_____  _____|   |_\n\
+|   __/     /  _  \\/  _  \\    _|\n\
+|__|  |__|__\\_____/\\_____/\\____|";
 
 static char *recommended_bindings[] = {
 	"/etc/host.conf",

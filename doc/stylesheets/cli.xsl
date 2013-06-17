@@ -38,6 +38,7 @@ static const char *version = VERSION;
     <xsl:apply-templates select="//subtitle"/>
     <xsl:apply-templates select="//section[@names='synopsis']" />
     <xsl:apply-templates select="//section[@names='colophon']" />
+    <xsl:apply-templates select="//section[@names='logo']" />
     <xsl:text>
 </xsl:text>
 
@@ -65,7 +66,6 @@ static Option options[] = {
 </xsl:text>
   </xsl:template>
 
-  <!-- xsl:template match="section[@names='synopsis|colophon']" -->
   <xsl:template match="section[@names='synopsis']">
     <xsl:text>static const char *synopsis = "</xsl:text>
     <xsl:value-of select="./paragraph" />
@@ -76,6 +76,11 @@ static Option options[] = {
   <xsl:template match="section[@names='colophon']">
     <xsl:text>static const char *colophon = "</xsl:text>
     <xsl:value-of select="./paragraph" />
+    <xsl:text>";
+</xsl:text>
+    <xsl:text>static const char *logo = "\
+</xsl:text>
+    <xsl:value-of select="./literal_block" />
     <xsl:text>";
 </xsl:text>
   </xsl:template>
