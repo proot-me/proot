@@ -49,6 +49,10 @@ case PR_chroot: {
 	return 0;
 }
 
+case PR_setresuid:
+case PR_setresgid:
+case PR_setresuid32:
+case PR_setresgid32:
 case PR_chmod:
 case PR_chown:
 case PR_fchmod:
@@ -71,6 +75,25 @@ case PR_fchownat: {
 	return 0;
 }
 
+case PR_getresuid:
+case PR_getresuid32:
+case PR_getresgid:
+case PR_getresgid32:
+	poke_mem(tracee, peek_reg(tracee, ORIGINAL, SYSARG_1), 0);
+	if (errno != 0)
+		return -EFAULT;
+
+	poke_mem(tracee, peek_reg(tracee, ORIGINAL, SYSARG_2), 0);
+	if (errno != 0)
+		return -EFAULT;
+
+	poke_mem(tracee, peek_reg(tracee, ORIGINAL, SYSARG_3), 0);
+	if (errno != 0)
+		return -EFAULT;
+
+	/* Force success.  */
+	poke_reg(tracee, SYSARG_RESULT, 0);
+	return 0;
 
 case PR_fstatat64:
 case PR_newfstatat:
@@ -140,16 +163,6 @@ case PR_setfsgid32:
 	/* Force success.  */
 	poke_reg(tracee, SYSARG_RESULT, 0);
 	return 0;
-
-case PR_setresuid:
-case PR_setresgid:
-case PR_setresuid32:
-case PR_setresgid32:
-case PR_getresuid:
-case PR_getresuid32:
-case PR_getresgid:
-case PR_getresgid32:
-	/* TODO.  */
 
 default:
 	return 0;
