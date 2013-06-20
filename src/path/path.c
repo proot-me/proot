@@ -198,46 +198,29 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 	struct stat statr;
 	int status;
 
+	bool is_explicit;
+	bool found;
+
 	assert(command != NULL);
+	is_explicit = (command[0] == '/' || command[0] == '.');
 
 	/* Is the command available without any $PATH look-up?  */
 	status = realpath2(tracee, host_path, command, true);
-	if (status == 0
-	    && stat(host_path, &statr) == 0
-	    && S_ISREG(statr.st_mode)
-	    && (statr.st_mode & S_IXUSR) != 0)
-		return 0;
+	found = (   status == 0 && stat(host_path, &statr) == 0
+	       && S_ISREG(statr.st_mode) && (statr.st_mode & S_IXUSR) != 0);
 
-	/* Is it an absolute path and it wasn't found?  */
-	if (command[0] == '/') {
-		notice(tracee, WARNING, USER, "'%s' not found (root = %s)",
-			command, get_root(tracee));
-		return -1;
-	}
-
-	/* Is it a relative path and it wasn't found?  */
-	if (command[0] == '.') {
-		status = getcwd2(tracee, path);
-		if (status < 0)
-			strcpy(path, "<unknown>");
-
-		notice(tracee, WARNING, USER, "'%s' not found (root = %s, cwd = %s)",
-			command, get_root(tracee), path);
-		return -1;
+	/* Is the the explicit command was found?  */
+	if (is_explicit) {
+		if (found)
+			return 0;
+		else
+			goto not_found;
 	}
 
 	/* Otherwise search the command in $PATH.  */
 	paths = paths ?: getenv("PATH");
-	if (paths == NULL) {
-		status = getcwd2(tracee, path);
-		if (status < 0)
-			strcpy(path, "<unknown>");
-
-		notice(tracee, WARNING, USER,
-			"'%s' not found (root = %s, cwd = %s) and $PATH isn't set",
-			command, get_root(tracee), path);
-		return -1;
-	}
+	if (paths == NULL || strcmp(paths, "") == 0)
+		goto not_found;
 
 	cursor = paths;
 	do {
@@ -270,8 +253,20 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 				return 0;
 	} while (*(cursor - 1) != '\0');
 
-	notice(tracee, WARNING, USER, "'%s' not found in $PATH=%s (root = %s)",
-		command, paths, get_root(tracee));
+not_found:
+	status = getcwd2(tracee, path);
+	if (status < 0)
+		strcpy(path, "<unknown>");
+
+	notice(tracee, WARNING, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
+		command, get_root(tracee), path, paths);
+
+	/* Check if the command was found without any $PATH look-up
+	 * but it didn't start with "./" explicitly.  */
+	if (found && !is_explicit)
+		notice(tracee, INFO, USER,
+			"to execute a local program, use the './' prefix, for example: ./%s", command);
+
 	return -1;
 }
 
