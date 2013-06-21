@@ -223,7 +223,7 @@ static int handle_option_B(Tracee *tracee, char *value UNUSED)
 {
 	int i;
 
-	notice(tracee, WARNING, USER, "option '-B' is obsolete, use '-R' instead.");
+	notice(tracee, INFO, USER, "option '-B' is obsolete, use '-R' instead.");
 
 	for (i = 0; recommended_bindings[i] != NULL; i++)
 		new_binding(tracee, recommended_bindings[i], NULL, false);
@@ -235,7 +235,7 @@ static int handle_option_Q(Tracee *tracee, char *value)
 {
 	int status;
 
-	notice(tracee, WARNING, USER, "option '-Q' is obsolete, use '-q' and '-R' instead.");
+	notice(tracee, INFO, USER, "option '-Q' is obsolete, use '-q' and '-R' instead.");
 
 	status = handle_option_q(tracee, value);
 	if (status < 0)
@@ -627,12 +627,9 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		    && realpath2(tracee->reconf.tracee, path, argv[i], true) == 0
 		    && stat(path, &buf) == 0
 		    && S_ISDIR(buf.st_mode)) {
-			notice(tracee, WARNING, USER,
-				"no `-r` option was specified, assuming '%s' is "
-				"the new root file-system.", argv[i]);
 			notice(tracee, INFO, USER,
-				"This syntax is deprecated, "
-				"use '-r %s' explicitly instead.", argv[i]);
+				"neither `-r` or `-R` were specified, assuming"
+				" '%s' is the new root file-system.", argv[i]);
 			status = handle_option_r(tracee, argv[i]);
 			i++;
 		}
