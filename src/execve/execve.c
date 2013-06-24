@@ -419,7 +419,7 @@ int translate_execve(Tracee *tracee)
 			if (status < 0)
 				return status;
 
-			status = ldso_env_passthru(envp, argv, "-E", "-U");
+			status = ldso_env_passthru(tracee, envp, argv, "-E", "-U");
 			if (status < 0)
 				return status;
 

@@ -98,7 +98,8 @@ int compare_item_env(Array *array, size_t index, const char *reference)
  *
  * This funtion returns -errno if an error occured, otherwise 0.
  */
-int ldso_env_passthru(Array *envp, Array *argv, const char *define, const char *undefine)
+int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
+		const char *define, const char *undefine)
 {
 	bool has_seen_library_path = false;
 	int status;
@@ -115,6 +116,15 @@ int ldso_env_passthru(Array *envp, Array *argv, const char *define, const char *
 		/* Skip variables that do not start with "LD_".  */
 		if (env == NULL || strncmp(env, "LD_", sizeof("LD_") - 1) != 0)
 			continue;
+
+		/* When a host program executes a guest program, use
+		 * the value of LD_LIBRARY_PATH as it was before being
+		 * swapped by the mixed-mode support.  */
+		if (   tracee->host_ldso_paths != NULL
+		    && tracee->guest_ldso_paths != NULL
+		    && is_env_name(env, "LD_LIBRARY_PATH")
+		    && strcmp(env, tracee->host_ldso_paths) == 0)
+			env = (char *) tracee->guest_ldso_paths;
 
 #define PASSTHRU(check, name)						\
 		if (is_env_name(env, name)) {				\
@@ -227,7 +237,7 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
  * This function returns -errno if an error occured, 1 if
  * RPATH/RUNPATH entries were found, 0 otherwise.
  */
-int rebuild_host_ldso_paths(const Tracee *tracee, const char t_program[PATH_MAX], Array *envp)
+int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Array *envp)
 {
 	static char *initial_ldso_paths = NULL;
 	ElfHeader elf_header;
@@ -305,13 +315,25 @@ int rebuild_host_ldso_paths(const Tracee *tracee, const char t_program[PATH_MAX]
 		return 0; /* Not fatal.  */
 	index = (size_t) status;
 
-	/* Allocate a new entry at the end of envp[] if
-	 * LD_LIBRARY_PATH was not found.  */
 	if (index == envp->length) {
+		/* Allocate a new entry at the end of envp[] when
+		 * LD_LIBRARY_PATH was not found.  */
+
 		index = (envp->length > 0 ? envp->length - 1 : 0);
 		status = resize_array(envp, index, 1);
 		if (status < 0)
 			return 0; /* Not fatal.  */
+	}
+	else if (tracee->guest_ldso_paths == NULL) {
+		/* Remember guest LD_LIBRARY_PATH in order to restore
+		 * it when a host program will execute a guest
+		 * program.  */
+		char *env;
+
+		/* Errors are not fatal here.  */
+		status = read_item_string(envp, index, &env);
+		if (status >= 0)
+			tracee->guest_ldso_paths = talloc_strdup(tracee, env);
 	}
 
 	/* Forge the new LD_LIBRARY_PATH variable from
@@ -325,6 +347,12 @@ int rebuild_host_ldso_paths(const Tracee *tracee, const char t_program[PATH_MAX]
 	memcpy(host_ldso_paths, "LD_LIBRARY_PATH=" , length1);
 
 	write_item(envp, index, host_ldso_paths);
+
+	/* The guest LD_LIBRARY_PATH will be restored only if the host
+	 * program didn't change it explicitly, so remember its
+	 * initial value.  */
+	if (tracee->host_ldso_paths == NULL)
+		tracee->host_ldso_paths = talloc_strdup(tracee, host_ldso_paths);
 
 	return (int) inhibit_rpath;
 }

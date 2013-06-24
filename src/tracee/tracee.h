@@ -111,6 +111,9 @@ typedef struct tracee {
 		const char *paths;
 	} reconf;
 
+	/* Verbose level.  */
+	int verbose;
+
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the CLONE_FS flag.       *
@@ -148,11 +151,15 @@ typedef struct tracee {
 
 
 	/**********************************************************************
-	 * Private resources                                                  *
+	 * Shared but read-only resources                                     *
 	 **********************************************************************/
 
-	/* Verbose level.  */
-	int verbose;
+	/* For the mixed-mode, the guest LD_LIBRARY_PATH is saved
+	 * during the "guest -> host" transition, in order to be
+	 * restored during the "host -> guest" transition (only if the
+	 * host LD_LIBRARY_PATH hasn't changed).  */
+	const char *host_ldso_paths;
+	const char *guest_ldso_paths;
 
 } Tracee;
 

@@ -147,9 +147,6 @@ Features
   dynamically to the host LD_LIBRARY_PATH
   ("EXTRA_HOST_LD_LIBRARY_PATH").
 
-* A host program that launches a guest program shouldn't propagate its
-  host LD_LIBRARY_PATH environment variable.
-
 * Add a "blind" mode where:
 
   * unreadable executable can be executed::

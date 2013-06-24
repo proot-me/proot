@@ -26,6 +26,8 @@ else
     TEST2="-- -E LD_LIBRARY_PATH=test2 ${COMMAND1}"
     TEST3="${TEST1}"
     TEST4="-- -E LD_TRACE_LOADED_OBJECTS=1 -E LD_LIBRARY_PATH=.+ ${COMMAND1}"
+    TEST5="-- -E LD_LIBRARY_PATH=test5 ${COMMAND1}"
+    TEST6="-- -E LD_LIBRARY_PATH=test6 ${COMMAND1}"
     COMMAND2="-0 ${TMP} ${TMP} ${TMP2}"
 fi
 
@@ -48,6 +50,10 @@ env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' / ${TMP} | grep -- "^${TEST2}$"
 env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' / env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST3}$"
 
 ${PROOT} -q 'echo --' / env LD_TRACE_LOADED_OBJECTS=1 ${TMP} | grep -E -- "^${TEST4}$"
+
+env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c ${TMP} | grep -- "^${TEST5}$"
+env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c "sh -c ${TMP}" | grep -- "^${TEST5}$"
+env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' env LD_LIBRARY_PATH=test6 ${TMP} | grep -- "^${TEST6}$"
 
 rm -f ${TMP2}
 echo "#!${TMP}" > ${TMP2}
