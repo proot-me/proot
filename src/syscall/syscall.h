@@ -24,15 +24,15 @@
 #define SYSCALL_H
 
 #include <limits.h>     /* PATH_MAX, */
-#include <stdbool.h>    /* bool ,true, false, */
 
-#include "arch.h" /* word_t */
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 
-extern void translate_syscall(Tracee *tracee);
 extern int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg);
 extern int set_sysarg_path(Tracee *tracee, char path[PATH_MAX], Reg reg);
-extern int set_sysarg_data(Tracee *tracee, void *tracer_ptr, word_t size, Reg reg);
+
+extern void translate_syscall(Tracee *tracee);
+extern void translate_syscall_enter(Tracee *tracee);
+extern void translate_syscall_exit(Tracee *tracee);
 
 #endif /* SYSCALL_H */

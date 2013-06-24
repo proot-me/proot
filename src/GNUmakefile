@@ -25,6 +25,8 @@ OBJECTS = cli.o			\
 	path/proc.o		\
 	syscall/seccomp.o	\
 	syscall/syscall.o	\
+	syscall/enter.o		\
+	syscall/exit.o		\
 	syscall/sysnum.o	\
 	syscall/socket.o	\
 	tracee/tracee.o		\
