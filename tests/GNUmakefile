@@ -41,6 +41,9 @@ check-test-16573e73.c: test-16573e73
 	$(call check_c,$<,$(PROOT) ./$<)
 	$(call check_c,$<,$(PROOT) ./$< 1)
 
+check-test-82ba4ba1.c: test-82ba4ba1
+	$(call check_c,$<,$(PROOT) -0 $<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\

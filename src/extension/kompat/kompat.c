@@ -32,6 +32,7 @@
 #include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 
 #include "extension/extension.h"
+#include "syscall/sysnum.h"
 #include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -75,7 +76,7 @@ static void modify_syscall(Tracee *tracee, const Config *config, const Modif *mo
 	    || modif->expected_release > config->emulated_release)
 		return;
 
-	poke_reg(tracee, SYSARG_NUM, modif->new_sysarg_num);
+	set_sysnum(tracee, modif->new_sysarg_num);
 
 	/* Shift syscall arguments.  */
 	for (i = 0; i < MAX_ARG_SHIFT; i++) {
@@ -117,45 +118,414 @@ static int parse_kernel_release(const char *release)
 	return KERNEL_VERSION(major, minor, revision);
 }
 
-/* List of syscalls handled by this extensions.  */
+/**
+ * Replace current @tracee's syscall with an older and compatible one
+ * whenever it's required, i.e. when the syscall is supported by the
+ * kernel as specified by @config->release but it isn't supported by
+ * the actual kernel.
+ */
+static void handle_sysenter_end(Tracee *tracee, Config *config)
+{
+	/* Note: syscalls like "openat" can be replaced by "open" since PRoot
+	 * has canonicalized "fd + path" into "path".  */
+	switch (get_sysnum(tracee)) {
+	case PR_accept4: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,28),
+			.new_sysarg_num   = PR_accept,
+			.shifts		  = {{0}}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_dup3: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,27),
+			.new_sysarg_num   = PR_dup2,
+			.shifts		  = {{0}}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_epoll_create1: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,27),
+			.new_sysarg_num   = PR_epoll_create,
+			.shifts		  = {{0}}
+		};
+		poke_reg(tracee, SYSARG_1, 0); /* Force "size" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_epoll_pwait: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,19),
+			.new_sysarg_num   = PR_epoll_wait,
+			.shifts		  = {{0}}
+		};
+		poke_reg(tracee, SYSARG_5, 0); /* Force "sigmask" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_eventfd2: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,27),
+			.new_sysarg_num   = PR_eventfd,
+			.shifts		  = {{0}}
+		};
+		poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_faccessat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_access,
+			.shifts	= { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 2,
+					.offset  = -1 }
+			}
+		};
+		poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_fchmodat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_chmod,
+			.shifts	= { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 2,
+					.offset  = -1 }
+			}
+		};
+		poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_fchownat: {
+		word_t flags;
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.shifts	= { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 3,
+					.offset  = -1 }
+			}
+		};
+
+		flags = peek_reg(tracee, CURRENT, SYSARG_5);
+		modif.new_sysarg_num = ((flags & AT_SYMLINK_NOFOLLOW) != 0
+					? PR_lchown
+					: PR_chown);
+
+		poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_newfstatat:
+	case PR_fstatat64: {
+		word_t flags;
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 2,
+					.offset  = -1 }
+			}
+		};
+
+		flags = peek_reg(tracee, CURRENT, SYSARG_4);
+		modif.new_sysarg_num = ((flags & AT_SYMLINK_NOFOLLOW) != 0
+					? PR_lstat
 #if defined(ARCH_X86_64)
-static FilteredSyscall syscalls64[] = {
-	#include SYSNUM_HEADER
-	#include "extension/kompat/filter.h"
-	#include SYSNUM_HEADER3
-	#include "extension/kompat/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static FilteredSyscall syscalls32[] = {
-	#include SYSNUM_HEADER2
-	#include "extension/kompat/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter filters[] = {
-	{ .arch     = AUDIT_ARCH_X86_64,
-	  .syscalls = syscalls64 },
-	{ .arch     = AUDIT_ARCH_I386,
-	  .syscalls = syscalls32 },
-	{ 0 }
-};
-#elif defined(AUDIT_ARCH_NUM)
-static const FilteredSyscall syscalls[] = {
-	#include SYSNUM_HEADER
-	#include "extension/kompat/filter.h"
-	FILTERED_SYSCALL_END
-};
-
-static const Filter filters[] = {
-	{ .arch     = AUDIT_ARCH_NUM,
-	  .syscalls = syscalls },
-	{ 0 }
-};
+					: PR_stat);
 #else
-static const Filter filters[] = { 0 };
+		: PR_stat64);
 #endif
-#include "syscall/sysnum-undefined.h"
+
+		poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_futimesat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_utimes,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 2,
+					.offset  = -1 }
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_inotify_init1: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,27),
+			.new_sysarg_num   = PR_inotify_init,
+			.shifts		  = {{0}}
+		};
+		poke_reg(tracee, SYSARG_1, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_linkat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_link,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 1,
+					.offset  = -1 },
+				    [1] = {
+					    .sysarg  = SYSARG_4,
+					    .nb_args = 1,
+					    .offset  = -2 }
+			}
+		};
+		poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_mkdirat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_mkdir,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 2,
+					.offset  = -1 }
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_mknodat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_mknod,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 3,
+					.offset  = -1 }
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_openat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_open,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 3,
+					.offset  = -1 }
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_pipe2: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,27),
+			.new_sysarg_num   = PR_pipe,
+			.shifts		  = {{0}}
+		};
+		poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_pselect6: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,19),
+#if defined(ARCH_X86_64)
+			.new_sysarg_num   = PR_select,
+#else
+			.new_sysarg_num   = PR__newselect,
+#endif
+			.shifts		  = {{0}}
+		};
+		poke_reg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_readlinkat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_readlink,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 3,
+					.offset  = -1}
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_renameat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_rename,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 1,
+					.offset  =-1 },
+				    [1] = {
+					    .sysarg  = SYSARG_4,
+					    .nb_args = 1,
+					    .offset  = -2 }
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_signalfd4: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,17),
+			.new_sysarg_num   = PR_signalfd,
+			.shifts		  = {{0}}
+		};
+		poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_symlinkat: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.new_sysarg_num   = PR_symlink,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_3,
+					.nb_args = 1,
+					.offset  = -1 }
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	case PR_unlinkat: {
+		word_t flags;
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(2,6,16),
+			.shifts = { [0] = {
+					.sysarg  =  SYSARG_2,
+					.nb_args = 1,
+					.offset  = -1
+				}
+			}
+		};
+
+		flags = peek_reg(tracee, CURRENT, SYSARG_3);
+		modif.new_sysarg_num = ((flags & AT_REMOVEDIR) != 0
+					? PR_rmdir
+					: PR_unlink);
+
+		poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
+		modify_syscall(tracee, config, &modif);
+		return;
+	}
+
+	default:
+		return;
+	}
+}
+
+/**
+ * Force current @tracee's utsname.release to @config->release .  This
+ * function returns -errno if an error occured, otherwise 0.
+ */
+static int handle_sysexit_end(const Tracee *tracee, Config *config)
+{
+	struct utsname utsname;
+	word_t address;
+	word_t result;
+	size_t size;
+	int status;
+
+	if (get_sysnum(tracee) != PR_uname)
+		return 0;
+
+	assert(config->release != NULL);
+
+	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+
+	/* Error reported by the kernel.  */
+	if ((int) result < 0)
+		return 0;
+
+	address = peek_reg(tracee, ORIGINAL, SYSARG_1);
+
+	status = read_data(tracee, &utsname, address, sizeof(utsname));
+	if (status < 0)
+		return status;
+
+	/* Note: on x86_64, we can handle the two modes (32/64) with
+	 * the same code since struct utsname has always the same
+	 * layout.  */
+	size = sizeof(utsname.release);
+	strncpy(utsname.release, config->release, size);
+	utsname.release[size - 1] = '\0';
+
+	status = write_data(tracee, address, &utsname, sizeof(utsname));
+	if (status < 0)
+		return status;
+
+	return 0;
+}
+
+/* List of syscalls handled by this extensions.  */
+static FilteredSysnum filtered_sysnums[] = {
+	{ PR_accept4,		0 },
+	{ PR_dup3,		0 },
+	{ PR_epoll_create1,	0 },
+	{ PR_epoll_pwait, 	0 },
+	{ PR_eventfd2, 		0 },
+	{ PR_faccessat, 	0 },
+	{ PR_fchmodat, 		0 },
+	{ PR_fchownat, 		0 },
+	{ PR_fstatat64, 	0 },
+	{ PR_futimesat, 	0 },
+	{ PR_inotify_init1, 	0 },
+	{ PR_linkat, 		0 },
+	{ PR_mkdirat, 		0 },
+	{ PR_mknodat, 		0 },
+	{ PR_newfstatat, 	0 },
+	{ PR_openat, 		0 },
+	{ PR_pipe2, 		0 },
+	{ PR_pselect6, 		0 },
+	{ PR_readlinkat, 	0 },
+	{ PR_renameat, 		0 },
+	{ PR_signalfd4, 	0 },
+	{ PR_symlinkat, 	0 },
+	{ PR_uname, 		FILTER_SYSEXIT },
+	{ PR_unlinkat, 		0 },
+	FILTERED_SYSNUM_END,
+};
 
 /**
  * Handler for this @extension.  It is triggered each time an @event
@@ -189,7 +559,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		else
 			config->actual_release = parse_kernel_release(utsname.release);
 
-		extension->filters = filters;
+		extension->filtered_sysnums = filtered_sysnums;
 		return 0;
 	}
 
@@ -202,30 +572,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		if ((int) data1 < 0)
 			return 0;
 
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/kompat/enter.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/kompat/enter.c"
-			return 0;
-		}
-		#endif
-		#ifdef SYSNUM_HEADER3
-		case ABI_3: {
-			#include SYSNUM_HEADER3
-			#include "extension/kompat/enter.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
+		handle_sysenter_end(tracee, config);
 		return 0;
 	}
 
@@ -233,31 +580,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		Tracee *tracee = TRACEE(extension);
 		Config *config = talloc_get_type_abort(extension->config, Config);
 
-		switch (get_abi(tracee)) {
-		case ABI_DEFAULT: {
-			#include SYSNUM_HEADER
-			#include "extension/kompat/exit.c"
-			return 0;
-		}
-		#ifdef SYSNUM_HEADER2
-		case ABI_2: {
-			#include SYSNUM_HEADER2
-			#include "extension/kompat/exit.c"
-			return 0;
-		}
-		#endif
-		#ifdef SYSNUM_HEADER3
-		case ABI_3: {
-			#include SYSNUM_HEADER3
-			#include "extension/kompat/exit.c"
-			return 0;
-		}
-		#endif
-		default:
-			assert(0);
-		}
-		#include "syscall/sysnum-undefined.h"
-		return 0;
+		return handle_sysexit_end(tracee, config);
 	}
 
 	default:

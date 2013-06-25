@@ -125,8 +125,8 @@ typedef struct extension {
 	 * Mainly useful to store a configuration.  */
 	TALLOC_CTX *config;
 
-	/* List of syscalls handled by this extension.  */
-	const Filter *filters;
+	/* List of sysnum handled by this extension.  */
+	const FilteredSysnum *filtered_sysnums;
 
 	/* Link to the next and previous extensions.  Note the order
 	 * is *never* garantee.  */

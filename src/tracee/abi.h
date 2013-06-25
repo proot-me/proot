@@ -33,9 +33,10 @@
 #include "attribute.h"
 
 typedef enum {
-	ABI_DEFAULT,
+	ABI_DEFAULT = 0,
 	ABI_2, /* x86_32 on x86_64.  */
 	ABI_3, /* x32 on x86_64.  */
+	NB_MAX_ABIS,
 } Abi;
 
 /**

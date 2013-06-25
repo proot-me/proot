@@ -23,21 +23,23 @@
 #ifndef SECCOMP_H
 #define SECCOMP_H
 
+#include "syscall/sysnum.h"
 #include "tracee/tracee.h"
 #include "attribute.h"
 #include "arch.h"
 
 typedef struct {
-	word_t value;
+	Sysnum value;
 	word_t flags;
-} FilteredSyscall;
+} FilteredSysnum;
 
 typedef struct {
-	int arch;
-	FilteredSyscall *syscalls;
-} Filter;
+	unsigned int value;
+	size_t nb_abis;
+	Abi abis[NB_MAX_ABIS];
+} SeccompArch;
 
-#define FILTERED_SYSCALL_END { SYSCALL_AVOIDER, -1 }
+#define FILTERED_SYSNUM_END { PR_void, 0 }
 
 #define FILTER_SYSEXIT  0x1
 
