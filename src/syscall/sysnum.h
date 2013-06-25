@@ -26,6 +26,7 @@
 #include <stdbool.h>
 
 #include "tracee/tracee.h"
+#include "tracee/abi.h"
 
 typedef enum {
 	PR_void = 0,
@@ -461,5 +462,6 @@ typedef enum {
 
 extern Sysnum get_sysnum(const Tracee *tracee);
 extern void set_sysnum(Tracee *tracee, Sysnum sysnum);
+extern word_t detranslate_sysnum(Abi abi, Sysnum sysnum);
 
 #endif /* SYSNUM_H */

@@ -59,6 +59,11 @@ typedef unsigned long word_t;
     #define SYSNUMS_ABI2 sysnums_i386
     #define SYSNUMS_ABI3 sysnums_x32
 
+    #define SECCOMP_ARCHS {									\
+		{ .value = AUDIT_ARCH_X86_64, .nb_abis = 2, .abis = { ABI_DEFAULT, ABI_3 } },	\
+		{ .value = AUDIT_ARCH_I386,   .nb_abis = 1, .abis = { ABI_2 } }, 		\
+	}
+
     #define HOST_ELF_MACHINE {62, 3, 6, 0}
     #define RED_ZONE_SIZE 128
     #define OFFSETOF_STAT_UID_32 24
@@ -69,13 +74,14 @@ typedef unsigned long word_t;
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm.h"
     #define SYSNUMS_ABI1    sysnums_arm
 
+    #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_ARM, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
+
     #define user_regs_struct user_regs
     #define HOST_ELF_MACHINE {40, 0};
     #define RED_ZONE_SIZE 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
     #define EM_ARM 40
-    #define AUDIT_ARCH_NUM AUDIT_ARCH_ARM
 
 #elif defined(ARCH_ARM64)
 
@@ -93,11 +99,12 @@ typedef unsigned long word_t;
     #define SYSNUMS_HEADER1 "syscall/sysnums-i386.h"
     #define SYSNUMS_ABI1    sysnums_i386
 
+    #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_I386, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
+
     #define HOST_ELF_MACHINE {3, 6, 0};
     #define RED_ZONE_SIZE 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
-    #define AUDIT_ARCH_NUM AUDIT_ARCH_I386
 
 #elif defined(ARCH_SH4)
 

@@ -78,7 +78,7 @@ static void get_sysnums(Abi abi, Sysnums *sysnums)
 /**
  * Return the neutral value of @sysnum from the given @abi.
  */
-Sysnum translate_sysnum(Abi abi, word_t sysnum)
+static Sysnum translate_sysnum(Abi abi, word_t sysnum)
 {
 	Sysnums sysnums;
 	word_t index;
@@ -101,15 +101,14 @@ Sysnum translate_sysnum(Abi abi, word_t sysnum)
 /**
  * Return the architecture value of @sysnum for the given @abi.
  */
-static word_t detranslate_sysnum(Abi abi, Sysnum sysnum)
+word_t detranslate_sysnum(Abi abi, Sysnum sysnum)
 {
-	const word_t syscall_void = SYSCALL_AVOIDER;
 	Sysnums sysnums;
 	size_t i;
 
 	/* Very special case.  */
 	if (sysnum == PR_void)
-		return syscall_void;
+		return SYSCALL_AVOIDER;
 
 	get_sysnums(abi, &sysnums);
 
@@ -117,10 +116,10 @@ static word_t detranslate_sysnum(Abi abi, Sysnum sysnum)
 		if (sysnums.table[i] != sysnum)
 			continue;
 
-		return i;
+		return i + sysnums.offset;
 	}
 
-	return syscall_void;
+	return SYSCALL_AVOIDER;
 }
 
 /**

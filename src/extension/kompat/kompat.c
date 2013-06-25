@@ -499,7 +499,7 @@ static int handle_sysexit_end(const Tracee *tracee, Config *config)
 }
 
 /* List of syscalls handled by this extensions.  */
-static FilteredSyscall filtered_syscalls[] = {
+static FilteredSysnum filtered_sysnums[] = {
 	{ PR_accept4,		0 },
 	{ PR_dup3,		0 },
 	{ PR_epoll_create1,	0 },
@@ -524,6 +524,7 @@ static FilteredSyscall filtered_syscalls[] = {
 	{ PR_symlinkat, 	0 },
 	{ PR_uname, 		FILTER_SYSEXIT },
 	{ PR_unlinkat, 		0 },
+	FILTERED_SYSNUM_END,
 };
 
 /**
@@ -558,7 +559,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		else
 			config->actual_release = parse_kernel_release(utsname.release);
 
-		extension->filtered_syscalls = filtered_syscalls;
+		extension->filtered_sysnums = filtered_sysnums;
 		return 0;
 	}
 

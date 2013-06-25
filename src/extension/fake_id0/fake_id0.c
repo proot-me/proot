@@ -56,7 +56,7 @@ static int restore_mode(ModifiedNode *node)
 }
 
 /* List of syscalls handled by this extensions.  */
-static FilteredSyscall filtered_syscalls[] = {
+static FilteredSysnum filtered_sysnums[] = {
 	{ PR_chmod,		FILTER_SYSEXIT },
 	{ PR_chown,		FILTER_SYSEXIT },
 	{ PR_chown32,		FILTER_SYSEXIT },
@@ -106,6 +106,7 @@ static FilteredSyscall filtered_syscalls[] = {
 	{ PR_stat64,		FILTER_SYSEXIT },
 	{ PR_statfs,		FILTER_SYSEXIT },
 	{ PR_statfs64,		FILTER_SYSEXIT },
+	FILTERED_SYSNUM_END,
 };
 
 /**
@@ -360,7 +361,7 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 {
 	switch (event) {
 	case INITIALIZATION:
-		extension->filtered_syscalls = filtered_syscalls;
+		extension->filtered_sysnums = filtered_sysnums;
 		return 0;
 
 	case INHERIT_PARENT: /* Inheritable for sub reconfiguration ...  */

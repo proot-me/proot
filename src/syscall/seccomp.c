@@ -157,8 +157,7 @@ static int end_arch_section(struct sock_fprog *program, size_t nb_traced_syscall
  * sanity check.  This function returns -errno if an error occurred,
  * otherwise 0.
  */
-static int start_arch_section(struct sock_fprog *program, uint32_t architecture,
-				size_t nb_traced_syscalls)
+static int start_arch_section(struct sock_fprog *program, uint32_t arch, size_t nb_traced_syscalls)
 {
 	const size_t arch_offset    = offsetof(struct seccomp_data, arch);
 	const size_t syscall_offset = offsetof(struct seccomp_data, nr);
@@ -181,7 +180,7 @@ static int start_arch_section(struct sock_fprog *program, uint32_t architecture,
 		/* Compare the accumulator with the expected
 		 * architecture: skip the following statement if
 		 * equal.  */
-		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, architecture, 1, 0),
+		BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, arch, 1, 0),
 
 		/* This is not the expected architecture, so jump
 		 * unconditionally to the end of this section.  */
@@ -193,7 +192,7 @@ static int start_arch_section(struct sock_fprog *program, uint32_t architecture,
 	};
 
 	DEBUG_FILTER("FILTER: if arch == %ld, up to %zdth statement\n",
-		architecture, nb_traced_syscalls);
+		arch, nb_traced_syscalls);
 
 	status = add_statements(program, LENGTH_START_SECTION, statements);
 	if (status < 0)
@@ -241,51 +240,64 @@ static void free_program_filter(struct sock_fprog *program)
 }
 
 /**
- * Assemble the given @filters according to the following pseudo-code,
- * then enabled them for the given @tracee and all of its future
- * children:
+ * Convert the given @sysnums into BPF filters according to the
+ * following pseudo-code, then enabled them for the given @tracee and
+ * all of its future children:
  *
  *     for each handled architectures
- *         for each handled syscall
+ *         for each filtered syscall
  *             trace
  *         allow
  *     kill
  *
  * This function returns -errno if an error occurred, otherwise 0.
  */
-static int set_seccomp_filters(const Tracee *tracee, const Filter *filters)
+static int set_seccomp_filters(const Tracee *tracee, const FilteredSysnum *sysnums)
 {
+	SeccompArch seccomp_archs[] = SECCOMP_ARCHS;
+	size_t nb_archs = sizeof(seccomp_archs) / sizeof(SeccompArch);
+
 	struct sock_fprog program = { .len = 0, .filter = NULL };
 	size_t nb_traced_syscalls;
-	size_t i, j;
+	size_t i, j, k;
 	int status;
 
 	status = new_program_filter(&program);
 	if (status < 0)
 		goto end;
 
-	for (i = 0; filters[i].arch != 0; i++) {
+	/* For each handled architectures */
+	for (i = 0; i < nb_archs; i++) {
+		word_t syscall;
+
 		nb_traced_syscalls = 0;
 
 		/* Pre-compute the number of traced syscalls for this architecture.  */
-		for (j = 0; filters[i].syscalls[j].value != SYSCALL_AVOIDER; j++)
-			if ((int) filters[i].syscalls[j].value >= 0)
-				nb_traced_syscalls++;
+		for (j = 0; j < seccomp_archs[i].nb_abis; j++) {
+			for (k = 0; sysnums[k].value != PR_void; k++) {
+				syscall = detranslate_sysnum(seccomp_archs[i].abis[j], sysnums[k].value);
+				if (syscall != SYSCALL_AVOIDER)
+					nb_traced_syscalls++;
+			}
+		}
 
 		/* Filter: if handled architecture */
-		status = start_arch_section(&program, filters[i].arch, nb_traced_syscalls);
+		status = start_arch_section(&program, seccomp_archs[i].value, nb_traced_syscalls);
 		if (status < 0)
 			goto end;
 
-		for (j = 0; filters[i].syscalls[j].value != SYSCALL_AVOIDER; j++) {
-			if ((int) filters[i].syscalls[j].value < 0)
-				continue;
+		for (j = 0; j < seccomp_archs[i].nb_abis; j++) {
+			for (k = 0; sysnums[k].value != PR_void; k++) {
+				/* Get the architecture specific syscall number.  */
+				syscall = detranslate_sysnum(seccomp_archs[i].abis[j], sysnums[k].value);
+				if (syscall == SYSCALL_AVOIDER)
+					continue;
 
-			/* Filter: trace if handled syscall */
-			status = add_trace_syscall(&program, filters[i].syscalls[j].value,
-							filters[i].syscalls[j].flags);
-			if (status < 0)
-				goto end;
+				/* Filter: trace if handled syscall */
+				status = add_trace_syscall(&program, syscall, sysnums[k].flags);
+				if (status < 0)
+					goto end;
+			}
 		}
 
 		/* Filter: allow untraced syscalls for this architecture */
@@ -321,8 +333,8 @@ end:
 	return status;
 }
 
-/* List of syscalls handled by PRoot.  */
-static FilteredSyscall filtered_syscalls[] = {
+/* List of sysnums handled by PRoot.  */
+static FilteredSysnum proot_sysnums[] = {
 	{ PR_accept,		FILTER_SYSEXIT },
 	{ PR_accept4,		FILTER_SYSEXIT },
 	{ PR_access,		0 },
@@ -399,85 +411,49 @@ static FilteredSyscall filtered_syscalls[] = {
 	{ PR_utime,		0 },
 	{ PR_utimensat,		0 },
 	{ PR_utimes,		0 },
+	FILTERED_SYSNUM_END,
 };
 
 /**
- * Merge the filtered @syscall for the given @arch into @filters ,
- * using the given Talloc @context.  This function returns -errno if
- * an error occurred, otherwise 0.
+ * Add the @new_sysnums to the list of filtered @sysnums, using the
+ * given Talloc @context.  This function returns -errno if an error
+ * occurred, otherwise 0.
  */
-static int merge_filtered_syscall(TALLOC_CTX *context, Filter **filters, int arch,
-				FilteredSyscall syscall)
+static int merge_filtered_sysnums(TALLOC_CTX *context, FilteredSysnum **sysnums,
+				const FilteredSysnum *new_sysnums)
 {
 	size_t i, j;
 
-	/* Search for the given architecture.  */
-	for (i = 0; (*filters)[i].arch != 0 && (*filters)[i].arch != arch; i++)
-		;
-
-	if ((*filters)[i].arch == 0) {
-		/* No such architecture, allocate a new entry.  */
-		*filters = talloc_realloc(context, *filters, Filter, i + 2);
-		if (*filters == NULL)
+	if (*sysnums == NULL) {
+		/* Start with no sysnums but the terminator.  */
+		*sysnums = talloc_array(context, FilteredSysnum, 1);
+		if (sysnums == NULL)
 			return -ENOMEM;
 
-		(*filters)[i].arch = arch;
-
-		/* Start with no syscalls but the terminator.  */
-		(*filters)[i].syscalls = talloc_array(context, FilteredSyscall, 1);
-		if (filters == NULL)
-			return -ENOMEM;
-
-		(*filters)[i].syscalls[0].value = SYSCALL_AVOIDER;
-		(*filters)[i].syscalls[0].flags = -1;
-
-		/* The last item is the terminator.  */
-		(*filters)[i + 1].arch = 0;
+		(*sysnums)[0].value = PR_void;
 	}
 
-	/* Search for the given syscall.  */
-	for (j = 0; (*filters)[i].syscalls[j].value != SYSCALL_AVOIDER
-		 && (*filters)[i].syscalls[j].value != syscall.value; j++)
-		;
+	for (i = 0; new_sysnums[i].value != PR_void; i++) {
+		/* Search for the given sysnum.  */
+		for (j = 0; (*sysnums)[j].value != PR_void
+			 && (*sysnums)[j].value != new_sysnums[i].value; j++)
+			;
 
-	if ((*filters)[i].syscalls[j].value == SYSCALL_AVOIDER) {
-		/* No such syscall, allocate a new entry.  */
-		(*filters)[i].syscalls = talloc_realloc(context, (*filters)[i].syscalls,
-							FilteredSyscall, j + 2);
-		if ((*filters)[i].syscalls == NULL)
-			return -ENOMEM;
+		if ((*sysnums)[j].value == PR_void) {
+			/* No such sysnum, allocate a new entry.  */
+			(*sysnums) = talloc_realloc(context, (*sysnums), FilteredSysnum, j + 2);
+			if ((*sysnums) == NULL)
+				return -ENOMEM;
 
-		(*filters)[i].syscalls[j] = syscall;
+			(*sysnums)[j] = new_sysnums[i];
 
-		/* The last item is the terminator.  */
-		(*filters)[i].syscalls[j + 1].value = SYSCALL_AVOIDER;
-		(*filters)[i].syscalls[j + 1].flags = -1;
-	}
-	else
-		/* The syscall is already filtered, merge the
-		 * flags.  */
-		(*filters)[i].syscalls[j].flags |= syscall.flags;
-
-	return 0;
-}
-
-/**
- * Merge @new_filters into @filters, using the given Talloc @context.
- * This function returns -errno if an error occurred, otherwise 0.
- */
-static int merge_filters(TALLOC_CTX *context, Filter **filters, const Filter *new_filters)
-{
-	size_t i, j;
-	int status;
-
-	for (i = 0; new_filters[i].arch != 0; i++) {
-		for (j = 0; new_filters[i].syscalls[j].value != SYSCALL_AVOIDER; j++) {
-			status = merge_filtered_syscall(context, filters,
-							new_filters[i].arch,
-							new_filters[i].syscalls[j]);
-			if (status < 0)
-				return status;
+			/* The last item is the terminator.  */
+			(*sysnums)[j + 1].value = PR_void;
 		}
+		else
+			/* The sysnum is already filtered, merge the
+			 * flags.  */
+			(*sysnums)[j].flags |= new_sysnums[i].flags;
 	}
 
 	return 0;
@@ -491,43 +467,37 @@ static int merge_filters(TALLOC_CTX *context, Filter **filters, const Filter *ne
  */
 int enable_syscall_filtering(const Tracee *tracee)
 {
-	return -ENOTSUP;
-#if 0
+	FilteredSysnum *filtered_sysnums = NULL;
 	Extension *extension;
-	Filter *filters;
 	int status;
 
 	assert(tracee != NULL && tracee->ctx != NULL);
 
-	/* Start with no filters but the terminator.  */
-	filters = talloc_zero_array(tracee->ctx, Filter, 1);
-	if (filters == NULL)
-		return -ENOMEM;
-
-	/* Add the filters required by PRoot.  TODO: only if path
-	 * translation is required.  */
-	status = merge_filters(tracee->ctx, &filters, proot_filters);
+	/* Add the sysnums required by PRoot to the list of filtered
+	 * sysnums.  TODO: only if path translation is required.  */
+	status = merge_filtered_sysnums(tracee->ctx, &filtered_sysnums, proot_sysnums);
 	if (status < 0)
 		return status;
 
-	/* Merge the filters required by the extensions.  */
+	/* Merge the sysnums required by the extensions to the list
+	 * of filtered sysnums.  */
 	if (tracee->extensions != NULL) {
 		LIST_FOREACH(extension, tracee->extensions, link) {
-			if (extension->filters == NULL)
+			if (extension->filtered_sysnums == NULL)
 				continue;
 
-			status = merge_filters(tracee->ctx, &filters, extension->filters);
+			status = merge_filtered_sysnums(tracee->ctx, &filtered_sysnums,
+							extension->filtered_sysnums);
 			if (status < 0)
 				return status;
 		}
 	}
 
-	status = set_seccomp_filters(tracee, filters);
+	status = set_seccomp_filters(tracee, filtered_sysnums);
 	if (status < 0)
 		return status;
 
 	return 0;
-#endif
 }
 
 #endif /* defined(HAVE_SECCOMP_FILTER) */
