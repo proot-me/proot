@@ -34,6 +34,7 @@ OBJECTS = cli.o			\
 	tracee/mem.o		\
 	tracee/reg.o		\
 	tracee/event.o		\
+	ptrace/ptrace.o		\
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o

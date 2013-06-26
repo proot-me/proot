@@ -20,11 +20,11 @@
  * 02110-1301 USA.
  */
 
-#ifndef EXECVE_H
-#define EXECVE_H
+#ifndef PTRACE_H
+#define PTRACE_H
 
 #include "tracee/tracee.h"
 
-extern int translate_execve(Tracee *tracee);
+extern int translate_ptrace(Tracee *tracee);
 
-#endif /* EXECVE_H */
+#endif /* PTRACE_H */

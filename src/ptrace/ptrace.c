@@ -20,11 +20,18 @@
  * 02110-1301 USA.
  */
 
-#ifndef EXECVE_H
-#define EXECVE_H
+/*
+ * NOTE: This file is for ptrace emulation *under* PRoot.  The ptrace
+ *       support *for* PRoot is in src/tracee.
+ */
 
 #include "tracee/tracee.h"
+#include "syscall/sysnum.h"
+#include "notice.h"
 
-extern int translate_execve(Tracee *tracee);
-
-#endif /* EXECVE_H */
+int translate_ptrace(Tracee *tracee)
+{
+	/* Initial stub: do nothing.  */
+	set_sysnum(tracee, PR_void);
+	return 0;
+}

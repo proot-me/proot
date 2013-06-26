@@ -75,6 +75,15 @@ typedef struct tracee {
 	/* Parent of this tracee, NULL if none.  */
 	struct tracee *parent;
 
+	/* Information for ptrace emulation.  */
+	struct {
+		/* Tracer of this tracee, NULL if none.  */
+		struct tracee *tracer;
+
+		/* Tracing options.  */
+		word_t options;
+	} ptrace;
+
 	/* Current status:
 	 *        0: enter syscall
 	 *        1: exit syscall no error

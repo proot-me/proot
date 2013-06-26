@@ -382,6 +382,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_open,		0 },
 	{ PR_openat,		0 },
 	{ PR_pivot_root,	0 },
+	{ PR_ptrace,		FILTER_SYSEXIT },
 	{ PR_readlink,		FILTER_SYSEXIT },
 	{ PR_readlinkat,	FILTER_SYSEXIT },
 	{ PR_removexattr,	0 },

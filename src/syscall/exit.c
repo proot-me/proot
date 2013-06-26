@@ -203,6 +203,7 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_fchdir:
 	case PR_chdir:
+	case PR_ptrace:
 		/* These syscalls are fully emulated, see enter.c for details
 		 * (like errors).  */
 		status = 0;

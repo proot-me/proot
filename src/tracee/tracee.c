@@ -49,15 +49,21 @@ static Tracees tracees;
  */
 static int remove_tracee(Tracee *tracee)
 {
-	Tracee *child;
+	Tracee *relative;
 
 	LIST_REMOVE(tracee, link);
 
-	/* Its children are now orphan.  This could be optimize by
-	 * using a list of children per tracee.  */
-	LIST_FOREACH(child, &tracees, link)
-		if (child->parent == tracee)
-			child->parent = NULL;
+	/* This could be optimize by using a list of children/tracees
+	 * per tracee.  */
+	LIST_FOREACH(relative, &tracees, link) {
+		/* Its children are now orphan. */
+		if (relative->parent == tracee)
+			relative->parent = NULL;
+
+		/* Its tracees are now free.  */
+		if (relative->ptrace.tracer == tracee)
+			bzero(&relative->ptrace, sizeof(relative->ptrace));
+	}
 
 	return 0;
 }
@@ -169,7 +175,9 @@ int new_child(Tracee *parent, word_t clone_flags)
 	    && child->fs->bindings.guest == NULL
 	    && child->fs->bindings.host == NULL
 	    && child->qemu == NULL
-	    && child->glue == NULL);
+	    && child->glue == NULL
+	    && child->parent == NULL
+	    && child->ptrace.tracer == NULL);
 
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
@@ -187,6 +195,13 @@ int new_child(Tracee *parent, word_t clone_flags)
 		child->parent = parent->parent;
 	else
 		child->parent = parent;
+
+	/* If one of these ptrace options is set, the newly forked
+	 * process is automatically traced by the parent's tracer.  */
+	if (parent->ptrace.options & (PTRACE_O_TRACEFORK
+				    | PTRACE_O_TRACEVFORK
+				    | PTRACE_O_TRACECLONE))
+		child->ptrace = parent->ptrace;
 
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root
