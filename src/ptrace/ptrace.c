@@ -114,9 +114,16 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		/* Detect when the ptracer has gone to wait before the
 		 * ptracee has did the ptrace(ATTACHME) request.  */
-		if (PTRACER.waits_in_kernel)
-			notice(tracee, ERROR, INTERNAL,
-				"unsupported condition detected (to be fixed)");
+		if (PTRACER.waits_in_kernel) {
+			status = kill(ptracer->pid, SIGSTOP);
+			if (status < 0)
+				notice(tracee, WARNING, INTERNAL,
+					"can't wake ptracer %d", ptracer->pid);
+			else {
+				ptracer->sigstop = SIGSTOP_IGNORED;
+				PTRACER.waits_in_proot = true;
+			}
+		}
 
 		return 0;
 	}
@@ -129,7 +136,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		return -ESRCH;
 
 	/* Sanity checks.  */
-	if (PTRACEE.tracer != ptracer || pid == -1)
+	if (PTRACEE.tracer != ptracer || pid == (word_t) -1)
 		return -ESRCH;
 
 	errno = 0;

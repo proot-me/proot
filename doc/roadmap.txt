@@ -13,6 +13,17 @@ program based on "ptrace" under PRoot since this latter is also based
 on this syscall and the Linux kernel allows only one ptracer per
 process.  The solution is to emulate this syscall in PRoot.
 
+TODO:
+
+* Distinguish sysenter/sysexit.
+
+* Fix interaction with vfork to support gdb.
+
+* Support multi-ptracees.
+
+* Support 32-bit ptracee on 64-bit systems.
+
+* support under seccomp.
 
 New features
 ------------

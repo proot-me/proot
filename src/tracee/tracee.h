@@ -80,6 +80,7 @@ typedef struct tracee {
 		size_t nb_tracees;
 		pid_t wait_pid;
 		bool waits_in_kernel;
+		bool waits_in_proot;
 	} as_ptracer;
 
 	/* Support for ptrace emulation (tracee side).  */

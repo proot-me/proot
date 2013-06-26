@@ -342,6 +342,9 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_wait4:
 	case PR_waitpid:
+		if (!tracee->as_ptracer.waits_in_proot)
+			goto end;
+
 		status = translate_wait_exit(tracee);
 		break;
 

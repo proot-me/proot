@@ -68,6 +68,7 @@ int translate_wait_enter(Tracee *ptracer)
 	/* This syscall is canceled at the enter stage in order to be
 	 * handled at the exit stage.  */
 	set_sysnum(ptracer, PR_void);
+	PTRACER.waits_in_proot = true;
 
 	return 0;
 }
@@ -80,14 +81,10 @@ int translate_wait_enter(Tracee *ptracer)
 int translate_wait_exit(Tracee *ptracer)
 {
 	Tracee *ptracee;
-	word_t result;
 	word_t pid;
 
-	result = peek_reg(ptracer, CURRENT, SYSARG_RESULT);
-
-	/* Emulate the wait* syscall only for ptrace purpose.  */
-	if (get_sysnum(ptracer, MODIFIED) != PR_void)
-		return (ptracer->status < 0 ? ptracer->status : result);
+	assert(PTRACER.waits_in_proot);
+	PTRACER.waits_in_proot = false;
 
 	pid = peek_reg(ptracer, ORIGINAL, SYSARG_1);
 
