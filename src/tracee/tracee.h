@@ -25,7 +25,7 @@
 
 #include <sys/types.h> /* pid_t, size_t, */
 #include <sys/user.h>  /* struct user*, */
-#include <stdbool.h>
+#include <stdbool.h>   /* bool,  */
 #include <sys/queue.h> /* LIST_*, */
 #include <sys/ptrace.h>/* enum __ptrace_request */
 #include <talloc.h>    /* talloc_*, */
@@ -75,14 +75,22 @@ typedef struct tracee {
 	/* Parent of this tracee, NULL if none.  */
 	struct tracee *parent;
 
-	/* Information for ptrace emulation.  */
+	/* Support for ptrace emulation (tracer side).  */
 	struct {
-		/* Tracer of this tracee, NULL if none.  */
+		size_t nb_tracees;
+		pid_t wait_pid;
+	} as_ptracer;
+
+	/* Support for ptrace emulation (tracee side).  */
+	struct {
 		struct tracee *tracer;
 
-		/* Tracing options.  */
+		bool waits_tracer;
+		int wait_status;
+
+		bool ignore_syscall;
 		word_t options;
-	} ptrace;
+	} as_ptracee;
 
 	/* Current status:
 	 *        0: enter syscall
@@ -188,6 +196,7 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
+extern Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern int parse_config(Tracee *tracee, size_t argc, char *argv[]);

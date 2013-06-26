@@ -25,6 +25,10 @@
 
 #include "tracee/tracee.h"
 
-extern int translate_ptrace(Tracee *tracee);
+extern int translate_ptrace_enter(Tracee *tracee);
+extern int translate_ptrace_exit(Tracee *tracee);
+
+#define PTRACEE (ptracee->as_ptracee)
+#define PTRACER (ptracer->as_ptracer)
 
 #endif /* PTRACE_H */

@@ -20,16 +20,14 @@
  * 02110-1301 USA.
  */
 
-#ifndef TRACEE_EVENT_H
-#define TRACEE_EVENT_H
+#ifndef PTRACE_EVENT_H
+#define PTRACE_EVENT_H
 
 #include <stdbool.h>
 
 #include "tracee/tracee.h"
 
-extern int launch_process(Tracee *tracee);
-extern int event_loop();
-extern void handle_tracee_event(Tracee *tracee, int tracee_status);
-extern bool restart_tracee(Tracee *tracee, int signal);
+extern bool notify_ptracer(Tracee *ptracee);
+extern bool handle_ptracee_event(Tracee *ptracee, int ptracee_status);
 
-#endif /* TRACEE_EVENT_H */
+#endif /* PTRACE_EVENT_H */

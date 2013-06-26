@@ -33,6 +33,8 @@
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "path/path.h"
+#include "ptrace/ptrace.h"
+#include "ptrace/wait.h"
 #include "extension/extension.h"
 
 /**
@@ -203,7 +205,6 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_fchdir:
 	case PR_chdir:
-	case PR_ptrace:
 		/* These syscalls are fully emulated, see enter.c for details
 		 * (like errors).  */
 		status = 0;
@@ -329,11 +330,20 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_execve:
 		if ((int) syscall_result >= 0) {
-		case PR_rt_sigreturn:
-		case PR_sigreturn:
+	case PR_rt_sigreturn:
+	case PR_sigreturn:
 			tracee->restore_original_regs = false;
 		}
 		goto end;
+
+	case PR_ptrace:
+		status = translate_ptrace_exit(tracee);
+		break;
+
+	case PR_wait4:
+	case PR_waitpid:
+		status = translate_wait_exit(tracee);
+		break;
 
 	default:
 		goto end;

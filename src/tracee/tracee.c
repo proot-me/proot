@@ -36,6 +36,8 @@
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "syscall/sysnum.h"
+#include "tracee/event.h"
+#include "ptrace/ptrace.h"
 #include "extension/extension.h"
 #include "notice.h"
 
@@ -45,24 +47,48 @@ typedef LIST_HEAD(tracees, tracee) Tracees;
 static Tracees tracees;
 
 /**
- * Remove @tracee from the list of tracees.
+ * Remove @tracee from the list of tracees and update all of its
+ * children & ptracees, and its ptracer.
  */
 static int remove_tracee(Tracee *tracee)
 {
 	Tracee *relative;
+	Tracee *ptracer;
 
 	LIST_REMOVE(tracee, link);
 
-	/* This could be optimize by using a list of children/tracees
-	 * per tracee.  */
+	/* This could be optimize by using a dedicated list of
+	 * children and ptracees.  */
 	LIST_FOREACH(relative, &tracees, link) {
-		/* Its children are now orphan. */
+		/* Its children are now orphan.  */
 		if (relative->parent == tracee)
 			relative->parent = NULL;
 
 		/* Its tracees are now free.  */
-		if (relative->ptrace.tracer == tracee)
-			bzero(&relative->ptrace, sizeof(relative->ptrace));
+		if (relative->as_ptracee.tracer == tracee) {
+			/* Release the pending event, if any.  */
+			relative->as_ptracee.tracer = NULL;
+			if (relative->as_ptracee.waits_tracer)
+				handle_tracee_event(relative, relative->as_ptracee.wait_status);
+			bzero(&relative->as_ptracee, sizeof(relative->as_ptracee));
+		}
+	}
+
+	/* Nothing else to do if it's not a ptracee.  */
+	ptracer = tracee->as_ptracee.tracer;
+	if (ptracer == NULL)
+		return 0;
+
+	/* Sanity checks.  */
+	assert(ptracer != tracee);
+	assert(PTRACER.nb_tracees > 0);
+
+	/* Wake its ptracer if there's nothing else to wait for.  */
+	PTRACER.nb_tracees--;
+	if (PTRACER.nb_tracees == 0 && PTRACER.wait_pid != 0) {
+		poke_reg(ptracer, SYSARG_RESULT, -ECHILD);
+		PTRACER.wait_pid = 0;
+		restart_tracee(ptracer, 0);
 	}
 
 	return 0;
@@ -102,6 +128,39 @@ no_mem:
 }
 
 /**
+ * Return the (first) tracee with the given @pid (-1 for any) which
+ * has the given @ptracer, and is in the "waiting for ptracer" state
+ * if @only_if_waiting is true.  This function returns NULL if there's
+ * no such ptracee.
+ */
+Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting)
+{
+	Tracee *ptracee;
+
+	LIST_FOREACH(ptracee, &tracees, link) {
+		/* Discard tracees that don't have this ptracer.  */
+		if (PTRACEE.tracer != ptracer)
+			continue;
+
+		/* Not the ptracee you're looking for?  */
+		if (pid != ptracee->pid && pid != -1)
+			continue;
+
+		/* Is in the waiting state or don't care about it?  */
+		if (PTRACEE.waits_tracer || !only_if_waiting)
+			return ptracee;
+
+		/* No need to go further if the specific tracee isn't
+		 * in the expected state?  */
+		if (pid == ptracee->pid && only_if_waiting)
+			return NULL;
+	}
+
+	return NULL;
+}
+
+
+/**
  * Return the entry related to the tracee @pid.  If no entry were
  * found, a new one is created if @create is true, otherwise NULL is
  * returned.
@@ -116,7 +175,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
 	if (current_tracee != NULL && current_tracee->pid == pid)
 		return (Tracee *)current_tracee;
 
-	LIST_FOREACH(tracee, &tracees, link)
+	LIST_FOREACH(tracee, &tracees, link) {
 		if (tracee->pid == pid) {
 			/* Flush then allocate a new memory collector.  */
 			TALLOC_FREE(tracee->ctx);
@@ -124,6 +183,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
 
 			return tracee;
 		}
+	}
 
 	return (create ? new_tracee(pid) : NULL);
 }
@@ -177,7 +237,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	    && child->qemu == NULL
 	    && child->glue == NULL
 	    && child->parent == NULL
-	    && child->ptrace.tracer == NULL);
+	    && child->as_ptracee.tracer == NULL);
 
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
@@ -198,10 +258,12 @@ int new_child(Tracee *parent, word_t clone_flags)
 
 	/* If one of these ptrace options is set, the newly forked
 	 * process is automatically traced by the parent's tracer.  */
-	if (parent->ptrace.options & (PTRACE_O_TRACEFORK
-				    | PTRACE_O_TRACEVFORK
-				    | PTRACE_O_TRACECLONE))
-		child->ptrace = parent->ptrace;
+	if (parent->as_ptracee.options & (PTRACE_O_TRACEFORK
+					| PTRACE_O_TRACEVFORK
+					| PTRACE_O_TRACECLONE)) {
+		child->as_ptracee.tracer  = parent->as_ptracee.tracer;
+		child->as_ptracee.options = parent->as_ptracee.options;
+	}
 
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root
@@ -259,12 +321,8 @@ int new_child(Tracee *parent, word_t clone_flags)
 	/* Restart the child tracee if it was already alive but
 	 * stopped until that moment.  */
 	if (child->sigstop == SIGSTOP_PENDING) {
-		int status;
-
 		child->sigstop = SIGSTOP_ALLOWED;
-		status = ptrace(PTRACE_SYSCALL, child->pid, NULL, 0);
-		if (status < 0)
-			TALLOC_FREE(child);
+		restart_tracee(child, 0);
 	}
 
 	return 0;

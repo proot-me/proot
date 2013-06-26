@@ -45,6 +45,8 @@
 #include "path/binding.h"
 #include "syscall/syscall.h"
 #include "syscall/seccomp.h"
+#include "ptrace/event.h"
+#include "ptrace/ptrace.h"
 #include "extension/extension.h"
 #include "execve/elf.h"
 
@@ -267,6 +269,8 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED, void *
 	}
 }
 
+static int last_exit_status = -1;
+
 /**
  * Check if this instance of PRoot can *technically* handle @tracee.
  */
@@ -314,7 +318,6 @@ static void check_architecture(Tracee *tracee)
 int event_loop()
 {
 	struct sigaction signal_action;
-	int last_exit_status = -1;
 	long status;
 	int signum;
 
@@ -376,13 +379,9 @@ int event_loop()
 	}
 
 	while (1) {
-		static bool seccomp_detected = false;
 		int tracee_status;
 		Tracee *tracee;
 		pid_t pid;
-
-		/* Not a signal-stop by default.  */
-		int signal = 0;
 
 		/* Wait for the next tracee's stop. */
 		pid = waitpid(-1, &tracee_status, __WALL);
@@ -398,15 +397,45 @@ int event_loop()
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
-		if (tracee->seccomp == ENABLED)
-			tracee->restart_how = PTRACE_CONT;
-		else
-			tracee->restart_how = PTRACE_SYSCALL;
-
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
 			continue;
 
+		/* The ptracer is notified before any changes made by
+		 * PRoot.  TODO: to be fixed for the exit stage.  */
+		if (tracee->as_ptracee.tracer != NULL) {
+			bool skip = handle_ptracee_event(tracee, tracee_status);
+			if (skip)
+				continue;
+		}
+
+		handle_tracee_event(tracee, tracee_status);
+	}
+
+	return last_exit_status;
+}
+
+/**
+ * Handle the current event (@tracee_status) of the given @tracee.
+ */
+void handle_tracee_event(Tracee *tracee, int tracee_status)
+{
+	static bool seccomp_detected = false;
+	pid_t pid = tracee->pid;
+	long status;
+	int signal;
+
+	if (tracee->seccomp == ENABLED)
+		tracee->restart_how = PTRACE_CONT;
+	else
+		tracee->restart_how = PTRACE_SYSCALL;
+
+	/* Not a signal-stop by default.  */
+	signal = 0;
+
+	/* A do-while block is used in order to preserve the initial
+	 * indentation and "continue" statements.  */
+	do {
 		if (WIFEXITED(tracee_status)) {
 			last_exit_status = WEXITSTATUS(tracee_status);
 			VERBOSE(tracee, 1, "pid %d: exited with status %d",
@@ -460,7 +489,7 @@ int event_loop()
 					if (status < 0) {
 						notice(tracee, ERROR, SYSTEM,
 							"ptrace(PTRACE_SETOPTIONS)");
-						return EXIT_FAILURE;
+						exit(EXIT_FAILURE);
 					}
 				}
 			}
@@ -578,16 +607,35 @@ int event_loop()
 			}
 		}
 
-		/* Keep in the stopped state?.  */
-		if (signal == -1)
-			continue;
-
-		/* Restart the tracee and stop it at the next entry or
-		 * exit of a system call. */
-		status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
-		if (status < 0)
-			TALLOC_FREE(tracee);
+		restart_tracee(tracee, signal);
 	} while (0);
+}
 
-	return last_exit_status;
+/**
+ * Restart the given @tracee with the specified @signal.  This
+ * function returns false if the tracee was not restarted (error or
+ * put in the "waiting for ptracee" state), otherwise true.
+ */
+bool restart_tracee(Tracee *tracee, int signal)
+{
+	int status;
+
+	/* Put in the "stopped"/"waiting for ptracee" state?.  */
+	if (tracee->as_ptracer.wait_pid != 0 || signal == -1)
+		return false;
+
+	/* Restart the tracee and stop it at the next entry or exit of
+	 * a system call. */
+	status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
+	if (status < 0) {
+		/* The process died in a syscall.  */
+		TALLOC_FREE(tracee);
+		return false;
+	}
+
+	/* Clear the "waiting for ptracer" state.  */
+	tracee->as_ptracee.waits_tracer = false;
+	tracee->as_ptracee.wait_status  = 0;
+
+	return true;
 }
