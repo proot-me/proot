@@ -111,8 +111,16 @@ typedef struct tracee {
 		const char *paths;
 	} reconf;
 
+
+	/**********************************************************************
+	 * Private but inherited resources                                    *
+	 **********************************************************************/
+
 	/* Verbose level.  */
 	int verbose;
+
+	/* State of the seccomp acceleration for this tracee.  */
+	enum { DISABLED = 0, DISABLING, ENABLED } seccomp;
 
 
 	/**********************************************************************

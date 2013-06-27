@@ -163,6 +163,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	    && child->glue == NULL);
 
 	child->verbose = parent->verbose;
+	child->seccomp = parent->seccomp;
 
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root
