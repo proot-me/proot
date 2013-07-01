@@ -29,6 +29,7 @@
 #include "path/proc.h"
 #include "tracee/tracee.h"
 #include "path/path.h"
+#include "path/binding.h"
 
 /**
  * This function emulates the @result of readlink("@base/@component")
@@ -88,24 +89,24 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 	comparison = compare_paths(proc_path, base);
 	switch (comparison) {
 	case PATHS_ARE_EQUAL:
-#define SUBSTITUTE(name, field)					\
+#define SUBSTITUTE(name, string)				\
 		do {						\
 			if (strcmp(component, #name) != 0)	\
 				break;				\
 								\
-			status = strlen(known_tracee->field);	\
+			status = strlen(string);		\
 			if (status >= PATH_MAX)			\
 				return -EPERM;			\
 								\
-			strncpy(result, known_tracee->field, status + 1); \
+			strncpy(result, string, status + 1);	\
 			return CANONICALIZE;			\
 		} while (0)
 
 		/* Substitute link "/proc/<PID>/???" with the content
 		 * of tracee->???.  */
-		SUBSTITUTE(exe, exe);
-		SUBSTITUTE(cwd, fs->cwd);
-		//SUBSTITUTE(root);
+		SUBSTITUTE(exe, known_tracee->exe);
+		SUBSTITUTE(cwd, known_tracee->fs->cwd);
+		SUBSTITUTE(root, get_root(known_tracee));
 #undef SUBSTITUTE
 		return DEFAULT;
 
