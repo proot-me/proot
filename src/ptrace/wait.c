@@ -229,6 +229,13 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			}
 			break;
 
+		case SIGTRAP:
+			/* This is very likely a breakpoint or a
+			 * PTRACE_SINGLESTEP notification.  PRoot
+			 * doesn't handle this kind of SIGTRAP.  */
+			PTRACEE.event4.proot.value = 0;
+			break;
+
 		default:
 			break;
 		}

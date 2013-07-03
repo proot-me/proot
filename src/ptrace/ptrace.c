@@ -161,6 +161,11 @@ int translate_ptrace_exit(Tracee *tracee)
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
+	case PTRACE_SINGLESTEP:
+		ptracee->restart_how = PTRACE_SINGLESTEP;
+		status = 0;
+		break;  /* Restart the ptracee.  */
+
 	case PTRACE_DETACH:
 		assert(PTRACER.nb_ptracees > 0);
 		PTRACER.nb_ptracees--;

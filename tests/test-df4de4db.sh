@@ -1,4 +1,4 @@
-if [ ! -x  ${ROOTFS}/bin/fork-wait ] || [ ! -x  ${ROOTFS}/bin/fork-wait ] || [ -z `which strace` ]; then
+if [ ! -x  ${ROOTFS}/bin/fork-wait ] || [ -z `which strace` ]; then
     exit 125;
 fi
 

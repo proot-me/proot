@@ -432,10 +432,13 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	long status;
 	int signal;
 
-	if (tracee->seccomp == ENABLED)
-		tracee->restart_how = PTRACE_CONT;
-	else
-		tracee->restart_how = PTRACE_SYSCALL;
+	/* Don't overwrite restart_how if it is explicitly set
+	 * elsewhere, i.e in the ptrace emulation when single
+	 * stepping.  */
+	tracee->restart_how = tracee->restart_how
+		?: tracee->seccomp == ENABLED
+			? PTRACE_CONT
+			: PTRACE_SYSCALL;
 
 	/* Not a signal-stop by default.  */
 	signal = 0;
@@ -444,6 +447,10 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	 * indentation ...  */
 	do {
 		if (WIFEXITED(tracee_status)) {
+			/* Note: when the ptrace emulation is enabled,
+			 * the event "0" is used to tell PRoot not to
+			 * handle this event.  Sadly this value also
+			 * means "exit(0)".  */
 			last_exit_status = WEXITSTATUS(tracee_status);
 			VERBOSE(tracee, 1, "pid %d: exited with status %d",
 				pid, last_exit_status);
@@ -636,8 +643,8 @@ bool restart_tracee(Tracee *tracee, int signal)
 	if (tracee->as_ptracer.wait_pid != 0 || signal == -1)
 		return false;
 
-	/* Restart the tracee and stop it at the next entry or exit of
-	 * a system call. */
+	/* Restart the tracee and stop it at the next instruction, or
+	 * at the next entry or exit of a system call. */
 	status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
 	if (status < 0) {
 		/* The process died in a syscall.  */
@@ -645,6 +652,7 @@ bool restart_tracee(Tracee *tracee, int signal)
 		return false;
 	}
 
+	tracee->restart_how = 0;
 	tracee->running = true;
 	return true;
 }
