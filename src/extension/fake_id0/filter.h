@@ -33,6 +33,7 @@
 { PR_lchown32,		0 },
 { PR_lstat,		0 },
 { PR_lstat64,		0 },
+{ PR_mknod,		0 },
 { PR_newfstatat,	0 },
 { PR_oldlstat,		0 },
 { PR_oldstat,		0 },

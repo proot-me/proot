@@ -137,6 +137,7 @@ case PR_setuid32:
 case PR_setgid32:
 case PR_setfsuid32:
 case PR_setfsgid32:
+case PR_mknod:
 	/* Force success.  */
 	poke_reg(tracee, SYSARG_RESULT, 0);
 	return 0;
