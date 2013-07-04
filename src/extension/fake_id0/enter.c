@@ -65,6 +65,7 @@ case PR_getresuid:
 case PR_getresuid32:
 case PR_getresgid:
 case PR_getresgid32:
+case PR_mknod:
 	/* Force the sysexit stage under seccomp.  */
 	tracee->restart_how = PTRACE_SYSCALL;
 default:
