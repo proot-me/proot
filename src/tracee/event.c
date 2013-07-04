@@ -446,11 +446,11 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	/* A do-while block is used in order to preserve the initial
 	 * indentation ...  */
 	do {
+		if (tracee_status == -1) {
+			; /* This value is only used to tell PRoot not
+			   * to handle this event.  */
+		}
 		if (WIFEXITED(tracee_status)) {
-			/* Note: when the ptrace emulation is enabled,
-			 * the event "0" is used to tell PRoot not to
-			 * handle this event.  Sadly this value also
-			 * means "exit(0)".  */
 			last_exit_status = WEXITSTATUS(tracee_status);
 			VERBOSE(tracee, 1, "pid %d: exited with status %d",
 				pid, last_exit_status);
