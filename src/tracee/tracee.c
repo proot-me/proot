@@ -127,6 +127,7 @@ static int remove_tracee(Tracee *tracee)
 			zombie->as_ptracee.event4.ptracer.pending = true;
 			zombie->as_ptracee.event4.ptracer.value = event;
 			zombie->as_ptracee.is_zombie = true;
+			zombie->clone = tracee->clone;
 			zombie->pid = tracee->pid;
 
 			return 0;
@@ -212,17 +213,41 @@ static Tracee *new_tracee(pid_t pid)
 /**
  * Return the first stopped (i.e. not running) tracee with the given
  * @pid (-1 for any) which has the given @ptracer, and which has a
- * pending event for its ptracer if @only_with_pevent is true.  This
- * function returns NULL if there's no such ptracee.
+ * pending event for its ptracer if @only_with_pevent is true.  See
+ * wait(2) manual for the meaning of @wait_options.  This function
+ * returns NULL if there's no such ptracee.
  */
-Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pevent)
+Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
+			bool only_with_pevent, word_t wait_options)
 {
 	Tracee *ptracee;
 
+	/* __WCLONE: Wait for "clone" children only.  If omitted then
+	 * wait for "non-clone" children only.  (A "clone" child is
+	 * one which delivers no signal, or a signal other than
+	 * SIGCHLD to its parent upon termination.)  This option is
+	 * ignored if __WALL is also specified.
+	 *
+	 * __WALL: Wait for all children, regardless of type ("clone"
+	 * or "non-clone").
+	 *
+	 * -- wait(2) man-page
+	 */
+#define EXPECTED_CLONE(tracee) (((wait_options & __WALL) != 0)				\
+			    || (((wait_options & __WCLONE) != 0) && (tracee)->clone)	\
+			    || !(tracee)->clone)
+
 	/* Return zombies first.  */
 	LIST_FOREACH(ptracee, &PTRACER.zombies, link) {
-		if (pid == ptracee->pid || pid == -1)
-			return ptracee;
+		/* Not the ptracee you're looking for?  */
+		if (pid != ptracee->pid && pid != -1)
+			continue;
+
+		/* Not the expected kind of cloned process?  */
+		if (!EXPECTED_CLONE(ptracee))
+			continue;
+
+		return ptracee;
 	}
 
 	LIST_FOREACH(ptracee, &tracees, link) {
@@ -232,6 +257,10 @@ Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pev
 
 		/* Not the ptracee you're looking for?  */
 		if (pid != ptracee->pid && pid != -1)
+			continue;
+
+		/* Not the expected kind of cloned process?  */
+		if (!EXPECTED_CLONE(ptracee))
 			continue;
 
 		/* Is this tracee in the stopped state?  */
@@ -344,7 +373,8 @@ int new_child(Tracee *parent, word_t clone_flags)
 	 *
 	 * -- clone(2) man-page
 	 */
-	if ((clone_flags & CLONE_PARENT) != 0)
+	child->clone = ((clone_flags & CLONE_PARENT) != 0);
+	if (child->clone)
 		child->parent = parent->parent;
 	else
 		child->parent = parent;

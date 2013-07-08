@@ -141,7 +141,7 @@ int translate_ptrace_exit(Tracee *tracee)
 	/* Here, the tracee is a ptracer.  Also, the requested ptracee
 	 * has to be in the "stopped for ptracer" state.  */
 	ptracer = tracee;
-	ptracee = get_stopped_ptracee(ptracer, pid, false);
+	ptracee = get_stopped_ptracee(ptracer, pid, false, __WALL);
 	if (ptracee == NULL)
 		return -ESRCH;
 

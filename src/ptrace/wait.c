@@ -81,9 +81,7 @@ static const char *stringify_event(int event)
  */
 int translate_wait_enter(Tracee *ptracer)
 {
-	static bool warned = false;
 	Tracee *ptracee;
-	word_t options;
 	pid_t pid;
 
 	PTRACER.waits_in = WAITS_IN_KERNEL;
@@ -99,13 +97,6 @@ int translate_wait_enter(Tracee *ptracer)
 		ptracee = get_tracee(ptracer, pid, false);
 		if (ptracee == NULL || PTRACEE.ptracer != ptracer)
 			return 0;
-	}
-
-	/* Only the __WALL option is supported so far.  */
-	options = peek_reg(ptracer, ORIGINAL, SYSARG_3);
-	if (options != __WALL && !warned) {
-		notice(ptracer, INTERNAL, WARNING, "only __WALL option is supported yet");
-		warned = true;
 	}
 
 	/* This syscall is canceled at the enter stage in order to be
@@ -125,25 +116,24 @@ int translate_wait_exit(Tracee *ptracer)
 {
 	Tracee *ptracee;
 	word_t address;
+	word_t options;
 	pid_t pid;
 
 	assert(PTRACER.waits_in == WAITS_IN_PROOT);
 	PTRACER.waits_in = DOESNT_WAIT;
 
 	pid = (pid_t) peek_reg(ptracer, ORIGINAL, SYSARG_1);
+	options = peek_reg(ptracer, ORIGINAL, SYSARG_3);
 
 	/* Is there such a stopped ptracee with an event not yet
 	 * passed to its ptracer?  */
-	ptracee = get_stopped_ptracee(ptracer, pid, true);
+	ptracee = get_stopped_ptracee(ptracer, pid, true, options);
 	if (ptracee == NULL) {
-		word_t options;
-
 		/* Is there still living ptracees?  */
 		if (PTRACER.nb_ptracees == 0)
 			return -ECHILD;
 
 		/* Non blocking wait(2) ?  */
-		options = peek_reg(ptracer, ORIGINAL, SYSARG_3);
 		if ((options & WNOHANG) != 0)
 			return 0;
 
