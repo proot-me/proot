@@ -81,6 +81,8 @@ typedef struct tracee {
 	/* Support for ptrace emulation (tracer side).  */
 	struct {
 		size_t nb_ptracees;
+		LIST_HEAD(zombies, tracee) zombies;
+
 		pid_t wait_pid;
 		enum {
 			DOESNT_WAIT = 0,
@@ -103,6 +105,7 @@ typedef struct tracee {
 		bool tracing_started;
 		bool ignore_syscall;
 		word_t options;
+		bool is_zombie;
 	} as_ptracee;
 
 	/* Current status:
@@ -209,8 +212,9 @@ typedef struct tracee {
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
-extern Tracee *get_waiting_ptracee(const Tracee *ptracer, pid_t pid, bool only_if_waiting);
+extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pevent);
 extern int new_child(Tracee *parent, word_t clone_flags);
+extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern int parse_config(Tracee *tracee, size_t argc, char *argv[]);
 extern void kill_all_tracees();

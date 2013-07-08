@@ -13,32 +13,31 @@ program based on "ptrace" under PRoot since this latter is also based
 on this syscall and the Linux kernel allows only one ptracer per
 process.  The solution is to emulate this syscall in PRoot.
 
-TODO:
-
 Remaining issues:
 
-* strace-v4.7+ & proot-v2.3+
+* ``proot proot-v2.3 test-66666666``
 
-    * WIFEXITED expected exactly once
+* ``proot strace-4.7 true``::
 
-* gdb
+    strace-4.7: Unknown pid: 21578
 
-    * wait(__WCLONE/__WALL)
+* ``proot gdb-7.6 true``::
 
-    * follow-fork/exec-mode
+    ...
+    warning: linux_test_for_tracefork: failed to kill second child
+    proot warning: ptrace(GETEVENTMSG): No such process
+    warning: linux_ptrace_test_ret_to_nx: WTERMSIG 11 is not SIGKILL!
 
-* 32-bit on 64-bit
+* ``proot -r slackware-14.0 strace /bin/true``::
 
-    $ proot ~/rootfs/slackware-14.0 strace /bin/true
     upeek: ptrace(PTRACE_PEEKUSER,21919,44,0): Input/output error
 
 * ptrace-tests from utrace
 
     * PTRACE_ATTACH
 
-* performance
-
 * support under seccomp.
+
 
 New features
 ------------
@@ -177,8 +176,8 @@ Features
 
   * unreadable executable can be executed::
 
-    proot mount: OK (rwsr-xr-x)
-    proot ping: failed (rws--x--x)
+      proot mount: OK (rwsr-xr-x)
+      proot ping: failed (rws--x--x)
 
   * unreadable directory can be accessed
 

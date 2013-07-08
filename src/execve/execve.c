@@ -172,9 +172,9 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 {
 	static char *self_exe = NULL;
-	Tracee *dummy = NULL;
 	char path[PATH_MAX];
 	char **argv_pod;
+	Tracee *dummy;
 	int status;
 	size_t i;
 
@@ -207,16 +207,8 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 
 	/* This dummy tracee holds the new configuration that will be copied
 	 * back to the original tracee if everything is OK.  */
-	dummy = talloc_zero(tracee->ctx, Tracee);
+	dummy = new_dummy_tracee(tracee->ctx);
 	if (dummy == NULL)
-		return -ENOMEM;
-
-	dummy->fs = talloc_zero(dummy, FileSystemNameSpace);
-	if (dummy->fs == NULL)
-		return -ENOMEM;
-
-	dummy->ctx = talloc_new(dummy);
-	if (dummy->ctx == NULL)
 		return -ENOMEM;
 
 	/* Inform parse_config() that paths are relative to the current tracee.

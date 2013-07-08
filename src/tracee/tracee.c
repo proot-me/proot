@@ -47,15 +47,33 @@
 typedef LIST_HEAD(tracees, tracee) Tracees;
 static Tracees tracees;
 
+
+/**
+ * Remove @zombie from its parent's list of zombies.  Note: this is a
+ * talloc destructor.
+ */
+static int remove_zombie(Tracee *zombie)
+{
+	Tracee *ptracer;
+
+	ptracer = talloc_get_type_abort(talloc_parent(zombie), Tracee);
+	PTRACER.nb_ptracees--;
+
+	LIST_REMOVE(zombie, link);
+	return 0;
+}
+
 /**
  * Remove @tracee from the list of tracees and update all of its
- * children & ptracees, and its ptracer.
+ * children & ptracees, and its ptracer.  Note: this is a talloc
+ * destructor.
  */
 static int remove_tracee(Tracee *tracee)
 {
 	Tracee *relative;
 	Tracee *ptracer;
 	int status;
+	int event;
 
 	LIST_REMOVE(tracee, link);
 
@@ -68,18 +86,17 @@ static int remove_tracee(Tracee *tracee)
 
 		/* Its tracees are now free.  */
 		if (relative->as_ptracee.ptracer == tracee) {
-			int signal;
-
 			/* Release the pending event, if any.  */
 			relative->as_ptracee.ptracer = NULL;
 
 			if (relative->as_ptracee.event4.proot.pending) {
-				signal = handle_tracee_event(relative, relative->as_ptracee.event4.proot.value);
-				(void) restart_tracee(relative, signal);
+				event = handle_tracee_event(relative,
+							relative->as_ptracee.event4.proot.value);
+				(void) restart_tracee(relative, event);
 			}
 			else if (relative->as_ptracee.event4.ptracer.pending) {
-				signal = relative->as_ptracee.event4.proot.value;
-				(void) restart_tracee(relative, signal);
+				event = relative->as_ptracee.event4.proot.value;
+				(void) restart_tracee(relative, event);
 			}
 
 			bzero(&relative->as_ptracee, sizeof(relative->as_ptracee));
@@ -94,6 +111,28 @@ static int remove_tracee(Tracee *tracee)
 	/* Sanity checks.  */
 	assert(ptracer != tracee);
 	assert(PTRACER.nb_ptracees > 0);
+
+	/* Zombify this ptracee until its ptracer is notified about
+	 * its death.  */
+	event = tracee->as_ptracee.event4.ptracer.value;
+	if (tracee->as_ptracee.event4.ptracer.pending
+	    && (WIFEXITED(event) || WIFSIGNALED(event))) {
+		Tracee *zombie;
+
+		zombie = new_dummy_tracee(ptracer);
+		if (zombie != NULL) {
+			LIST_INSERT_HEAD(&PTRACER.zombies, zombie, link);
+			talloc_set_destructor(zombie, remove_zombie);
+
+			zombie->as_ptracee.event4.ptracer.pending = true;
+			zombie->as_ptracee.event4.ptracer.value = event;
+			zombie->as_ptracee.is_zombie = true;
+			zombie->pid = tracee->pid;
+
+			return 0;
+		}
+		/* Fallback to the common path.  */
+	}
 
 	/* Wake its ptracer if there's nothing else to wait for.  */
 	PTRACER.nb_ptracees--;
@@ -116,16 +155,19 @@ static int remove_tracee(Tracee *tracee)
 }
 
 /**
- * Allocate a new entry for the tracee @pid.
+ * Allocate a new entry for a dummy tracee (no pid, no destructor, not
+ * in the list of tracees, ...).  The new allocated memory is attached
+ * to the given @context.  This function returns NULL if an error
+ * occurred (ENOMEM), otherwise it returns the newly allocated
+ * structure.
  */
-static Tracee *new_tracee(pid_t pid)
+Tracee *new_dummy_tracee(TALLOC_CTX *context)
 {
 	Tracee *tracee;
 
-	tracee = talloc_zero(NULL, Tracee);
+	tracee = talloc_zero(context, Tracee);
 	if (tracee == NULL)
 		return NULL;
-	talloc_set_destructor(tracee, remove_tracee);
 
 	/* Allocate a memory collector.  */
 	tracee->ctx = talloc_new(tracee);
@@ -138,9 +180,6 @@ static Tracee *new_tracee(pid_t pid)
 	if (tracee->fs == NULL)
 		goto no_mem;
 
-	tracee->pid = pid;
-	LIST_INSERT_HEAD(&tracees, tracee, link);
-
 	return tracee;
 
 no_mem:
@@ -149,14 +188,42 @@ no_mem:
 }
 
 /**
- * Return the first waiting (i.e. not running) tracee with the given
+ * Allocate a new entry for the tracee @pid, then set its destructor
+ * and add it to the list of tracees.  This function returns NULL if
+ * an error occurred (ENOMEM), otherwise it returns the newly
+ * allocated structure.
+ */
+static Tracee *new_tracee(pid_t pid)
+{
+	Tracee *tracee;
+
+	tracee = new_dummy_tracee(NULL);
+	if (tracee == NULL)
+		return NULL;
+
+	talloc_set_destructor(tracee, remove_tracee);
+
+	tracee->pid = pid;
+	LIST_INSERT_HEAD(&tracees, tracee, link);
+
+	return tracee;
+}
+
+/**
+ * Return the first stopped (i.e. not running) tracee with the given
  * @pid (-1 for any) which has the given @ptracer, and which has a
  * pending event for its ptracer if @only_with_pevent is true.  This
  * function returns NULL if there's no such ptracee.
  */
-Tracee *get_waiting_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pevent)
+Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pevent)
 {
 	Tracee *ptracee;
+
+	/* Return zombies first.  */
+	LIST_FOREACH(ptracee, &PTRACER.zombies, link) {
+		if (pid == ptracee->pid || pid == -1)
+			return ptracee;
+	}
 
 	LIST_FOREACH(ptracee, &tracees, link) {
 		/* Discard tracees that don't have this ptracer.  */
@@ -167,7 +234,7 @@ Tracee *get_waiting_ptracee(const Tracee *ptracer, pid_t pid, bool only_with_pev
 		if (pid != ptracee->pid && pid != -1)
 			continue;
 
-		/* Is this tracee in the waiting state?  */
+		/* Is this tracee in the stopped state?  */
 		if (ptracee->running)
 			continue;
 

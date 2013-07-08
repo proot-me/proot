@@ -139,14 +139,16 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	/* Here, the tracee is a ptracer.  Also, the requested ptracee
-	 * has to be in the "waiting for ptracer" state.  */
+	 * has to be in the "stopped for ptracer" state.  */
 	ptracer = tracee;
-	ptracee = get_waiting_ptracee(ptracer, pid, false);
+	ptracee = get_stopped_ptracee(ptracer, pid, false);
 	if (ptracee == NULL)
 		return -ESRCH;
 
 	/* Sanity checks.  */
-	if (PTRACEE.ptracer != ptracer || pid == (word_t) -1)
+	if (   PTRACEE.is_zombie
+	    || PTRACEE.ptracer != ptracer
+	    || pid == (word_t) -1)
 		return -ESRCH;
 
 	errno = 0;

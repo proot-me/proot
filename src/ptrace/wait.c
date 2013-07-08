@@ -132,9 +132,9 @@ int translate_wait_exit(Tracee *ptracer)
 
 	pid = (pid_t) peek_reg(ptracer, ORIGINAL, SYSARG_1);
 
-	/* Is there such a waiting ptracee with an event not yet
+	/* Is there such a stopped ptracee with an event not yet
 	 * passed to its ptracer?  */
-	ptracee = get_waiting_ptracee(ptracer, pid, true);
+	ptracee = get_stopped_ptracee(ptracer, pid, true);
 	if (ptracee == NULL) {
 		word_t options;
 
@@ -164,7 +164,13 @@ int translate_wait_exit(Tracee *ptracer)
 		PTRACEE.event4.ptracer.pending = false;
 	}
 
-	return ptracee->pid;
+	pid = ptracee->pid;
+
+	/* Zombies can rest in peace once the ptracer is notified.  */
+	if (PTRACEE.is_zombie)
+		TALLOC_FREE(ptracee);
+
+	return pid;
 }
 
 /**
