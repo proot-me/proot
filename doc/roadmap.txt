@@ -15,7 +15,7 @@ process.  The solution is to emulate this syscall in PRoot.
 
 Remaining issues:
 
-* ``proot proot-v2.3 test-66666666``
+* ``proot proot-v2.3 test-33333333``
 
 * ``proot strace-4.7 true``::
 

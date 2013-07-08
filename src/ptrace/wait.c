@@ -25,6 +25,7 @@
 #include <errno.h>      /* E*, */
 #include <assert.h>     /* assert(3), */
 #include <stdbool.h>    /* bool, true, false, */
+#include <signal.h>     /* siginfo_t, TRAP_*, */
 
 #include "ptrace/wait.h"
 #include "ptrace/ptrace.h"
@@ -225,12 +226,25 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			}
 			break;
 
-		case SIGTRAP:
-			/* This is very likely a breakpoint or a
-			 * PTRACE_SINGLESTEP notification.  PRoot
-			 * doesn't handle this kind of SIGTRAP.  */
+		case SIGTRAP: {
+			siginfo_t siginfo;
+			int status;
+
+			/* Check whether this signal was sent
+			 * explicitely or not.  In the latter case,
+			 * this is very likely a breakpoint or a
+			 * PTRACE_SINGLESTEP notification.  */
+			status = ptrace(PTRACE_GETSIGINFO, ptracee->pid, NULL, &siginfo);
+			if (status < 0
+			    || siginfo.si_code == SI_USER
+			    || siginfo.si_code == SI_TKILL)
+				break;
+
+			 /* PRoot doesn't handle breakpoint
+			  * SIGTRAP.  */
 			PTRACEE.event4.proot.value = -1;
 			break;
+		}
 
 		default:
 			break;
