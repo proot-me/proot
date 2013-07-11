@@ -24,6 +24,9 @@
 #define COMPAT_H
 
 /* Local definitions for compatibility with old and/or broken distros... */
+#    ifndef AT_RANDOM
+#        define AT_RANDOM		25
+#    endif
 #    ifndef AT_FDCWD
 #        define AT_FDCWD		-100
 #    endif

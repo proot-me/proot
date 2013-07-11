@@ -20,6 +20,7 @@
  * 02110-1301 USA.
  */
 
+#define _GNU_SOURCE
 #include <errno.h>       /* errno(3), E* */
 #include <talloc.h>      /* talloc_*, */
 #include <sys/un.h>      /* struct sockaddr_un, */
