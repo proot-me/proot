@@ -144,7 +144,13 @@ the sources for further details.
     GNU C library, the following error is reported: "FATAL: kernel too
     old".  To be able to run such programs, PRoot can emulate some of
     the syscalls that are available in the kernel release specified by
-    *string* but that are missing in the current kernel.
+    *string* but that are missing in the current kernel.  With some
+    versions of the GNU C library, the following tweak is required if
+    this fatal error still happens when this option is enabled::
+
+      cd path/to/rootfs
+      sed --in-place=.bak s/Linux/PRoot/ \
+          lib*/ld-linux*.so.2 lib*/*/ld-linux*.so.2
 
 -0, --root-id
     Force some syscalls to behave as if executed by "root".

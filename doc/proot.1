@@ -153,7 +153,21 @@ If a program is run on a kernel older than the one expected by its
 GNU C library, the following error is reported: "FATAL: kernel too
 old".  To be able to run such programs, PRoot can emulate some of
 the syscalls that are available in the kernel release specified by
-\fIstring\fP but that are missing in the current kernel.
+\fIstring\fP but that are missing in the current kernel.  With some
+versions of the GNU C library, the following tweak is required if
+this fatal error still happens when this option is enabled:
+.INDENT 7.0
+.INDENT 3.5
+.sp
+.nf
+.ft C
+cd path/to/rootfs
+sed \-\-in\-place=.bak s/Linux/PRoot/ \e
+    lib*/ld\-linux*.so.2 lib*/*/ld\-linux*.so.2
+.ft P
+.fi
+.UNINDENT
+.UNINDENT
 .TP
 .B \-0,  \-\-root\-id
 Force some syscalls to behave as if executed by "root".
