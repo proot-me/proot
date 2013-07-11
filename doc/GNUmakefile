@@ -18,6 +18,8 @@ cli.h: stylesheets/cli.xsl manual-quoted.xml
 
 proot.spec:  stylesheets/rpm-spec.xsl manual.xml
 	xsltproc --output $@ $^
+	echo "* $(shell date +'%a %b %d %Y') Cédric VINCENT <cedric.vincent@st.com>" >> $@
+	cat changelog.txt >> $@
 
 index.html:  stylesheets/website.xsl manual.xml
 	xsltproc --output $@ $^

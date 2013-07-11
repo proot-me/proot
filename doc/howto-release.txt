@@ -64,3 +64,4 @@ Documentation Update
 2. regenerate the documentation: `make -C doc`
 3. regenerate the command-line interface: `cp doc/cli.h src/cli.h;
    $EDITOR src/cli.h`
+4. upload the generated RPM .spec file to OBS

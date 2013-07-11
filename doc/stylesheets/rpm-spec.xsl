@@ -43,5 +43,7 @@ rm -rf %{buildroot}
 %doc %{_mandir}/man1/proot.1*
 %doc COPYING
 %doc doc/*
+
+%changelog
 </xsl:template>
 </xsl:transform>
