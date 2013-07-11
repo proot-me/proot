@@ -222,9 +222,9 @@ static int handle_option_R(Tracee *tracee, char *value)
 static int handle_option_B(Tracee *tracee, char *value UNUSED)
 {
 	int i;
-
+#if 0
 	notice(tracee, INFO, USER, "option '-B' is obsolete, use '-R' instead.");
-
+#endif
 	for (i = 0; recommended_bindings[i] != NULL; i++)
 		new_binding(tracee, recommended_bindings[i], NULL, false);
 
@@ -234,9 +234,9 @@ static int handle_option_B(Tracee *tracee, char *value UNUSED)
 static int handle_option_Q(Tracee *tracee, char *value)
 {
 	int status;
-
+# if 0
 	notice(tracee, INFO, USER, "option '-Q' is obsolete, use '-q' and '-R' instead.");
-
+#endif
 	status = handle_option_q(tracee, value);
 	if (status < 0)
 		return status;
