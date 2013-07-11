@@ -87,6 +87,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_lchown32,		FILTER_SYSEXIT },
 	{ PR_lstat,		FILTER_SYSEXIT },
 	{ PR_lstat64,		FILTER_SYSEXIT },
+	{ PR_mknod,		FILTER_SYSEXIT },
 	{ PR_newfstatat,	FILTER_SYSEXIT },
 	{ PR_oldlstat,		FILTER_SYSEXIT },
 	{ PR_oldstat,		FILTER_SYSEXIT },
@@ -344,6 +345,7 @@ static int handle_sysexit_end(Tracee *tracee)
 	case PR_setgid32:
 	case PR_setfsuid32:
 	case PR_setfsgid32:
+	case PR_mknod:
 		/* Force success.  */
 		poke_reg(tracee, SYSARG_RESULT, 0);
 		return 0;
