@@ -8,28 +8,15 @@ releasing PRoot.
 Sanity Checks
 -------------
 
-The PRoot's testsuite (`make -C test`) shall suffer no failure on:
-
-- x86_64 (all OBS distros + Slackware64)
-- x86    (all OBS distros)
-- arm    (STLinux)
-- sh4    (STLinux)
-
-The PRoot's testsuite under Valgrind/Memcheck (`make -C tests
-memcheck`) shall suffer no failure on:
-
-- x86_64 (Slackware64)
-
-The PRoot's testsuite with AddressSanitizer enabled
-(`CFLAGS=-fsanitize=address LDFLAGS=-lasan`) shall suffer no failure
-on:
-
-- x86_64 (Slackware64)
-
-Talloc shall report no leak during all the PRoot's testsuite (`make -C
-tests V=1 2>&1 | grep talloc`) on:
-
-- x86_64 (Slackware64)
+* arm (`make -C test` on STLinux)
+* sh4 (`make -C test` on STLinux)
+* x86 (`make -C test` on *all* OBS distros)
+* x86_64:
+  - `make -C test` on *all* OBS distros
+  - `make -C tests memcheck`
+  - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
+  - `make -C tests V=1 2>&1 | grep talloc`
+  - `env PROOT_FORCE_KOMPAT=1 make -C test`
 
 
 Use-Case Checks
@@ -39,13 +26,16 @@ The GNU CoreUtils package (`./configure; make; make check`) shall
 suffer no regression on:
 
 - x86_64
+- x86_64 with the "kompat" extension enabled
 - x86_64 with a ARM rootfs (QEMU)
 
-The Perl package (`./Configure -de; make; make check`) shall suffer no
+The Perl package (`./configure.gnu; make; make check`) shall suffer no
 regression on:
 
 - x86_64
+- x86_64 with the "kompat" extension enabled
 - x86_64 with a x86 rootfs
+- x86_64 with a x86 rootfs and the "kompat" extension enabled
 - x86_64 with a ARM rootfs (QEMU)
 - x86_64 with a ARM rootfs (QEMU) under a x86 rootfs (sub-reconf')
 
@@ -53,6 +43,7 @@ The Open POSIX Test Suite package (`make`) shall suffer no regression
 on:
 
 - x86_64
+- x86_64 with the "kompat" extension enabled
 
 
 Performance Checks

@@ -29,7 +29,8 @@
 #include <talloc.h>        /* talloc_*, */
 #include <fcntl.h>         /* AT_*,  */
 #include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
-#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
+#include <errno.h>         /* errno,  */
+#include <linux/auxvec.h>  /* AT_,  */
 
 #include "extension/extension.h"
 #include "syscall/sysnum.h"
@@ -38,6 +39,7 @@
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
+#include "notice.h"
 #include "arch.h"
 
 #include "attribute.h"
@@ -61,6 +63,16 @@ typedef struct {
 } Config;
 
 /**
+ * Return whether the @expected_release is newer than
+ * @config->actual_release and older than @config->emulated_release.
+ */
+static bool needs_kompat(const Config *config, int expected_release)
+{
+	return (expected_release > config->actual_release
+		&& expected_release <= config->emulated_release);
+}
+
+/**
  * Modify the current syscall of @tracee as described by @modif
  * regarding the given @config.
  */
@@ -70,10 +82,7 @@ static void modify_syscall(Tracee *tracee, const Config *config, const Modif *mo
 
 	assert(config != NULL);
 
-	/* Emulate only syscalls that are available in the expected
-	 * release but that are missing in the actual one.  */
-	if (   modif->expected_release <= config->actual_release
-	    || modif->expected_release > config->emulated_release)
+	if (!needs_kompat(config, modif->expected_release))
 		return;
 
 	set_sysnum(tracee, modif->new_sysarg_num);
@@ -456,10 +465,111 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 }
 
 /**
+ * Insert or replace the AT_RANDOM auxiliary vector of the given
+ * @tracee.  This function assumes the "argv, envp, auxv" stuff is
+ * pointed to by @tracee's stack pointer, as expected right after a
+ * successful call to execve(2).
+ */
+static void insert_at_random(Tracee *tracee)
+{
+	word_t stack_pointer;
+	word_t at_random;
+	word_t pointer;
+	word_t data;
+
+	uint8_t *buffer;
+	size_t length;
+	size_t size;
+	int status;
+	size_t i;
+
+	/* Right after execve, the stack layout is:
+	 *
+	 *     argc, argv[0], ..., 0, envp[0], ..., 0, auxv[0], 0, 0
+	 */
+	stack_pointer = pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
+
+	/* Read: argc */
+	data = peek_mem(tracee, pointer);
+	if (errno != 0)
+		return;
+
+	/* Skip: argc, argv, 0 */
+	i = 1 + data + 1;
+	pointer += i * sizeof_word(tracee);
+
+	/* Skip: envp, 0 */
+	do {
+		data = peek_mem(tracee, pointer);
+		if (errno != 0)
+			return;
+		pointer += sizeof_word(tracee);
+	} while (data != 0);
+
+	/* Read: auxv[] */
+	at_random = 0;
+	do {
+		data = peek_mem(tracee, pointer);
+		if (errno != 0)
+			return;
+
+		if (data == AT_RANDOM)
+			at_random = pointer;
+
+		pointer += 2 * sizeof_word(tracee);
+	} while (data != 0);
+
+	/* Discard the previous AT_RANDOM, if any.  */
+	if (at_random != 0)
+		poke_mem(tracee, at_random, (word_t) -1);
+
+	/* Allocate enough room for the whole "argv, envp, auxv" stuff
+	 * plus a new auxiliary vector.  */
+	size = pointer - stack_pointer + 2 * sizeof_word(tracee);
+	buffer = talloc_size(tracee->ctx, size);
+	if (buffer == NULL)
+		return;
+
+	/* Slurp the whole "argv, envp, auxv" stuff at once.  */
+	status = read_data(tracee, buffer, stack_pointer, size - 2 * sizeof_word(tracee));
+	if (status < 0)
+		return;
+
+	/* Insert the new auxiliary vector at the end.  */
+	length = size / sizeof_word(tracee);
+	if (length < 4) /* Sanity check.  */
+		return;
+
+	if (is_32on64_mode(tracee)) {
+		((uint32_t *) buffer)[length - 4] = AT_RANDOM;
+		((uint32_t *) buffer)[length - 3] = stack_pointer;
+		((uint32_t *) buffer)[length - 2] = AT_NULL;
+		((uint32_t *) buffer)[length - 1] = 0;
+	}
+	else {
+		((word_t *) buffer)[length - 4] = AT_RANDOM;
+		((word_t *) buffer)[length - 3] = stack_pointer;
+		((word_t *) buffer)[length - 2] = AT_NULL;
+		((word_t *) buffer)[length - 1] = 0;
+	}
+
+	/* Overwrite the whole "argv, envp, auxv" stuff.  */
+	pointer = stack_pointer - 2 * sizeof_word(tracee);
+	status = write_data(tracee, pointer, buffer, size);
+	if (status < 0)
+		return;
+
+	/* Update the stack pointer.  */
+	poke_reg(tracee, STACK_POINTER, pointer);
+
+	return;
+}
+
+/**
  * Force current @tracee's utsname.release to @config->release .  This
  * function returns -errno if an error occured, otherwise 0.
  */
-static int handle_sysexit_end(const Tracee *tracee, Config *config)
+static int handle_sysexit_end(Tracee *tracee, Config *config)
 {
 	struct utsname utsname;
 	word_t address;
@@ -467,8 +577,19 @@ static int handle_sysexit_end(const Tracee *tracee, Config *config)
 	size_t size;
 	int status;
 
-	if (get_sysnum(tracee) != PR_uname)
+	switch (get_sysnum(tracee)) {
+	case PR_execve:
+		if (needs_kompat(config, KERNEL_VERSION(2,6,29))
+		    && (int) peek_reg(tracee, CURRENT, SYSARG_RESULT) >= 0)
+			insert_at_random(tracee);
 		return 0;
+
+	case PR_uname:
+		break;
+
+	default:
+		return 0;
+	}
 
 	assert(config->release != NULL);
 
@@ -505,6 +626,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_epoll_create1,	0 },
 	{ PR_epoll_pwait, 	0 },
 	{ PR_eventfd2, 		0 },
+	{ PR_execve, 		FILTER_SYSEXIT },
 	{ PR_faccessat, 	0 },
 	{ PR_fchmodat, 		0 },
 	{ PR_fchownat, 		0 },
@@ -554,7 +676,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		config->emulated_release = parse_kernel_release(config->release);
 
 		status = uname(&utsname);
-		if (status < 0 || getenv("PROOT_FORCE_SYSCALL_COMPAT") != NULL)
+		if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL)
 			config->actual_release = 0;
 		else
 			config->actual_release = parse_kernel_release(utsname.release);

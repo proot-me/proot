@@ -60,12 +60,6 @@ static inline Abi get_abi(const Tracee *tracee)
 		return ABI_DEFAULT;
 	}
 }
-#else
-static inline Abi get_abi(const Tracee *tracee UNUSED)
-{
-	return ABI_DEFAULT;
-}
-#endif
 
 /**
  * Return true if @tracee is a 32-bit process running on a 64-bit
@@ -73,8 +67,31 @@ static inline Abi get_abi(const Tracee *tracee UNUSED)
  */
 static inline bool is_32on64_mode(const Tracee *tracee)
 {
-	return (get_abi(tracee) != ABI_DEFAULT);
+	/* Unlike the ABI, 32-bit/64-bit mode change is effective
+	 * immediately, hence _regs[CURRENT].cs.  */
+	switch (tracee->_regs[CURRENT].cs) {
+	case 0x23:
+		return true;
+
+	case 0x33:
+		if (tracee->_regs[ORIGINAL].ds == 0x2B)
+			return true;
+		/* Fall through.  */
+	default:
+		return false;
+	}
 }
+#else
+static inline Abi get_abi(const Tracee *tracee UNUSED)
+{
+	return ABI_DEFAULT;
+}
+
+static inline bool is_32on64_mode(const Tracee *tracee)
+{
+	return false;
+}
+#endif
 
 /**
  * Return the size of a word according to the ABI currently used by
