@@ -57,6 +57,7 @@ static int restore_mode(ModifiedNode *node)
 
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
+	{ PR_capset,		FILTER_SYSEXIT },
 	{ PR_chmod,		FILTER_SYSEXIT },
 	{ PR_chown,		FILTER_SYSEXIT },
 	{ PR_chown32,		FILTER_SYSEXIT },
@@ -103,6 +104,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_setresuid32,	FILTER_SYSEXIT },
 	{ PR_setuid,		FILTER_SYSEXIT },
 	{ PR_setuid32,		FILTER_SYSEXIT },
+	{ PR_setxattr,		FILTER_SYSEXIT },
 	{ PR_stat,		FILTER_SYSEXIT },
 	{ PR_stat64,		FILTER_SYSEXIT },
 	{ PR_statfs,		FILTER_SYSEXIT },
@@ -238,6 +240,9 @@ static int handle_sysexit_end(Tracee *tracee)
 	case PR_setresgid:
 	case PR_setresuid32:
 	case PR_setresgid32:
+	case PR_mknod:
+	case PR_capset:
+	case PR_setxattr:
 	case PR_chmod:
 	case PR_chown:
 	case PR_fchmod:
@@ -345,7 +350,6 @@ static int handle_sysexit_end(Tracee *tracee)
 	case PR_setgid32:
 	case PR_setfsuid32:
 	case PR_setfsgid32:
-	case PR_mknod:
 		/* Force success.  */
 		poke_reg(tracee, SYSARG_RESULT, 0);
 		return 0;
