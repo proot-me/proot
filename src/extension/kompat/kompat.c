@@ -74,16 +74,17 @@ static bool needs_kompat(const Config *config, int expected_release)
 
 /**
  * Modify the current syscall of @tracee as described by @modif
- * regarding the given @config.
+ * regarding the given @config.  This function returns whether the
+ * syscall was modified or not.
  */
-static void modify_syscall(Tracee *tracee, const Config *config, const Modif *modif)
+static bool modify_syscall(Tracee *tracee, const Config *config, const Modif *modif)
 {
 	size_t i, j;
 
 	assert(config != NULL);
 
 	if (!needs_kompat(config, modif->expected_release))
-		return;
+		return false;
 
 	set_sysnum(tracee, modif->new_sysarg_num);
 
@@ -99,7 +100,7 @@ static void modify_syscall(Tracee *tracee, const Config *config, const Modif *mo
 		}
 	}
 
-	return;
+	return true;
 }
 
 /**
@@ -135,6 +136,8 @@ static int parse_kernel_release(const char *release)
  */
 static void handle_sysenter_end(Tracee *tracee, Config *config)
 {
+	bool modified;
+
 	/* Note: syscalls like "openat" can be replaced by "open" since PRoot
 	 * has canonicalized "fd + path" into "path".  */
 	switch (get_sysnum(tracee)) {
@@ -164,8 +167,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_epoll_create,
 			.shifts		  = {{0}}
 		};
-		poke_reg(tracee, SYSARG_1, 0); /* Force "size" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_1, 0); /* Force "size" to 0.  */
 		return;
 	}
 
@@ -175,8 +179,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_epoll_wait,
 			.shifts		  = {{0}}
 		};
-		poke_reg(tracee, SYSARG_5, 0); /* Force "sigmask" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_5, 0); /* Force "sigmask" to 0.  */
 		return;
 	}
 
@@ -186,8 +191,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_eventfd,
 			.shifts		  = {{0}}
 		};
-		poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -201,8 +207,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					.offset  = -1 }
 			}
 		};
-		poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -216,8 +223,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					.offset  = -1 }
 			}
 		};
-		poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -237,8 +245,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					? PR_lchown
 					: PR_chown);
 
-		poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -263,8 +272,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 		: PR_stat64);
 #endif
 
-		poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -288,8 +298,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_inotify_init,
 			.shifts		  = {{0}}
 		};
-		poke_reg(tracee, SYSARG_1, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_1, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -307,8 +318,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					    .offset  = -2 }
 			}
 		};
-		poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -360,8 +372,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_pipe,
 			.shifts		  = {{0}}
 		};
-		poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -375,8 +388,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 #endif
 			.shifts		  = {{0}}
 		};
-		poke_reg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
 		return;
 	}
 
@@ -418,8 +432,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_signalfd,
 			.shifts		  = {{0}}
 		};
-		poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
@@ -454,8 +469,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					? PR_rmdir
 					: PR_unlink);
 
-		poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
-		modify_syscall(tracee, config, &modif);
+		modified = modify_syscall(tracee, config, &modif);
+		if (modified)
+			poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
 		return;
 	}
 
