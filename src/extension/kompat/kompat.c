@@ -264,14 +264,17 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 		};
 
 		flags = peek_reg(tracee, CURRENT, SYSARG_4);
-		modif.new_sysarg_num = ((flags & AT_SYMLINK_NOFOLLOW) != 0
-					? PR_lstat
 #if defined(ARCH_X86_64)
-					: PR_stat);
+		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+			modif.new_sysarg_num = (get_abi(tracee) != ABI_2 ? PR_lstat : PR_lstat64);
+		else
+			modif.new_sysarg_num = (get_abi(tracee) != ABI_2 ? PR_stat : PR_stat64);
 #else
-		: PR_stat64);
+		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+			modif.new_sysarg_num = PR_lstat64;
+		else
+			modif.new_sysarg_num = PR_stat64;
 #endif
-
 		modified = modify_syscall(tracee, config, &modif);
 		if (modified)
 			poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
@@ -381,13 +384,13 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 	case PR_pselect6: {
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,19),
-#if defined(ARCH_X86_64)
-			.new_sysarg_num   = PR_select,
-#else
-			.new_sysarg_num   = PR__newselect,
-#endif
 			.shifts		  = {{0}}
 		};
+#if defined(ARCH_X86_64)
+		modif.new_sysarg_num = (get_abi(tracee) != ABI_2 ? PR_select : PR__newselect);
+#endif
+		modif.new_sysarg_num = PR__newselect;
+
 		modified = modify_syscall(tracee, config, &modif);
 		if (modified)
 			poke_reg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
