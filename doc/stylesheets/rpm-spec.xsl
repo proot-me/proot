@@ -15,8 +15,15 @@ Buildroot : %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 Prefix    : /usr
 Name      : proot
 
-Requires: libtalloc
-BuildRequires: pkgconfig libtalloc-devel glibc-static
+BuildRequires: libtalloc-devel
+
+%if 0%{?suse_version} >= 1210 || 0%{?fedora_version} >= 15
+BuildRequires: glibc-static
+%endif
+
+%if !0%{?suse_version} != 0
+BuildRequires: which
+%endif
 
 %description
 <xsl:value-of select="/document/section[@names='description']/paragraph[1]"/>
@@ -32,7 +39,11 @@ make -C src install PREFIX=%{buildroot}/%{prefix}
 install -D doc/proot.1 %{buildroot}/%{_mandir}/man1/proot.1
 
 %check
+./src/proot -V
+./src/proot -v 1 true
 make -C tests
+./src/proot -V
+./src/proot -v 1 true
 
 %clean
 rm -rf %{buildroot}
