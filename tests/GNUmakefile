@@ -28,21 +28,21 @@ check-%.c: $(ROOTFS)/bin/% setup
 
 # Special cases.
 check-test-bdc90417.c: test-bdc90417
-	$(call check_c,$<,$(PROOT) -w . / $<)
+	$(call check_c,$<,$(PROOT) -w . / ./$<)
 
 check-test-af062114.c: test-af062114
 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true -b . -b /lib -b /lib64 -b /proc $(ROOTFS) ./$< | grep -- --inhibit-rpath)
 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<')
 
 check-test-5bed7141.c: test-5bed7141
-	$(call check_c,$<,$(PROOT) $<)
+	$(call check_c,$<,$(PROOT) ./$<)
 
 check-test-16573e73.c: test-16573e73
 	$(call check_c,$<,$(PROOT) ./$<)
 	$(call check_c,$<,$(PROOT) ./$< 1)
 
 check-test-82ba4ba1.c: test-82ba4ba1
-	$(call check_c,$<,$(PROOT) -0 $<)
+	$(call check_c,$<,$(PROOT) -0 ./$<)
 
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
