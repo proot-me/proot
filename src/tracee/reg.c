@@ -81,7 +81,7 @@
 
     #undef  REG
     #define REG(tracee, version, index)					\
-	(*(word_t*) (tracee->_regs[ORIGINAL].cs == 0x23			\
+	(*(word_t*) (tracee->_regs[version].cs == 0x23			\
 		? (((uint8_t *) &tracee->_regs[version]) + reg_offset_x86[index]) \
 		: (((uint8_t *) &tracee->_regs[version]) + reg_offset[index])))
 

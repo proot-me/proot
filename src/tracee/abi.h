@@ -87,7 +87,7 @@ static inline Abi get_abi(const Tracee *tracee UNUSED)
 	return ABI_DEFAULT;
 }
 
-static inline bool is_32on64_mode(const Tracee *tracee)
+static inline bool is_32on64_mode(const Tracee *tracee UNUSED)
 {
 	return false;
 }
