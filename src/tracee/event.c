@@ -30,6 +30,7 @@
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 #include <sys/time.h>   /* *rlimit(2), */
 #include <sys/resource.h> /* *rlimit(2), */
+#include <sys/utsname.h> /* uname(2), */
 #include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
 #include <string.h>     /* strcmp(3), */
 #include <errno.h>      /* errno(3), */
@@ -45,6 +46,7 @@
 #include "syscall/syscall.h"
 #include "syscall/seccomp.h"
 #include "extension/extension.h"
+#include "execve/elf.h"
 
 #include "attribute.h"
 #include "compat.h"
@@ -265,12 +267,51 @@ static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED, void *
 }
 
 /**
+ * Check if this instance of PRoot can *technically* handle @tracee.
+ */
+static void check_architecture(Tracee *tracee)
+{
+	struct utsname utsname;
+	ElfHeader elf_header;
+	char path[PATH_MAX];
+	int status;
+
+	if (tracee->exe == NULL)
+		return;
+
+	status = translate_path(tracee, path, AT_FDCWD, tracee->exe, false);
+	if (status < 0)
+		return;
+
+	status = open_elf(path, &elf_header);
+	if (status < 0)
+		return;
+	close(status);
+
+	if (!IS_CLASS64(elf_header) || sizeof(word_t) == sizeof(uint64_t))
+		return;
+
+	notice(NULL, ERROR, USER,
+		"'%s' is a 64-bit program while this instance of "
+		"PRoot can handle 32-bit programs only", path);
+
+	status = uname(&utsname);
+	if (status < 0)
+		return;
+
+	if (strcmp(utsname.machine, "x86_64") != 0)
+		return;
+
+	notice(NULL, INFO, USER,
+		"use a 64-bit instance of PRoot to support both 32 and 64-bit programs");
+}
+
+/**
  * Wait then handle any event from any tracee.  This function returns
  * the exit status of the last terminated program.
  */
 int event_loop()
 {
-	enum __ptrace_request default_restart_how = PTRACE_SYSCALL;
 	struct sigaction signal_action;
 	int last_exit_status = -1;
 	long status;
@@ -334,7 +375,7 @@ int event_loop()
 	}
 
 	while (1) {
-		static bool seccomp_enabled = false;
+		static bool seccomp_detected = false;
 		int tracee_status;
 		Tracee *tracee;
 		pid_t pid;
@@ -356,7 +397,10 @@ int event_loop()
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
-		tracee->restart_how = default_restart_how;
+		if (tracee->seccomp == ENABLED)
+			tracee->restart_how = PTRACE_CONT;
+		else
+			tracee->restart_how = PTRACE_SYSCALL;
 
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
@@ -368,6 +412,7 @@ int event_loop()
 				pid, last_exit_status);
 		}
 		else if (WIFSIGNALED(tracee_status)) {
+			check_architecture(tracee);
 			VERBOSE(tracee, (int) (last_exit_status != -1),
 				"pid %d: terminated with signal %d",
 				pid, WTERMSIG(tracee_status));
@@ -411,23 +456,39 @@ int event_loop()
 					/* ... otherwise use default options only.  */
 					status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
 							default_ptrace_options);
-					if (status < 0)
+					if (status < 0) {
 						notice(tracee, ERROR, SYSTEM,
 							"ptrace(PTRACE_SETOPTIONS)");
+						return EXIT_FAILURE;
+					}
 				}
 			}
 				/* Fall through. */
 			case SIGTRAP | 0x80:
 				signal = 0;
 
-				/* When seccomp is enabled here, it
-				 * means sysexit has to be handled,
-				 * (by Proot or an by extension).  */
-				if (seccomp_enabled && tracee->status == 0)
-					tracee->restart_how = PTRACE_SYSCALL;
+				switch (tracee->seccomp) {
+				case ENABLED:
+					/* When seccomp is enabled here, it
+					 * means sysexit has to be handled,
+					 * (by Proot or by an extension).  */
+					if (tracee->status == 0)
+						tracee->restart_how = PTRACE_SYSCALL;
+					/* Fall through.  */
+				case DISABLED:
+					translate_syscall(tracee);
+					break;
 
-				translate_syscall(tracee);
-
+				case DISABLING:
+					/* Seccomp was disabled by the
+					 * previous syscall, but its
+					 * sysenter stage was already
+					 * handled.  */
+					tracee->seccomp = DISABLED;
+					if (tracee->status == 0)
+						tracee->status = 1;
+					break;
+				}
 				break;
 
 /* With *vanilla* kernels PTRACE_EVENT_SECCOMP == 7.  */
@@ -439,20 +500,25 @@ int event_loop()
 
 				signal = 0;
 
-				if (!seccomp_enabled) {
+				if (!seccomp_detected) {
 					VERBOSE(tracee, 1,
 						"ptrace acceleration (seccomp mode 2) enabled");
-					default_restart_how = PTRACE_CONT;
-					seccomp_enabled = true;
+					tracee->seccomp = ENABLED;
+					seccomp_detected = true;
 				}
+
+				/* Use the common ptrace flow if
+				 * seccomp was explicitely disabled
+				 * for this tracee.  */
+				if (tracee->seccomp != ENABLED)
+					break;
 
 				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
 				if (status < 0)
 					break;
 
-				/* Use the common event mechanism
-				 * (SIGTRAP | 0x80) when sysexit has
-				 * to be handled.  */
+				/* Use the common ptrace flow when
+				 * sysexit has to be handled.  */
 				if ((flags & FILTER_SYSEXIT) != 0) {
 					tracee->restart_how = PTRACE_SYSCALL;
 					break;
@@ -462,8 +528,13 @@ int event_loop()
 				 * stage right now.  */
 				tracee->restart_how = PTRACE_CONT;
 				translate_syscall(tracee);
-				tracee->status = 0;
 
+				/* This syscall disables seccomp, so
+				 * move the ptrace flow back to the
+				 * common path to ensure its sysexit
+				 * will be handled.  */
+				if (tracee->seccomp == DISABLING)
+					tracee->restart_how = PTRACE_SYSCALL;
 				break;
 			}
 
@@ -473,23 +544,10 @@ int event_loop()
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
 				signal = 0;
 				(void) new_child(tracee, 0);
 				break;
-
-			case SIGTRAP | PTRACE_EVENT_CLONE << 8: {
-				word_t clone_flags;
-
-				signal = 0;
-
-				status = fetch_regs(tracee);
-				if (status < 0)
-					break;
-
-				clone_flags = peek_reg(tracee, CURRENT, SYSARG_1);
-				(void) new_child(tracee, clone_flags);
-				break;
-			}
 
 			case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
 			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:

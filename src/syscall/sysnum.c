@@ -125,9 +125,9 @@ word_t detranslate_sysnum(Abi abi, Sysnum sysnum)
 /**
  * Return the neutral value of the @tracee's current syscall number.
  */
-Sysnum get_sysnum(const Tracee *tracee)
+Sysnum get_sysnum(const Tracee *tracee, RegVersion version)
 {
-	return translate_sysnum(get_abi(tracee), peek_reg(tracee, ORIGINAL, SYSARG_NUM));
+	return translate_sysnum(get_abi(tracee), peek_reg(tracee, version, SYSARG_NUM));
 }
 
 /**

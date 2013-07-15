@@ -110,7 +110,7 @@ void translate_syscall_enter(Tracee *tracee)
 		return;
 
 	/* Translate input arguments. */
-	syscall_number = get_sysnum(tracee);
+	syscall_number = get_sysnum(tracee, ORIGINAL);
 	switch (syscall_number) {
 	default:
 		/* Nothing to do. */

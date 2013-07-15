@@ -153,7 +153,7 @@ static void handle_host_path(const Tracee *tracee, const char *path, bool is_fin
 		node->mode = perms.st_mode;
 	}
 	else {
-		switch (get_sysnum(tracee)) {
+		switch (get_sysnum(tracee, ORIGINAL)) {
 		/* For chmod syscalls: restore the new mode of the final component.  */
 		case PR_chmod:
 			node->mode = peek_reg(tracee, ORIGINAL, SYSARG_2);
@@ -207,7 +207,7 @@ static int handle_sysexit_end(Tracee *tracee)
 {
 	word_t sysnum;
 
-	sysnum = get_sysnum(tracee);
+	sysnum = get_sysnum(tracee, ORIGINAL);
 	switch (sysnum) {
 	case PR_chroot: {
 		char path[PATH_MAX];

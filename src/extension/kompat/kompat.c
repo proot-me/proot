@@ -140,7 +140,7 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 
 	/* Note: syscalls like "openat" can be replaced by "open" since PRoot
 	 * has canonicalized "fd + path" into "path".  */
-	switch (get_sysnum(tracee)) {
+	switch (get_sysnum(tracee, ORIGINAL)) {
 	case PR_accept4: {
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,28),
@@ -596,7 +596,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	size_t size;
 	int status;
 
-	switch (get_sysnum(tracee)) {
+	switch (get_sysnum(tracee, ORIGINAL)) {
 	case PR_execve:
 		if (needs_kompat(config, KERNEL_VERSION(2,6,29))
 		    && (int) peek_reg(tracee, CURRENT, SYSARG_RESULT) >= 0)
