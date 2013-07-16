@@ -450,7 +450,7 @@ skip:
 int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
-	size_t new_length;
+	ssize_t new_length;
 
 	bool sanity_check;
 	bool follow_binding;
@@ -480,6 +480,8 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 			char proc_path[PATH_MAX];
 			strcpy(proc_path, path);
 			new_length = readlink_proc2(tracee, proc_path, t_referrer);
+			if (new_length < 0)
+				return new_length;
 			if (new_length != 0) {
 				strcpy(path, proc_path);
 				return new_length + 1;
