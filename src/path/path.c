@@ -455,6 +455,10 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 	bool sanity_check;
 	bool follow_binding;
 
+	/* Sanity check.  */
+	if (strnlen(path, PATH_MAX) >= PATH_MAX)
+		return -ENAMETOOLONG;
+
 	/* Don't try to detranslate relative paths (typically the
 	 * target of a relative symbolic link). */
 	if (path[0] != '/')
