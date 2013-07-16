@@ -110,6 +110,9 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 	assert(guest_path != NULL);
 	assert(user_path != guest_path);
 
+	if (strnlen(guest_path, PATH_MAX) >= PATH_MAX)
+		return -ENAMETOOLONG;
+
 	if (user_path[0] != '/') {
 		/* Ensure 'guest_path' contains an absolute base of
 		 * the relative `user_path`.  */
