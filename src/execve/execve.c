@@ -195,7 +195,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 		return 0;
 
 	/* Rebuild a POD argv[], as expected by parse_config().  */
-	argv_pod = talloc_size(tracee->ctx, argv->length * sizeof(char **));
+	argv_pod = talloc_size(tracee->ctx, argv->length * sizeof(char *));
 	if (argv_pod == NULL)
 		return -ENOMEM;
 
