@@ -93,6 +93,9 @@ test-5bed7141: test-5bed7141.c
 test-16573e73: test-16573e73.c
 	$(Q)$(CC) $< -static -o $@ $(silently) || true
 
+test-82ba4ba1: test-82ba4ba1.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
 ######################################################################
 # Beautified output
 

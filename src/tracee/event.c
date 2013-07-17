@@ -397,7 +397,15 @@ int event_loop()
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
-		if (tracee->seccomp == ENABLED)
+		/* When seccomp is enabled, all events are restarted
+		 * in non-stop mode, but this default choice could be
+		 * overwritten later if necessary.  The check against
+		 * "sysexit_pending" ensures PTRACE_SYSCALL (used to
+		 * hit the exit stage under seccomp) is not cleared
+		 * due to an event that would happen before the exit
+		 * stage, eg. PTRACE_EVENT_EXEC for the exit stage of
+		 * execve(2).  */
+		if (tracee->seccomp == ENABLED && !tracee->sysexit_pending)
 			tracee->restart_how = PTRACE_CONT;
 		else
 			tracee->restart_how = PTRACE_SYSCALL;
@@ -469,11 +477,18 @@ int event_loop()
 
 				switch (tracee->seccomp) {
 				case ENABLED:
-					/* When seccomp is enabled here, it
-					 * means sysexit has to be handled,
-					 * (by Proot or by an extension).  */
-					if (tracee->status == 0)
+					if (tracee->status == 0) {
+						/* sysenter: ensure the sysexit
+						 * stage will be hit under seccomp.  */
 						tracee->restart_how = PTRACE_SYSCALL;
+						tracee->sysexit_pending = true;
+					}
+					else {
+						/* sysexit: the next sysenter
+						 * will be notified by seccomp.  */
+						tracee->restart_how = PTRACE_CONT;
+						tracee->sysexit_pending = false;
+					}
 					/* Fall through.  */
 				case DISABLED:
 					translate_syscall(tracee);

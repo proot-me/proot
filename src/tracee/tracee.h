@@ -122,6 +122,9 @@ typedef struct tracee {
 	/* State of the seccomp acceleration for this tracee.  */
 	enum { DISABLED = 0, DISABLING, ENABLED } seccomp;
 
+	/* Ensure the sysexit stage is always hit under seccomp.  */
+	bool sysexit_pending;
+
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the CLONE_FS flag.       *
