@@ -8,4 +8,6 @@ env PROOT_FORCE_KOMPAT=1 ${PROOT} -k $(uname -r) true
 ${PROOT} -k $(uname -r) ${ROOTFS}/bin/true
 env PROOT_FORCE_KOMPAT=1 ${PROOT} -k $(uname -r) ${ROOTFS}/bin/true
 
-env PROOT_FORCE_KOMPAT=1 ${PROOT} -k $(uname -r) env LD_SHOW_AUXV=1 true | tail -1 | grep ^AT_RANDOM
+if env LD_SHOW_AUXV=1 true | grep -q ^AT_RANDOM; then
+    env PROOT_FORCE_KOMPAT=1 ${PROOT} -k $(uname -r) env LD_SHOW_AUXV=1 true | tail -1 | grep ^AT_RANDOM
+fi
