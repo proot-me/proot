@@ -492,6 +492,13 @@ int event_loop()
 					/* Fall through.  */
 				case DISABLED:
 					translate_syscall(tracee);
+
+					/* This syscall has disabled seccomp.  */
+					if (tracee->seccomp == DISABLING) {
+						tracee->restart_how = PTRACE_SYSCALL;
+						tracee->seccomp = DISABLED;
+					}
+
 					break;
 
 				case DISABLING:
@@ -544,7 +551,7 @@ int event_loop()
 				tracee->restart_how = PTRACE_CONT;
 				translate_syscall(tracee);
 
-				/* This syscall disables seccomp, so
+				/* This syscall has disabled seccomp, so
 				 * move the ptrace flow back to the
 				 * common path to ensure its sysexit
 				 * will be handled.  */
