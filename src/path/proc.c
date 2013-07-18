@@ -158,17 +158,21 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 /**
  * This function emulates the @result of readlink("@referer") with
  * respect to @tracee, where @referer is a strict subpath of "/proc".
- * This function returns the length of @result if the readlink was
- * emulated, 0 otherwise.
+ * This function returns -errno if an error occured, the length of
+ * @result if the readlink was emulated, 0 otherwise.
  *
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result (but this byte is not counted in the returned value).
  */
-size_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
+ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
 {
 	Action action;
 	char base[PATH_MAX];
 	char *component;
+
+	/* Sanity check.  */
+	if (strnlen(referer, PATH_MAX) >= PATH_MAX)
+		return -ENAMETOOLONG;
 
 	assert(compare_paths("/proc", referer) == PATH1_IS_PREFIX);
 

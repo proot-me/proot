@@ -148,6 +148,12 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	}
 
 create_binding:
+	/* Sanity checks.  */
+	if (   strnlen(tracee->glue, PATH_MAX) >= PATH_MAX
+	    || strnlen(guest_path, PATH_MAX) >= PATH_MAX) {
+		notice(tracee, WARNING, INTERNAL, "installing the binding: guest path too long");
+		return 0;
+	}
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */

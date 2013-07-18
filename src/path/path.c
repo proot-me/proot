@@ -140,6 +140,7 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 {
 	va_list paths;
 	size_t length;
+	int status;
 	int i;
 
 	result[0] = '\0';
@@ -156,6 +157,12 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 		if (path == NULL)
 			continue;
 
+		/* Sanity check.  */
+		if (length >= PATH_MAX ) {
+			status = -ENAMETOOLONG;
+			break;
+		}
+
 		/* Check if a path separator is needed. */
 		if (length > 0 && result[length - 1] != '/' && path[0] != '/')
 			need_separator = 1;
@@ -166,23 +173,33 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 
 		old_length = length;
 		length += strlen(path) + need_separator;
-		if (length >= PATH_MAX) {
-			va_end(paths);
-			return -ENAMETOOLONG;
-		}
 
-		if (need_separator == -1) {
+		switch (need_separator) {
+		case -1:
 			path++;
-		}
-		else if (need_separator == 1) {
+			break;
+		case 1:
 			strcat(result + old_length, "/");
 			old_length++;
+			break;
+		case 0:
+			break;
+		default:
+			assert(0);
 		}
+
+		/* Sanity check.  */
+		if (old_length >= PATH_MAX) {
+			status = -ENAMETOOLONG;
+			break;
+		}
+
 		strcat(result + old_length, path);
+		status = 0;
 	}
 	va_end(paths);
 
-	return 0;
+	return status;
 }
 
 /**
@@ -428,10 +445,14 @@ skip:
 int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
-	size_t new_length;
+	ssize_t new_length;
 
 	bool sanity_check;
 	bool follow_binding;
+
+	/* Sanity check.  */
+	if (strnlen(path, PATH_MAX) >= PATH_MAX)
+		return -ENAMETOOLONG;
 
 	/* Don't try to detranslate relative paths (typically the
 	 * target of a relative symbolic link). */
@@ -454,6 +475,8 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 			char proc_path[PATH_MAX];
 			strcpy(proc_path, path);
 			new_length = readlink_proc2(tracee, proc_path, t_referrer);
+			if (new_length < 0)
+				return new_length;
 			if (new_length != 0) {
 				strcpy(path, proc_path);
 				return new_length + 1;
