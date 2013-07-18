@@ -492,7 +492,6 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 static void insert_at_random(Tracee *tracee)
 {
 	word_t stack_pointer;
-	word_t at_random;
 	word_t pointer;
 	word_t data;
 
@@ -526,21 +525,13 @@ static void insert_at_random(Tracee *tracee)
 	} while (data != 0);
 
 	/* Read: auxv[] */
-	at_random = 0;
 	do {
 		data = peek_mem(tracee, pointer);
 		if (errno != 0)
 			return;
 
-		if (data == AT_RANDOM)
-			at_random = pointer;
-
 		pointer += 2 * sizeof_word(tracee);
 	} while (data != 0);
-
-	/* Discard the previous AT_RANDOM, if any.  */
-	if (at_random != 0)
-		poke_mem(tracee, at_random, (word_t) -1);
 
 	/* Allocate enough room for the whole "argv, envp, auxv" stuff
 	 * plus a new auxiliary vector.  */
