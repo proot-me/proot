@@ -19,6 +19,9 @@ if $(echo ${PROOT} | grep -q valgrind); then
     TEST2="-- -E LD_PRELOAD=.* -E LD_LIBRARY_PATH=test2 -0 /bin/sh /bin/sh ${TMP}"
     TEST3="-- -E LD_PRELOAD=.* -E LD_LIBRARY_PATH=test2 -0 env ${ENV} LD_LIBRARY_PATH=test1 ${TMP}"
     TEST4="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env ${ENV} LD_TRACE_LOADED_OBJECTS=1 ${TMP}"
+    TEST5="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 sh /bin/bash -c ${TMP}"
+    TEST52="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 sh /bin/bash -c sh -c ${TMP}"
+    TEST6="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 env /bin/env LD_LIBRARY_PATH=test6 ${TMP}"
     COMMAND2="-E LD_PRELOAD=.* -0 ${TMP} ${TMP} ${TMP2}"
 else
     COMMAND1="-0 ${TMP} ${TMP}"
@@ -27,6 +30,7 @@ else
     TEST3="${TEST1}"
     TEST4="-- -E LD_TRACE_LOADED_OBJECTS=1 -E LD_LIBRARY_PATH=.+ ${COMMAND1}"
     TEST5="-- -E LD_LIBRARY_PATH=test5 ${COMMAND1}"
+    TEST52=${TEST5}
     TEST6="-- -E LD_LIBRARY_PATH=test6 ${COMMAND1}"
     COMMAND2="-0 ${TMP} ${TMP} ${TMP2}"
 fi
@@ -52,7 +56,7 @@ env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' / env LD_LIBRARY_PATH=test1 ${TM
 ${PROOT} -q 'echo --' / env LD_TRACE_LOADED_OBJECTS=1 ${TMP} | grep -E -- "^${TEST4}$"
 
 env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c ${TMP} | grep -- "^${TEST5}$"
-env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c "sh -c ${TMP}" | grep -- "^${TEST5}$"
+env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c "sh -c ${TMP}" | grep -- "^${TEST52}$"
 env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' env LD_LIBRARY_PATH=test6 ${TMP} | grep -- "^${TEST6}$"
 
 rm -f ${TMP2}

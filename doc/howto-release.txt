@@ -11,12 +11,12 @@ Sanity Checks
 * arm (`make -C test` on STLinux)
 * sh4 (`make -C test` on STLinux)
 * x86 (`make -C test` on *all* OBS distros)
-* x86_64:
-  - `make -C test` on *all* OBS distros
+* x86_64 (with *and* without seccomp):
+  - `make -C tests` on *all* OBS distros
   - `make -C tests memcheck`
   - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
   - `make -C tests V=1 2>&1 | grep talloc`
-  - `env PROOT_FORCE_KOMPAT=1 make -C test`
+  - `env PROOT_FORCE_KOMPAT=1 make -C tests`
 
 
 Use-Case Checks
