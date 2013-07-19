@@ -144,57 +144,52 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 	int i;
 
 	result[0] = '\0';
+	length = 0;
 
 	/* Parse the list of variadic arguments. */
 	va_start(paths, result);
-	length = 0;
 	for (i = 0; i < number_paths; i++) {
 		const char *path;
-		int need_separator;
-		size_t old_length;
+		size_t path_length;
+		size_t new_length;
 
 		path = va_arg(paths, const char *);
 		if (path == NULL)
 			continue;
+		path_length = strlen(path);
 
-		/* Sanity check.  */
-		if (length >= PATH_MAX ) {
-			status = -ENAMETOOLONG;
-			break;
+		/* A new path separator is needed.  */
+		if (length > 0 && result[length - 1] != '/' && path[0] != '/') {
+			new_length = length + path_length + 1;
+			if (new_length + 1 >= PATH_MAX) {
+				status = -ENAMETOOLONG;
+				break;
+			}
+			strcat(result + length, "/");
+			strcat(result + length, path);
+			length = new_length;
+		}
+		/* There are already two path separators.  */
+		else if (length > 0 && result[length - 1] == '/' && path[0] == '/') {
+			new_length = length + path_length - 1;
+			if (new_length + 1 >= PATH_MAX) {
+				status = -ENAMETOOLONG;
+				break;
+			}
+			strcat(result + length, path + 1);
+			length += path_length - 1;
+		}
+		/* There's already one path separator or result[] is empty.  */
+		else {
+			new_length = length + path_length;
+			if (new_length + 1 >= PATH_MAX) {
+				status = -ENAMETOOLONG;
+				break;
+			}
+			strcat(result + length, path);
+			length += path_length;
 		}
 
-		/* Check if a path separator is needed. */
-		if (length > 0 && result[length - 1] != '/' && path[0] != '/')
-			need_separator = 1;
-		else if (length > 0 && result[length - 1] == '/' && path[0] == '/')
-			need_separator = -1;
-		else
-			need_separator = 0;
-
-		old_length = length;
-		length += strlen(path) + need_separator;
-
-		switch (need_separator) {
-		case -1:
-			path++;
-			break;
-		case 1:
-			strcat(result + old_length, "/");
-			old_length++;
-			break;
-		case 0:
-			break;
-		default:
-			assert(0);
-		}
-
-		/* Sanity check.  */
-		if (old_length >= PATH_MAX) {
-			status = -ENAMETOOLONG;
-			break;
-		}
-
-		strcat(result + old_length, path);
 		status = 0;
 	}
 	va_end(paths);
