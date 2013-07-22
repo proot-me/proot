@@ -1,3 +1,75 @@
+Release v3.1
+============
+
+Command-line interface changes
+------------------------------
+
++ The initial command is not search in "." anymore, unless the "./"
+  prefix is specified or unless "." is in $PATH, as expected.
+
++ The "-B" and "-Q" options are obsoleted by the new "-R" option.
+  This latter is equivalent to "-B -r", as there was actually no point
+  at using the "-B" option without "-r".
+
++ A warning is now emitted when the rootfs is specified à la
+  chroot(1), that is, without using "-r" or "-R".
+
+The old command-line interface is not documented anymore, but it will
+be still supported for a couple of releases.  Although, users are
+strongly encouraged to switch to the new one:
+
+        ======================   =================
+        old CLI                  new CLI
+        ======================   =================
+        proot rootfs             proot -r rootfs
+        proot -B rootfs          proot -R rootfs
+        proot -B -r rootfs       proot -R rootfs
+        proot -Q qemu rootfs     proot -R rootfs -q qemu
+        proot -Q qemu -r rootfs  proot -R rootfs -q qemu
+        =======================  =======================
+
+Extensions
+----------
+
++ The "kompat" extension ("-k" option) has been greatly enhanced.  For
+  example, it can now make programs from Ubuntu 13.04 32-bit run on
+  RedHat 5 64-bit:
+
+     rh5-64$ proot -k 3.8 -R ubuntu-13.04-32bit/ ...
+
++ The "fake id0" extension ("-0" option) handles more syscalls:
+  mknod(2), capset(2), setxattr(2), setresuid(2), setresgid(2),
+  getresuid(2), and getresgid(2).
+
+Miscellaneous
+-------------
+
++ PRoot is now compiled with large file-system support (LFS), this
+  make it works with 64-bit file-systems (eg. CIFS) on 32-bit
+  platforms.
+
++ The special symbolic link "/proc/self/root" now points to the guest
+  rootfs, that is, to the path specified by "-r" or "-R".  Just like
+  with chroot(2), this symlink may be broken as the referenced host
+  path likely does not exist in the guest rootfs.  Although, this
+  symlink is typically used to know if a process is under a chroot-ed
+  environment.
+
++ Under QEMU, LD_LIBRARY_PATH is not clobbered anymore when a guest
+  program is launched by a host program.
+
++ When seccomp-filter is enabled, this release is about 8% faster than
+  the previous one.
+
++ A couple of bugs reported by Scan Coverity are fixed.
+
+Thanks
+------
+
+Special thanks to Stephan Hadamik, Jérôme Audu, and Rémi Duraffort for
+their valuable help.
+
+
 Release v3.0.2
 ==============
 

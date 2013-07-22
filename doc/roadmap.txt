@@ -2,7 +2,7 @@
  Roadmap
 =========
 
-v3.1: ptrace emulation
+v3.2: ptrace emulation
 ======================
 
 Highlight
@@ -40,7 +40,7 @@ Fixes
 * Improve code coverage of PRoot.
 
 
-v3.2: FS cache
+v3.3: FS cache
 ==============
 
 Highlight
@@ -56,7 +56,7 @@ The internal structure of this FS cache could also be used to emulate
 the "getdents" syscall in order to add or hide entries.
 
 
-v3.3: custom loader
+v3.4: custom loader
 ===================
 
 Highlight
