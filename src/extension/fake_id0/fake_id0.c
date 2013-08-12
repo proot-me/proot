@@ -98,6 +98,8 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_setfsuid32,	FILTER_SYSEXIT },
 	{ PR_setgid,		FILTER_SYSEXIT },
 	{ PR_setgid32,		FILTER_SYSEXIT },
+	{ PR_setgroups,		FILTER_SYSEXIT },
+	{ PR_setgroups32,		FILTER_SYSEXIT },
 	{ PR_setresgid,		FILTER_SYSEXIT },
 	{ PR_setresgid32,	FILTER_SYSEXIT },
 	{ PR_setresuid,		FILTER_SYSEXIT },
@@ -344,6 +346,8 @@ static int handle_sysexit_end(Tracee *tracee)
 	case PR_getegid32:
 	case PR_setuid:
 	case PR_setgid:
+  case PR_setgroups:
+  case PR_setgroups32:
 	case PR_setfsuid:
 	case PR_setfsgid:
 	case PR_setuid32:
