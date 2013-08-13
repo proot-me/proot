@@ -421,10 +421,12 @@ static int merge_filtered_sysnums(TALLOC_CTX *context, FilteredSysnum **sysnums,
 {
 	size_t i, j;
 
+	assert(sysnums != NULL);
+
 	if (*sysnums == NULL) {
 		/* Start with no sysnums but the terminator.  */
 		*sysnums = talloc_array(context, FilteredSysnum, 1);
-		if (sysnums == NULL)
+		if (*sysnums == NULL)
 			return -ENOMEM;
 
 		(*sysnums)[0].value = PR_void;
