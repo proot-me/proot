@@ -393,6 +393,8 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 
 		/* Ensure it points to a directory. */
 		status = stat(host_path, &statl);
+		if (status < 0)
+			return -errno;
 		if (!S_ISDIR(statl.st_mode))
 			return -ENOTDIR;
 
