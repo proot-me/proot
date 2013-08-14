@@ -18,6 +18,13 @@ Sanity Checks
   - `make -C tests V=1 2>&1 | grep talloc`
   - `env PROOT_FORCE_KOMPAT=1 make -C tests`
 
+The "syscalls" testsuite from the Linux Test Project (`./configure
+--prefix=$PWD; make; make install; ./runltp -f syscalls`) shall suffer no
+regression on:
+
+- x86
+- x86_64
+
 
 Use-Case Checks
 ---------------

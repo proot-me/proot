@@ -379,14 +379,14 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 		/* Format the path to the "virtual" link. */
 		status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	tracee->pid, dir_fd);
 		if (status < 0)
-			return -EPERM;
+			return -EBADF;
 		if ((size_t) status >= sizeof(link))
-			return -EPERM;
+			return -EBADF;
 
 		/* Read the value of this "virtual" link. */
 		status = readlink(link, host_path, PATH_MAX);
 		if (status < 0)
-			return -EPERM;
+			return -EBADF;
 		if (status >= PATH_MAX)
 			return -ENAMETOOLONG;
 		host_path[status] = '\0';
