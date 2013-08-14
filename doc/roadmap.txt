@@ -67,11 +67,6 @@ linker, sadly this latter suffers from a couple of bugs and
 limitations that avoid some programs to run correctly under PRoot (and
 CARE).  For examples:
 
-    * programs that have a custom heap allocator might crash: a
-      typical example is Bash.  The current workaround in PRoot is to
-      limit the stack size to 256MB, which in turn might make other
-      programs crash.
-
     * programs that use constructors might crash: a typical example is
       QEMU.  There's a workaround in PRoot for QEMU only.
 
