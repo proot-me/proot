@@ -28,6 +28,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/socket.h"
+#include "syscall/heap.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
@@ -69,6 +70,10 @@ void translate_syscall_exit(Tracee *tracee)
 	syscall_number = get_sysnum(tracee, ORIGINAL);
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	switch (syscall_number) {
+	case PR_brk:
+		translate_brk_exit(tracee);
+		goto end;
+
 	case PR_getcwd: {
 		size_t new_size;
 		size_t size;
@@ -328,6 +333,8 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_execve:
 		if ((int) syscall_result >= 0) {
+			/* New processes have no heap.  */
+			bzero(tracee->heap, sizeof(Heap));
 		case PR_rt_sigreturn:
 		case PR_sigreturn:
 			tracee->restore_original_regs = false;

@@ -31,6 +31,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/socket.h"
+#include "syscall/heap.h"
 #include "extension/extension.h"
 #include "execve/execve.h"
 #include "tracee/tracee.h"
@@ -119,6 +120,10 @@ void translate_syscall_enter(Tracee *tracee)
 
 	case PR_execve:
 		status = translate_execve(tracee);
+		break;
+
+	case PR_brk:
+		status = translate_brk_enter(tracee);
 		break;
 
 	case PR_fchdir:

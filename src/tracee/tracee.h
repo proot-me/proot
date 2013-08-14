@@ -46,7 +46,7 @@ struct extensions;
 /* Information related to a file-system name-space.  */
 typedef struct {
 	struct {
-	     /* List of bindings as specified by the user but not canonicalized yet.  */
+		/* List of bindings as specified by the user but not canonicalized yet.  */
 		struct bindings *pending;
 
 		/* List of bindings canonicalized and sorted in the "guest" order.  */
@@ -59,6 +59,12 @@ typedef struct {
 	/* Current working directory, à la /proc/self/pwd.  */
 	char *cwd;
 } FileSystemNameSpace;
+
+/* Virtual heap, emulated with a regular memory mapping.  */
+typedef struct {
+	word_t base;
+	size_t size;
+} Heap;
 
 /* Information related to a tracee process. */
 typedef struct tracee {
@@ -127,11 +133,14 @@ typedef struct tracee {
 
 
 	/**********************************************************************
-	 * Shared or private resources, depending on the CLONE_FS flag.       *
+	 * Shared or private resources, depending on the CLONE_FS/VM flags.   *
 	 **********************************************************************/
 
+	/* Information related to a file-system name-space.  */
 	FileSystemNameSpace *fs;
 
+	/* Virtual heap, emulated with a regular memory mapping.  */
+	Heap *heap;
 
 	/**********************************************************************
 	 * Shared resources until the tracee makes a call to execve().        *

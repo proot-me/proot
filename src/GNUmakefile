@@ -29,6 +29,7 @@ OBJECTS = cli.o			\
 	syscall/exit.o		\
 	syscall/sysnum.o	\
 	syscall/socket.o	\
+	syscall/heap.o		\
 	tracee/tracee.o		\
 	tracee/array.o		\
 	tracee/mem.o		\

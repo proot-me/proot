@@ -71,9 +71,10 @@ static Tracee *new_tracee(pid_t pid)
 		goto no_mem;
 
 	/* By default new tracees have an empty file-system
-	 * name-space.  */
+	 * name-space and heap.  */
 	tracee->fs = talloc_zero(tracee, FileSystemNameSpace);
-	if (tracee->fs == NULL)
+	tracee->heap = talloc_zero(tracee, Heap);
+	if (tracee->fs == NULL || tracee->heap == NULL)
 		goto no_mem;
 
 	tracee->pid = pid;
@@ -165,6 +166,27 @@ int new_child(Tracee *parent, word_t clone_flags)
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
 	child->sysexit_pending = parent->sysexit_pending;
+
+	/* If CLONE_VM is set, the calling process and the child
+	 * process run in the same memory space [...] any memory
+	 * mapping or unmapping performed with mmap(2) or munmap(2) by
+	 * the child or calling process also affects the other
+	 * process.
+	 *
+	 * If CLONE_VM is not set, the child process runs in a
+	 * separate copy of the memory space of the calling process at
+	 * the time of clone().  Memory writes or file
+	 * mappings/unmappings performed by one of the processes do
+	 * not affect the other, as with fork(2).
+	 *
+	 * -- clone(2) man-page
+	 */
+	TALLOC_FREE(child->heap);
+	child->heap = ((clone_flags & CLONE_VM) != 0)
+		? talloc_reference(child, parent->heap)
+		: talloc_memdup(child, parent->heap, sizeof(Heap));
+	if (child->heap == NULL)
+		return -ENOMEM;
 
 	/* If CLONE_FS is set, the parent and the child process share
 	 * the same file system information.  This includes the root

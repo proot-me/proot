@@ -44,6 +44,9 @@ check-test-16573e73.c: test-16573e73
 check-test-82ba4ba1.c: test-82ba4ba1
 	$(call check_c,$<,$(PROOT) -0 ./$<)
 
+check-test-kkkkkkkk.c: test-kkkkkkkk
+	$(call check_c,$<,$(PROOT) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -94,6 +97,9 @@ test-16573e73: test-16573e73.c
 	$(Q)$(CC) $< -static -o $@ $(silently) || true
 
 test-82ba4ba1: test-82ba4ba1.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-kkkkkkkk: test-kkkkkkkk.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
 ######################################################################
