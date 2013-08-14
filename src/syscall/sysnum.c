@@ -139,3 +139,23 @@ void set_sysnum(Tracee *tracee, Sysnum sysnum)
 {
 	poke_reg(tracee, SYSARG_NUM, detranslate_sysnum(get_abi(tracee), sysnum));
 }
+
+/**
+ * Return the human readable name of @sysnum.
+ */
+const char *stringify_sysnum(Sysnum sysnum)
+{
+	#define SYSNUM(item) [ PR_ ## item ] = #item,
+	static const char *names[] = {
+		#include "syscall/sysnums.list"
+	};
+	#undef SYSNUM
+
+	if (sysnum == 0)
+		return "void";
+
+	if (sysnum >= PR_NB_SYSNUM)
+		return "";
+
+	return names[sysnum];
+}
