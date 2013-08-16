@@ -47,6 +47,12 @@ check-test-82ba4ba1.c: test-82ba4ba1
 check-test-kkkkkkkk.c: test-kkkkkkkk
 	$(call check_c,$<,$(PROOT) ./$<)
 
+check-test-25069c12.c: test-25069c12
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-25069c13.c: test-25069c13
+	$(call check_c,$<,$(PROOT) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -100,6 +106,12 @@ test-82ba4ba1: test-82ba4ba1.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
 test-kkkkkkkk: test-kkkkkkkk.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-25069c12: test-25069c12.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-25069c13: test-25069c13.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
 ######################################################################

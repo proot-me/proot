@@ -22,8 +22,8 @@ The "syscalls" testsuite from the Linux Test Project (`./configure
 --prefix=$PWD; make; make install; ./runltp -f syscalls`) shall suffer no
 regression on:
 
-- x86
 - x86_64
+- x86_64 with a x86_64 rootfs
 - x86_64 with a x86 rootfs
 
 

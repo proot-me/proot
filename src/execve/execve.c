@@ -139,8 +139,10 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 
 	VERBOSE(tracee, 3, "expand shebang: -> %s %s %s", u_interp, argument, u_path);
 
+	/* Note: argv[0] is not substituted if it is the NULL
+	 * terminator (argv->length == 1).  */
 	if (argument[0] != '\0') {
-		status = resize_array(argv, 0, 2);
+		status = resize_array(argv, 0, 2 + (argv->length == 1));
 		if (status < 0)
 			return status;
 
@@ -149,7 +151,7 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 			return status;
 	}
 	else {
-		status = resize_array(argv, 0, 1);
+		status = resize_array(argv, 0, 1 + (argv->length == 1));
 		if (status < 0)
 			return status;
 
