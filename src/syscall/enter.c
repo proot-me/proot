@@ -103,6 +103,7 @@ void translate_syscall_enter(Tracee *tracee)
 	char newpath[PATH_MAX];
 
 	word_t syscall_number;
+	bool special = false;
 
 	status = notify_extensions(tracee, SYSCALL_ENTER_START, 0, 0);
 	if (status < 0)
@@ -223,6 +224,12 @@ void translate_syscall_enter(Tracee *tracee)
 		break;						\
 	}
 
+#define PEEK_MEM2(addr, forced_errno) peek_mem(tracee, addr);	\
+	if (errno != 0) {					\
+		status = forced_errno ?: -errno;		\
+		break;						\
+	}
+
 #define POKE_MEM(addr, value) poke_mem(tracee, addr, value);	\
 	if (errno != 0) {					\
 		status = -errno;				\
@@ -231,13 +238,14 @@ void translate_syscall_enter(Tracee *tracee)
 
 	case PR_accept:
 	case PR_accept4:
+		special = true;
 	case PR_getsockname:
 	case PR_getpeername:{
 		int size;
 
 		/* Remember: PEEK_MEM puts -errno in status and breaks if an
 		 * error occured.  */
-		size = (int) PEEK_MEM(peek_reg(tracee, ORIGINAL, SYSARG_3));
+		size = (int) PEEK_MEM2(peek_reg(tracee, ORIGINAL, SYSARG_3), special ? -EINVAL : 0);
 
 		/* The "size" argument is both used as an input parameter
 		 * (max. size) and as an output parameter (actual size).  The
@@ -268,12 +276,13 @@ void translate_syscall_enter(Tracee *tracee)
 
 		case SYS_ACCEPT:
 		case SYS_ACCEPT4:
+			special = true;
 		case SYS_GETSOCKNAME:
 		case SYS_GETPEERNAME:
 			/* Remember: PEEK_MEM puts -errno in status and breaks
 			 * if an error occured.  */
 			size_addr =  PEEK_MEM(SYSARG_ADDR(3));
-			size = (int) PEEK_MEM(size_addr);
+			size = (int) PEEK_MEM2(size_addr, special ? -EINVAL : 0);
 
 			/* See case PR_accept for explanation.  */
 			poke_reg(tracee, SYSARG_6, size);
@@ -314,6 +323,7 @@ void translate_syscall_enter(Tracee *tracee)
 
 #undef SYSARG_ADDR
 #undef PEEK_MEM
+#undef PEEK_MEM2
 #undef POKE_MEM
 
 	case PR_access:

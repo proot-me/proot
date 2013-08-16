@@ -411,6 +411,12 @@ word_t peek_mem(const Tracee *tracee, word_t address)
 	errno = 0;
 	result = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
 
+	/* From ptrace(2) manual: "Unfortunately, under Linux,
+	 * different variations of this fault will return EIO or
+	 * EFAULT more or less arbitrarily."  */
+	if (errno == EIO)
+		errno = EFAULT;
+
 	/* Use only the 32 LSB when running a 32-bit process on a
 	 * 64-bit kernel. */
 	if (is_32on64_mode(tracee))
@@ -460,6 +466,13 @@ void poke_mem(const Tracee *tracee, word_t address, word_t value)
 
 	errno = 0;
 	(void) ptrace(PTRACE_POKEDATA, tracee->pid, address, value);
+
+	/* From ptrace(2) manual: "Unfortunately, under Linux,
+	 * different variations of this fault will return EIO or
+	 * EFAULT more or less arbitrarily."  */
+	if (errno == EIO)
+		errno = EFAULT;
+
 	return;
 }
 
