@@ -703,3 +703,71 @@ int list_open_fd(const Tracee *tracee)
 	}
 	return foreach_fd(tracee, list_open_fd_callback);
 }
+
+/**
+ * Substitute the first @old_prefix_length bytes of @path with
+ * @new_prefix (the caller has to provides a correct
+ * @new_prefix_length).  This function returns the new length of
+ * @path.  Note: this function takes care about special cases (like
+ * "/").
+ */
+size_t substitute_path_prefix(char path[PATH_MAX], size_t old_prefix_length,
+			const char *new_prefix, size_t new_prefix_length)
+{
+	size_t path_length;
+	size_t new_length;
+
+	path_length = strlen(path);
+
+	assert(old_prefix_length < PATH_MAX);
+	assert(new_prefix_length < PATH_MAX);
+
+	if (new_prefix_length == 1) {
+		/* Special case: "/foo" -> "/".  Substitute "/foo/bin"
+		 * with "/bin" not "//bin".  */
+
+		new_length = path_length - old_prefix_length;
+		if (new_length != 0)
+			memmove(path, path + old_prefix_length, new_length);
+		else {
+			/* Special case: "/".  */
+			path[0] = '/';
+			new_length = 1;
+		}
+	}
+	else if (old_prefix_length == 1) {
+		/* Special case: "/" -> "/foo". Substitute "/bin" with
+		 * "/foo/bin" not "/foobin".  */
+
+		new_length = new_prefix_length + path_length;
+		if (new_length >= PATH_MAX)
+			return -ENAMETOOLONG;
+
+		if (path_length > 1) {
+			memmove(path + new_prefix_length, path, path_length);
+			memcpy(path, new_prefix, new_prefix_length);
+		}
+		else {
+			/* Special case: "/".  */
+			memcpy(path, new_prefix, new_prefix_length);
+			new_length = new_prefix_length;
+		}
+	}
+	else {
+		/* Generic case.  */
+
+		new_length = path_length - old_prefix_length + new_prefix_length;
+		if (new_length >= PATH_MAX)
+			return -ENAMETOOLONG;
+
+		memmove(path + new_prefix_length,
+			path + old_prefix_length,
+			path_length - old_prefix_length);
+		memcpy(path, new_prefix, new_prefix_length);
+	}
+
+	assert(new_length < PATH_MAX);
+	path[new_length] = '\0';
+
+	return new_length;
+}

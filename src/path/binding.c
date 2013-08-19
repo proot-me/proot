@@ -241,8 +241,6 @@ int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
 	const Path *reverse_ref;
 	const Path *ref;
 	const Binding *binding;
-	size_t path_length;
-	size_t new_length;
 
 	binding = get_binding(tracee, side, path);
 	if (!binding)
@@ -251,8 +249,6 @@ int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
 	/* Is it a "symetric" binding?  */
 	if (!binding->need_substitution)
 		return 0;
-
-	path_length = strlen(path);
 
 	switch (side) {
 	case GUEST:
@@ -270,51 +266,8 @@ int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
 		return -EACCES;
 	}
 
-	/* Substitute the leading ref' with reverse_ref'.  */
-	if (reverse_ref->length == 1) {
-		/* Special case when "-b /:/foo".  Substitute
-		 * "/foo/bin" with "/bin" not "//bin".  */
+	substitute_path_prefix(path, ref->length, reverse_ref->path, reverse_ref->length);
 
-		new_length = path_length - ref->length;
-		if (new_length != 0)
-			memmove(path, path + ref->length, new_length);
-		else {
-			/* Translating "/".  */
-			path[0] = '/';
-			new_length = 1;
-		}
-	}
-	else if (ref->length == 1) {
-		/* Special case when "-b /:/foo". Substitute
-		 * "/bin" with "/foo/bin" not "/foobin".  */
-
-		new_length = reverse_ref->length + path_length;
-		if (new_length >= PATH_MAX)
-			return -ENAMETOOLONG;
-
-		if (path_length > 1) {
-			memmove(path + reverse_ref->length, path, path_length);
-			memcpy(path, reverse_ref->path, reverse_ref->length);
-		}
-		else {
-			/* Translating "/".  */
-			memcpy(path, reverse_ref->path, reverse_ref->length);
-			new_length = reverse_ref->length;
-		}
-	}
-	else {
-		/* Generic substitution case.  */
-
-		new_length = path_length - ref->length + reverse_ref->length;
-		if (new_length >= PATH_MAX)
-			return -ENAMETOOLONG;
-
-		memmove(path + reverse_ref->length,
-			path + ref->length,
-			path_length - ref->length);
-		memcpy(path, reverse_ref->path, reverse_ref->length);
-	}
-	path[new_length] = '\0';
 	return 1;
 }
 
