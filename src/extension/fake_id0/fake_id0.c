@@ -222,7 +222,7 @@ static int handle_sysexit_end(Tracee *tracee)
 
 		input = peek_reg(tracee, MODIFIED, SYSARG_1);
 
-		status = read_string(tracee, path, input, PATH_MAX);
+		status = read_path(tracee, path, input);
 		if (status < 0)
 			return status;
 

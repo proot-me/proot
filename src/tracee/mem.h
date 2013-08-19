@@ -38,4 +38,24 @@ extern word_t peek_mem(const Tracee *tracee, word_t address);
 extern void poke_mem(const Tracee *tracee, word_t address, word_t value);
 extern word_t alloc_mem(Tracee *tracee, ssize_t size);
 
+/**
+ * Copy to @dest_tracer at most PATH_MAX bytes -- including the
+ * end-of-string terminator -- from the string pointed to by
+ * @src_tracee within the memory space of the @tracee process.  This
+ * function returns -errno on error, otherwise it returns the number
+ * in bytes of the string, including the end-of-string terminator.
+ */
+static inline int read_path(const Tracee *tracee, char dest_tracer[PATH_MAX], word_t src_tracee)
+{
+	int status;
+
+	status = read_string(tracee, dest_tracer, src_tracee, PATH_MAX);
+	if (status < 0)
+		return status;
+	if (status >= PATH_MAX)
+		return -ENAMETOOLONG;
+
+	return status;
+}
+
 #endif /* TRACEE_MEM_H */

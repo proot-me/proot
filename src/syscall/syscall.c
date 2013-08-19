@@ -52,11 +52,9 @@ int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg)
 	}
 
 	/* Get the path from the tracee's memory space. */
-	size = read_string(tracee, path, src, PATH_MAX);
+	size = read_path(tracee, path, src);
 	if (size < 0)
 		return size;
-	if (size >= PATH_MAX)
-		return -ENAMETOOLONG;
 
 	path[size] = '\0';
 	return size;

@@ -256,7 +256,7 @@ void translate_syscall_exit(Tracee *tracee)
 		referee[old_size] = '\0';
 
 		/* Not optimal but safe (path is fully translated).  */
-		status = read_string(tracee, referer, input, PATH_MAX);
+		status = read_path(tracee, referer, input);
 		if (status < 0)
 			break;
 
