@@ -24,7 +24,7 @@ check-%.sh: %.sh setup
 	$(Q)env PROOT_RAW="$(PROOT_RAW)" PROOT="$(PROOT)" ROOTFS=$(ROOTFS) sh -ex $< $(silently); $(call check,$*)
 
 check-%.c: $(ROOTFS)/bin/% setup
-	$(call check_c,$*,$(PROOT) -b /proc $(ROOTFS) /bin/$*)
+	$(call check_c,$*,$(PROOT) -b /proc -r $(ROOTFS) /bin/$*)
 
 # Special cases.
 check-test-bdc90417.c: test-bdc90417
@@ -35,6 +35,10 @@ check-test-af062114.c: test-af062114
 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<')
 
 check-test-5bed7141.c: test-5bed7141
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-5bed7143.c: test-5bed7143
+	$(call check_c,$<,$(PROOT) -r $(ROOTFS) -b . ./$<)
 	$(call check_c,$<,$(PROOT) ./$<)
 
 check-test-16573e73.c: test-16573e73
@@ -113,6 +117,9 @@ test-25069c12: test-25069c12.c
 
 test-25069c13: test-25069c13.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-5bed7143: test-5bed7143.c
+	$(Q)$(CC) $< -static -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output
