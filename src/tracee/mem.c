@@ -122,6 +122,9 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 		}
 	}
 
+	if (nb_trailing_bytes == 0)
+		return 0;
+
 	/* Copy the bytes in the last word carefully since we have to
 	 * overwrite only the relevant ones. */
 
@@ -233,6 +236,9 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 		}
 		store_word(&dest[i], word);
 	}
+
+	if (nb_trailing_bytes == 0)
+		return 0;
 
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond @dest_tracer. */
