@@ -58,10 +58,11 @@ static int translate_n_check(Tracee *tracee, char t_path[PATH_MAX], const char *
 	status = access(t_path, F_OK);
 	if (status < 0)
 		return -ENOENT;
-
+#if 0
 	status = access(t_path, X_OK);
 	if (status < 0)
 		return -EACCES;
+#endif
 
 	status = lstat(t_path, &statl);
 	if (status < 0)

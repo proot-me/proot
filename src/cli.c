@@ -686,6 +686,11 @@ int main(int argc, char *argv[])
 	if (status < 0)
 		goto error;
 
+	/* Force the mmap-noexec extension.  */
+	status = initialize_extension(tracee, mmap_noexec_callback, NULL);
+	if (status < 0)
+		notice(tracee, WARNING, INTERNAL, "mmap-noexec not initialized");
+
 	/* Start the first tracee.  */
 	status = launch_process(tracee);
 	if (status < 0) {

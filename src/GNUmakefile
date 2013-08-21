@@ -36,6 +36,7 @@ OBJECTS = cli.o			\
 	tracee/event.o		\
 	extension/extension.o	\
 	extension/kompat/kompat.o \
+	extension/mmap-noexec/mmap-noexec.o \
 	extension/fake_id0/fake_id0.o
 
 .DEFAULT_GOAL = proot
