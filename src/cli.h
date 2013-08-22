@@ -175,14 +175,8 @@ static Option options[] = {
 	  .detail = "\tIf a program is run on a kernel older than the one expected by its\n\
 \tGNU C library, the following error is reported: \"FATAL: kernel too\n\
 \told\".  To be able to run such programs, PRoot can emulate some of\n\
-\tthe syscalls that are available in the kernel release specified by\n\
-\t*string* but that are missing in the current kernel.  With some\n\
-\tversions of the GNU C library, the following tweak is required if\n\
-\tthis fatal error still happens when this option is enabled:\n\
-\t\n\
-\t  cd path/to/rootfs\n\
-\t  sed --in-place=.bak s/Linux/PRoot/ \\\n\
-\t      lib*/ld-linux*.so.2 lib*/*/ld-linux*.so.2",
+\tthe features that are available in the kernel release specified by\n\
+\t*string* but that are missing in the current kernel.",
 	},
 	{ .class = "Extension options",
 	  .arguments = {

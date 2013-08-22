@@ -27,6 +27,12 @@
 #    ifndef AT_RANDOM
 #        define AT_RANDOM		25
 #    endif
+#    ifndef AT_SYSINFO
+#        define AT_SYSINFO		32
+#    endif
+#    ifndef AT_SYSINFO_EHDR
+#        define AT_SYSINFO_EHDR		33
+#    endif
 #    ifndef AT_FDCWD
 #        define AT_FDCWD		-100
 #    endif

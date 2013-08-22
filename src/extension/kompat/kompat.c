@@ -484,18 +484,18 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 }
 
 /**
- * Insert or replace the AT_RANDOM auxiliary vector of the given
- * @tracee.  This function assumes the "argv, envp, auxv" stuff is
- * pointed to by @tracee's stack pointer, as expected right after a
- * successful call to execve(2).
+ * Adjust some ELF auxiliary vectors to improve the compatibility.
+ * This function assumes the "argv, envp, auxv" stuff is pointed to by
+ * @tracee's stack pointer, as expected right after a successful call
+ * to execve(2).
  */
-static void insert_at_random(Tracee *tracee)
+static void adjust_elf_auxv(Tracee *tracee, Config *config)
 {
 	word_t stack_pointer;
 	word_t pointer;
 	word_t data;
 
-	uint8_t *buffer;
+	void *buffer;
 	size_t length;
 	size_t size;
 	int status;
@@ -530,8 +530,19 @@ static void insert_at_random(Tracee *tracee)
 		if (errno != 0)
 			return;
 
+		/* Discard AT_SYSINFO* vector: it can be used to get
+		 * the OS release number from memory instead of from
+		 * the uname syscall, and only this latter is
+		 * currently hooked by PRoot.  */
+		if (data == AT_SYSINFO_EHDR || data == AT_SYSINFO)
+			poke_mem(tracee, pointer, AT_IGNORE);
+
 		pointer += 2 * sizeof_word(tracee);
 	} while (data != 0);
+
+	/* Add the AT_RANDOM vector only if needed.  */
+	if (!needs_kompat(config, KERNEL_VERSION(2,6,29)))
+		return;
 
 	/* Allocate enough room for the whole "argv, envp, auxv" stuff
 	 * plus a new auxiliary vector.  */
@@ -587,34 +598,31 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	size_t size;
 	int status;
 
-	switch (get_sysnum(tracee, ORIGINAL)) {
-	case PR_execve:
-		if (needs_kompat(config, KERNEL_VERSION(2,6,29))
-		    && (int) peek_reg(tracee, CURRENT, SYSARG_RESULT) >= 0)
-			insert_at_random(tracee);
-		return 0;
-
-	case PR_uname:
-		break;
-
-	default:
-		return 0;
-	}
-
-	assert(config->release != NULL);
-
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 
 	/* Error reported by the kernel.  */
 	if ((int) result < 0)
 		return 0;
 
-	address = peek_reg(tracee, ORIGINAL, SYSARG_1);
+	switch (get_sysnum(tracee, ORIGINAL)) {
+	case PR_execve:
+		adjust_elf_auxv(tracee, config);
+		return 0;
 
+	case PR_uname:
+		/* Handled below.  */
+		break;
+
+	default:
+		return 0;
+	}
+
+	address = peek_reg(tracee, ORIGINAL, SYSARG_1);
 	status = read_data(tracee, &utsname, address, sizeof(utsname));
 	if (status < 0)
 		return status;
 
+	assert(config->release != NULL);
 	/* Note: on x86_64, we can handle the two modes (32/64) with
 	 * the same code since struct utsname has always the same
 	 * layout.  */
