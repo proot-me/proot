@@ -47,7 +47,7 @@ int link2symlink_callback(Extension *extension, ExtensionEvent event,
 			 *
 			 * into:
 			 *
-			 *     int symlinkat(const char *oldpath, int newdirfd, const char *newpath);
+			 *     int symlink(const char *oldpath, const char *newpath);
 			 *
 			 * Note: PRoot has already canonicalized
 			 * linkat() paths this way:
@@ -60,9 +60,8 @@ int link2symlink_callback(Extension *extension, ExtensionEvent event,
 			word_t new = peek_reg(tracee, CURRENT, SYSARG_4);
 
 			poke_reg(tracee, SYSARG_1, old);
-			poke_reg(tracee, SYSARG_2, AT_FDCWD);
-			poke_reg(tracee, SYSARG_3, new);
-			set_sysnum(tracee, PR_symlinkat);
+			poke_reg(tracee, SYSARG_2, new);
+			set_sysnum(tracee, PR_symlink);
 			break;
 		}
 
