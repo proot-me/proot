@@ -83,6 +83,11 @@ typedef unsigned long word_t;
     #define OFFSETOF_STAT_GID_32 0
     #define EM_ARM 40
 
+    /* The syscall number has to be valid on ARM, so use getpid(2) as
+     * the "void" syscall since it has no side effects.  */
+    #undef SYSCALL_AVOIDER
+    #define SYSCALL_AVOIDER ((word_t) 20)
+
 #elif defined(ARCH_ARM64)
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm64.h"
