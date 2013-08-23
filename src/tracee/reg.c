@@ -41,6 +41,7 @@
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "notice.h"
+#include "compat.h"
 
 /**
  * Compute the offset of the register @reg_name in the USER area.
@@ -287,6 +288,18 @@ int push_regs(Tracee *tracee)
 
 		status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_PRSTATUS, &regs);
 #else
+#    if defined(ARCH_ARM_EABI)
+		/* On ARM, a special ptrace request is required to
+		 * change effectively the syscall number during a
+		 * ptrace-stop.  */
+		word_t current_sysnum = REG(tracee, CURRENT, SYSARG_NUM);
+		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
+			status = ptrace(PTRACE_SET_SYSCALL, tracee->pid, 0, current_sysnum);
+			if (status < 0)
+				notice(tracee, WARNING, SYSTEM, "can't set the syscall number");
+		}
+#    endif
+
 		status = ptrace(PTRACE_SETREGS, tracee->pid, NULL, &tracee->_regs[CURRENT]);
 #endif
 		if (status < 0)
