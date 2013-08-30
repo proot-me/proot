@@ -53,7 +53,7 @@ struct array_entry {
  * @array at the given @index.  This function returns -errno when an
  * error occured, otherwise 0.
  */
-int read_item_data(Array *array, size_t index, void **value)
+int read_item_data(Array *array, size_t index, const void **value)
 {
 	int status;
 	int size;
@@ -96,7 +96,7 @@ end:
  * @array at the given @index.  This function returns -errno when an
  * error occured, otherwise 0.
  */
-int read_item_string(Array *array, size_t index, char **value)
+int read_item_string(Array *array, size_t index, const char **value)
 {
 	char tmp[ARG_MAX];
 	int status;
@@ -137,7 +137,7 @@ end:
  */
 int sizeof_item_string(Array *array, size_t index)
 {
-	char *value;
+	const char *value;
 	int status;
 
 	assert(index < array->length);

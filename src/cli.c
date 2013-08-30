@@ -48,7 +48,7 @@
 #include "attribute.h"
 #include "compat.h"
 
-static int handle_option_r(Tracee *tracee, char *value)
+static int handle_option_r(Tracee *tracee, const char *value)
 {
 	Binding *binding;
 
@@ -61,7 +61,7 @@ static int handle_option_r(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_b(Tracee *tracee, char *value)
+static int handle_option_b(Tracee *tracee, const char *value)
 {
 	char *ptr = strchr(value, ':');
 	if (ptr != NULL) {
@@ -73,31 +73,30 @@ static int handle_option_b(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_q(Tracee *tracee, char *value)
+static int handle_option_q(Tracee *tracee, const char *value)
 {
 	size_t nb_args;
-	char *ptr;
 	size_t i;
 
 	nb_args = 0;
-	ptr = value;
+	const char *cptr = value;
 	while (1) {
 		nb_args++;
 
 		/* Keep consecutive non-space characters.  */
-		while (*ptr != ' ' && *ptr != '\0')
-			ptr++;
+		while (*cptr != ' ' && *cptr != '\0')
+			cptr++;
 
 		/* End-of-string ?  */
-		if (*ptr == '\0')
+		if (*cptr == '\0')
 			break;
 
 		/* Skip consecutive space separators.  */
-		while (*ptr == ' ' && *ptr != '\0')
-			ptr++;
+		while (*cptr == ' ' && *cptr != '\0')
+			cptr++;
 
 		/* End-of-string ?  */
-		if (*ptr == '\0')
+		if (*cptr == '\0')
 			break;
 	}
 
@@ -107,7 +106,7 @@ static int handle_option_q(Tracee *tracee, char *value)
 	talloc_set_name_const(tracee->qemu, "@qemu");
 
 	i = 0;
-	ptr = value;
+	char *ptr = talloc_strdup(tracee->qemu, value);
 	while (1) {
 		tracee->qemu[i] = ptr;
 		i++;
@@ -136,7 +135,7 @@ static int handle_option_q(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_w(Tracee *tracee, char *value)
+static int handle_option_w(Tracee *tracee, const char *value)
 {
 	tracee->fs->cwd = talloc_strdup(tracee->fs, value);
 	if (tracee->fs->cwd == NULL)
@@ -145,7 +144,7 @@ static int handle_option_w(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_k(Tracee *tracee, char *value)
+static int handle_option_k(Tracee *tracee, const char *value)
 {
 	int status;
 
@@ -156,13 +155,13 @@ static int handle_option_k(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_0(Tracee *tracee, char *value)
+static int handle_option_0(Tracee *tracee, const char *value)
 {
 	(void) initialize_extension(tracee, fake_id0_callback, value);
 	return 0;
 }
 
-static int handle_option_v(Tracee *tracee, char *value)
+static int handle_option_v(Tracee *tracee, const char *value)
 {
 	char *end_ptr = NULL;
 
@@ -178,7 +177,7 @@ static int handle_option_v(Tracee *tracee, char *value)
 
 static bool exit_failure = true;
 
-static int handle_option_V(Tracee *tracee UNUSED, char *value UNUSED)
+static int handle_option_V(Tracee *tracee UNUSED, const char *value UNUSED)
 {
 	printf("%s %s\n\n", logo, version);
 	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
@@ -198,14 +197,14 @@ static int handle_option_V(Tracee *tracee UNUSED, char *value UNUSED)
 }
 
 static void print_usage(Tracee *, bool);
-static int handle_option_h(Tracee *tracee, char *value UNUSED)
+static int handle_option_h(Tracee *tracee, const char *value UNUSED)
 {
 	print_usage(tracee, true);
 	exit_failure = false;
 	return -1;
 }
 
-static int handle_option_R(Tracee *tracee, char *value)
+static int handle_option_R(Tracee *tracee, const char *value)
 {
 	int status;
 	int i;
@@ -219,7 +218,7 @@ static int handle_option_R(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_B(Tracee *tracee, char *value UNUSED)
+static int handle_option_B(Tracee *tracee, const char *value UNUSED)
 {
 	int i;
 #if 0
@@ -231,7 +230,7 @@ static int handle_option_B(Tracee *tracee, char *value UNUSED)
 	return 0;
 }
 
-static int handle_option_Q(Tracee *tracee, char *value)
+static int handle_option_Q(Tracee *tracee, const char *value)
 {
 	int status;
 # if 0
@@ -434,7 +433,7 @@ static int initialize_cwd(Tracee *tracee)
  * Initialize @tracee->exe and @tracee->cmdline from @cmdline, and resolve the
  * full host path to @command@tracee->qemu[0].
  */
-static int initialize_command(Tracee *tracee, char *const *cmdline)
+static int initialize_command(Tracee *tracee, const char **cmdline)
 {
 	char path[PATH_MAX];
 	int status;
@@ -452,7 +451,7 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 	talloc_set_name_const(tracee->cmdline, "@cmdline");
 
 	for (i = 0; cmdline[i] != NULL; i++)
-		tracee->cmdline[i] = cmdline[i];
+		tracee->cmdline[i] = (char *)cmdline[i];
 
 	/* Resolve the full guest path to tracee->cmdline[0].  */
 	status = which(tracee, tracee->reconf.paths, path, tracee->cmdline[0]);
@@ -517,14 +516,14 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 	return 0;
 }
 
-static char *default_command[] = { "/bin/sh", NULL };
+static const char *default_command[] = { "/bin/sh", NULL };
 
 /**
  * Configure @tracee according to the command-line arguments stored in
  * @argv[].  This function returns -1 if an error occured, otherwise
  * 0.
  */
-int parse_config(Tracee *tracee, size_t argc, char *argv[])
+int parse_config(Tracee *tracee, size_t argc, const char *argv[])
 {
 	option_handler_t handler = NULL;
 	size_t i, j, k;
@@ -536,7 +535,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	}
 
 	for (i = 1; i < argc; i++) {
-		char *arg = argv[i];
+		const char *arg = argv[i];
 
 		/* The current argument is the value of a short option.  */
 		if (handler != NULL) {
@@ -682,7 +681,7 @@ int main(int argc, char *argv[])
 	tracee->pid = getpid();
 
 	/* Pre-configure the first tracee.  */
-	status = parse_config(tracee, argc, argv);
+	status = parse_config(tracee, argc, (const char **)argv);
 	if (status < 0)
 		goto error;
 
