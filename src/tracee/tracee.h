@@ -181,7 +181,7 @@ typedef struct tracee {
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
-extern int parse_config(Tracee *tracee, size_t argc, char *argv[]);
+extern int parse_config(Tracee *tracee, size_t argc, const char *argv[]);
 extern void kill_all_tracees();
 
 #endif /* TRACEE_H */

@@ -56,7 +56,7 @@ static inline bool is_env_name(const char *variable, const char *name)
  */
 int compare_item_env(Array *array, size_t index, const char *reference)
 {
-	char *value;
+	const char *value;
 	int status;
 
 	assert(index < array->length);
@@ -107,7 +107,7 @@ int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 
 	for (i = 0; i < envp->length; i++) {
 		bool is_known = false;
-		char *env;
+		const char *env;
 
 		status = read_item_string(envp, i, &env);
 		if (status < 0)
@@ -328,7 +328,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		/* Remember guest LD_LIBRARY_PATH in order to restore
 		 * it when a host program will execute a guest
 		 * program.  */
-		char *env;
+		const char *env;
 
 		/* Errors are not fatal here.  */
 		status = read_item_string(envp, index, &env);

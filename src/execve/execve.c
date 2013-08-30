@@ -174,7 +174,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 	static char *self_exe = NULL;
 	Tracee *dummy = NULL;
 	char path[PATH_MAX];
-	char **argv_pod;
+	const char **argv_pod;
 	int status;
 	size_t i;
 
@@ -327,7 +327,7 @@ int translate_execve(Tracee *tracee)
 
 	Array *envp = NULL;
 	Array *argv = NULL;
-	char *argv0 = NULL;
+	const char *argv0 = NULL;
 
 	char **new_cmdline;
 	char *new_exe;
@@ -397,13 +397,13 @@ int translate_execve(Tracee *tracee)
 		return -ENOMEM;
 
 	for (i = 0; i < argv->length; i++) {
-		char *ptr;
+		const char *ptr;
 		status = read_item_string(argv, i, &ptr);
 		if (status < 0)
 			return status;
 		/* It's safe to reference these strings since they are never
 		 * overwritten, they are just replaced.  */
-		new_cmdline[i] = talloc_reference(new_cmdline, ptr);
+		new_cmdline[i] = talloc_reference(new_cmdline, (char *)ptr);
 	}
 
 	if (tracee->qemu != NULL) {

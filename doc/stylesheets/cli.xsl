@@ -19,7 +19,7 @@ typedef struct {
 	const char *value;
 } Argument;
 
-typedef int (*option_handler_t)(Tracee *tracee, char *value);
+typedef int (*option_handler_t)(Tracee *tracee, const char *value);
 
 typedef struct {
 	const char *class;
@@ -171,7 +171,7 @@ static Option options[] = {
   <xsl:template match="option_group" mode="handlers">
     <xsl:text>static int handle_option_</xsl:text>
     <xsl:value-of select="substring(option[1]/option_string, 2, 1)" />
-    <xsl:text>(Tracee *tracee, char *value);
+    <xsl:text>(Tracee *tracee, const char *value);
 </xsl:text>
   </xsl:template>
 

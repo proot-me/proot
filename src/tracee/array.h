@@ -70,8 +70,8 @@ extern int resize_array(Array *array, size_t index, ssize_t nb_delta_entries);
 extern int fetch_array(Tracee *tracee, Array **array, Reg reg, size_t nb_entries);
 extern int push_array(Array *array, Reg reg);
 
-extern int read_item_data(Array *array, size_t index, void **value);
-extern int read_item_string(Array *array, size_t index, char **value);
+extern int read_item_data(Array *array, size_t index, const void **value);
+extern int read_item_string(Array *array, size_t index, const char **value);
 extern int write_item_string(Array *array, size_t index, const char *value);
 extern int write_items(Array *array, size_t index, size_t nb_items, ...);
 extern int compare_item_generic(Array *array, size_t index, const void *reference);
