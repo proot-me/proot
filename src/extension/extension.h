@@ -53,13 +53,15 @@ typedef enum {
 	/* The tracee enters a syscall, and PRoot hasn't do anything
 	 * yet.  If the extension returns > 0, then PRoot skips its
 	 * own handling.  If the extension returns < 0, then PRoot
-	 * reports this errno to the tracee.  */
+	 * cancels the syscall and reports this errno to the
+	 * tracee.  */
 	SYSCALL_ENTER_START,
 
 	/* The tracee enters a syscall, and PRoot has already handled
 	 * it: "(int) data1" is the current status, it is < 0 when
 	 * something went wrong.  If the extension returns < 0, then
-	 * PRoot reports this errno to the tracee.  */
+	 * PRoot cancels the syscall and reports this errno to the
+	 * tracee.  */
 	SYSCALL_ENTER_END,
 
 	/* The tracee exits a syscall, and PRoot hasn't do anything
@@ -94,6 +96,17 @@ typedef enum {
 	 * create a new configuration depending on the parent's
 	 * configuration.  */
 	INHERIT_CHILD,
+
+	/* The tracee enters a "chained" syscall, that is, an
+	 * unrequested syscall inserted by PRoot after an actual
+	 * syscall.  If the extension returns < 0, then PRoot cancels
+	 * the syscall and reports this errno to the tracee.  */
+	SYSCALL_CHAINED_ENTER,
+
+	/* The tracee exists a "chained" syscall, that is, an
+	 * unrequested syscall inserted by PRoot after an actual
+	 * syscall.  */
+	SYSCALL_CHAINED_EXIT,
 
 	/* Initialize the extension: "(const char *) data1" is its
 	 * argument that was passed to the command-line interface.  If

@@ -36,6 +36,7 @@ typedef enum {
 	SYSARG_6,
 	SYSARG_RESULT,
 	STACK_POINTER,
+	INSTR_POINTER,
 } Reg;
 
 extern int fetch_regs(Tracee *tracee);

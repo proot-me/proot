@@ -25,6 +25,7 @@ OBJECTS = cli.o			\
 	path/proc.o		\
 	syscall/seccomp.o	\
 	syscall/syscall.o	\
+	syscall/chain.o		\
 	syscall/enter.o		\
 	syscall/exit.o		\
 	syscall/sysnum.o	\

@@ -20,19 +20,19 @@
  * 02110-1301 USA.
  */
 
-#ifndef SYSCALL_H
-#define SYSCALL_H
+#ifndef CHAIN_H
+#define CHAIN_H
 
-#include <limits.h>     /* PATH_MAX, */
+#include <sys/queue.h>  /* STAILQ_*, */
 
 #include "tracee/tracee.h"
-#include "tracee/reg.h"
+#include "syscall/sysnum.h"
+#include "arch.h"
 
-extern int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg);
-extern int set_sysarg_path(Tracee *tracee, char path[PATH_MAX], Reg reg);
+extern int register_chained_syscall(Tracee *tracee, Sysnum sysnum,
+			word_t sysarg_1, word_t sysarg_2, word_t sysarg_3,
+			word_t sysarg_4, word_t sysarg_5, word_t sysarg_6);
 
-extern void translate_syscall(Tracee *tracee);
-extern int  translate_syscall_enter(Tracee *tracee);
-extern void translate_syscall_exit(Tracee *tracee);
+extern void chain_next_syscall(Tracee *tracee);
 
-#endif /* SYSCALL_H */
+#endif /* CHAIN_H */

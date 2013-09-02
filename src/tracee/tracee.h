@@ -42,6 +42,7 @@ typedef enum {
 
 struct bindings;
 struct extensions;
+struct chained_syscalls;
 
 /* Information related to a file-system name-space.  */
 typedef struct {
@@ -117,6 +118,12 @@ typedef struct tracee {
 		const char *paths;
 	} reconf;
 
+	/* Unrequested syscalls inserted by PRoot after an actual
+	 * syscall.  */
+	struct {
+		struct chained_syscalls *syscalls;
+		word_t final_result;
+	} chain;
 
 	/**********************************************************************
 	 * Private but inherited resources                                    *

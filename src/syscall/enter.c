@@ -88,7 +88,7 @@ static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
  * -errno if an error occured from the tracee's point-of-view (EFAULT
  * for instance), otherwise 0.
  */
-void translate_syscall_enter(Tracee *tracee)
+int translate_syscall_enter(Tracee *tracee)
 {
 	int flags;
 	int dirfd;
@@ -109,7 +109,7 @@ void translate_syscall_enter(Tracee *tracee)
 	if (status < 0)
 		goto end;
 	if (status > 0)
-		return;
+		return 0;
 
 	/* Translate input arguments. */
 	syscall_number = get_sysnum(tracee, ORIGINAL);
@@ -546,16 +546,6 @@ end:
 	if (status2 < 0)
 		status = status2;
 
-	/* Remember the tracee status for the "exit" stage and avoid
-	 * the actual syscall if an error occured during the
-	 * translation. */
-	if (status < 0) {
-		set_sysnum(tracee, PR_void);
-		poke_reg(tracee, SYSARG_RESULT, status);
-		tracee->status = status;
-	}
-	else
-		tracee->status = 1;
-
+	return status;
 }
 

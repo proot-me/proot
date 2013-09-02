@@ -430,7 +430,4 @@ end:
 	status = notify_extensions(tracee, SYSCALL_EXIT_END, 0, 0);
 	if (status < 0)
 		poke_reg(tracee, SYSARG_RESULT, (word_t) status);
-
-	/* Reset the tracee's status. */
-	tracee->status = 0;
 }

@@ -67,6 +67,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(r9),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
     };
 
     static off_t reg_offset_x86[] = {
@@ -79,6 +80,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(rbp),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
     };
 
     #undef  REG
@@ -99,6 +101,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(uregs[5]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(uregs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(uregs[13]),
+	[INSTR_POINTER] = USER_REGS_OFFSET(uregs[15]),
     };
 
 #elif defined(ARCH_ARM64)
@@ -116,6 +119,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(regs[5]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(sp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
     };
 
 #elif defined(ARCH_X86)
@@ -130,6 +134,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(ebp),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(eax),
 	[STACK_POINTER] = USER_REGS_OFFSET(esp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(eip),
     };
 
 #elif defined(ARCH_SH4)
@@ -144,6 +149,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(regs[1]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(regs[15]),
+	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
     };
 
 #else

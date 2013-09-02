@@ -29,6 +29,7 @@
 typedef unsigned long word_t;
 
 #define SYSCALL_AVOIDER ((word_t) -2)
+#define SYSTRAP_NUM SYSARG_NUM
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
@@ -59,6 +60,10 @@ typedef unsigned long word_t;
     #define SYSNUMS_ABI2 sysnums_i386
     #define SYSNUMS_ABI3 sysnums_x32
 
+    #undef  SYSTRAP_NUM
+    #define SYSTRAP_NUM SYSARG_RESULT
+    #define SYSTRAP_SIZE 2
+
     #define SECCOMP_ARCHS {									\
 		{ .value = AUDIT_ARCH_X86_64, .nb_abis = 2, .abis = { ABI_DEFAULT, ABI_3 } },	\
 		{ .value = AUDIT_ARCH_I386,   .nb_abis = 1, .abis = { ABI_2 } }, 		\
@@ -73,6 +78,8 @@ typedef unsigned long word_t;
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm.h"
     #define SYSNUMS_ABI1    sysnums_arm
+
+    #define SYSTRAP_SIZE 4
 
     #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_ARM, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
 
@@ -93,6 +100,8 @@ typedef unsigned long word_t;
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm64.h"
     #define SYSNUMS_ABI1    sysnums_arm64
 
+    #define SYSTRAP_SIZE 4
+
     #define user_regs_struct user_pt_regs
     #define HOST_ELF_MACHINE {183, 0};
     #define RED_ZONE_SIZE 0
@@ -103,6 +112,10 @@ typedef unsigned long word_t;
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-i386.h"
     #define SYSNUMS_ABI1    sysnums_i386
+
+    #undef  SYSTRAP_NUM
+    #define SYSTRAP_NUM SYSARG_RESULT
+    #define SYSTRAP_SIZE 2
 
     #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_I386, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
 
@@ -115,6 +128,8 @@ typedef unsigned long word_t;
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-sh4.h"
     #define SYSNUMS_ABI1    sysnums_sh4
+
+    #define SYSTRAP_SIZE 2
 
     #define user_regs_struct pt_regs
     #define HOST_ELF_MACHINE {42, 0};
