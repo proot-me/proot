@@ -273,7 +273,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 		return status;
 	}
 
-	inherit_extensions(tracee, dummy, true);
+	inherit_extensions(tracee, dummy, CLONE_RECONF);
 
 	/* Disable seccomp acceleration for this tracee and all its
 	 * children since unfiltered syscalls might be requested by

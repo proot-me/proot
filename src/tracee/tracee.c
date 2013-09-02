@@ -239,7 +239,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	child->host_ldso_paths  = talloc_reference(child, parent->host_ldso_paths);
 	child->guest_ldso_paths = talloc_reference(child, parent->guest_ldso_paths);
 
-	inherit_extensions(child, parent, false);
+	inherit_extensions(child, parent, clone_flags);
 
 	/* Restart the child tracee if it was already alive but
 	 * stopped until that moment.  */
