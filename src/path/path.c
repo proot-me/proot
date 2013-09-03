@@ -697,6 +697,7 @@ int list_open_fd(const Tracee *tracee)
 		VERBOSE(tracee, 1,
 			"pid %d: access to \"%s\" (fd %d) won't be translated until closed",
 			tracee->pid, path, fd);
+		notify_extensions((Tracee *)tracee, ALREADY_OPENED_FD, (intptr_t)path, (intptr_t)fd);
 		return 0;
 	}
 	return foreach_fd(tracee, list_open_fd_callback);

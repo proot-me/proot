@@ -111,6 +111,10 @@ typedef enum {
 	/* Print the usage of the extension: "(bool) data1" is true
 	 * for a detailed usage.  See print_usage() as an example.  */
 	PRINT_USAGE,
+
+	/* Called for every already opened file descriptor:
+	 * "(const char *) data1" is the path, "(int) data2" is the file descriptor */
+	ALREADY_OPENED_FD,
 } ExtensionEvent;
 
 struct extension;
