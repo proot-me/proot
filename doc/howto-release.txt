@@ -20,11 +20,14 @@ Sanity Checks
 
 The "syscalls" testsuite from the Linux Test Project (`./configure
 --prefix=$PWD; make; make install; ./runltp -f syscalls`) shall suffer no
-regression on:
+regression on (with *and* without seccomp):
 
 - x86_64
 - x86_64 with a x86_64 rootfs
 - x86_64 with a x86 rootfs
+- x86_64 & the "kompat" extension enabled
+- x86_64 with a x86_64 rootfs & the "kompat" extension enabled
+- x86_64 with a x86 rootfs & the "kompat" extension enabled
 
 
 Use-Case Checks

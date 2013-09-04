@@ -88,26 +88,6 @@ All these bugs and limitations can be fixed by writing a custom
 loader.
 
 
-v3.5: improved syscall emulation
-================================
-
-Highlight
----------
-
-As of today, PRoot can't emulate some syscalls accurately; for
-instance a "read" on a file descriptor created with "pipe2(fds,
-O_NONBLOCK)" would block despite the O_NONBLOCK option because it is
-currently naively translated into "pipe(fds)".  Possible solutions
-are:
-
-* track file descriptors in PRoot in order to return EWOULDBLOCK when
-  such operation would block.
-
-* move the instruction pointer back to the syscall trap in order to
-  execute several syscalls at once, that way "pipe2" would be
-  translated into "pipe" + "fcntl".
-
-
 Not yet scheduled
 =================
 

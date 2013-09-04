@@ -36,7 +36,6 @@
 #include "tracee/abi.h"
 #include "tracee/mem.h"
 #include "path/binding.h"
-#include "notice.h"
 #include "arch.h"
 
 typedef struct {

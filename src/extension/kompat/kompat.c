@@ -31,10 +31,12 @@
 #include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <errno.h>         /* errno,  */
 #include <linux/auxvec.h>  /* AT_,  */
+#include <sys/eventfd.h>   /* EFD_SEMAPHORE */
 
 #include "extension/extension.h"
-#include "syscall/sysnum.h"
 #include "syscall/seccomp.h"
+#include "syscall/sysnum.h"
+#include "syscall/chain.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
@@ -129,15 +131,30 @@ static int parse_kernel_release(const char *release)
 }
 
 /**
+ * Remove @discarded_flags from the given @tracee's @sysarg register
+ * if the actual kernel release is not compatible with the
+ * @expected_release.
+ */
+static void discard_fd_flags(Tracee *tracee, const Config *config,
+			int discarded_flags, int expected_release, Reg sysarg)
+{
+	word_t flags;
+
+	if (!needs_kompat(config, expected_release))
+		return;
+
+	flags = peek_reg(tracee, CURRENT, sysarg);
+	poke_reg(tracee, sysarg, flags & ~discarded_flags);
+}
+
+/**
  * Replace current @tracee's syscall with an older and compatible one
  * whenever it's required, i.e. when the syscall is supported by the
  * kernel as specified by @config->release but it isn't supported by
  * the actual kernel.
  */
-static void handle_sysenter_end(Tracee *tracee, Config *config)
+static int handle_sysenter_end(Tracee *tracee, Config *config)
 {
-	bool modified;
-
 	/* Note: syscalls like "openat" can be replaced by "open" since PRoot
 	 * has canonicalized "fd + path" into "path".  */
 	switch (get_sysnum(tracee, ORIGINAL)) {
@@ -148,7 +165,7 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.shifts		  = {{0}}
 		};
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_dup3: {
@@ -157,20 +174,30 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_dup2,
 			.shifts		  = {{0}}
 		};
+
+		/* "If oldfd equals newfd, then dup3() fails with the
+		 * error EINVAL" -- man dup3 */
+		if (peek_reg(tracee, CURRENT, SYSARG_1) == peek_reg(tracee, CURRENT, SYSARG_2))
+			return -EINVAL;
+
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_epoll_create1: {
+		bool modified;
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_epoll_create,
 			.shifts		  = {{0}}
 		};
+
+		/* "the size argument is ignored, but must be greater
+		 * than zero" -- man epoll_create */
 		modified = modify_syscall(tracee, config, &modif);
 		if (modified)
-			poke_reg(tracee, SYSARG_1, 0); /* Force "size" to 0.  */
-		return;
+			poke_reg(tracee, SYSARG_1, 1);
+		return 0;
 	}
 
 	case PR_epoll_pwait: {
@@ -179,22 +206,27 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_epoll_wait,
 			.shifts		  = {{0}}
 		};
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_5, 0); /* Force "sigmask" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_eventfd2: {
+		bool modified;
+		word_t flags;
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_eventfd,
 			.shifts		  = {{0}}
 		};
+
 		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
-		return;
+		if (modified) {
+			/* EFD_SEMAPHORE can't be emulated with eventfd.  */
+			flags = peek_reg(tracee, CURRENT, SYSARG_2);
+			if ((flags & EFD_SEMAPHORE) != 0)
+				return -EINVAL;
+		}
+		return 0;
 	}
 
 	case PR_faccessat: {
@@ -207,10 +239,8 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					.offset  = -1 }
 			}
 		};
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_fchmodat: {
@@ -223,10 +253,8 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					.offset  = -1 }
 			}
 		};
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_fchownat: {
@@ -245,10 +273,18 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					? PR_lchown
 					: PR_chown);
 
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
+	}
+
+	case PR_fcntl: {
+		word_t command;
+
+		command = peek_reg(tracee, ORIGINAL, SYSARG_2);
+		if (command == F_DUPFD_CLOEXEC)
+			poke_reg(tracee, SYSARG_2, F_DUPFD);
+
+		return 0;
 	}
 
 	case PR_newfstatat:
@@ -264,6 +300,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 		};
 
 		flags = peek_reg(tracee, CURRENT, SYSARG_4);
+		if ((flags & ~AT_SYMLINK_NOFOLLOW) != 0)
+			return -EINVAL; /* Exposed by LTP.  */
+
 #if defined(ARCH_X86_64)
 		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
 			modif.new_sysarg_num = (get_abi(tracee) != ABI_2 ? PR_lstat : PR_lstat64);
@@ -275,10 +314,9 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 		else
 			modif.new_sysarg_num = PR_stat64;
 #endif
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_4, 0); /* Force "flags" to 0.  */
-		return;
+
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_futimesat: {
@@ -292,7 +330,7 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			}
 		};
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_inotify_init1: {
@@ -301,13 +339,12 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_inotify_init,
 			.shifts		  = {{0}}
 		};
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_1, 0); /* Force "flags" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_linkat: {
+		word_t flags;
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,16),
 			.new_sysarg_num   = PR_link,
@@ -316,15 +353,18 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					.nb_args = 1,
 					.offset  = -1 },
 				    [1] = {
-					    .sysarg  = SYSARG_4,
-					    .nb_args = 1,
-					    .offset  = -2 }
+					.sysarg  = SYSARG_4,
+					.nb_args = 1,
+					.offset  = -2 }
 			}
 		};
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_5, 0); /* Force "flags" to 0.  */
-		return;
+
+		flags = peek_reg(tracee, CURRENT, SYSARG_5);
+		if ((flags & ~AT_SYMLINK_FOLLOW) != 0)
+			return -EINVAL; /* Exposed by LTP.  */
+
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_mkdirat: {
@@ -338,7 +378,7 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			}
 		};
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_mknodat: {
@@ -352,10 +392,11 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			}
 		};
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_openat: {
+		bool modified;
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,16),
 			.new_sysarg_num   = PR_open,
@@ -365,9 +406,15 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					.offset  = -1 }
 			}
 		};
-		modify_syscall(tracee, config, &modif);
-		return;
+		modified = modify_syscall(tracee, config, &modif);
+		discard_fd_flags(tracee, config, O_CLOEXEC, KERNEL_VERSION(2,6,23),
+				modified ? SYSARG_2 : SYSARG_3);
+		return 0;
 	}
+
+	case PR_open:
+		discard_fd_flags(tracee, config, O_CLOEXEC, KERNEL_VERSION(2,6,23), SYSARG_2);
+		return 0;
 
 	case PR_pipe2: {
 		Modif modif = {
@@ -375,15 +422,13 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			.new_sysarg_num   = PR_pipe,
 			.shifts		  = {{0}}
 		};
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_2, 0); /* Force "flags" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_pselect6: {
 		Modif modif = {
-			.expected_release = KERNEL_VERSION(2,6,19),
+			.expected_release = KERNEL_VERSION(2,6,16),
 			.shifts		  = {{0}}
 		};
 #if defined(ARCH_X86_64)
@@ -391,10 +436,8 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 #endif
 		modif.new_sysarg_num = PR__newselect;
 
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_6, 0); /* Force "sigmask" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	case PR_readlinkat: {
@@ -408,7 +451,7 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			}
 		};
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_renameat: {
@@ -426,20 +469,32 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			}
 		};
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_signalfd4: {
+		bool modified;
 		Modif modif = {
-			.expected_release = KERNEL_VERSION(2,6,17),
+			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_signalfd,
 			.shifts		  = {{0}}
 		};
+
+		/* "In Linux up to version 2.6.26, the flags argument
+		 * is unused, and must be specified as zero." -- man
+		 * signalfd */
 		modified = modify_syscall(tracee, config, &modif);
 		if (modified)
-			poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
-		return;
+			poke_reg(tracee, SYSARG_4, 0);
+		return 0;
 	}
+
+	case PR_socket:
+	case PR_socketpair:
+	case PR_timerfd_create:
+		discard_fd_flags(tracee, config, O_CLOEXEC | O_NONBLOCK,
+				KERNEL_VERSION(2,6,27), SYSARG_2);
+		return 0;
 
 	case PR_symlinkat: {
 		Modif modif = {
@@ -452,7 +507,7 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 			}
 		};
 		modify_syscall(tracee, config, &modif);
-		return;
+		return 0;
 	}
 
 	case PR_unlinkat: {
@@ -460,7 +515,7 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,16),
 			.shifts = { [0] = {
-					.sysarg  =  SYSARG_2,
+					.sysarg  = SYSARG_2,
 					.nb_args = 1,
 					.offset  = -1
 				}
@@ -472,14 +527,12 @@ static void handle_sysenter_end(Tracee *tracee, Config *config)
 					? PR_rmdir
 					: PR_unlink);
 
-		modified = modify_syscall(tracee, config, &modif);
-		if (modified)
-			poke_reg(tracee, SYSARG_3, 0); /* Force "flags" to 0.  */
-		return;
+		modify_syscall(tracee, config, &modif);
+		return 0;
 	}
 
 	default:
-		return;
+		return 0;
 	}
 }
 
@@ -587,81 +640,205 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 }
 
 /**
+ * Append to the @tracee's current syscall enough calls to fcntl(@fd)
+ * in order to set the flags from the original @sysarg register, if
+ * there are also set in @emulated_flags.
+ */
+static void emulate_fd_flags(Tracee *tracee, word_t fd, Reg sysarg, int emulated_flags)
+{
+	word_t flags;
+
+	flags = peek_reg(tracee, ORIGINAL, sysarg);
+	if (flags == 0)
+		return;
+
+	if ((emulated_flags & flags & O_CLOEXEC) != 0)
+		register_chained_syscall(tracee, PR_fcntl, fd, F_SETFD, FD_CLOEXEC, 0, 0, 0);
+
+	if ((emulated_flags & flags & O_NONBLOCK) != 0)
+		register_chained_syscall(tracee, PR_fcntl, fd, F_SETFL, O_NONBLOCK, 0, 0, 0);
+
+	tracee->chain.final_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+}
+
+/**
  * Force current @tracee's utsname.release to @config->release .  This
  * function returns -errno if an error occured, otherwise 0.
  */
 static int handle_sysexit_end(Tracee *tracee, Config *config)
 {
-	struct utsname utsname;
-	word_t address;
 	word_t result;
-	size_t size;
+	word_t sysnum;
 	int status;
 
 	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+	sysnum = get_sysnum(tracee, ORIGINAL);
 
 	/* Error reported by the kernel.  */
-	if ((int) result < 0)
+	status = (int) result;
+	if (status < 0)
 		return 0;
 
-	switch (get_sysnum(tracee, ORIGINAL)) {
+	switch (sysnum) {
 	case PR_execve:
 		adjust_elf_auxv(tracee, config);
 		return 0;
 
-	case PR_uname:
-		/* Handled below.  */
-		break;
+	case PR_uname: {
+		struct utsname utsname;
+		word_t address;
+		size_t size;
+
+		address = peek_reg(tracee, ORIGINAL, SYSARG_1);
+		status = read_data(tracee, &utsname, address, sizeof(utsname));
+		if (status < 0)
+			return status;
+
+		assert(config->release != NULL);
+		/* Note: on x86_64, we can handle the two modes (32/64) with
+		 * the same code since struct utsname has always the same
+		 * layout.  */
+		size = sizeof(utsname.release);
+		strncpy(utsname.release, config->release, size);
+		utsname.release[size - 1] = '\0';
+
+		status = write_data(tracee, address, &utsname, sizeof(utsname));
+		if (status < 0)
+			return status;
+		return 0;
+	}
+
+	case PR_accept4:
+		if (get_sysnum(tracee, MODIFIED) == PR_accept)
+			emulate_fd_flags(tracee, result, SYSARG_4, O_CLOEXEC | O_NONBLOCK);
+		return 0;
+
+	case PR_dup3:
+		if (get_sysnum(tracee, MODIFIED) == PR_dup2)
+			emulate_fd_flags(tracee, peek_reg(tracee, ORIGINAL, SYSARG_2),
+					SYSARG_3, O_CLOEXEC | O_NONBLOCK);
+		return 0;
+
+	case PR_epoll_create1:
+		if (get_sysnum(tracee, MODIFIED) == PR_epoll_create)
+			emulate_fd_flags(tracee, result, SYSARG_1, O_CLOEXEC | O_NONBLOCK);
+		return 0;
+
+	case PR_eventfd2:
+		if (get_sysnum(tracee, MODIFIED) == PR_eventfd)
+			emulate_fd_flags(tracee, result, SYSARG_2, O_CLOEXEC | O_NONBLOCK);
+		return 0;
+
+	case PR_fcntl: {
+		word_t command;
+
+		if (!needs_kompat(config, KERNEL_VERSION(2,6,24)))
+			return 0;
+
+		command = peek_reg(tracee, ORIGINAL, SYSARG_2);
+		if (command != F_DUPFD_CLOEXEC)
+			return 0;
+
+		register_chained_syscall(tracee, PR_fcntl, result, F_SETFD, FD_CLOEXEC, 0, 0, 0);
+		tracee->chain.final_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+		return 0;
+	}
+
+	case PR_inotify_init1:
+		if (get_sysnum(tracee, MODIFIED) == PR_inotify_init)
+			emulate_fd_flags(tracee, result, SYSARG_1, O_CLOEXEC | O_NONBLOCK);
+		return 0;
+
+	case PR_open:
+		if (needs_kompat(config, KERNEL_VERSION(2,6,23)))
+			emulate_fd_flags(tracee, result, SYSARG_2, O_CLOEXEC);
+		return 0;
+
+	case PR_openat:
+		if (needs_kompat(config, KERNEL_VERSION(2,6,23)))
+			emulate_fd_flags(tracee, result, SYSARG_3, O_CLOEXEC);
+		return 0;
+
+	case PR_pipe2: {
+		int fds[2];
+
+		if (get_sysnum(tracee, MODIFIED) != PR_pipe)
+			return 0;
+
+		status = read_data(tracee, fds, peek_reg(tracee, CURRENT, SYSARG_1), sizeof(fds));
+		if (status < 0)
+			return 0;
+
+		emulate_fd_flags(tracee, fds[0], SYSARG_2, O_CLOEXEC | O_NONBLOCK);
+		emulate_fd_flags(tracee, fds[1], SYSARG_2, O_CLOEXEC | O_NONBLOCK);
+
+		return 0;
+	}
+
+	case PR_signalfd4:
+		if (get_sysnum(tracee, MODIFIED) == PR_signalfd)
+			emulate_fd_flags(tracee, result, SYSARG_4, O_CLOEXEC | O_NONBLOCK);
+		return 0;
+
+	case PR_socket:
+	case PR_timerfd_create:
+		if (needs_kompat(config, KERNEL_VERSION(2,6,27)))
+			emulate_fd_flags(tracee, result, SYSARG_2, O_CLOEXEC | O_NONBLOCK);
+		return 0;
+
+	case PR_socketpair: {
+		int fds[2];
+
+		if (!needs_kompat(config, KERNEL_VERSION(2,6,27)))
+			return 0;
+
+		status = read_data(tracee, fds, peek_reg(tracee, CURRENT, SYSARG_4), sizeof(fds));
+		if (status < 0)
+			return 0;
+
+		emulate_fd_flags(tracee, fds[0], SYSARG_2, O_CLOEXEC | O_NONBLOCK);
+		emulate_fd_flags(tracee, fds[1], SYSARG_2, O_CLOEXEC | O_NONBLOCK);
+
+		return 0;
+	}
 
 	default:
 		return 0;
 	}
-
-	address = peek_reg(tracee, ORIGINAL, SYSARG_1);
-	status = read_data(tracee, &utsname, address, sizeof(utsname));
-	if (status < 0)
-		return status;
-
-	assert(config->release != NULL);
-	/* Note: on x86_64, we can handle the two modes (32/64) with
-	 * the same code since struct utsname has always the same
-	 * layout.  */
-	size = sizeof(utsname.release);
-	strncpy(utsname.release, config->release, size);
-	utsname.release[size - 1] = '\0';
-
-	status = write_data(tracee, address, &utsname, sizeof(utsname));
-	if (status < 0)
-		return status;
 
 	return 0;
 }
 
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
-	{ PR_accept4,		0 },
-	{ PR_dup3,		0 },
-	{ PR_epoll_create1,	0 },
+	{ PR_accept4,		FILTER_SYSEXIT },
+	{ PR_dup3,		FILTER_SYSEXIT },
+	{ PR_epoll_create1,	FILTER_SYSEXIT },
 	{ PR_epoll_pwait, 	0 },
-	{ PR_eventfd2, 		0 },
+	{ PR_eventfd2, 		FILTER_SYSEXIT },
 	{ PR_execve, 		FILTER_SYSEXIT },
 	{ PR_faccessat, 	0 },
 	{ PR_fchmodat, 		0 },
 	{ PR_fchownat, 		0 },
+	{ PR_fcntl, 		FILTER_SYSEXIT },
 	{ PR_fstatat64, 	0 },
 	{ PR_futimesat, 	0 },
-	{ PR_inotify_init1, 	0 },
+	{ PR_inotify_init1, 	FILTER_SYSEXIT },
 	{ PR_linkat, 		0 },
 	{ PR_mkdirat, 		0 },
 	{ PR_mknodat, 		0 },
 	{ PR_newfstatat, 	0 },
-	{ PR_openat, 		0 },
-	{ PR_pipe2, 		0 },
+	{ PR_open, 		FILTER_SYSEXIT },
+	{ PR_openat, 		FILTER_SYSEXIT },
+	{ PR_pipe2, 		FILTER_SYSEXIT },
 	{ PR_pselect6, 		0 },
 	{ PR_readlinkat, 	0 },
 	{ PR_renameat, 		0 },
-	{ PR_signalfd4, 	0 },
+	{ PR_signalfd4, 	FILTER_SYSEXIT },
+	{ PR_socket,		FILTER_SYSEXIT },
+	{ PR_socketpair,	FILTER_SYSEXIT },
 	{ PR_symlinkat, 	0 },
+	{ PR_timerfd_create,	FILTER_SYSEXIT },
 	{ PR_uname, 		FILTER_SYSEXIT },
 	{ PR_unlinkat, 		0 },
 	FILTERED_SYSNUM_END,
@@ -712,8 +889,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		if ((int) data1 < 0)
 			return 0;
 
-		handle_sysenter_end(tracee, config);
-		return 0;
+		return handle_sysenter_end(tracee, config);
 	}
 
 	case SYSCALL_EXIT_END: {
