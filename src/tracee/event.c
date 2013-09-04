@@ -62,6 +62,10 @@ int launch_process(Tracee *tracee)
 	long status;
 	pid_t pid;
 
+	/* Warn about open file descriptors. They won't be
+	 * translated until they are closed. */
+	list_open_fd(tracee);
+
 	pid = fork();
 	switch(pid) {
 	case -1:
@@ -76,10 +80,6 @@ int launch_process(Tracee *tracee)
 			notice(tracee, ERROR, SYSTEM, "ptrace(TRACEME)");
 			return -errno;
 		}
-
-		/* Warn about open file descriptors. They won't be
-		 * translated until they are closed. */
-		list_open_fd(tracee);
 
 		/* RHEL4 uses an ASLR mechanism that creates conflicts
 		 * between the layout of QEMU and the layout of the
