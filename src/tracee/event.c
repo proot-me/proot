@@ -79,8 +79,7 @@ int launch_process(Tracee *tracee)
 
 		/* Warn about open file descriptors. They won't be
 		 * translated until they are closed. */
-		if (tracee->verbose > 0)
-			list_open_fd(tracee);
+		list_open_fd(tracee);
 
 		/* RHEL4 uses an ASLR mechanism that creates conflicts
 		 * between the layout of QEMU and the layout of the
