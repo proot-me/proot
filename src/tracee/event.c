@@ -399,8 +399,7 @@ int event_loop()
 				 * Note that only the first bare SIGTRAP is
 				 * related to the tracing loop, others SIGTRAP
 				 * carry tracing information because of
-				 * TRACE*FORK/CLONE/EXEC.
-				 */
+				 * TRACE*FORK/CLONE/EXEC.  */
 				if (deliver_sigtrap)
 					break;  /* Deliver this signal as-is.  */
 
@@ -423,6 +422,15 @@ int event_loop()
 				/* Fall through. */
 			case SIGTRAP | 0x80:
 				signal = 0;
+
+				/* This tracee got signaled then freed during the
+				   sysenter stage but the kernel reports the sysexit
+				   stage; just discard this spurious tracee/event.  */
+				if (tracee->exe == NULL) {
+					ptrace(PTRACE_CONT, pid, 0, 0);
+					TALLOC_FREE(tracee);
+					continue;
+				}
 
 				switch (tracee->seccomp) {
 				case ENABLED:
