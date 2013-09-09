@@ -118,7 +118,7 @@ Regular options
 -v value, --verbose=value
     Set the level of debug information to *value*.
 
-    The higher the integer *value* is, the more detailled debug
+    The higher the integer *value* is, the more detailed debug
     information is printed to the standard error stream.  A negative
     *value* makes PRoot quiet except on fatal errors.
 
@@ -495,7 +495,7 @@ bindfs(1), fakeroot(1), fakechroot(1)
 Colophon
 ========
 
-Visit http://proot.me for help, bug reports, suggestions, patchs, ...
+Visit http://proot.me for help, bug reports, suggestions, patches, ...
 Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.
 
 ::
