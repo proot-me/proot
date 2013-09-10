@@ -38,7 +38,7 @@
 #include <talloc.h>     /* talloc_*, */
 
 #include "tracee/event.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "path/path.h"
 #include "path/binding.h"
 #include "syscall/syscall.h"

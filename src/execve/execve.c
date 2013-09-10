@@ -34,7 +34,7 @@
 #include "tracee/array.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "path/path.h"
 #include "path/binding.h"
 #include "extension/extension.h"

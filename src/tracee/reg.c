@@ -40,7 +40,7 @@
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "compat.h"
 
 /**

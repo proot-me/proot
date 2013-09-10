@@ -26,7 +26,7 @@
 #include <stdio.h>  /* vfprintf(3), */
 #include <limits.h> /* INT_MAX, */
 
-#include "notice.h"
+#include "cli/notice.h"
 #include "tracee/tracee.h"
 
 /**

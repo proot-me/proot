@@ -30,14 +30,14 @@
 #include <sys/types.h>     /* getpid(2),  */
 #include <unistd.h>        /* getpid(2),  */
 
-#include "cli.h"
+#include "cli/cli.h"
+#include "cli/notice.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
 #include "path/binding.h"
 #include "path/canon.h"
 #include "path/path.h"
-#include "notice.h"
 
 /**
  * Print a (@detailed) usage of PRoot.

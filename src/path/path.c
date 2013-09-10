@@ -38,7 +38,7 @@
 #include "path/canon.h"
 #include "path/proc.h"
 #include "extension/extension.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "build.h"
 
 #include "compat.h"

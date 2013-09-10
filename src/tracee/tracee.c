@@ -37,7 +37,7 @@
 #include "tracee/reg.h"
 #include "syscall/sysnum.h"
 #include "extension/extension.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 

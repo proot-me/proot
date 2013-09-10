@@ -41,7 +41,7 @@
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "arch.h"
 
 #include "attribute.h"

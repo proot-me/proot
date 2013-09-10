@@ -34,7 +34,7 @@
 
 #include "execve/elf.h"
 #include "tracee/tracee.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "arch.h"
 
 #include "compat.h"

@@ -39,7 +39,7 @@
 #include "tracee/abi.h"
 #include "arch.h"            /* word_t, NO_MISALIGNED_ACCESS */
 #include "build.h"           /* HAVE_PROCESS_VM,  */
-#include "notice.h"
+#include "cli/notice.h"
 
 /**
  * Load the word at the given @address, potentially *not* aligned.

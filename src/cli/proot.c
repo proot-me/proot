@@ -27,11 +27,11 @@
 #include <sys/stat.h>  /* stat(2), */
 #include <unistd.h>    /* stat(2), */
 
-#include "cli.h"
+#include "cli/cli.h"
+#include "cli/notice.h"
 #include "extension/extension.h"
 #include "path/binding.h"
 #include "attribute.h"
-#include "notice.h"
 
 /* These should be included last.  */
 #include "build.h"

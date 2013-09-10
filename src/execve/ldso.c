@@ -33,7 +33,7 @@
 #include "execve/elf.h"
 #include "tracee/tracee.h"
 #include "tracee/array.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 /**
  * Check if the environment @variable has the given @name.

@@ -5,7 +5,7 @@
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "syscall/sysnum.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 

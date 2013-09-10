@@ -12,9 +12,10 @@ CPPFLAGS = -D_FILE_OFFSET_BITS=64 -I. -I$(VPATH)
 CFLAGS   = -Wall -Wextra -O2
 LDFLAGS  = -ltalloc
 
-OBJECTS = cli.o			\
-	proot.o			\
-	notice.o		\
+OBJECTS = \
+	cli/cli.o		\
+	cli/proot.o		\
+	cli/notice.o		\
 	execve/execve.o		\
 	execve/interp.o		\
 	execve/elf.o		\
@@ -111,7 +112,7 @@ proot: $(OBJECTS)
 
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
-USE_BUILD_H := $(patsubst $(SRC)%,%,$(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*.c $(SRC)*/*.c)))
+USE_BUILD_H := $(patsubst $(SRC)%,%,$(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*/*.c)))
 $(USE_BUILD_H): build.h
 
 %.o: %.c

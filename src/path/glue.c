@@ -33,7 +33,7 @@
 
 #include "path/binding.h"
 #include "path/path.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 
