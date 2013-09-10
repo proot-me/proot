@@ -188,6 +188,9 @@ typedef struct tracee {
 	const char *host_ldso_paths;
 	const char *guest_ldso_paths;
 
+	/* For diagnostic purpose.  */
+	const char *tool_name;
+
 } Tracee;
 
 #define HOST_ROOTFS "/host-rootfs"

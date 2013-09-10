@@ -13,7 +13,8 @@ typedef struct {
 	const char *value;
 } Argument;
 
-typedef int (*option_handler_t)(Tracee *tracee, char *value);
+struct Cli;
+typedef int (*option_handler_t)(Tracee *tracee, const struct Cli *cli, char *value);
 
 typedef struct {
 	const char *class;
@@ -23,20 +24,23 @@ typedef struct {
 	Argument arguments[5];
 } Option;
 
+typedef int (*commit_config_hook_t)(Tracee *tracee, const struct Cli *cli,
+				size_t argc, char *const *argv, size_t cursor);
+typedef struct Cli {
+	const char *name;
+	const char *version;
+	const char *subtitle;
+	const char *synopsis;
+	const char *colophon;
+	const char *logo;
+	commit_config_hook_t pre_commit_config;
+	commit_config_hook_t post_commit_config;
+	const Option options[];
+} Cli;
+
 #ifndef VERSION
 #define VERSION "3.1"
 #endif
-
-static const char *version = VERSION;
-static const char *subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup";
-static const char *synopsis = "proot [option] ... [command]";
-static const char *colophon = "Visit http://proot.me for help, bug reports, suggestions, patchs, ...\n\
-Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.";
-static const char *logo = "\
- _____ _____              ___\n\
-|  __ \\  __ \\_____  _____|   |_\n\
-|   __/     /  _  \\/  _  \\    _|\n\
-|__|  |__|__\\_____/\\_____/\\____|";
 
 static char *recommended_bindings[] = {
 	"/etc/host.conf",
@@ -58,20 +62,33 @@ static char *recommended_bindings[] = {
 	NULL,
 };
 
-static int handle_option_r(Tracee *tracee, char *value);
-static int handle_option_b(Tracee *tracee, char *value);
-static int handle_option_q(Tracee *tracee, char *value);
-static int handle_option_w(Tracee *tracee, char *value);
-static int handle_option_v(Tracee *tracee, char *value);
-static int handle_option_V(Tracee *tracee, char *value);
-static int handle_option_h(Tracee *tracee, char *value);
-static int handle_option_k(Tracee *tracee, char *value);
-static int handle_option_0(Tracee *tracee, char *value);
-static int handle_option_R(Tracee *tracee, char *value);
-static int handle_option_B(Tracee *tracee, char *value);
-static int handle_option_Q(Tracee *tracee, char *value);
+static int handle_option_r(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_b(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_q(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_w(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_k(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_0(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_R(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_B(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value);
 
-static Option options[] = {
+static Cli proot_cli = {
+	.name     = "proot",
+	.version  = VERSION,
+	.subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup",
+	.synopsis = "proot [option] ... [command]",
+	.colophon = "Visit http://proot.me for help, bug reports, suggestions, patchs, ...\n\
+Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.",
+	.logo = "\
+ _____ _____              ___\n\
+|  __ \\  __ \\_____  _____|   |_\n\
+|   __/     /  _  \\/  _  \\    _|\n\
+|__|  |__|__\\_____/\\_____/\\____|",
+
+	.options = {
 	{ .class = "Regular options",
 	  .arguments = {
 		{ .name = "-r", .separator = ' ', .value = "path" },
@@ -241,6 +258,8 @@ static Option options[] = {
 	  .handler = handle_option_Q,
 	  .description = "obsolete, use -q and -R instead.",
 	  .detail = "",
+	},
+	{0},
 	},
 };
 

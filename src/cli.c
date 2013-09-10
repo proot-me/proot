@@ -20,9 +20,9 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE    /* get_current_dir_name(3), */
+#define _GNU_SOURCE    /* get_current_dir_name(3), basename(3) GNU style, */
 #include <stdio.h>     /* printf(3), */
-#include <string.h>    /* string(3), */
+#include <string.h>    /* string(3), basenem(3), */
 #include <stdlib.h>    /* exit(3), strtol(3), */
 #include <stdbool.h>   /* bool, true, false, */
 #include <assert.h>    /* assert(3), */
@@ -48,7 +48,7 @@
 #include "attribute.h"
 #include "compat.h"
 
-static int handle_option_r(Tracee *tracee, char *value)
+static int handle_option_r(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	Binding *binding;
 
@@ -61,7 +61,7 @@ static int handle_option_r(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_b(Tracee *tracee, char *value)
+static int handle_option_b(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	char *ptr = strchr(value, ':');
 	if (ptr != NULL) {
@@ -73,7 +73,7 @@ static int handle_option_b(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_q(Tracee *tracee, char *value)
+static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	size_t nb_args;
 	char *ptr;
@@ -136,7 +136,7 @@ static int handle_option_q(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_w(Tracee *tracee, char *value)
+static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	tracee->fs->cwd = talloc_strdup(tracee->fs, value);
 	if (tracee->fs->cwd == NULL)
@@ -145,7 +145,7 @@ static int handle_option_w(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_k(Tracee *tracee, char *value)
+static int handle_option_k(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	int status;
 
@@ -156,13 +156,13 @@ static int handle_option_k(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_0(Tracee *tracee, char *value)
+static int handle_option_0(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	(void) initialize_extension(tracee, fake_id0_callback, value);
 	return 0;
 }
 
-static int handle_option_v(Tracee *tracee, char *value)
+static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	char *end_ptr = NULL;
 
@@ -178,9 +178,9 @@ static int handle_option_v(Tracee *tracee, char *value)
 
 static bool exit_failure = true;
 
-static int handle_option_V(Tracee *tracee UNUSED, char *value UNUSED)
+static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
 {
-	printf("%s %s\n\n", logo, version);
+	printf("%s %s\n\n", cli->logo, cli->version);
 	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
 #if defined(HAVE_PROCESS_VM)
 		"yes",
@@ -197,20 +197,20 @@ static int handle_option_V(Tracee *tracee UNUSED, char *value UNUSED)
 	return -1;
 }
 
-static void print_usage(Tracee *, bool);
-static int handle_option_h(Tracee *tracee, char *value UNUSED)
+static void print_usage(Tracee *, const Cli *, bool);
+static int handle_option_h(Tracee *tracee, const Cli *cli, char *value UNUSED)
 {
-	print_usage(tracee, true);
+	print_usage(tracee, cli, true);
 	exit_failure = false;
 	return -1;
 }
 
-static int handle_option_R(Tracee *tracee, char *value)
+static int handle_option_R(Tracee *tracee, const Cli *cli, char *value)
 {
 	int status;
 	int i;
 
-	status = handle_option_r(tracee, value);
+	status = handle_option_r(tracee, cli, value);
 	if (status < 0)
 		return status;
 
@@ -219,7 +219,7 @@ static int handle_option_R(Tracee *tracee, char *value)
 	return 0;
 }
 
-static int handle_option_B(Tracee *tracee, char *value UNUSED)
+static int handle_option_B(Tracee *tracee, const Cli *cli UNUSED, char *value UNUSED)
 {
 	int i;
 #if 0
@@ -231,42 +231,42 @@ static int handle_option_B(Tracee *tracee, char *value UNUSED)
 	return 0;
 }
 
-static int handle_option_Q(Tracee *tracee, char *value)
+static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value)
 {
 	int status;
 # if 0
 	notice(tracee, INFO, USER, "option '-Q' is obsolete, use '-q' and '-R' instead.");
 #endif
-	status = handle_option_q(tracee, value);
+	status = handle_option_q(tracee, cli, value);
 	if (status < 0)
 		return status;
 
-	status = handle_option_B(tracee, NULL);
+	status = handle_option_B(tracee, cli, NULL);
 	if (status < 0)
 		return status;
 
 	return 0;
 }
 
-#define NB_OPTIONS (sizeof(options) / sizeof(Option))
-
 /**
  * Print a (@detailed) usage of PRoot.
  */
-static void print_usage(Tracee *tracee, bool detailed)
+static void print_usage(Tracee *tracee, const Cli *cli, bool detailed)
 {
 	const char *current_class = "none";
+	const Option *options;
 	size_t i, j;
 
 #define DETAIL(a) if (detailed) a
 
-	DETAIL(printf("PRoot %s: %s.\n\n", version, subtitle));
-	printf("Usage:\n  %s\n", synopsis);
+	DETAIL(printf("%s %s: %s.\n\n", cli->name, cli->version, cli->subtitle));
+	printf("Usage:\n  %s\n", cli->synopsis);
 	DETAIL(printf("\n"));
 
-	for (i = 0; i < NB_OPTIONS; i++) {
+	options = cli->options;
+	for (i = 0; options[i].class != NULL; i++) {
 		for (j = 0; ; j++) {
-			Argument *argument = &(options[i].arguments[j]);
+			const Argument *argument = &(options[i].arguments[j]);
 
 			if (!argument->name || (!detailed && j != 0)) {
 				DETAIL(printf("\n"));
@@ -300,7 +300,7 @@ static void print_usage(Tracee *tracee, bool detailed)
 	notify_extensions(tracee, PRINT_USAGE, detailed, 0);
 
 	if (detailed)
-		printf("%s\n", colophon);
+		printf("%s\n", cli->colophon);
 }
 
 static void print_execve_help(const Tracee *tracee, const char *argv0)
@@ -313,7 +313,7 @@ static void print_execve_help(const Tracee *tracee, const char *argv0)
 "  * <qemu> does not work correctly (if specified).");
 }
 
-static void print_error_separator(const Tracee *tracee, Argument *argument)
+static void print_error_separator(const Tracee *tracee, const Argument *argument)
 {
 	if (argument->separator == '\0')
 		notice(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
@@ -381,13 +381,6 @@ static int initialize_cwd(Tracee *tracee)
 	char path[PATH_MAX];
 	int status;
 
-	/* Default to "." if none were specified.  */
-	if (tracee->fs->cwd == NULL) {
-		status = handle_option_w(tracee, ".");
-		if (status < 0)
-			return -1;
-	}
-
 	/* Compute the base directory.  */
 	if (tracee->fs->cwd[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, path);
@@ -431,8 +424,7 @@ static int initialize_cwd(Tracee *tracee)
 }
 
 /**
- * Initialize @tracee->exe and @tracee->cmdline from @cmdline, and resolve the
- * full host path to @command@tracee->qemu[0].
+ * Initialize @tracee->exe and @tracee->cmdline from @cmdline.
  */
 static int initialize_command(Tracee *tracee, char *const *cmdline)
 {
@@ -467,6 +459,18 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 	if (tracee->exe == NULL)
 		return -1;
 	talloc_set_name_const(tracee->exe, "$exe");
+
+	return 0;
+}
+
+/**
+ * Initialize @tracee->qemu.
+ */
+static int post_commit_config(Tracee *tracee, const Cli *cli UNUSED,
+			size_t argc UNUSED, char *const *argv UNUSED, size_t cursor UNUSED)
+{
+	char path[PATH_MAX];
+	int status;
 
 	/* Nothing else to do ?  */
 	if (tracee->qemu == NULL)
@@ -517,7 +521,51 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 	return 0;
 }
 
-static char *default_command[] = { "/bin/sh", NULL };
+/**
+ * Initialize @tracee's fields that are mandatory for PRoot but that
+ * are not required on the command line, i.e.  "-w" and "-r".
+ */
+static int pre_commit_config(Tracee *tracee, const Cli *cli,
+			size_t argc UNUSED, char *const *argv, size_t cursor)
+{
+	int status;
+
+	/* Default to "." if no CWD were specified.  */
+	if (tracee->fs->cwd == NULL) {
+		status = handle_option_w(tracee, cli, ".");
+		if (status < 0)
+			return -1;
+	}
+
+	/* When no guest rootfs were specified: if the first bare
+	 * option is a directory, then the old command-line interface
+	 * (similar to the chroot one) is expected.  Otherwise this is
+	 * the new command-line interface where the default guest
+	 * rootfs is "/".  */
+	if (get_root(tracee) == NULL) {
+		char path[PATH_MAX];
+		struct stat buf;
+
+		if (argv[cursor] != NULL
+		    && realpath2(tracee->reconf.tracee, path, argv[cursor], true) == 0
+		    && stat(path, &buf) == 0
+		    && S_ISDIR(buf.st_mode)) {
+			notice(tracee, INFO, USER,
+				"neither `-r` or `-R` were specified, assuming"
+				" '%s' is the new root file-system.", argv[cursor]);
+			status = handle_option_r(tracee, cli, argv[cursor]);
+			cursor++;
+		}
+		else
+			status = handle_option_r(tracee, cli, "/");
+		if (status < 0)
+			return -1;
+	}
+
+	return cursor;
+}
+
+static int commit_config(Tracee *tracee, char *const *command);
 
 /**
  * Configure @tracee according to the command-line arguments stored in
@@ -526,12 +574,25 @@ static char *default_command[] = { "/bin/sh", NULL };
  */
 int parse_config(Tracee *tracee, size_t argc, char *argv[])
 {
+	char * const default_command[] = { "/bin/sh", NULL };
 	option_handler_t handler = NULL;
+	const Option *options;
 	size_t i, j, k;
 	int status;
+	const Cli *cli;
+
+	/* As of now, only the PRoot CLI is supported, the code below
+	 * is just a mock-up.  */
+	if (strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
+		cli = &proot_cli;
+	else
+		cli = &proot_cli;
+	proot_cli.pre_commit_config  = pre_commit_config;
+	proot_cli.post_commit_config = post_commit_config;
+	tracee->tool_name = cli->name;
 
 	if (argc == 1) {
-		print_usage(tracee, false);
+		print_usage(tracee, cli, false);
 		return -1;
 	}
 
@@ -540,7 +601,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 
 		/* The current argument is the value of a short option.  */
 		if (handler != NULL) {
-			status = handler(tracee, arg);
+			status = handler(tracee, cli, arg);
 			if (status < 0)
 				return status;
 			handler = NULL;
@@ -550,12 +611,13 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		if (arg[0] != '-')
 			break; /* End of PRoot options. */
 
-		for (j = 0; j < NB_OPTIONS; j++) {
-			Option *option = &options[j];
+		options = cli->options;
+		for (j = 0; options[j].class != NULL; j++) {
+			const Option *option = &options[j];
 
 			/* A given option has several aliases.  */
 			for (k = 0; ; k++) {
-				Argument *argument;
+				const Argument *argument;
 				size_t length;
 
 				argument = &option->arguments[k];
@@ -577,7 +639,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 
 				/* No option value.  */
 				if (!argument->value) {
-					status = option->handler(tracee, arg);
+					status = option->handler(tracee, cli, NULL);
 					if (status < 0)
 						return -1;
 					goto known_option;
@@ -586,7 +648,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 				/* Value coalesced with to its option.  */
 				if (argument->separator == arg[length]) {
 					assert(strlen(arg) >= length);
-					status = option->handler(tracee, &arg[length + 1]);
+					status = option->handler(tracee, cli, &arg[length + 1]);
 					if (status < 0)
 						return -1;
 					goto known_option;
@@ -614,30 +676,37 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		}
 	}
 
-	/* When no guest rootfs were specified: if the first bare
-	 * option is a directory, then the old command-line interface
-	 * (similar to the chroot one) is expected.  Otherwise this is
-	 * the new command-line interface where the default guest
-	 * rootfs is "/".  */
-	if (get_root(tracee) == NULL) {
-		char path[PATH_MAX];
-		struct stat buf;
+	if (cli->pre_commit_config != NULL) {
+		status = cli->pre_commit_config(tracee, cli, argc, argv, i);
+		if (status < 0)
+			return -1;
+		i = status;
+	}
 
-		if (argv[i] != NULL
-		    && realpath2(tracee->reconf.tracee, path, argv[i], true) == 0
-		    && stat(path, &buf) == 0
-		    && S_ISDIR(buf.st_mode)) {
-			notice(tracee, INFO, USER,
-				"neither `-r` or `-R` were specified, assuming"
-				" '%s' is the new root file-system.", argv[i]);
-			status = handle_option_r(tracee, argv[i]);
-			i++;
-		}
-		else
-			status = handle_option_r(tracee, "/");
+	status = commit_config(tracee, i < argc ? &argv[i] : default_command);
+	if (status < 0)
+		return status;
+
+	if (cli->post_commit_config != NULL) {
+		status = cli->post_commit_config(tracee, cli, argc, argv, i);
 		if (status < 0)
 			return -1;
 	}
+
+	print_config(tracee);
+
+	return 0;
+}
+
+/**
+ * Initialize internal structures according to current @tracee's
+ * configuration and @command;
+ */
+static int commit_config(Tracee *tracee, char * const *command)
+{
+	int status;
+
+	assert(get_root(tracee) != NULL);
 
 	/* The guest rootfs is now known: bindings specified by the
 	 * user (tracee->bindings.user) can be canonicalized.  */
@@ -652,13 +721,12 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	if (status < 0)
 		return -1;
 
-	/* Bindings are now installed and the current working directory is
-	 * canonicalized: resolve path to @tracee->exe and @tracee->qemu.  */
-	status = initialize_command(tracee, i < argc ? &argv[i] : default_command);
+	/* Bindings are now installed and the current working
+	 * directory is canonicalized: resolve path to @tracee->exe
+	 * and configure @tracee->cmdline.  */
+	status = initialize_command(tracee, command);
 	if (status < 0)
 		return -1;
-
-	print_config(tracee);
 
 	return 0;
 }
@@ -700,7 +768,7 @@ error:
 	TALLOC_FREE(tracee);
 
 	if (exit_failure) {
-		fprintf(stderr, "proot error: see `proot --help` or `man proot`.\n");
+		fprintf(stderr, "fatal error: see `%1$s --help` or `man %1$s`.\n", basename(argv[0]));
 		exit(EXIT_FAILURE);
 	}
 	else
