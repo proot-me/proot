@@ -13,6 +13,7 @@ CFLAGS   = -Wall -Wextra -O2
 LDFLAGS  = -ltalloc
 
 OBJECTS = cli.o			\
+	proot.o			\
 	notice.o		\
 	execve/execve.o		\
 	execve/interp.o		\
