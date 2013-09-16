@@ -856,6 +856,7 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 	switch (event) {
 	case INITIALIZATION: {
 		struct utsname utsname;
+		const char *release;
 		Config *config;
 
 		extension->config = talloc_zero(extension, Config);
@@ -863,18 +864,20 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 			return -1;
 		config = extension->config;
 
-		config->release = talloc_strdup(config, (const char *)data1);
+		release = (const char *) data1;
+
+		status = uname(&utsname);
+		if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL || release == NULL)
+			config->actual_release = 0;
+		else
+			config->actual_release = parse_kernel_release(utsname.release);
+
+		config->release = talloc_strdup(config, release ?: utsname.release);
 		if (config->release == NULL)
 			return -1;
 		talloc_set_name_const(config->release, "$release");
 
 		config->emulated_release = parse_kernel_release(config->release);
-
-		status = uname(&utsname);
-		if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL)
-			config->actual_release = 0;
-		else
-			config->actual_release = parse_kernel_release(utsname.release);
 
 		extension->filtered_sysnums = filtered_sysnums;
 		return 0;
