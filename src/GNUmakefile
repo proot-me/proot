@@ -75,8 +75,9 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 CHECK_FEATURES = readlinkat process_vm seccomp_filter
 CHECK_PROGRAMS = $(foreach feature,$(CHECK_FEATURES),.check_$(feature))
 CHECK_OBJECTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).o)
+CHECK_RESULTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).res)
 
-.SILENT .IGNORE .INTERMEDIATE: $(CHECK_OBJECTS)
+.SILENT .IGNORE .INTERMEDIATE: $(CHECK_OBJECTS) $(CHECK_PROGRAMS)
 
 .check_%.o: .check_%.c
 	$(COMPILE:echo=false) $(silently) || true
@@ -84,20 +85,16 @@ CHECK_OBJECTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).o)
 .check_%: .check_%.o
 	$(LINK:echo=false) $(silently) || true
 
-# TODO: generate these lines automatically from $(CHECK_FEATURES)
-CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
-CHECK_PROCESS_VM = if [ -e .check_process_vm ]; then echo "\#define HAVE_PROCESS_VM"; fi
-CHECK_SECCOMP_FILTER = if [ -e .check_seccomp_filter ]; then echo "\#define HAVE_SECCOMP_FILTER"; fi
+.check_%.res: .check_%
+	$(Q)if [ -e $< ]; then echo "#define HAVE_$(shell echo $* | tr a-z A-Z)" > $@; else echo "" > $@; fi
 
-build.h: $(CHECK_PROGRAMS)
+build.h: $(CHECK_RESULTS)
 	$($(quiet)GEN)
 	$(Q)echo "/* This file is auto-generated, edit at your own risk.  */" > $@
 	$(Q)echo "#ifndef BUILD_H"      >> $@
 	$(Q)echo "#define BUILD_H"      >> $@
-	$(Q)sh -c '$(CHECK_VERSION)'     >> $@
-	$(Q)sh -c '$(CHECK_READLINKAT)'  >> $@
-	$(Q)sh -c '$(CHECK_PROCESS_VM)'  >> $@
-	$(Q)sh -c '$(CHECK_SECCOMP_FILTER)' >> $@
+	$(Q)sh -c '$(CHECK_VERSION)'    >> $@
+	$(Q)cat $^                      >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
 ######################################################################
@@ -123,7 +120,7 @@ $(USE_BUILD_H): build.h
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) build.h: $(firstword $(MAKEFILE_LIST))
+$(OBJECTS): $(firstword $(MAKEFILE_LIST))
 
 DEPS = $(OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 -include $(DEPS)
@@ -136,7 +133,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_PROGRAMS) $(CHECK_OBJECTS) $(OBJECTS) proot $(DEPS) build.h
+	-$(RM) -f $(CHECK_RESULTS) $(OBJECTS) proot $(DEPS) build.h
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
