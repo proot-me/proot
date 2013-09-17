@@ -462,12 +462,10 @@ int translate_execve(Tracee *tracee)
 		inhibit_rpath = (status > 0);
 	}
 
-	/* Dont't use the ELF interpreter as a loader if the host one
-	 * is compatible (currently the test is only "guest rootfs ==
-	 * host rootfs") or if there's no need for RPATH inhibition in
+	/* Dont't use the ELF interpreter as a loader if executing
+	 * QEMU or if there's no need for RPATH inhibition in
 	 * mixed-mode.  */
-	ignore_elf_interpreter = (compare_paths(get_root(tracee), "/") == PATHS_ARE_EQUAL
-				  || (tracee->qemu_pie_workaround && !inhibit_rpath));
+	ignore_elf_interpreter = (tracee->qemu_pie_workaround && !inhibit_rpath);
 
 	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */,
 			       argv, extract_elf_interp, ignore_elf_interpreter);

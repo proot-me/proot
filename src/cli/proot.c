@@ -35,7 +35,7 @@
 
 /* These should be included last.  */
 #include "build.h"
-#include "proot.h"
+#include "cli/proot.h"
 
 static int handle_option_r(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
