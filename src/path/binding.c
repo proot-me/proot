@@ -458,7 +458,7 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	 * get_binding().  */
 	status = realpath2(tracee->reconf.tracee, binding->host.path, host, true);
 	if (status < 0) {
-		if (must_exist)
+		if (must_exist && getenv("PROOT_IGNORE_MISSING_BINDINGS") == NULL)
 			notice(tracee, WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
 				host, strerror(-status));
 		goto error;

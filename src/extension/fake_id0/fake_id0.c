@@ -98,7 +98,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_setgid,		FILTER_SYSEXIT },
 	{ PR_setgid32,		FILTER_SYSEXIT },
 	{ PR_setgroups,		FILTER_SYSEXIT },
-	{ PR_setgroups32,		FILTER_SYSEXIT },
+	{ PR_setgroups32,	FILTER_SYSEXIT },
 	{ PR_setresgid,		FILTER_SYSEXIT },
 	{ PR_setresgid32,	FILTER_SYSEXIT },
 	{ PR_setresuid,		FILTER_SYSEXIT },
