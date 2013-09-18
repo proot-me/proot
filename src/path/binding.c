@@ -661,6 +661,7 @@ int initialize_bindings(Tracee *tracee)
 	Binding *binding;
 
 	/* Sanity checks.  */
+	assert(get_root(tracee) != NULL);
 	assert(tracee->fs->bindings.pending != NULL);
 	assert(tracee->fs->bindings.guest == NULL);
 	assert(tracee->fs->bindings.host == NULL);

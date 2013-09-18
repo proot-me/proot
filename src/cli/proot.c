@@ -22,7 +22,6 @@
 
 #include <string.h>    /* str*(3), */
 #include <assert.h>    /* assert(3), */
-#include <errno.h>     /* errno(3), */
 #include <sys/types.h> /* stat(2), */
 #include <sys/stat.h>  /* stat(2), */
 #include <unistd.h>    /* stat(2), */
@@ -153,16 +152,7 @@ static int handle_option_0(Tracee *tracee, const Cli *cli UNUSED, char *value)
 
 static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
-	char *end_ptr = NULL;
-
-	errno = 0;
-	tracee->verbose = strtol(value, &end_ptr, 10);
-	if (errno != 0 || end_ptr == value) {
-		notice(tracee, ERROR, USER, "option `-v` expects an integer value.");
-		return -1;
-	}
-
-	return 0;
+	return parse_integer_option(tracee, &tracee->verbose, value, "-v");
 }
 
 static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
@@ -237,7 +227,7 @@ static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value)
 /**
  * Initialize @tracee->qemu.
  */
-static int post_commit_config(Tracee *tracee, const Cli *cli UNUSED,
+static int post_initialize_command(Tracee *tracee, const Cli *cli UNUSED,
 			size_t argc UNUSED, char *const *argv UNUSED, size_t cursor UNUSED)
 {
 	char path[PATH_MAX];
@@ -296,7 +286,7 @@ static int post_commit_config(Tracee *tracee, const Cli *cli UNUSED,
  * Initialize @tracee's fields that are mandatory for PRoot but that
  * are not required on the command line, i.e.  "-w" and "-r".
  */
-static int pre_commit_config(Tracee *tracee, const Cli *cli,
+static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 			size_t argc UNUSED, char *const *argv, size_t cursor)
 {
 	int status;

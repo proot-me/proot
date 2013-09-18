@@ -29,6 +29,8 @@
 #include <assert.h>        /* assert(3),  */
 #include <sys/types.h>     /* getpid(2),  */
 #include <unistd.h>        /* getpid(2),  */
+#include <errno.h>         /* errno(3), */
+#include <stdlib.h>        /* strtol(3), */
 
 #include "cli/cli.h"
 #include "cli/notice.h"
@@ -254,8 +256,6 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 	return 0;
 }
 
-static int commit_config(Tracee *tracee, char *const *command);
-
 /**
  * Configure @tracee according to the command-line arguments stored in
  * @argv[].  This function returns -1 if an error occured, otherwise
@@ -263,7 +263,7 @@ static int commit_config(Tracee *tracee, char *const *command);
  */
 int parse_config(Tracee *tracee, size_t argc, char *argv[])
 {
-	char * const default_command[] = { "/bin/sh", NULL };
+	char *const default_command[] = { "/bin/sh", NULL };
 	option_handler_t handler = NULL;
 	const Option *options;
 	size_t i, j, k;
@@ -363,43 +363,26 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		}
 	}
 
-	if (cli->pre_commit_config != NULL) {
-		status = cli->pre_commit_config(tracee, cli, argc, argv, i);
-		if (status < 0)
-			return -1;
-		i = status;
-	}
+#define HOOK_CONFIG(callback)						\
+	do {								\
+		if (cli->callback != NULL) {				\
+			status = cli->callback(tracee, cli, argc, argv, i); \
+			if (status < 0)					\
+				return -1;				\
+			i = status;					\
+		}							\
+	} while (0)
 
-	status = commit_config(tracee, i < argc ? &argv[i] : default_command);
-	if (status < 0)
-		return status;
-
-	if (cli->post_commit_config != NULL) {
-		status = cli->post_commit_config(tracee, cli, argc, argv, i);
-		if (status < 0)
-			return -1;
-	}
-
-	print_config(tracee);
-
-	return 0;
-}
-
-/**
- * Initialize internal structures according to current @tracee's
- * configuration and @command;
- */
-static int commit_config(Tracee *tracee, char * const *command)
-{
-	int status;
-
-	assert(get_root(tracee) != NULL);
+	HOOK_CONFIG(pre_initialize_bindings);
 
 	/* The guest rootfs is now known: bindings specified by the
 	 * user (tracee->bindings.user) can be canonicalized.  */
 	status = initialize_bindings(tracee);
 	if (status < 0)
 		return -1;
+
+	HOOK_CONFIG(post_initialize_bindings);
+	HOOK_CONFIG(pre_initialize_cwd);
 
 	/* Bindings are now installed (tracee->bindings.guest &
 	 * tracee->bindings.host): the current working directory can
@@ -408,12 +391,20 @@ static int commit_config(Tracee *tracee, char * const *command)
 	if (status < 0)
 		return -1;
 
+	HOOK_CONFIG(post_initialize_cwd);
+	HOOK_CONFIG(pre_initialize_command);
+
 	/* Bindings are now installed and the current working
 	 * directory is canonicalized: resolve path to @tracee->exe
 	 * and configure @tracee->cmdline.  */
-	status = initialize_command(tracee, command);
+	status = initialize_command(tracee, i < argc ? &argv[i] : default_command);
 	if (status < 0)
 		return -1;
+
+	HOOK_CONFIG(post_initialize_command);
+#undef HOOK_CONFIG
+
+	print_config(tracee);
 
 	return 0;
 }
@@ -463,4 +454,23 @@ error:
 	}
 	else
 		exit(EXIT_SUCCESS);
+}
+
+/**
+ * Convert @value into an integer, then put the result into
+ * *@variable.  This function prints a warning and returns -1 if a
+ * conversion error occured, otherwise it returns 0.
+ */
+int parse_integer_option(const Tracee *tracee, int *variable, const char *value, const char *option)
+{
+	char *end_ptr = NULL;
+
+	errno = 0;
+	*variable = strtol(value, &end_ptr, 10);
+	if (errno != 0 || end_ptr == value) {
+		notice(tracee, ERROR, USER, "option `%s` expects an integer value.", option);
+		return -1;
+	}
+
+	return 0;
 }

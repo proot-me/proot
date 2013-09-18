@@ -127,7 +127,7 @@ void translate_syscall(Tracee *tracee)
 		}
 		else {
 			status = notify_extensions(tracee, SYSCALL_CHAINED_ENTER, 0, 0);
-			tracee->restart_how = PTRACE_SYSCALL; /* XXX.  */
+			tracee->restart_how = PTRACE_SYSCALL;
 		}
 
 		/* Remember the tracee status for the "exit" stage and

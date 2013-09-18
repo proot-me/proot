@@ -23,7 +23,7 @@ typedef struct {
 	Argument arguments[5];
 } Option;
 
-typedef int (*commit_config_hook_t)(Tracee *tracee, const struct Cli *cli,
+typedef int (*initialization_hook_t)(Tracee *tracee, const struct Cli *cli,
 				size_t argc, char *const *argv, size_t cursor);
 typedef struct Cli {
 	const char *name;
@@ -32,13 +32,21 @@ typedef struct Cli {
 	const char *synopsis;
 	const char *colophon;
 	const char *logo;
-	commit_config_hook_t pre_commit_config;
-	commit_config_hook_t post_commit_config;
+
+	initialization_hook_t pre_initialize_bindings;
+	initialization_hook_t post_initialize_bindings;
+	initialization_hook_t pre_initialize_cwd;
+	initialization_hook_t post_initialize_cwd;
+	initialization_hook_t pre_initialize_command;
+	initialization_hook_t post_initialize_command;
+
 	const Option options[];
 } Cli;
 
 extern const Cli *get_proot_cli();
 extern void print_usage(Tracee *tracee, const Cli *cli, bool detailed);
+extern int parse_integer_option(const Tracee *tracee, int *variable, const char *value, const char *option);
+
 extern bool exit_failure;
 
 #endif /* CLI_H */
