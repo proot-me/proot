@@ -25,6 +25,7 @@
 #include <fcntl.h>    /* mknod(2), */
 #include <unistd.h>   /* mknod(2), */
 #include <stdlib.h>   /* mkdtemp(3), */
+#include <stdio.h>    /* P_tmpdir, */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -94,7 +95,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
 	if (tracee->glue == NULL) {
-		tracee->glue = talloc_asprintf(tracee, "/tmp/proot-%d-XXXXXX", getpid());
+		tracee->glue = talloc_asprintf(tracee, "%s/proot-%d-XXXXXX", P_tmpdir, getpid());
 		if (tracee->glue == NULL)
 			return 0;
 		talloc_set_name_const(tracee->glue, "$glue");
