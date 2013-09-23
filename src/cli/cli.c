@@ -496,3 +496,39 @@ int parse_integer_option(const Tracee *tracee, int *variable, const char *value,
 
 	return 0;
 }
+
+/**
+ * Expand the environment variable in front of @string, if any.  For
+ * example, this function can expand "$HOME" or "$HOME/.ICEauthority".
+ */
+const char *expand_front_variable(TALLOC_CTX *context, const char *string)
+{
+	const char *suffix;
+	char *expanded;
+	ptrdiff_t size;
+
+	if (string[0] != '$')
+		return string;
+
+	suffix = strchr(string, '/');
+	if (suffix == NULL)
+		return (getenv(&string[1]) ?: string);
+
+	size = suffix - string;
+	if (size <= 1)
+		return string;
+
+	expanded = talloc_strndup(context, &string[1], size - 1);
+	if (expanded == NULL)
+		return string;
+
+	expanded = getenv(expanded);
+	if (expanded == NULL)
+		return string;
+
+	expanded = talloc_asprintf(context, "%s%s", expanded, suffix);
+	if (expanded == NULL)
+		return string;
+
+	return expanded;
+}

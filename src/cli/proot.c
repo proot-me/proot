@@ -179,7 +179,8 @@ static int handle_option_R(Tracee *tracee, const Cli *cli, char *value)
 		return status;
 
 	for (i = 0; recommended_bindings[i] != NULL; i++)
-		new_binding(tracee, recommended_bindings[i], NULL, false);
+		new_binding(tracee, expand_front_variable(tracee->ctx, recommended_bindings[i]),
+			NULL, false);
 	return 0;
 }
 
@@ -190,7 +191,8 @@ static int handle_option_B(Tracee *tracee, const Cli *cli UNUSED, char *value UN
 	notice(tracee, INFO, USER, "option '-B' is obsolete, use '-R' instead.");
 #endif
 	for (i = 0; recommended_bindings[i] != NULL; i++)
-		new_binding(tracee, recommended_bindings[i], NULL, false);
+		new_binding(tracee, expand_front_variable(tracee->ctx, recommended_bindings[i]),
+			NULL, false);
 
 	return 0;
 }

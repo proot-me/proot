@@ -48,6 +48,7 @@ extern const Cli *get_proot_cli(TALLOC_CTX *context);
 extern void print_usage(Tracee *tracee, const Cli *cli, bool detailed);
 extern void print_version(const Cli *cli);
 extern int parse_integer_option(const Tracee *tracee, int *variable, const char *value, const char *option);
+extern const char *expand_front_variable(TALLOC_CTX *context, const char *string);
 
 extern bool exit_failure;
 
