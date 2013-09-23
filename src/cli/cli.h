@@ -39,12 +39,14 @@ typedef struct Cli {
 	initialization_hook_t post_initialize_cwd;
 	initialization_hook_t pre_initialize_command;
 	initialization_hook_t post_initialize_command;
+	void *private;
 
 	const Option options[];
 } Cli;
 
-extern const Cli *get_proot_cli();
+extern const Cli *get_proot_cli(TALLOC_CTX *context);
 extern void print_usage(Tracee *tracee, const Cli *cli, bool detailed);
+extern void print_version(const Cli *cli);
 extern int parse_integer_option(const Tracee *tracee, int *variable, const char *value, const char *option);
 
 extern bool exit_failure;

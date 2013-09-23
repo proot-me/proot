@@ -334,7 +334,7 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 				break;
 			}
 
-			if (tracee->verbose > 0) {
+			if (tracee->verbose > 0 && getenv("PROOT_IGNORE_MISSING_BINDINGS") == NULL) {
 				notice(tracee, WARNING, USER,
 					"both '%s' and '%s' are bound to '%s', "
 					"only the last binding is active.",

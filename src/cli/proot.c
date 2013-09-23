@@ -157,19 +157,7 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 
 static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
 {
-	printf("%s %s\n\n", cli->logo, cli->version);
-	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
-#if defined(HAVE_PROCESS_VM)
-		"yes",
-#else
-		"no",
-#endif
-#if defined(HAVE_SECCOMP_FILTER)
-		"yes"
-#else
-		"no"
-#endif
-		);
+	print_version(cli);
 	exit_failure = false;
 	return -1;
 }
@@ -326,7 +314,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	return cursor;
 }
 
-const Cli *get_proot_cli()
+const Cli *get_proot_cli(TALLOC_CTX *context UNUSED)
 {
 	return &proot_cli;
 }

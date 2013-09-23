@@ -96,6 +96,26 @@ void print_usage(Tracee *tracee, const Cli *cli, bool detailed)
 		printf("%s\n", cli->colophon);
 }
 
+/**
+ * Print the version of PRoot.
+ */
+void print_version(const Cli *cli)
+{
+	printf("%s %s\n\n", cli->logo, cli->version);
+	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
+#if defined(HAVE_PROCESS_VM)
+		"yes",
+#else
+		"no",
+#endif
+#if defined(HAVE_SECCOMP_FILTER)
+		"yes"
+#else
+		"no"
+#endif
+		);
+}
+
 static void print_execve_help(const Tracee *tracee, const char *argv0)
 {
 	notice(tracee, WARNING, SYSTEM, "execve(\"%s\")", argv0);
@@ -273,9 +293,11 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	/* As of now, only the PRoot CLI is supported, the code below
 	 * is just a mock-up.  */
 	if (strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
-		cli = get_proot_cli();
+		cli = get_proot_cli(tracee->ctx);
 	else
-		cli = get_proot_cli();
+		cli = get_proot_cli(tracee->ctx);
+	if (cli == NULL)
+		return -1;
 	tracee->tool_name = cli->name;
 
 	if (argc == 1) {
