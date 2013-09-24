@@ -38,7 +38,7 @@
 /**
  * Check if the environment @variable has the given @name.
  */
-static inline bool is_env_name(const char *variable, const char *name)
+bool is_env_name(const char *variable, const char *name)
 {
 	size_t length = strlen(name);
 
