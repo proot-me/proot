@@ -48,6 +48,10 @@ static int remove_glue(char *path)
 {
 	char *command;
 
+	/* Sanity checks.  */
+	assert(strncmp(P_tmpdir, path, strlen(P_tmpdir)) == 0);
+	assert(path[0] == '/');
+
 	command = talloc_asprintf(NULL, "find %s -empty -delete 2>/dev/null", path);
 	if (command != NULL) {
 		int status;
