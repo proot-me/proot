@@ -32,6 +32,7 @@
 #include <errno.h>         /* errno,  */
 #include <linux/auxvec.h>  /* AT_,  */
 #include <sys/eventfd.h>   /* EFD_SEMAPHORE */
+#include <linux/futex.h>   /* FUTEX_PRIVATE_FLAG */
 
 #include "extension/extension.h"
 #include "syscall/seccomp.h"
@@ -316,6 +317,28 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 #endif
 
 		modify_syscall(tracee, config, &modif);
+		return 0;
+	}
+
+	case PR_futex: {
+		word_t operation;
+		static bool warned = false;
+
+		if (!needs_kompat(config, KERNEL_VERSION(2,6,22)) || config->actual_release == 0)
+			return 0;
+
+		operation = peek_reg(tracee, CURRENT, SYSARG_2);
+		if ((operation & FUTEX_PRIVATE_FLAG) == 0)
+			return 0;
+
+		if (!warned) {
+			warned = true;
+			notice(tracee, WARNING, USER,
+				"kompat: this kernel doesn't support private futexes "
+				"and PRoot can't emulate them.  Expect some troubles...");
+		}
+
+		poke_reg(tracee, SYSARG_2, operation & ~FUTEX_PRIVATE_FLAG);
 		return 0;
 	}
 
@@ -823,6 +846,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_fcntl, 		FILTER_SYSEXIT },
 	{ PR_fstatat64, 	0 },
 	{ PR_futimesat, 	0 },
+	{ PR_futex, 		0 },
 	{ PR_inotify_init1, 	FILTER_SYSEXIT },
 	{ PR_linkat, 		0 },
 	{ PR_mkdirat, 		0 },
