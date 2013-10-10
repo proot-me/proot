@@ -348,7 +348,7 @@ int translate_execve(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	if (tracee->qemu) {
+	if (tracee->qemu != NULL) {
 		status = read_item_string(argv, 0, &argv0);
 		if (status < 0)
 			return status;
@@ -409,11 +409,12 @@ int translate_execve(Tracee *tracee)
 	}
 
 	if (tracee->qemu != NULL) {
+		/* Sanity check.  */
+		assert(envp != NULL);
+
 		/* Prepend the QEMU command to the initial argv[] if
 		 * it's a "foreign" binary.  */
 		if (!is_host_elf(tracee, t_interp)) {
-			int i;
-
 			status = resize_array(argv, 0, 3);
 			if (status < 0)
 				return status;

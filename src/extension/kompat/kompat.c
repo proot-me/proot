@@ -456,8 +456,9 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		};
 #if defined(ARCH_X86_64)
 		modif.new_sysarg_num = (get_abi(tracee) != ABI_2 ? PR_select : PR__newselect);
-#endif
+#else
 		modif.new_sysarg_num = PR__newselect;
+#endif
 
 		modify_syscall(tracee, config, &modif);
 		return 0;

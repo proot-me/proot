@@ -226,7 +226,7 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
 		cursor2 += length2 + 1;
 	} while (*(cursor2 - 1) != '\0');
 
-	*(cursor1++) = '\0';
+	*cursor1 = '\0';
 
 	return 0;
 }

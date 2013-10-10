@@ -149,7 +149,7 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 		return DONT_CANONICALIZE;
 
 	default:
-		return DEFAULT;
+		break;
 	}
 
 	return DEFAULT;

@@ -135,7 +135,7 @@ void translate_syscall(Tracee *tracee)
 		 * by the translation/extension. */
 		if (status < 0) {
 			set_sysnum(tracee, PR_void);
-			poke_reg(tracee, SYSARG_RESULT, status);
+			poke_reg(tracee, SYSARG_RESULT, (word_t) status);
 			tracee->status = status;
 		}
 		else
