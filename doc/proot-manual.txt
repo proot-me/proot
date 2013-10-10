@@ -191,6 +191,7 @@ The following options are aliases for handy sets of options.
     * /proc/
     * /tmp/
     * $HOME
+    * *path*
 
 -B, -M
     obsolete, use ``-R`` instead.

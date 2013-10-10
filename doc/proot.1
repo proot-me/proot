@@ -36,7 +36,7 @@ level margin: \\n[rst2man-indent\\n[rst2man-indent-level]]
 .SH DESCRIPTION
 .sp
 PRoot is a user\-space implementation of \fBchroot\fP, \fBmount \-\-bind\fP,
-and \fBbinfmt_misc\fP.  This means that users don\(aqt need any privileges
+and \fBbinfmt_misc\fP\&.  This means that users don\(aqt need any privileges
 or setup to do things like using an arbitrary directory as the new
 root filesystem, making files accessible somewhere else in the
 filesystem hierarchy, or executing programs built for another CPU
@@ -82,8 +82,8 @@ that is, the first part of its command\-line interface.
 .SS Regular options
 .INDENT 0.0
 .TP
-.BI \-r \ path, \ \-\-rootfs\fB= path
-Use \fIpath\fP as the new guest root file\-system, default is \fB/\fP.
+.BI \-r \ path\fP,\fB \ \-\-rootfs\fB= path
+Use \fIpath\fP as the new guest root file\-system, default is \fB/\fP\&.
 .sp
 The specified \fIpath\fP typically contains a Linux distribution where
 all new programs will be confined.  The default rootfs is \fB/\fP
@@ -93,23 +93,23 @@ option and the \fBExamples\fP section for details.
 .sp
 It is recommended to use the \fB\-R\fP option instead.
 .TP
-.BI \-b \ path, \ \-\-bind\fB= path, \ \-m \ path, \ \-\-mount\fB= path
+.BI \-b \ path\fP,\fB \ \-\-bind\fB= path\fP,\fB \ \-m \ path\fP,\fB \ \-\-mount\fB= path
 Make the content of \fIpath\fP accessible in the guest rootfs.
 .sp
 This option makes any file or directory of the host rootfs
 accessible in the confined environment just as if it were part of
 the guest rootfs.  By default the host path is bound to the same
 path in the guest rootfs but users can specify any other location
-with the syntax: \fB\-b *host_path*:*guest_location*\fP.  If the
+with the syntax: \fB\-b *host_path*:*guest_location*\fP\&.  If the
 guest location is a symbolic link, it is dereferenced to ensure
 the new content is accessible through all the symbolic links that
 point to the overlaid content.  In most cases this default
 behavior shouldn\(aqt be a problem, although it is possible to
 explicitly not dereference the guest location by appending it the
-\fB!\fP character: \fB\-b *host_path*:*guest_location!*\fP.
+\fB!\fP character: \fB\-b *host_path*:*guest_location!*\fP\&.
 .TP
-.BI \-q \ command, \ \-\-qemu\fB= command
-Execute guest programs through QEMU as specified by \fIcommand\fP.
+.BI \-q \ command\fP,\fB \ \-\-qemu\fB= command
+Execute guest programs through QEMU as specified by \fIcommand\fP\&.
 .sp
 Each time a guest program is going to be executed, PRoot inserts
 the QEMU user\-mode \fIcommand\fP in front of the initial request.
@@ -118,24 +118,24 @@ emulated by QEMU user\-mode.  The native execution of host programs
 is still effective and the whole host rootfs is bound to
 \fB/host\-rootfs\fP in the guest environment.
 .TP
-.BI \-w \ path, \ \-\-pwd\fB= path, \ \-\-cwd\fB= path
-Set the initial working directory to \fIpath\fP.
+.BI \-w \ path\fP,\fB \ \-\-pwd\fB= path\fP,\fB \ \-\-cwd\fB= path
+Set the initial working directory to \fIpath\fP\&.
 .sp
 Some programs expect to be launched from a given directory but do
 not perform any \fBchdir\fP by themselves.  This option avoids the
 need for running a shell and then entering the directory manually.
 .TP
-.BI \-v \ value, \ \-\-verbose\fB= value
-Set the level of debug information to \fIvalue\fP.
+.BI \-v \ value\fP,\fB \ \-\-verbose\fB= value
+Set the level of debug information to \fIvalue\fP\&.
 .sp
 The higher the integer \fIvalue\fP is, the more detailed debug
 information is printed to the standard error stream.  A negative
 \fIvalue\fP makes PRoot quiet except on fatal errors.
 .TP
-.B \-V,  \-\-version,  \-\-about
+.B \-V\fP,\fB  \-\-version\fP,\fB  \-\-about
 Print version, copyright, license and contact, then exit.
 .TP
-.B \-h,  \-\-help,  \-\-usage
+.B \-h\fP,\fB  \-\-help\fP,\fB  \-\-usage
 Print the version and the command\-line usage, then exit.
 .UNINDENT
 .SS Extension options
@@ -146,8 +146,8 @@ process instrumentation engine thanks to its extension mechanism, see
 the sources for further details.
 .INDENT 0.0
 .TP
-.BI \-k \ string, \ \-\-kernel\-release\fB= string
-Set the kernel release and compatibility level to \fIstring\fP.
+.BI \-k \ string\fP,\fB \ \-\-kernel\-release\fB= string
+Set the kernel release and compatibility level to \fIstring\fP\&.
 .sp
 If a program is run on a kernel older than the one expected by its
 GNU C library, the following error is reported: "FATAL: kernel too
@@ -155,7 +155,7 @@ old".  To be able to run such programs, PRoot can emulate some of
 the features that are available in the kernel release specified by
 \fIstring\fP but that are missing in the current kernel.
 .TP
-.B \-0,  \-\-root\-id
+.B \-0\fP,\fB  \-\-root\-id
 Force some syscalls to behave as if executed by "root".
 .sp
 Some programs will refuse to work if they are not run with "root"
@@ -165,7 +165,7 @@ users to bypass this kind of limitation by faking the user/group
 identity, and by faking the success of some operations like
 changing the ownership of files, changing the root directory to
 \fB/\fP, ...  Note that this option is quite limited compared to
-\fBfakeroot\fP.
+\fBfakeroot\fP\&.
 .UNINDENT
 .SS Alias options
 .sp
@@ -173,7 +173,7 @@ The following options are aliases for handy sets of options.
 .INDENT 0.0
 .TP
 .BI \-R \ path
-Alias: \fB\-r *path*\fP + a couple of recommended \fB\-b\fP.
+Alias: \fB\-r *path*\fP + a couple of recommended \fB\-b\fP\&.
 .sp
 Programs isolated in \fIpath\fP, a guest rootfs, might still need to
 access information about the host system, as it is illustrated in
@@ -215,9 +215,11 @@ automatically bound by this option:
 /tmp/
 .IP \(bu 2
 $HOME
+.IP \(bu 2
+\fIpath\fP
 .UNINDENT
 .TP
-.B \-B,  \-M
+.B \-B\fP,\fB  \-M
 obsolete, use \fB\-R\fP instead.
 .TP
 .BI \-Q \ command
@@ -549,7 +551,7 @@ Built for x86_64\-slackware\-linux\-gnu
 It\(aqs worth mentioning that even when mixing the native execution of
 host programs and the emulated execution of guest programs, they still
 believe they are running in a native guest environment.  As a
-demonstration, here is a partial output of a typical \fB./configure\fP
+demonstration, here is a partial output of a typical \fB\&./configure\fP
 script:
 .INDENT 0.0
 .INDENT 3.5
@@ -565,7 +567,7 @@ checking whether the C compiler is a cross\-compiler... no
 .SS PRoot
 .sp
 The latest release of PRoot is packaged on \fI\%http://packages.proot.me\fP
-and sources are hosted on \fI\%http://github.proot.me\fP.  Also, highly
+and sources are hosted on \fI\%http://github.proot.me\fP\&.  Also, highly
 compatible binaries are available on \fI\%http://static.proot.me\fP for a
 couple of architectures.
 .SS Rootfs
@@ -623,7 +625,7 @@ ARM rootfs on a x86_64 computer.  This package can be installed either
 from \fI\%http://qemu.proot.me\fP or from the host package manager under the
 name of "qemu\-user" on most Linux distro.  In case one would like to
 build QEMU user\-mode from sources, the \fB\-\-enable\-linux\-user\fP option
-has to be specified to the \fB./configure\fP script.
+has to be specified to the \fB\&./configure\fP script.
 .SH SEE ALSO
 .sp
 chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1),

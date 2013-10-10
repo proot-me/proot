@@ -24,6 +24,7 @@ static char *recommended_bindings[] = {
 	"/proc/",
 	"/tmp/",
 	"$HOME",
+	"*path*",
 	NULL,
 };
 
