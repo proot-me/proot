@@ -117,7 +117,7 @@ static void print_bindings(const Tracee *tracee)
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-static const Binding *get_binding(Tracee *tracee, Side side, const char path[PATH_MAX])
+static const Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 {
 	const Binding *binding;
 	size_t path_length = strlen(path);
@@ -168,7 +168,7 @@ static const Binding *get_binding(Tracee *tracee, Side side, const char path[PAT
  * Get the binding path for the given @path (relatively to the given
  * binding @side).
  */
-const char *get_path_binding(Tracee *tracee, Side side, const char path[PATH_MAX])
+const char *get_path_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 {
 	const Binding *binding;
 
@@ -236,7 +236,7 @@ const char *get_root(const Tracee* tracee)
  *     * 1 if it is a binding location and a substitution was performed
  *       ("asymmetric" binding)
  */
-int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
+int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
 {
 	const Path *reverse_ref;
 	const Path *ref;

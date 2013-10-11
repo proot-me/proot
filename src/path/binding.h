@@ -48,8 +48,8 @@ typedef CIRCLEQ_HEAD(bindings, binding) Bindings;
 extern void insort_binding2(Tracee *tracee, Binding *binding);
 extern Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist);
 extern int initialize_bindings(Tracee *tracee);
-extern const char *get_path_binding(Tracee* tracee, Side side, const char path[PATH_MAX]);
+extern const char *get_path_binding(const Tracee* tracee, Side side, const char path[PATH_MAX]);
 extern const char *get_root(const Tracee* tracee);
-extern int substitute_binding(Tracee* tracee, Side side, char path[PATH_MAX]);
+extern int substitute_binding(const Tracee* tracee, Side side, char path[PATH_MAX]);
 
 #endif /* BINDING_H */
