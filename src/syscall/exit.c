@@ -110,6 +110,10 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_accept:
 	case PR_accept4:
+		/* Nothing special to do if no sockaddr was specified.  */
+		if (peek_reg(tracee, ORIGINAL, SYSARG_2) == 0)
+			goto end;
+		/* Fall through.  */
 	case PR_getsockname:
 	case PR_getpeername: {
 		word_t sock_addr;

@@ -238,7 +238,13 @@ int translate_syscall_enter(Tracee *tracee)
 
 	case PR_accept:
 	case PR_accept4:
+		/* Nothing special to do if no sockaddr was specified.  */
+		if (peek_reg(tracee, ORIGINAL, SYSARG_2) == 0) {
+			status = 0;
+			break;
+		}
 		special = true;
+		/* Fall through.  */
 	case PR_getsockname:
 	case PR_getpeername:{
 		int size;
