@@ -26,6 +26,7 @@
 #include <limits.h>    /* PATH_MAX, */
 #include <sys/types.h> /* pid_t, size_t, */
 #include <sys/uio.h>   /* struct iovec, */
+#include <errno.h>     /* ENAMETOOLONG, */
 
 #include "arch.h" /* word_t, */
 #include "tracee/tracee.h"
