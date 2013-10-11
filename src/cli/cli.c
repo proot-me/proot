@@ -41,6 +41,8 @@
 #include "path/canon.h"
 #include "path/path.h"
 
+#include "build.h"
+
 /**
  * Print a (@detailed) usage of PRoot.
  */
