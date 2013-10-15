@@ -137,7 +137,7 @@ int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_heade
 	for (i = 0; i < elf_phnum; i++) {
 		status = read(fd, program_header, elf_phentsize);
 		if (status != elf_phentsize)
-			status = -errno;
+			return (status < 0 ? -errno : -ENOTSUP);
 
 		if (PROGRAM_FIELD(*elf_header, *program_header, type) == type) {
 			uint64_t start;

@@ -145,6 +145,7 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 
 	result[0] = '\0';
 	length = 0;
+	status = 0;
 
 	/* Parse the list of variadic arguments. */
 	va_start(paths, result);
