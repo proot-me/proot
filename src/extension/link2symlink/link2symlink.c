@@ -27,7 +27,6 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg)
 	char original[PATH_MAX];
 	char moved[PATH_MAX];
 	struct stat statl;
-	size_t length;
 	ssize_t size;
 	int status;
 
@@ -45,34 +44,37 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg)
 	if (S_ISDIR(statl.st_mode))
 		return -EPERM;
 
-	length = strlen(original);
 
 	/* Check if it is a converted link already.  */
-	if (strcmp(original + length - strlen(SUFFIX), SUFFIX) == 0) {
+	if (S_ISLNK(statl.st_mode)) {
 		size = readlink(original, moved, PATH_MAX);
 		if (size < 0)
 			return size;
 		if (size >= PATH_MAX)
 			return -ENAMETOOLONG;
-	}
-	else {
-		/* Compute the new path.  */
-		if (strlen(SUFFIX) + strlen(original) >= PATH_MAX)
-			return -ENAMETOOLONG;
-		strcpy(moved, original);
-		strcat(moved, SUFFIX);
+		moved[size] = '\0';
 
-		/* Move the original content to the new path.  */
-		status = rename(original, moved);
-		if (status < 0)
-			return status;
-
-		/* Symlink the original path back to the new one.  */
-		status = symlink(moved, original);
-		if (status < 0)
-			return status;
+		if (strcmp(moved + strlen(moved) - strlen(SUFFIX), SUFFIX) == 0)
+			goto end;
 	}
 
+	/* Compute the new path.  */
+	if (strlen(SUFFIX) + strlen(original) >= PATH_MAX)
+		return -ENAMETOOLONG;
+	strcpy(moved, original);
+	strcat(moved, SUFFIX);
+
+	/* Move the original content to the new path.  */
+	status = rename(original, moved);
+	if (status < 0)
+		return status;
+
+	/* Symlink the original path back to the new one.  */
+	status = symlink(moved, original);
+	if (status < 0)
+		return status;
+
+end:
 	status = set_sysarg_path(tracee, moved, sysarg);
 	if (status < 0)
 		return status;
