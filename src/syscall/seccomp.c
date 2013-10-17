@@ -252,7 +252,7 @@ static void free_program_filter(struct sock_fprog *program)
  *
  * This function returns -errno if an error occurred, otherwise 0.
  */
-static int set_seccomp_filters(const Tracee *tracee, const FilteredSysnum *sysnums)
+static int set_seccomp_filters(const FilteredSysnum *sysnums)
 {
 	SeccompArch seccomp_archs[] = SECCOMP_ARCHS;
 	size_t nb_archs = sizeof(seccomp_archs) / sizeof(SeccompArch);
@@ -311,10 +311,8 @@ static int set_seccomp_filters(const Tracee *tracee, const FilteredSysnum *sysnu
 		goto end;
 
 	status = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-	if (status < 0) {
-		notice(tracee, WARNING, SYSTEM, "prctl(PR_SET_NO_NEW_PRIVS)");
+	if (status < 0)
 		goto end;
-	}
 
 	/* To output this BPF program for debug purpose:
 	 *
@@ -322,10 +320,8 @@ static int set_seccomp_filters(const Tracee *tracee, const FilteredSysnum *sysnu
 	 */
 
 	status = prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &program);
-	if (status < 0) {
-		notice(tracee, WARNING, SYSTEM, "prctl(PR_SET_SECCOMP)");
+	if (status < 0)
 		goto end;
-	}
 
 	status = 0;
 end:
@@ -494,10 +490,20 @@ int enable_syscall_filtering(const Tracee *tracee)
 		}
 	}
 
-	status = set_seccomp_filters(tracee, filtered_sysnums);
+	status = set_seccomp_filters(filtered_sysnums);
 	if (status < 0)
 		return status;
 
+	return 0;
+}
+
+#else
+
+#include "tracee/tracee.h"
+#include "attribute.h"
+
+int enable_syscall_filtering(const Tracee *tracee UNUSED)
+{
 	return 0;
 }
 
