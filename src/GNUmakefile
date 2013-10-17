@@ -133,7 +133,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_RESULTS) $(OBJECTS) proot $(DEPS) build.h
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) proot $(DEPS) build.h
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
