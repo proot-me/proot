@@ -1,14 +1,10 @@
-#include <unistd.h>       /* syscall(2),      */
+#include <unistd.h>       /* syscall(2), sysconf(3), */
 #include <sys/syscall.h>  /* SYS_brk,         */
 #include <stdio.h>        /* puts(3),         */
 #include <stdlib.h>       /* exit(3), EXIT_*, */
 #include <stdint.h>       /* uint*_t,         */
 #include <sys/mman.h>     /* mmap(2), MAP_*,  */
 #include <string.h>       /* memset(3), */
-
-#ifndef HOST_PAGE_SIZE
-#define HOST_PAGE_SIZE 0x1000
-#endif
 
 int main()
 {
@@ -18,7 +14,12 @@ int main()
 	uint8_t *new_brk;
 	uint8_t *old_brk;
 	int failure = 0;
+	long page_size;
 	int i;
+
+	page_size = sysconf(_SC_PAGE_SIZE);
+	if (page_size <= 0)
+		return 125;
 
 	void test_brk(int increment, int expected_result) {
 		new_brk = (uint8_t *) syscall(SYS_brk, current_brk + increment);
@@ -48,27 +49,27 @@ int main()
 	test_result();
 
 	test_title("Don't set the \"brk\" below its initial value");
-	test_brk(HOST_PAGE_SIZE, 1);
-	test_brk(-2 * HOST_PAGE_SIZE, 0);
-	test_brk(-HOST_PAGE_SIZE, 1);
+	test_brk(page_size, 1);
+	test_brk(-2 * page_size, 0);
+	test_brk(-page_size, 1);
 	test_result();
 
 	test_title("Don't overlap \"brk\" pages");
-	test_brk(HOST_PAGE_SIZE, 1);
-	test_brk(HOST_PAGE_SIZE, 1);
+	test_brk(page_size, 1);
+	test_brk(page_size, 1);
 	test_result();
 
 	/* Preparation for the test "Re-allocated heap is initialized".  */
-	old_brk = current_brk - HOST_PAGE_SIZE;
-	memset(old_brk, 0xFF, HOST_PAGE_SIZE);
+	old_brk = current_brk - page_size;
+	memset(old_brk, 0xFF, page_size);
 
 	test_title("Don't allocate the same \"brk\" page twice");
-	test_brk(-HOST_PAGE_SIZE, 1);
-	test_brk(HOST_PAGE_SIZE, 1);
+	test_brk(-page_size, 1);
+	test_brk(page_size, 1);
 	test_result();
 
 	test_title("Re-allocated \"brk\" pages are initialized");
-	for (i = 0; i < HOST_PAGE_SIZE; i++) {
+	for (i = 0; i < page_size; i++) {
 		if (old_brk[i] != 0) {
 			printf("(index = %d, value = 0x%x) ", i, old_brk[i]);
 			failure = 1;
@@ -78,26 +79,26 @@ int main()
 	test_result();
 
 	test_title("Don't allocate \"brk\" pages over \"mmap\" pages");
-	new_brk = mmap(current_brk, HOST_PAGE_SIZE / 2, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+	new_brk = mmap(current_brk, page_size / 2, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 	if (new_brk == (void *) -1)
 		puts("unknown");
 	else {
-		test_brk(HOST_PAGE_SIZE, 0);
+		test_brk(page_size, 0);
 		test_result();
 	}
 
 	test_title("All \"brk\" pages are writable (please wait)");
-	if (munmap(current_brk, HOST_PAGE_SIZE / 2) != 0)
+	if (munmap(current_brk, page_size / 2) != 0)
 		puts("unknown");
 	else {
 		while (current_brk - initial_brk < 512*1024*1024UL) {
 			old_brk = current_brk;
 
-			test_brk(HOST_PAGE_SIZE, -1);
+			test_brk(page_size, -1);
 			if (old_brk == current_brk)
 				break;
 
-			for (i = 0; i < HOST_PAGE_SIZE; i++)
+			for (i = 0; i < page_size; i++)
 				old_brk[i] = 0xAA;
 		}
 		test_result();
@@ -115,11 +116,11 @@ int main()
 		while (current_brk - initial_brk < 1024*1024*1024UL) {
 			old_brk = current_brk;
 
-			test_brk(3 * HOST_PAGE_SIZE, -1);
+			test_brk(3 * page_size, -1);
 			if (old_brk == current_brk)
 				break;
 
-			for (i = 0; i < 3 * HOST_PAGE_SIZE; i++) {
+			for (i = 0; i < 3 * page_size; i++) {
 				if (old_brk[i] != 0) {
 					printf("(index = %d, value = 0x%x) ", i, old_brk[i]);
 					failure = 1;
