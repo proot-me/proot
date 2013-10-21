@@ -5,6 +5,7 @@
 
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
+#include "tracee/mem.h"
 #include "syscall/sysnum.h"
 #include "cli/notice.h"
 
@@ -17,6 +18,12 @@
  * mapping is discarded in order to emulate an empty heap.  */
 static word_t heap_offset;
 
+/* Non-fixed mmap pages might be placed right after the emulated heap,
+ * so one megabyte is preallocated to ensure a minimal heap size.  */
+static word_t heap_reserved;
+
+#define RESERVED_SIZE (1024 * 1024)
+
 word_t translate_brk_enter(Tracee *tracee)
 {
 	word_t address;
@@ -25,6 +32,7 @@ word_t translate_brk_enter(Tracee *tracee)
 		heap_offset = sysconf(_SC_PAGE_SIZE);
 		if ((int) heap_offset <= 0)
 			heap_offset = 0x1000;
+		heap_reserved = (heap_offset >= RESERVED_SIZE ? heap_offset : RESERVED_SIZE);
 	}
 
 	address = peek_reg(tracee, CURRENT, SYSARG_1);
@@ -47,7 +55,7 @@ word_t translate_brk_enter(Tracee *tracee)
 
 		set_sysnum(tracee, sysnum);
 		poke_reg(tracee, SYSARG_1 /* address */, 0);
-		poke_reg(tracee, SYSARG_2 /* length  */, heap_offset);
+		poke_reg(tracee, SYSARG_2 /* length  */, heap_offset + heap_reserved);
 		poke_reg(tracee, SYSARG_3 /* prot    */, PROT_READ | PROT_WRITE);
 		poke_reg(tracee, SYSARG_4 /* flags   */, MAP_PRIVATE | MAP_ANONYMOUS | MAP_32BIT);
 		poke_reg(tracee, SYSARG_5 /* fd      */, -1);
@@ -56,13 +64,30 @@ word_t translate_brk_enter(Tracee *tracee)
 		return 0;
 	}
 
-	/* The size if the heap can't be negative.  */
+	/* The size of the heap can't be negative.  */
 	if (address < tracee->heap->base) {
 		set_sysnum(tracee, PR_void);
 		return 0;
 	}
 
-	/* Resize the heap.  */
+	/* Virtually resizing when it fits the reserved space.  */
+	if (heap_reserved > 0 && address <= tracee->heap->base + heap_reserved) {
+		size_t new_size;
+
+		/* Clear the released memory, so it will be in the
+		 * expected state next time it will be reallocated.  */
+		new_size = address - tracee->heap->base;
+		if (new_size < tracee->heap->size)
+			(void) clear_mem(tracee,
+					tracee->heap->base + new_size,
+					tracee->heap->size - new_size);
+
+		tracee->heap->size = new_size;
+		set_sysnum(tracee, PR_void);
+		return 0;
+	}
+
+	/* Actually resizing.  */
 	set_sysnum(tracee, PR_mremap);
 	poke_reg(tracee, SYSARG_1 /* old_address */, tracee->heap->base - heap_offset);
 	poke_reg(tracee, SYSARG_2 /* old_size    */, tracee->heap->size + heap_offset);
@@ -127,4 +152,3 @@ void translate_brk_exit(Tracee *tracee)
 
 	DEBUG_BRK("brk() = 0x%lx\n", peek_reg(tracee, CURRENT, SYSARG_RESULT));
 }
-

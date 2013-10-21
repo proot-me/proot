@@ -78,6 +78,7 @@ int main()
 	}
 	test_result();
 
+#if 0
 	test_title("Don't allocate \"brk\" pages over \"mmap\" pages");
 	new_brk = mmap(current_brk, page_size / 2, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 	if (new_brk == (void *) -1)
@@ -86,11 +87,14 @@ int main()
 		test_brk(page_size, 0);
 		test_result();
 	}
+#endif
 
 	test_title("All \"brk\" pages are writable (please wait)");
+#if 0
 	if (munmap(current_brk, page_size / 2) != 0)
 		puts("unknown");
 	else {
+#endif
 		while (current_brk - initial_brk < 512*1024*1024UL) {
 			old_brk = current_brk;
 
@@ -102,10 +106,12 @@ int main()
 				old_brk[i] = 0xAA;
 		}
 		test_result();
+#if 0
 	}
+#endif
 
-	test_title("Maximum size of the heap > 16MB");
-	failure = (current_brk - initial_brk) < 16*1024*1024;
+	test_title("Maximum size of the heap >= 1MB");
+	failure = (current_brk - initial_brk) < 1024 * 1024;
 	test_result();
 
 	test_title("All \"brk\" pages are cleared (please wait)");

@@ -38,6 +38,7 @@ extern int read_string(const Tracee *tracee, char *dest_tracer, word_t src_trace
 extern word_t peek_mem(const Tracee *tracee, word_t address);
 extern void poke_mem(const Tracee *tracee, word_t address, word_t value);
 extern word_t alloc_mem(Tracee *tracee, ssize_t size);
+extern int clear_mem(const Tracee *tracee, word_t address, size_t size);
 
 /**
  * Copy to @dest_tracer at most PATH_MAX bytes -- including the

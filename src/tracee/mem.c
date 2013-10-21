@@ -34,6 +34,7 @@
 #include <stdint.h>     /* uint8_t, */
 #include <sys/uio.h>    /* process_vm_*, struct iovec, */
 #include <unistd.h>     /* sysconf(3), */
+#include <sys/mman.h>   /* mmap(2), munmap(2), MAP_*, */
 
 #include "tracee/mem.h"
 #include "tracee/abi.h"
@@ -516,4 +517,23 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 	 * area. */
 	poke_reg(tracee, STACK_POINTER, stack_pointer);
 	return stack_pointer;
+}
+
+/**
+ * Clear @size bytes at the given @address in the @tracee's memory
+ * space.  This function returns -errno if an error occured, otherwise
+ * 0.
+ */
+int clear_mem(const Tracee *tracee, word_t address, size_t size)
+{
+	int status;
+	void *zeros;
+
+	zeros = mmap(NULL, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (zeros == MAP_FAILED)
+		return -errno;
+
+	status = write_data(tracee, address, zeros, size);
+	munmap(zeros, size);
+	return status;
 }
