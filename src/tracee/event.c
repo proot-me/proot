@@ -20,7 +20,6 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE     /* CLONE_*,  */
 #include <sched.h>      /* CLONE_*,  */
 #include <sys/types.h>  /* pid_t, */
 #include <sys/ptrace.h> /* ptrace(1), PTRACE_*, */

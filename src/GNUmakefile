@@ -8,7 +8,7 @@ RM       = rm
 INSTALL  = install
 CC       = gcc
 LD       = $(CC)
-CPPFLAGS = -D_FILE_OFFSET_BITS=64 -I. -I$(VPATH)
+CPPFLAGS = -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   = -Wall -Wextra -O2
 LDFLAGS  = -ltalloc
 

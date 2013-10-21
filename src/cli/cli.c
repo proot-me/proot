@@ -20,7 +20,6 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE        /* basename(3) GNU style, */
 #include <stdbool.h>       /* bool, true, false,  */
 #include <linux/limits.h>  /* ARG_MAX, PATH_MAX, */
 #include <string.h>        /* str*(3), basename(3),  */
