@@ -686,8 +686,9 @@ static void emulate_fd_flags(Tracee *tracee, word_t fd, Reg sysarg, int emulated
 }
 
 /**
- * Force current @tracee's utsname.release to @config->release .  This
- * function returns -errno if an error occured, otherwise 0.
+ * Adjust the results/output parameters for syscalls that were
+ * modified in handle_sysenter_end().  This function returns -errno if
+ * an error occured, otherwise 0.
  */
 static int handle_sysexit_end(Tracee *tracee, Config *config)
 {
@@ -789,7 +790,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		if (get_sysnum(tracee, MODIFIED) != PR_pipe)
 			return 0;
 
-		status = read_data(tracee, fds, peek_reg(tracee, CURRENT, SYSARG_1), sizeof(fds));
+		status = read_data(tracee, fds, peek_reg(tracee, MODIFIED, SYSARG_1), sizeof(fds));
 		if (status < 0)
 			return 0;
 
@@ -816,7 +817,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		if (!needs_kompat(config, KERNEL_VERSION(2,6,27)))
 			return 0;
 
-		status = read_data(tracee, fds, peek_reg(tracee, CURRENT, SYSARG_4), sizeof(fds));
+		status = read_data(tracee, fds, peek_reg(tracee, MODIFIED, SYSARG_4), sizeof(fds));
 		if (status < 0)
 			return 0;
 
