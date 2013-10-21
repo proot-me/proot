@@ -557,7 +557,7 @@ int event_loop()
 		status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
 		if (status < 0)
 			TALLOC_FREE(tracee);
-	} while (0);
+	}
 
 	return last_exit_status;
 }
