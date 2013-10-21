@@ -1,1 +1,1 @@
-doc/manual.txt
+doc/proot-manual.txt
