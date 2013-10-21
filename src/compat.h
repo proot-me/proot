@@ -79,7 +79,7 @@
 #        define PTRACE_O_TRACEEXIT	0x00000040
 #    endif
 #    ifndef PTRACE_O_TRACESECCOMP
-#        define PTRACE_O_TRACESECCOMP	0 /* Optional */
+#        define PTRACE_O_TRACESECCOMP	0x00000080
 #    endif
 #    ifndef PTRACE_EVENT_FORK
 #        define PTRACE_EVENT_FORK	1
