@@ -31,7 +31,6 @@
 #include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <errno.h>         /* errno,  */
 #include <linux/auxvec.h>  /* AT_,  */
-#include <sys/eventfd.h>   /* EFD_SEMAPHORE */
 #include <linux/futex.h>   /* FUTEX_PRIVATE_FLAG */
 
 #include "extension/extension.h"

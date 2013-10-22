@@ -135,4 +135,13 @@
 #    ifndef FUTEX_PRIVATE_FLAG
 #        define FUTEX_PRIVATE_FLAG	128
 #    endif
+#    ifndef EFD_SEMAPHORE
+#        define EFD_SEMAPHORE		1
+#    endif
+#    ifndef F_DUPFD_CLOEXEC
+#        define F_DUPFD_CLOEXEC		1030
+#    endif
+#    ifndef O_CLOEXEC
+#        define O_CLOEXEC		02000000
+#    endif
 #endif /* COMPAT_H */
