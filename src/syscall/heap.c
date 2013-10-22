@@ -2,6 +2,7 @@
 #include <assert.h>	/* assert(3),  */
 #include <string.h>     /* strerror(3), */
 #include <unistd.h>     /* sysconf(3), */
+#include <sys/param.h>  /* MIN(), MAX(), */
 
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -20,29 +21,29 @@ static word_t heap_offset;
 
 /* Non-fixed mmap pages might be placed right after the emulated heap,
  * so one megabyte is preallocated to ensure a minimal heap size.  */
-static word_t heap_reserved;
-
-#define RESERVED_SIZE (1024 * 1024)
+static word_t reserved_heap_size = 1024 * 1024;
 
 word_t translate_brk_enter(Tracee *tracee)
 {
-	word_t address;
+	word_t new_brk_address;
+	size_t old_heap_size;
+	size_t new_heap_size;
 
 	if (heap_offset == 0) {
 		heap_offset = sysconf(_SC_PAGE_SIZE);
 		if ((int) heap_offset <= 0)
 			heap_offset = 0x1000;
-		heap_reserved = (heap_offset >= RESERVED_SIZE ? heap_offset : RESERVED_SIZE);
+		reserved_heap_size = MAX(reserved_heap_size, heap_offset);
 	}
 
-	address = peek_reg(tracee, CURRENT, SYSARG_1);
-	DEBUG_BRK("brk(0x%lx)\n", address);
+	new_brk_address = peek_reg(tracee, CURRENT, SYSARG_1);
+	DEBUG_BRK("brk(0x%lx)\n", new_brk_address);
 
 	/* Allocate a new mapping for the emulated heap.  */
 	if (tracee->heap->base == 0) {
 		Sysnum sysnum;
 
-		if (address != 0)
+		if (new_brk_address != 0)
 			notice(tracee, WARNING, INTERNAL,
 				"process %d is doing suspicious brk()",	tracee->pid);
 
@@ -55,7 +56,7 @@ word_t translate_brk_enter(Tracee *tracee)
 
 		set_sysnum(tracee, sysnum);
 		poke_reg(tracee, SYSARG_1 /* address */, 0);
-		poke_reg(tracee, SYSARG_2 /* length  */, heap_offset + heap_reserved);
+		poke_reg(tracee, SYSARG_2 /* length  */, heap_offset + reserved_heap_size);
 		poke_reg(tracee, SYSARG_3 /* prot    */, PROT_READ | PROT_WRITE);
 		poke_reg(tracee, SYSARG_4 /* flags   */, MAP_PRIVATE | MAP_ANONYMOUS | MAP_32BIT);
 		poke_reg(tracee, SYSARG_5 /* fd      */, -1);
@@ -65,33 +66,39 @@ word_t translate_brk_enter(Tracee *tracee)
 	}
 
 	/* The size of the heap can't be negative.  */
-	if (address < tracee->heap->base) {
+	if (new_brk_address < tracee->heap->base) {
 		set_sysnum(tracee, PR_void);
 		return 0;
 	}
 
-	/* Virtually resizing when it fits the reserved space.  */
-	if (heap_reserved > 0 && address <= tracee->heap->base + heap_reserved) {
-		size_t new_size;
+	new_heap_size = new_brk_address - tracee->heap->base;
+	old_heap_size = tracee->heap->size;
 
-		/* Clear the released memory, so it will be in the
-		 * expected state next time it will be reallocated.  */
-		new_size = address - tracee->heap->base;
-		if (new_size < tracee->heap->size)
-			(void) clear_mem(tracee,
-					tracee->heap->base + new_size,
-					tracee->heap->size - new_size);
+	/* Clear the released memory in reserved space, so it will be
+	 * in the expected state next time it will be reallocated.  */
+	if (new_heap_size < old_heap_size && new_heap_size < reserved_heap_size) {
+		(void) clear_mem(tracee,
+				tracee->heap->base + new_heap_size,
+				MIN(old_heap_size, reserved_heap_size) - new_heap_size);
+	}
 
-		tracee->heap->size = new_size;
+	/* No need to use mremap when both old size and new size are
+	 * in the reserved space.  */
+	if (new_heap_size <= reserved_heap_size && old_heap_size <= reserved_heap_size) {
+		tracee->heap->size = new_heap_size;
 		set_sysnum(tracee, PR_void);
 		return 0;
 	}
+
+	/* Ensure the reserved space will never be released.  */
+	new_heap_size = MAX(new_heap_size, reserved_heap_size);
+	old_heap_size = MAX(old_heap_size, reserved_heap_size);
 
 	/* Actually resizing.  */
 	set_sysnum(tracee, PR_mremap);
 	poke_reg(tracee, SYSARG_1 /* old_address */, tracee->heap->base - heap_offset);
-	poke_reg(tracee, SYSARG_2 /* old_size    */, tracee->heap->size + heap_offset);
-	poke_reg(tracee, SYSARG_3 /* new_size    */, address - tracee->heap->base + heap_offset);
+	poke_reg(tracee, SYSARG_2 /* old_size    */, old_heap_size + heap_offset);
+	poke_reg(tracee, SYSARG_3 /* new_size    */, new_heap_size + heap_offset);
 	poke_reg(tracee, SYSARG_4 /* flags       */, 0);
 	poke_reg(tracee, SYSARG_5 /* new_address */, 0);
 
