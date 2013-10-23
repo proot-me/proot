@@ -122,9 +122,11 @@ int translate_syscall_enter(Tracee *tracee)
 		status = translate_execve(tracee);
 		break;
 
+#if !defined(ARCH_X86)
 	case PR_brk:
 		status = translate_brk_enter(tracee);
 		break;
+#endif
 
 	case PR_fchdir:
 	case PR_chdir: {
