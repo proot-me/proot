@@ -65,6 +65,7 @@ typedef struct {
 typedef struct {
 	word_t base;
 	size_t size;
+	size_t prealloc_size;
 } Heap;
 
 /* Information related to a tracee process. */
