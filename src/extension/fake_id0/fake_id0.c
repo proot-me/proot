@@ -345,8 +345,8 @@ static int handle_sysexit_end(Tracee *tracee)
 	case PR_getegid32:
 	case PR_setuid:
 	case PR_setgid:
-  case PR_setgroups:
-  case PR_setgroups32:
+	case PR_setgroups:
+	case PR_setgroups32:
 	case PR_setfsuid:
 	case PR_setfsgid:
 	case PR_setuid32:

@@ -40,11 +40,11 @@ struct chained_syscall {
 STAILQ_HEAD(chained_syscalls, chained_syscall);
 
 /**
- * Append a new syscall (@syscall, @sysarg_*) to the list of
+ * Append a new syscall (@sysnum, @sysarg_*) to the list of
  * "unrequested" syscalls for the given @tracee.  These new syscalls
  * will be triggered in order once the current syscall is done.  The
  * caller is free to force the last result of this syscall chain in
- * @tracee->chain.final_result. This function returns -errno if an
+ * @tracee->chain.final_result.  This function returns -errno if an
  * error occurred, otherwise 0.
  */
 int register_chained_syscall(Tracee *tracee, Sysnum sysnum,
