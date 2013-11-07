@@ -164,6 +164,11 @@ void translate_syscall_exit(Tracee *tracee)
 		switch (peek_reg(tracee, ORIGINAL, SYSARG_1)) {
 		case SYS_ACCEPT:
 		case SYS_ACCEPT4:
+			/* Nothing special to do if no sockaddr was specified.  */
+			sock_addr = PEEK_MEM(SYSARG_ADDR(2));
+			if (sock_addr == 0)
+				goto end;
+			/* Fall through.  */
 		case SYS_GETSOCKNAME:
 		case SYS_GETPEERNAME:
 			/* Handle these cases below.  */

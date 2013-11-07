@@ -283,7 +283,14 @@ int translate_syscall_enter(Tracee *tracee)
 
 		case SYS_ACCEPT:
 		case SYS_ACCEPT4:
+			/* Nothing special to do if no sockaddr was specified.  */
+			sock_addr = PEEK_MEM(SYSARG_ADDR(2));
+			if (sock_addr == 0) {
+				status = 0;
+				break;
+			}
 			special = true;
+			/* Fall through.  */
 		case SYS_GETSOCKNAME:
 		case SYS_GETPEERNAME:
 			/* Remember: PEEK_MEM puts -errno in status and breaks
