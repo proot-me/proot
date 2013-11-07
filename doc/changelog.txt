@@ -1,3 +1,81 @@
+Release v3.2
+============
+
+This release was mostly driven by the requirements of "CARE", a new
+project based on PRoot that will be released publicly soon on
+http://reproducible.io.  For information, "CARE" is the short for
+"Comprehensive Archiver for Reproducible Execution".
+
+Highlights
+----------
+
++ Many bugs exposed by a couple of static code analyzers (Coverity,
+  Clang, ...) and some test-suites (Linux Test Project, libuv, ...)
+  are now fixed.
+
++ The "kompat" extension ("-k" option) can now emulate most of the
+  kernel features that would be required by the guest system but that
+  are not available on the host kernel.  For example, it can now make
+  programs from Ubuntu 13.04 64-bit run on RedHat 5 64-bit without any
+  further tweaks:
+
+     rh5-64$ proot -k 3.8 -R ubuntu-13.04-64bit/ ...
+
++ On ARM and x86_64, the heap segment is now emulated with a regular
+  memory mapping to ensure this former always exists.  This was
+  required because some kernels might put a non-fixed memory mapping
+  right after the regular heap when using some GNU ELF interpreters
+  (ld.so) as loaders.  Without the heap segment emulation, some
+  programs like Bash would crash because the heap can't grow anymore:
+
+      bash: xmalloc: locale.c:73: cannot allocate 2 bytes (0 bytes allocated)
+
+Miscellaneous
+-------------
+
++ When using the "-R" option, the path to the guest rootfs is now
+  bound into the guest rootfs itself.  This is required to run
+  programs that search for their DSOs in /proc/self/maps, like VLC for
+  instance.
+
++ When using the "-v" option with a level greater than 2, syscalls are
+  now printed as strings instead of numbers, à la strace:
+
+    $ proot -v 3 true
+    [...]
+    proot info: pid 29847: sysenter start: mmap(0x0, 0x2d141, 0x1, 0x2, 0x3, 0x0) [...]
+    [...]
+
++ The article about the migration from ScratchBox2 is now publicly
+  available:
+
+    https://github.com/cedric-vincent/PRoot/blob/v3.2/doc/articles/howto_migrate_from_scratchbox2.txt
+
+Internal changes
+----------------
+
++ Tools based on PRoot (CARE, DepsTracker, ATOS, ...) can now easily
+  replace the original command-line interface with their own
+  command-line interface.
+
++ It is now possible to chain forged syscalls to a regular syscall.
+  Search for "register_chained_syscall" in the sources for details.
+
++ A couple of new helpers are now visible from the extensions.
+
+Thanks
+------
+
++ Bug reports and tests: Corbin Champion, Maxence Dalmais, and Nicolas
+  Cornu.
+
++ Static code analysis: Antoine Moynault and Christophe Guillon.
+
++ Patches: Rémi Duraffort.
+
++ Unexpected hint: Christophe Monat :)
+
+
 Release v3.1
 ============
 

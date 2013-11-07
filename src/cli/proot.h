@@ -4,7 +4,7 @@
 #define PROOT_CLI_H
 
 #ifndef VERSION
-#define VERSION "3.1"
+#define VERSION "3.2"
 #endif
 
 static char *recommended_bindings[] = {
@@ -45,8 +45,8 @@ static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *,
 static int post_initialize_command(Tracee *, const Cli *, size_t, char *const *, size_t);
 
 static Cli proot_cli = {
-	.name     = "proot",
 	.version  = VERSION,
+	.name     = "proot",
 	.subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup",
 	.synopsis = "proot [option] ... [command]",
 	.colophon = "Visit http://proot.me for help, bug reports, suggestions, patchs, ...\n\

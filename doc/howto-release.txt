@@ -15,7 +15,6 @@ Sanity checks
   - `make -C tests memcheck`
   - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
   - `make -C tests V=1 2>&1 | grep talloc`
-  - `env PROOT_FORCE_KOMPAT=1 make -C tests`
 
 LTP
 ---
@@ -91,8 +90,13 @@ where "/usr/bin/true" is a symlink to "/bin/true".
 Documentation Update
 --------------------
 
+0. update "doc/changelog.txt"
+
 1. update the release number in "doc/proot-manual.txt"
+
 2. regenerate the documentation: `make -C doc`
-3. regenerate the command-line interface: `cp doc/proot-cli.h
+
+3. regenerate the command-line interface: `cp doc/proot.h
    src/cli/proot.h; $EDITOR src/cli.h`
+
 4. upload the generated RPM .spec file to OBS
