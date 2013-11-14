@@ -1,7 +1,7 @@
 # If you want to build outside of the source tree, use the -f option:
 #     make -f ${SOMEWHERE}/proot/src/GNUmakefile
 
-# the VPATH variable must points to the actual makefile directory
+# the VPATH variable must point to the actual makefile directory
 VPATH	:= $(dir $(lastword $(MAKEFILE_LIST)))
 GIT      = git
 RM       = rm
