@@ -348,6 +348,33 @@ void chop_finality(char *path)
 }
 
 /**
+ * Put in @path the result of readlink(/proc/@pid/fd/@fd).  This
+ * function returns -errno if an error occured, othrwise 0.
+ */
+int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
+{
+	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
+	int status;
+
+	/* Format the path to the "virtual" link. */
+	status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	pid, fd);
+	if (status < 0)
+		return -EBADF;
+	if ((size_t) status >= sizeof(link))
+		return -EBADF;
+
+	/* Read the value of this "virtual" link. */
+	status = readlink(link, path, PATH_MAX);
+	if (status < 0)
+		return -EBADF;
+	if (status >= PATH_MAX)
+		return -ENAMETOOLONG;
+	path[status] = '\0';
+
+	return 0;
+}
+
+/**
  * Copy in @host_path the equivalent of "@tracee->root +
  * canonicalize(@dir_fd + @guest_path)".  If @guest_path is not
  * absolute then it is relative to the directory referred by the
@@ -374,23 +401,12 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 			return status;
 	}
 	else {
-		char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 		struct stat statl;
 
-		/* Format the path to the "virtual" link. */
-		status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	tracee->pid, dir_fd);
+		/* /proc/@tracee->pid/fd/@dir_fd -> host_path.  */
+		status = readlink_proc_pid_fd(tracee->pid, dir_fd, host_path);
 		if (status < 0)
-			return -EBADF;
-		if ((size_t) status >= sizeof(link))
-			return -EBADF;
-
-		/* Read the value of this "virtual" link. */
-		status = readlink(link, host_path, PATH_MAX);
-		if (status < 0)
-			return -EBADF;
-		if (status >= PATH_MAX)
-			return -ENAMETOOLONG;
-		host_path[status] = '\0';
+			return status;
 
 		/* Ensure it points to a directory. */
 		status = stat(host_path, &statl);
