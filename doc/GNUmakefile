@@ -1,6 +1,7 @@
-all: proot.1 proot.h proot.spec index.html
+NON_PERSISTANT = proot-cli.h proot.spec proot-index.html care-cli.h care-index.html
+all: proot.1 care.1 $(NON_PERSISTANT)
 
-proot.1: proot-manual.txt
+%.1: %-manual.txt
 	rst2man $< $@
 
 %.xml: %.txt
@@ -10,19 +11,19 @@ proot.1: proot-manual.txt
 	rst2html $< $@
 
 # Workaround to avoid unescaped C character.
-proot-manual-quoted.txt: proot-manual.txt
+%-manual-quoted.txt: %-manual.txt
 	sed 's/"/\\\\"/g' $^ > $@
 
-proot.h: stylesheets/proot-cli.xsl proot-manual-quoted.xml
+%-cli.h: stylesheets/%-cli.xsl %-manual-quoted.xml
 	xsltproc --output $@ $^
 
-proot.spec:  stylesheets/rpm-spec.xsl proot-manual.xml
+%.spec:  stylesheets/rpm-spec.xsl %-manual.xml
 	xsltproc --output $@ $^
 	echo "* $(shell date +'%a %b %d %Y') Cédric VINCENT <cedric.vincent@st.com>" >> $@
 	cat changelog.txt >> $@
 
-index.html:  stylesheets/website.xsl proot-manual.xml
+%-index.html:  stylesheets/website.xsl %-manual.xml
 	xsltproc --output $@ $^
 
 clean:
-	rm -f *.xml proot-manual-quoted.txt proot.h
+	rm -f *.xml $(NON_PERSISTANT) *-quoted.*

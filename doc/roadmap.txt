@@ -2,8 +2,35 @@
  Roadmap
 =========
 
-v3.2: ptrace emulation
-======================
+CARE v2.0: public release
+=========================
+
+* Embed all the documentation in --help
+
+* Add an option --print-licenses (glibc, talloc, queue, uthash, lzo, ...)
+
+* Generate src/cli/care.h from doc/care-manual.txt
+
+* Less than awesome error message::
+
+    $ care ..
+    care warning: '..' not found (root = /, cwd = /usr/local/cedric/Git/proot, $PATH=(null))
+
+
+CARE v2.1
+=========
+
+* Add an append mode
+
+* Add a "fake id" mode
+
+* Warn when an unemulated feature is used (ppoll, getcpu, flags, ...)
+
+* Handle DBUS_SESSION_BUS_ADDRESS & SESSION_MANAGER automatically
+
+
+PRoot v3.3: ptrace emulation
+============================
 
 Highlight
 ---------
@@ -37,11 +64,27 @@ New features
 Fixes
 -----
 
-* Improve code coverage of PRoot.
+* Fix ``proot -0 -w samba-4.0 ./configure``
+
+* Replace tracee->reconf.paths with tracee->reconf.env + getenv2()
+
+* Replace system("find %s -empty -delete") with a built-in function
+
+* Fix ``proot  fuser -uv .``::
+
+      Cannot stat file /proc/29916/fd/99: No such file or directory
+
+      $ ls -l /proc/29916/fd/99
+      lrwx------ 1 cedric users 64 Sep 12 14:13 /proc/29916/fd/99 -> socket:[214998506]
+
+      strace  fuser -uv .
+      ...
+      stat("/proc/29916/fd/99", {st_mode=S_IFSOCK|0777, st_size=0, ...}) = 0
+      ...
 
 
-v3.3: FS cache
-==============
+PRoot v3.4: FS cache
+====================
 
 Highlight
 ---------
@@ -56,8 +99,8 @@ The internal structure of this FS cache could also be used to emulate
 the "getdents" syscall in order to add or hide entries.
 
 
-v3.4: custom loader
-===================
+PRoot v3.5: custom loader
+=========================
 
 Highlight
 ---------

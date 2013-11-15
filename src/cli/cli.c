@@ -293,8 +293,8 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 
 	/* As of now, only the PRoot CLI is supported, the code below
 	 * is just a mock-up.  */
-	if (strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
-		cli = get_proot_cli(tracee->ctx);
+	if (get_care_cli != NULL && strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
+		cli = get_care_cli(tracee->ctx);
 	else
 		cli = get_proot_cli(tracee->ctx);
 	if (cli == NULL)

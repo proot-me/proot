@@ -42,8 +42,37 @@ OBJECTS = \
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o
 
+ifdef CARE
+
+OBJECTS +=				\
+	cli/care.o			\
+	cli/care-manual.o		\
+	extension/care/care.o		\
+	extension/care/final.o		\
+	extension/care/archive.o
+
+.INTERMEDIATE: manual
+manual: $(VPATH)/../doc/care-manual.txt
+	$(Q)cp $< $@
+
+cli/care-manual.o: manual cli/cli.o
+	$($(quiet)GEN)
+	$(Q)objcopy --input binary										\
+		--output `objdump -f cli/cli.o | perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
+		--binary-architecture `objdump -f cli/cli.o | perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
+		$< $@
+
+LDFLAGS += -larchive
+
+.DEFAULT_GOAL = care
+all: care
+
+else
+
 .DEFAULT_GOAL = proot
 all: proot
+
+endif
 
 ######################################################################
 # Beautified output
@@ -104,7 +133,7 @@ SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
 COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$(@:.o=.c) -o $@
 LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
-proot: $(OBJECTS)
+proot care: $(OBJECTS)
 	$(LINK)
 
 # Special case to compute which files depend on the auto-generated
@@ -133,7 +162,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) proot $(DEPS) build.h
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) proot care cli/care-manual.o $(DEPS) build.h
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
