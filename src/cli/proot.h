@@ -4,7 +4,7 @@
 #define PROOT_CLI_H
 
 #ifndef VERSION
-#define VERSION "3.2"
+#define VERSION "3.2.1"
 #endif
 
 static char *recommended_bindings[] = {
