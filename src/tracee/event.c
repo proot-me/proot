@@ -461,10 +461,7 @@ int event_loop()
 				}
 				break;
 
-/* With *vanilla* kernels PTRACE_EVENT_SECCOMP == 7.  */
-#if PTRACE_EVENT_SECCOMP == 8
 			case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
-#endif
 			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
 				unsigned long flags = 0;
 

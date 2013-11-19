@@ -103,7 +103,13 @@
 #        define PTRACE_EVENT_SECCOMP	7
 #    endif
 #    ifndef PTRACE_EVENT_SECCOMP2
-#        define PTRACE_EVENT_SECCOMP2	7
+#        if PTRACE_EVENT_SECCOMP == 7
+#            define PTRACE_EVENT_SECCOMP2	8
+#        elif PTRACE_EVENT_SECCOMP == 8
+#            define PTRACE_EVENT_SECCOMP2	7
+#        else
+#            error "unknown PTRACE_EVENT_SECCOMP value"
+#        endif
 #    endif
 #    ifndef PTRACE_SET_SYSCALL
 #        define PTRACE_SET_SYSCALL	23
