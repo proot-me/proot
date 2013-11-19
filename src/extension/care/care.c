@@ -133,7 +133,6 @@ static int generate_care(Extension *extension, const Options *options)
 	if (extension->config == NULL)
 		return -1;
 	care = extension->config;
-	talloc_set_destructor(care, finalize_care);
 
 	care->command = options->command;
 	care->ipc_are_volatile = !options->ignore_default_config;
@@ -211,6 +210,7 @@ static int generate_care(Extension *extension, const Options *options)
 	/* handle_host_path() can now be safely used.  */
 	care->is_ready = true;
 
+	talloc_set_destructor(care, finalize_care);
 	return 0;
 }
 
