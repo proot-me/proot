@@ -120,7 +120,8 @@ static void generate_output_name(const Tracee *tracee, Care *care)
  */
 static int generate_care(Extension *extension, const Options *options)
 {
-	size_t prefix_length;
+	size_t suffix_length;
+	const char *cursor;
 	Tracee *tracee;
 	Item *item2;
 	Item *item;
@@ -152,11 +153,17 @@ static int generate_care(Extension *extension, const Options *options)
 		return -1;
 	}
 
-	care->archive = new_archive(care, tracee, care->output, &prefix_length);
+	care->archive = new_archive(care, tracee, care->output, &suffix_length);
 	if (care->archive == NULL)
 		return -1;
 
-	care->prefix = talloc_strndup(care, care->output, prefix_length);
+	cursor = strrchr(care->output, '/');
+	if (cursor != NULL)
+		cursor++;
+	else
+		cursor = care->output;
+
+	care->prefix = talloc_strndup(care, cursor, strlen(cursor) - suffix_length);
 	if (care->prefix == NULL) {
 		notice(tracee, WARNING, INTERNAL, "can't allocate archive prefix");
 		return -1;

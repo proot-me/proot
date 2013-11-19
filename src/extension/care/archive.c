@@ -73,10 +73,10 @@ static Format supported_formats[] = {
 /**
  * Detect the expected format for the given @output.  This function
  * returns NULL on error, otherwise the format descriptor and update
- * @length_prefix with the number of initial characters that does not
- * describe the format.
+ * @suffix_length with the number of characters that describes the
+ * format.
  */
-static const Format *detect_format(const Tracee* tracee, const char *output, size_t *length_prefix)
+static const Format *detect_format(const Tracee* tracee, const char *output, size_t *suffix_length)
 {
 	size_t length_output;
 	size_t nb_formats;
@@ -102,7 +102,7 @@ static const Format *detect_format(const Tracee* tracee, const char *output, siz
 			    || strcmp(output + length_output - length_suffix, suffix) != 0)
 				continue;
 
-			*length_prefix = length_output - length_suffix;
+			*suffix_length = length_suffix;
 			return &supported_formats[i];
 		}
 	}
@@ -110,7 +110,7 @@ static const Format *detect_format(const Tracee* tracee, const char *output, siz
 	notice(tracee, WARNING, INTERNAL, "unknown format suffix, assuming '%s' format",
 		supported_formats[0].suffixes[0]);
 
-	*length_prefix = length_output;
+	*suffix_length = 0;
 	return &supported_formats[0];
 }
 
