@@ -38,11 +38,11 @@ automatize or document such external interaction.
 Privacy
 -------
 
-To ensure no sensible files will leak into the archive, CARE
-*conceals* recursively the content of ``$HOME`` and ``/tmp``, that is,
-they appear empty during the original execution.  Although, for
-consistency reasons, the content of ``$PWD`` is *revealed* even if it
-is nested into the two previous paths.
+To ensure that no sensitive file can possibly leak into the archive,
+CARE *conceals* recursively the content of ``$HOME`` and ``/tmp``,
+that is, they appear empty during the original execution.  Although,
+for consistency reasons, the content of ``$PWD`` is *revealed* even if
+it is nested into the two previous paths.
 
 As a consequence, a program executed under CARE may behave
 unexpectedly because a required path is not accessible anymore.  In
@@ -50,9 +50,7 @@ this case, such a path has to be revealed explicitly.  For details,
 see the options ``--concealed-path`` and ``--revealed-path``, and the
 file ``concealed-accesses.txt`` as well.
 
-By the way, it is highly recommended to have a look at the archived
-content.
-
+It is advised to inspect the archived content before sharing it.
 
 Options
 =======
@@ -82,7 +80,7 @@ interface.
 -c path, --concealed-path=path
     Make *path* content appear empty during the original execution.
 
-    Some paths may contain sensible data that should never be
+    Some paths may contain sensitive data that should never be
     archived.  This is typically the case for most of the files in:
 
     * $HOME
@@ -287,7 +285,7 @@ should be able to reproduce her issue on his system::
     ./path/proc.c:132:3: warning: ignoring return value of 'strtol'
     [...]
 
-So far so good!  This compiler warning doesn't make sens to Bob since
+So far so good!  This compiler warning doesn't make sense to Bob since
 ``strtol`` is used there to check a string format; the return value is
 useless, only the ``errno`` value matters.  Further investigations are
 required, so Bob re-execute Alice's GCC differently to get more
