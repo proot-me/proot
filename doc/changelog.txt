@@ -1,3 +1,11 @@
+Release v3.2.1
+==============
+
++ Make ptrace/seccomp even more portable on Ubuntu.
+
+Thanks to Maxence Dalmais for the bug report and tests.
+
+
 Release v3.2
 ============
 
