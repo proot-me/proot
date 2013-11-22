@@ -48,21 +48,21 @@ typedef struct {
 static Format supported_formats[] = {
 	{
 		.suffixes	= { ".tar", NULL },
-		.set_format	= archive_write_set_format_pax_restricted,
+		.set_format	= archive_write_set_format_gnutar,
 		.add_filter	= NULL,
 		.options	= NULL,
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR,
 	},
 	{
 		.suffixes	= { ".tar.gz", ".tgz" },
-		.set_format	= archive_write_set_format_pax_restricted,
+		.set_format	= archive_write_set_format_gnutar,
 		.add_filter	= archive_write_add_filter_gzip,
 		.options	= "gzip:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR,
 	},
 	{
 		.suffixes	= { ".tar.lzo", ".tzo" },
-		.set_format	= archive_write_set_format_pax_restricted,
+		.set_format	= archive_write_set_format_gnutar,
 		.add_filter	= archive_write_add_filter_lzop,
 		.options	= "lzop:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR,
