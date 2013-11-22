@@ -61,7 +61,7 @@ options supported by CARE, that is, the first part of its command-line
 interface.
 
 -o file, --output=file
-    Write the archive in *file*, the suffix specify the format.
+    Write the archive in *file*, its suffix specifies the format.
 
     If this option is not specified, the default output file is
     ``care-<DATE>.tar``.  The suffix of the *file* is used to select
@@ -130,9 +130,9 @@ interface.
     Some environment variables are used to communicate with programs
     that can't be monitored by CARE, like remote servers.  Such
     environment variables are said *volatile*; they shouldn't be
-    archived, instead they must be accessed from the *actual* value
-    during the re-execution.  This is typically the case for the
-    following ones:
+    archived, instead they must be accessed from the *actual*
+    environment during the re-execution.  This is typically the case
+    for the following ones:
 
     * DISPLAY
     * http_proxy
@@ -272,7 +272,7 @@ between each other, they decide to use CARE.  First, Alice prepends
      info: ----------------------------------------------------------------------
      info: CARE output: care-130213072430.tar
 
-Then she send the ``care-130213072430.tar`` file to Bob.  Now, he
+Then she sends the ``care-130213072430.tar`` file to Bob.  Now, he
 should be able to reproduce her issue on his system::
 
     bob$ tar -xf care-130213072430.tar
