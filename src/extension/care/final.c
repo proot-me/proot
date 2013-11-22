@@ -174,6 +174,13 @@ static int archive_re_execute_sh(const Care *care)
 	N("export XAUTHORITY=\"${XAUTHORITY:-$HOME/.Xauthority}\"");
 	N("export ICEAUTHORITY=\"${ICEAUTHORITY:-$HOME/.ICEauthority}\"");
 	N("");
+
+	N("nbargs=$#");
+	C("[ $nbargs -ne 0 ] || set --");
+	for (i = 0; care->command != NULL && care->command[i] != NULL; i++)
+		C("'%s'", care->command[i]);
+	N("");
+
 	C("env --ignore-environment");
 	C("PROOT_FORCE_KOMPAT=1");
 	C("PROOT_IGNORE_MISSING_BINDINGS=1");
@@ -221,13 +228,10 @@ static int archive_re_execute_sh(const Care *care)
 	/* In case the program retrieves its DSOs from /proc/self/maps
 	 * (eg. VLC). */
 	C("-b \"$(dirname $0)/rootfs\"");
+	N("${1+\"$@\"}");
+	N("");
 
-	C("${@:-");
-	for (i = 0; care->command != NULL && care->command[i] != NULL; i++)
-		C("'%s'", care->command[i]);
-	N("}");
-
-	N("if [ $? -ne %d ] && [ x$@ = x ]; then", care->last_exit_status);
+	N("if [ $? -ne %d ] && [ $nbargs -eq 0 ]; then", care->last_exit_status);
 	N("echo \"care: The reproduced execution didn't return the same exit status as the\"");
 	N("echo \"care: original execution.  If it is unexpected, please report this bug\"");
 	N("echo \"care: to CARE/PRoot developers:\"");
