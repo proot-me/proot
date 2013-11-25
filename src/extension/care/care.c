@@ -102,7 +102,7 @@ static void generate_output_name(const Tracee *tracee, Care *care)
 		return;
 	}
 
-	care->output = talloc_asprintf(care, "care-%02d%02d%02d%02d%02d%02d.tar",
+	care->output = talloc_asprintf(care, "care-%02d%02d%02d%02d%02d%02d.cpio",
 					splitted_time->tm_year - 100, splitted_time->tm_mon + 1,
 					splitted_time->tm_mday, splitted_time->tm_hour,
 					splitted_time->tm_min, splitted_time->tm_sec);

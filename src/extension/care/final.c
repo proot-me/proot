@@ -366,6 +366,7 @@ static int archive_myself(const Care *care)
 int finalize_care(Care *care)
 {
 	int status;
+	char *hint;
 
 	/* Generate & archive the "re-execute.sh" script. */
 	status = archive_re_execute_sh(care);
@@ -391,9 +392,15 @@ int finalize_care(Care *care)
 
 	notice(NULL, INFO, USER,
 		"----------------------------------------------------------------------");
+	notice(NULL, INFO, USER, "Hints:");
 	notice(NULL, INFO, USER,
-		"If the execution didn't go as expected: search for \"conceal\" in `care -h`.");
-	notice(NULL, INFO, USER, "CARE output: %s", care->output);
+		"\t- if the execution didn't go as expected: search for \"conceal\" in `care -h`.");
+
+	hint = talloc_asprintf(care, "\t- use the following command to extract the archive: %s", care->archive->howto_extract);
+	if (hint == NULL)
+		notice(NULL, INFO, USER, "CARE output: %s", care->output);
+	else
+		notice(NULL, INFO, USER, hint, care->output);
 
 	return 0;
 }

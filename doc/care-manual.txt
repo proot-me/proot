@@ -64,18 +64,18 @@ interface.
     Write the archive in *file*, its suffix specifies the format.
 
     If this option is not specified, the default output file is
-    ``care-<DATE>.tar``.  The suffix of the *file* is used to select
+    ``care-<DATE>.cpio``.  The suffix of the *file* is used to select
     the archive format.  The following table illustrates the speed and
     size differences between the supported formats when creating a
     CARE archive for ``emacs --eval '(kill-emacs)'``:
 
-    ========  ==========  =============  ==========  ==========
-    format    total time  time overhead  final size  size ratio
-    ========  ==========  =============  ==========  ==========
-    .tar           2.20s           ref.      54.1MB        ref.
-    .tar.gz        3.96s            80%      21.6MB        0.40
-    .tar.lzo       2.45s            11%      27.5MB        0.51
-    ========  ==========  =============  ==========  ==========
+    =========  ==========  =============  ==========  ==========
+    format     total time  time overhead  final size  size ratio
+    =========  ==========  =============  ==========  ==========
+    .cpio           2.22s           ref.      80.6MB        ref.
+    .cpio.gz        4.93s           122%      32.8MB        0.40
+    .cpio.lzo       2.59s            17%      42.7MB        0.53
+    =========  ==========  =============  ==========  ==========
 
 -c path, --concealed-path=path
     Make *path* content appear empty during the original execution.

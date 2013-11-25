@@ -42,31 +42,58 @@ typedef struct {
 	int (*add_filter)(struct archive *);
 	int hardlink_resolver_strategy;
 	const char *options;
+	const char *howto_extract;
 	char *const suffixes[NB_MAX_SUFFIXES];
 } Format;
 
 static Format supported_formats[] = {
 	{
+		.suffixes	= { ".cpio", NULL },
+		.set_format	= archive_write_set_format_cpio,
+		.add_filter	= NULL,
+		.options	= NULL,
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.howto_extract	= "cpio -iduvF '%s'",
+	},
+	{
+		.suffixes	= { ".cpio.gz", NULL },
+		.set_format	= archive_write_set_format_cpio,
+		.add_filter	= archive_write_add_filter_gzip,
+		.options	= "gzip:compression-level=1",
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.howto_extract	= "gzip -dc '%s' | cpio -iduv",
+	},
+	{
+		.suffixes	= { ".cpio.lzo", NULL },
+		.set_format	= archive_write_set_format_cpio,
+		.add_filter	= archive_write_add_filter_lzop,
+		.options	= "lzop:compression-level=1",
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.howto_extract	= "lzop -dc '%s' | cpio -iduv",
+	},
+#if 0
+	{
 		.suffixes	= { ".tar", NULL },
 		.set_format	= archive_write_set_format_gnutar,
 		.add_filter	= NULL,
 		.options	= NULL,
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR,
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR,
 	},
 	{
 		.suffixes	= { ".tar.gz", ".tgz" },
 		.set_format	= archive_write_set_format_gnutar,
 		.add_filter	= archive_write_add_filter_gzip,
 		.options	= "gzip:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR,
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR,
 	},
 	{
 		.suffixes	= { ".tar.lzo", ".tzo" },
 		.set_format	= archive_write_set_format_gnutar,
 		.add_filter	= archive_write_add_filter_lzop,
 		.options	= "lzop:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR,
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR,
 	},
+#endif
 	{0},
 };
 
@@ -137,6 +164,8 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		notice(tracee, ERROR, INTERNAL, "can't allocate archive structure");
 		return NULL;
 	}
+
+	archive->howto_extract = format->howto_extract;
 
 	archive->handle = archive_write_new();
 	if (archive->handle == NULL) {
