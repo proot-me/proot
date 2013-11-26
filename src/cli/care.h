@@ -3,12 +3,13 @@
 #ifndef CARE_CLI_H
 #define CARE_CLI_H
 
+#include "cli/cli.h"
+
 #ifndef VERSION
 #define VERSION "2.0"
 #endif
 
 #define CARE_MAX_SIZE 1024
-
 
 static char const *default_concealed_paths[] = {
 	"$HOME",
@@ -83,7 +84,7 @@ Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.",
 		{ .name = "--output", .separator = '=', .value = "file" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_o,
-	  .description = "Write the archive in *file*, the suffix specify the format.",
+	  .description = "Write the archive in *file*, its suffix specifies the format.",
 	  .detail = NULL,
 	},
 	{ .class = "Options",
