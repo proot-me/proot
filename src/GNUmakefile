@@ -47,6 +47,7 @@ ifdef CARE
 OBJECTS +=				\
 	cli/care.o			\
 	cli/care-manual.o		\
+	cli/care-licenses.o		\
 	extension/care/care.o		\
 	extension/care/final.o		\
 	extension/care/archive.o
@@ -56,10 +57,21 @@ manual: $(VPATH)/../doc/care-manual.txt
 	$(Q)cp $< $@
 
 cli/care-manual.o: manual cli/cli.o
-	$($(quiet)GEN)
-	$(Q)objcopy --input binary										\
-		--output `objdump -f cli/cli.o | perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
-		--binary-architecture `objdump -f cli/cli.o | perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
+	$(OBJIFY)
+
+licenses:
+	$(Q)echo '' > $@
+
+cli/care-licenses.o: licenses cli/cli.o
+	$(OBJIFY)
+
+OBJIFY = $($(quiet)GEN)									\
+	objcopy										\
+		--input binary								\
+		--output `objdump -f cli/cli.o |					\
+			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
+		--binary-architecture `objdump -f cli/cli.o |				\
+				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
 		$< $@
 
 LDFLAGS += -larchive

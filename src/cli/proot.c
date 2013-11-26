@@ -158,6 +158,7 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
 {
 	print_version(cli);
+	printf("\n%s\n", cli->colophon);
 	exit_failure = false;
 	return -1;
 }
