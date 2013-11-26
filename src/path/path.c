@@ -214,7 +214,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 	bool found;
 
 	assert(command != NULL);
-	is_explicit = (command[0] == '/' || command[0] == '.');
+	is_explicit = (strchr(command, '/') != NULL);
 
 	/* Is the command available without any $PATH look-up?  */
 	status = realpath2(tracee, host_path, command, true);
@@ -274,7 +274,7 @@ not_found:
 		command, get_root(tracee), path, paths);
 
 	/* Check if the command was found without any $PATH look-up
-	 * but it didn't start with "./" explicitly.  */
+	 * but it didn't contain "/".  */
 	if (found && !is_explicit)
 		notice(tracee, INFO, USER,
 			"to execute a local program, use the './' prefix, for example: ./%s", command);
