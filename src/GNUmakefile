@@ -12,7 +12,7 @@ CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -Wall -Wextra -O2
 LDFLAGS  += -ltalloc
 
-OBJECTS = \
+OBJECTS += \
 	cli/cli.o		\
 	cli/proot.o		\
 	cli/notice.o		\
@@ -47,7 +47,6 @@ ifdef CARE
 OBJECTS +=				\
 	cli/care.o			\
 	cli/care-manual.o		\
-	cli/care-licenses.o		\
 	extension/care/care.o		\
 	extension/care/final.o		\
 	extension/care/archive.o
@@ -58,21 +57,6 @@ manual: $(VPATH)/../doc/care-manual.txt
 
 cli/care-manual.o: manual cli/cli.o
 	$(OBJIFY)
-
-licenses:
-	$(Q)echo '' > $@
-
-cli/care-licenses.o: licenses cli/cli.o
-	$(OBJIFY)
-
-OBJIFY = $($(quiet)GEN)									\
-	objcopy										\
-		--input binary								\
-		--output `objdump -f cli/cli.o |					\
-			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
-		--binary-architecture `objdump -f cli/cli.o |				\
-				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
-		$< $@
 
 LDFLAGS += -larchive
 
@@ -85,6 +69,18 @@ else
 all: proot
 
 endif
+
+cli/%-licenses.o: licenses cli/cli.o
+	$(OBJIFY)
+
+OBJIFY = $($(quiet)GEN)									\
+	objcopy										\
+		--input binary								\
+		--output `objdump -f cli/cli.o |					\
+			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
+		--binary-architecture `objdump -f cli/cli.o |				\
+				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
+		$< $@
 
 ######################################################################
 # Beautified output

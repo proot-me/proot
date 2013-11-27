@@ -155,10 +155,20 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 	return parse_integer_option(tracee, &tracee->verbose, value, "-v");
 }
 
+extern char __attribute__((weak)) _binary_licenses_start;
+extern char __attribute__((weak)) _binary_licenses_end;
+
 static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
 {
+	size_t size;
+
 	print_version(cli);
 	printf("\n%s\n", cli->colophon);
+
+	size = &_binary_licenses_end - &_binary_licenses_start;
+	if (size > 0)
+		write(1, &_binary_licenses_start, size);
+
 	exit_failure = false;
 	return -1;
 }
