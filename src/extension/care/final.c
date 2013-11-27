@@ -396,7 +396,7 @@ int finalize_care(Care *care)
 		"----------------------------------------------------------------------");
 	notice(NULL, INFO, USER, "Hints:");
 	notice(NULL, INFO, USER,
-		"\t- if the execution didn't go as expected: search for \"conceal\" in `care -h`.");
+		"\t- if the execution didn't go as expected: search for \"conceal\" in `care -h`");
 
 	hint = talloc_asprintf(care, "\t- use the following command to extract the archive: %s", care->archive->howto_extract);
 	if (hint == NULL)

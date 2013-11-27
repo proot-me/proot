@@ -53,7 +53,7 @@ static Format supported_formats[] = {
 		.add_filter	= NULL,
 		.options	= NULL,
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.howto_extract	= "cpio -iduvF '%s'",
+		.howto_extract	= "cpio -idmuvF '%s'",
 	},
 	{
 		.suffixes	= { ".cpio.gz", NULL },
@@ -61,7 +61,7 @@ static Format supported_formats[] = {
 		.add_filter	= archive_write_add_filter_gzip,
 		.options	= "gzip:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.howto_extract	= "gzip -dc '%s' | cpio -iduv",
+		.howto_extract	= "gzip -dc '%s' | cpio -idmuv",
 	},
 	{
 		.suffixes	= { ".cpio.lzo", NULL },
@@ -69,7 +69,7 @@ static Format supported_formats[] = {
 		.add_filter	= archive_write_add_filter_lzop,
 		.options	= "lzop:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.howto_extract	= "lzop -dc '%s' | cpio -iduv",
+		.howto_extract	= "lzop -dc '%s' | cpio -idmuv",
 	},
 #if 0
 	{
