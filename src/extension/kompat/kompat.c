@@ -280,6 +280,9 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 	case PR_fcntl: {
 		word_t command;
 
+		if (!needs_kompat(config, KERNEL_VERSION(2,6,24)))
+			return 0;
+
 		command = peek_reg(tracee, ORIGINAL, SYSARG_2);
 		if (command == F_DUPFD_CLOEXEC)
 			poke_reg(tracee, SYSARG_2, F_DUPFD);
