@@ -42,9 +42,7 @@ OBJECTS += \
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o
 
-ifdef CARE
-
-OBJECTS +=				\
+CARE_OBJECTS = 				\
 	cli/care.o			\
 	cli/care-manual.o		\
 	extension/care/care.o		\
@@ -58,17 +56,10 @@ manual: $(VPATH)/../doc/care-manual.txt
 cli/care-manual.o: manual cli/cli.o
 	$(OBJIFY)
 
-LDFLAGS += -larchive
-
-.DEFAULT_GOAL = care
-all: care
-
-else
+CARE_LDFLAGS = -larchive
 
 .DEFAULT_GOAL = proot
 all: proot
-
-endif
 
 cli/%-licenses.o: licenses cli/cli.o
 	$(OBJIFY)
@@ -141,8 +132,11 @@ SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
 COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$(@:.o=.c) -o $@
 LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
-proot care: $(OBJECTS)
+proot: $(OBJECTS)
 	$(LINK)
+
+care: $(OBJECTS) $(CARE_OBJECTS)
+	$(LINK) $(CARE_LDFLAGS)
 
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
@@ -157,9 +151,9 @@ $(USE_BUILD_H): build.h
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS): $(firstword $(MAKEFILE_LIST))
+$(OBJECTS) $(CARE_OBJECTS): $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
+DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 -include $(DEPS)
 
 ######################################################################
@@ -168,12 +162,18 @@ DEPS = $(OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 PREFIX = /usr/local
 DESTDIR = $(PREFIX)/bin
 
-.PHONY: clean distclean install uninstall
+.PHONY: clean distclean install install-care uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) proot care cli/care-manual.o $(DEPS) build.h
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) proot care cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
 
+install-care: care
+	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
+
 uninstall:
 	-$(RM) -f $(DESTDIR)/proot
+
+uninstall-care:
+	-$(RM) -f $(DESTDIR)/care
