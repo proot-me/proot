@@ -26,7 +26,7 @@
 #include <sys/queue.h> /* STAILQ_*, */
 #include <stdint.h>    /* INT_MIN, */
 #include <unistd.h>    /* getpid(2), close(2), */
-#include <stdio.h>     /* P_tmpdir, */
+#include <stdio.h>     /* P_tmpdir, printf(3), fflush(3), */
 #include <unistd.h>    /* getcwd(2), */
 #include <errno.h>     /* errno(3), */
 
@@ -102,12 +102,12 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 	size_t size;
 
 	print_version(cli);
+	printf("\n%s\n", cli->colophon);
+	fflush(stdout);
 
 	size = &_binary_licenses_end - &_binary_licenses_start;
-	if (size > 1)
+	if (size > 0)
 		write(1, &_binary_licenses_start, size);
-	else
-		printf("\n%s\n", cli->colophon);
 
 	exit_failure = false;
 	return -1;

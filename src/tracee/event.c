@@ -232,8 +232,8 @@ static void check_architecture(Tracee *tracee)
 		return;
 
 	notice(NULL, ERROR, USER,
-		"'%s' is a 64-bit program while this instance of "
-		"PRoot can handle 32-bit programs only", path);
+		"'%s' is a 64-bit program whereas this version of "
+		"%s handles 32-bit programs only", path, tracee->tool_name);
 
 	status = uname(&utsname);
 	if (status < 0)
@@ -243,7 +243,8 @@ static void check_architecture(Tracee *tracee)
 		return;
 
 	notice(NULL, INFO, USER,
-		"use a 64-bit instance of PRoot to support both 32 and 64-bit programs");
+		"use a 64-bit version of %s instead, it supports both 32 and 64-bit programs",
+		tracee->tool_name);
 }
 
 /**
