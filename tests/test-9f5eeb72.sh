@@ -19,7 +19,7 @@ touch ł
 ln ł d
 ln -s dangling_symlink e
 
-for BUNCH in "FORMAT=cpio EXTRACT='cpio -iduF'"
+for BUNCH in "FORMAT=cpio EXTRACT='cpio -idmuvF'"
 # "FORMAT=tar  EXTRACT='tar -xf'"
 do
     eval $BUNCH
@@ -57,13 +57,13 @@ do
 
     B=$(cat test/rootfs/${CWD}/a/b)
     [ x"$B" != x ]
-    [ "$B" == "I'm a bee" ]
+    [ "$B" = "I'm a bee" ]
 
     test -L test/rootfs/${CWD}/e
 
     F=$(readlink test/rootfs/${CWD}/e)
     [ x"$F" != x ]
-    [ "$F" == "dangling_symlink" ]
+    [ "$F" = "dangling_symlink" ]
 
     cd ..
 done

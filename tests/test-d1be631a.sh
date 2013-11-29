@@ -1,4 +1,4 @@
-if [ -z `which mknod`] || [ `id -u` == 0 ]; then
+if [ -z `which mknod`] || [ `id -u` -eq 0 ]; then
     exit 125;
 fi
 
