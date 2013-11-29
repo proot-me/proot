@@ -11,6 +11,7 @@ LD       = $(CC)
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -Wall -Wextra -O2
 LDFLAGS  += -ltalloc
+CARE_LDFLAGS = -larchive
 
 OBJECTS += \
 	cli/cli.o		\
@@ -49,29 +50,17 @@ CARE_OBJECTS = 				\
 	extension/care/final.o		\
 	extension/care/archive.o
 
-.INTERMEDIATE: manual
-manual: $(VPATH)/../doc/care-manual.txt
-	$(Q)cp $< $@
-
-cli/care-manual.o: manual cli/cli.o
-	$(OBJIFY)
-
-CARE_LDFLAGS = -larchive
-
 .DEFAULT_GOAL = proot
 all: proot
 
-cli/%-licenses.o: licenses cli/cli.o
-	$(OBJIFY)
+######################################################################
+# Sanity checks
 
-OBJIFY = $($(quiet)GEN)									\
-	objcopy										\
-		--input binary								\
-		--output `objdump -f cli/cli.o |					\
-			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
-		--binary-architecture `objdump -f cli/cli.o |				\
-				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
-		$< $@
+ifneq (,$(findstring care,$(MAKECMDGOALS)))
+ifneq ($(CARE_BUILD_ENV),ok)
+$(error care is supposed to be built with: http://build.reproducible.io)
+endif
+endif
 
 ######################################################################
 # Beautified output
@@ -132,6 +121,15 @@ SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
 COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$(@:.o=.c) -o $@
 LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
+OBJIFY = $($(quiet)GEN)									\
+	objcopy										\
+		--input binary								\
+		--output `objdump -f cli/cli.o |					\
+			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
+		--binary-architecture `objdump -f cli/cli.o |				\
+				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
+		$< $@
+
 proot: $(OBJECTS)
 	$(LINK)
 
@@ -146,6 +144,16 @@ $(USE_BUILD_H): build.h
 %.o: %.c
 	@mkdir -p $(dir $@)
 	$(COMPILE)
+
+.INTERMEDIATE: manual
+manual: $(VPATH)/../doc/care-manual.txt
+	$(Q)cp $< $@
+
+cli/care-manual.o: manual cli/cli.o
+	$(OBJIFY)
+
+cli/%-licenses.o: licenses cli/cli.o
+	$(OBJIFY)
 
 ######################################################################
 # Dependencies
