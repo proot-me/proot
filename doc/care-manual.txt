@@ -24,9 +24,9 @@ CARE monitors the execution of the specified command to create an
 *archive* that contains all the material required to *re-execute* it
 in the same context.  That way, the command will be reproducible
 everywhere, even on Linux systems that are supposed to be not
-compatible with the original Linux system.  This is typically useful
+compatible with the original Linux system.  CARE is typically useful
 to get reliable bug reports, demonstrations, academic experiences,
-tutorials, ...
+tutorials, portable applications, mininal lxc rootfs, ...
 
 By default, the *reproduced* execution uses environment variables and
 files from the archive, not from the *actual* Linux system.  However,
