@@ -25,6 +25,7 @@
 #include <sys/types.h> /* stat(2), */
 #include <sys/stat.h>  /* stat(2), */
 #include <unistd.h>    /* stat(2), */
+#include <stdio.h>     /* printf(3), fflush(3), */
 
 #include "cli/cli.h"
 #include "cli/notice.h"
@@ -164,6 +165,7 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 
 	print_version(cli);
 	printf("\n%s\n", cli->colophon);
+	fflush(stdout);
 
 	size = &_binary_licenses_end - &_binary_licenses_start;
 	if (size > 0)
