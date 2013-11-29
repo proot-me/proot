@@ -1,3 +1,17 @@
+Release v3.2.2
+==============
+
++ It is now possible to launch the initial program from a relative
+  path without specifying the "./" prefix, for example:
+
+    $ proot path/to/program
+
++ Don't discard fcntl(F_DUPFD_CLOEXEC) systematically when the kompat
+  extension is enabled (-k option).
+
++ Don't use syscalls that require Linux >= 2.6.16 anymore.
+
+
 Release v3.2.1
 ==============
 
