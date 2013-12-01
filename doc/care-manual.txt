@@ -270,14 +270,15 @@ between each other, they decide to use CARE.  First, Alice prepends
     ./path/proc.c:132:3: warning: ignoring return value of 'strtol'
     [...]
      info: ----------------------------------------------------------------------
-     info: CARE output: care-130213072430.tar
+     info: CARE output: care-130213072430.cpio
 
-Then she sends the ``care-130213072430.tar`` file to Bob.  Now, he
+Then she sends the ``care-130213072430.cpio`` file to Bob.  Now, he
 should be able to reproduce her issue on his system::
 
-    bob$ tar -xf care-130213072430.tar
+    bob$ cpio -idmuvF care-130213072430.cpio
+    [...]
     bob$ ./care-130213072430/re-execute.sh
-    
+
     make: Entering directory `PRoot-2.4/src'
     [...]
     CC    path/proc.o
