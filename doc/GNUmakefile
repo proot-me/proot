@@ -22,8 +22,8 @@ all: proot.1 care.1 $(NON_PERSISTANT)
 	echo "* $(shell date +'%a %b %d %Y') Cédric VINCENT <cedric.vincent@st.com>" >> $@
 	cat changelog.txt >> $@
 
-%-index.html:  stylesheets/website.xsl %-manual.xml
-	xsltproc --output $@ $^
+%-index.html: stylesheets/website.xsl stylesheets/%-website.xsl %-manual.xml
+	xsltproc --output $@ stylesheets/$*-website.xsl $*-manual.xml
 
 clean:
 	rm -f *.xml $(NON_PERSISTANT) *-quoted.*

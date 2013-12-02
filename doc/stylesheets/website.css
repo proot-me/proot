@@ -39,7 +39,6 @@ body {
 }
 
 h1 {
-    color: orange;
     text-align: center;
     text-shadow: 2px 3px 3px #333333;
     font-size: 3em;
@@ -97,12 +96,12 @@ h3 tt {
 }
 
 #contents a:hover {
-    border-bottom: 2px solid orange;
+    border-bottom: 2px solid black;
 }
 
 a {
     text-decoration: none;
-    border-bottom: 1px solid orange;
+    border-bottom: 1px solid black;
 }
 
 p {
@@ -128,10 +127,6 @@ li {
 table {
     margin-left: 2em;
     margin-right: 2em;
-}
-
-.footnote {
-    font-size: smaller;
 }
 
 pre {

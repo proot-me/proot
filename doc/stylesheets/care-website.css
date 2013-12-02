@@ -1,0 +1,13 @@
+@import url("website.css");
+
+h1 {
+    color: SkyBlue;
+}
+
+#contents a:hover {
+    border-bottom: 2px solid SkyBlue;
+}
+
+a {
+    border-bottom: 1px solid SkyBlue;
+}
