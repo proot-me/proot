@@ -24,12 +24,11 @@
 #include <linux/limits.h>  /* ARG_MAX, PATH_MAX, */
 #include <string.h>        /* str*(3), basename(3),  */
 #include <talloc.h>        /* talloc*,  */
-#include <stdlib.h>        /* exit(3), EXIT_*,  */
+#include <stdlib.h>        /* exit(3), EXIT_*, strtol(3), getenv(3), */
 #include <assert.h>        /* assert(3),  */
 #include <sys/types.h>     /* getpid(2),  */
 #include <unistd.h>        /* getpid(2),  */
 #include <errno.h>         /* errno(3), */
-#include <stdlib.h>        /* strtol(3), */
 
 #include "cli/cli.h"
 #include "cli/notice.h"
@@ -117,9 +116,18 @@ void print_version(const Cli *cli)
 		);
 }
 
-static void print_execve_help(const Tracee *tracee, const char *argv0)
+static void print_execve_help(const Tracee *tracee, const char *argv0, int status)
 {
 	notice(tracee, WARNING, SYSTEM, "execve(\"%s\")", argv0);
+
+	/* Ubuntu kernel bug?  */
+	if (status == -EPERM && getenv("PROOT_NO_SECCOMP") == NULL) {
+		notice(tracee, INFO, USER,
+"It seems your kernel contains this bug: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1202161\n"
+"To workaround it, set the env. variable PROOT_NO_SECCOMP to 1.");
+		return;
+	}
+
 	notice(tracee, INFO, USER, "possible causes:\n"
 "  * <program> is a script but its interpreter (eg. /bin/sh) was not found;\n"
 "  * <program> is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
@@ -460,7 +468,7 @@ int main(int argc, char *argv[])
 	/* Start the first tracee.  */
 	status = launch_process(tracee);
 	if (status < 0) {
-		print_execve_help(tracee, tracee->exe);
+		print_execve_help(tracee, tracee->exe, status);
 		goto error;
 	}
 
