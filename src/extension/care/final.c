@@ -181,9 +181,15 @@ static int archive_re_execute_sh(const Care *care)
 		C("'%s'", care->command[i]);
 	N("");
 
+	N("if [ x$PROOT_NO_SECCOMP != x ]; then");
+	N("    PROOT_NO_SECCOMP=\"PROOT_NO_SECCOMP=$PROOT_NO_SECCOMP\"");
+	N("fi");
+	N("");
+
 	C("env --ignore-environment");
 	C("PROOT_FORCE_KOMPAT=1");
 	C("PROOT_IGNORE_MISSING_BINDINGS=1");
+	C("$PROOT_NO_SECCOMP");
 
 	for (i = 0; environ[i] != NULL; i++) {
 		const char *volatile_envar;

@@ -6,7 +6,7 @@
 Comprehensive Archiver for Reproducible Execution
 -------------------------------------------------
 
-:Date: 2013-11-15
+:Date: 2013-12-02
 :Version: 2.0
 :Manual section: 1
 
@@ -26,7 +26,8 @@ in the same context.  That way, the command will be reproducible
 everywhere, even on Linux systems that are supposed to be not
 compatible with the original Linux system.  CARE is typically useful
 to get reliable bug reports, demonstrations, academic experiences,
-tutorials, portable applications, mininal lxc rootfs, ...
+tutorials, portable applications, minimal rootfs, file-system
+coverage, ...
 
 By default, the *reproduced* execution uses environment variables and
 files from the archive, not from the *actual* Linux system.  However,
@@ -51,6 +52,7 @@ see the options ``--concealed-path`` and ``--revealed-path``, and the
 file ``concealed-accesses.txt`` as well.
 
 It is advised to inspect the archived content before sharing it.
+
 
 Options
 =======
@@ -333,10 +335,6 @@ Thanks to CARE, Bob was able to reproduce the issue reported by Alice
 without effort.  For investigations purpose, he was able to re-execute
 programs differently and to search into the relevant files.
 
-CARE is not only useful for bug reports, but also for demonstrations,
-academic experiences, tutorials, ...  Actually for anything that needs
-to be reproducible.
-
 .. [#] https://launchpad.net/ubuntu/oneiric/+source/gcc-4.5/4.5.2-8ubuntu4
 .. [#] https://launchpad.net/ubuntu/+source/eglibc/2.13-0ubuntu13.2
 
@@ -350,13 +348,13 @@ any Linux systems, it is highly recommended to build it with its
 dedicated build environment (http://build.reproducible.io), or to use
 following binaries:
 
-* for x86_64: http://reproducible.io/x86_64/care
+* for x86_64: http://static.reproducible.io/care-x86_64
 
-* for x86: *soon*
+* for x86: http://static.reproducible.io/care-x86
 
-* for ARM: *soon*
+* for ARM: http://static.reproducible.io/care-arm
 
-* for SH4/ST40: *soon*
+* other architectures: on demand.
 
 
 Colophon
