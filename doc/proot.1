@@ -41,8 +41,8 @@ or setup to do things like using an arbitrary directory as the new
 root filesystem, making files accessible somewhere else in the
 filesystem hierarchy, or executing programs built for another CPU
 architecture transparently through QEMU user\-mode.  Also, developers
-can add their own features or use PRoot as a Linux process
-instrumentation engine thanks to its extension mechanism.  Technically
+can use PRoot as a generic Linux process instrumentation engine thanks
+to its extension mechanism, see \fI\%CARE\fP for an example.  Technically
 PRoot relies on \fBptrace\fP, an unprivileged system\-call available in
 every Linux kernel.
 .sp
@@ -567,9 +567,18 @@ checking whether the C compiler is a cross\-compiler... no
 .SS PRoot
 .sp
 The latest release of PRoot is packaged on \fI\%http://packages.proot.me\fP
-and sources are hosted on \fI\%http://github.proot.me\fP\&.  Also, highly
-compatible binaries are available on \fI\%http://static.proot.me\fP for a
-couple of architectures.
+and sources are hosted on \fI\%http://github.proot.me\fP\&.  It is also
+available as highly compatible static binaries:
+.INDENT 0.0
+.IP \(bu 2
+for x86_64: \fI\%http://static.proot.me/proot\-x86_64\fP
+.IP \(bu 2
+for x86: \fI\%http://static.proot.me/proot\-x86\fP
+.IP \(bu 2
+for ARM: \fI\%http://static.proot.me/proot\-arm\fP
+.IP \(bu 2
+other architectures: on demand.
+.UNINDENT
 .SS Rootfs
 .sp
 Here follows a couple of URLs where some rootfs archives can be freely

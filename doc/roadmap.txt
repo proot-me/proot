@@ -2,31 +2,24 @@
  Roadmap
 =========
 
-CARE v2.0: public release
-=========================
-
-* Embed all the documentation in --help
-
-* Add an option --print-licenses (glibc, talloc, queue, uthash, lzo, ...)
-
-* Generate src/cli/care.h from doc/care-manual.txt
-
-* Less than awesome error message::
-
-    $ care ..
-    care warning: '..' not found (root = /, cwd = /usr/local/cedric/Git/proot, $PATH=(null))
-
-
 CARE v2.1
 =========
 
+* Based on PRoot v3.3
+
 * Add an append mode
+
+* Add an extract mode
+
+* Handle DBUS_SESSION_BUS_ADDRESS & SESSION_MANAGER automatically
+
+
+CARE v2.2
+=========
 
 * Add a "fake id" mode
 
 * Warn when an unemulated feature is used (ppoll, getcpu, flags, ...)
-
-* Handle DBUS_SESSION_BUS_ADDRESS & SESSION_MANAGER automatically
 
 
 PRoot v3.3: ptrace emulation
@@ -171,6 +164,11 @@ Fixes
       DT_DIR  .
       DT_REG  readdir
       DT_REG  fstab
+
+* Less than awesome error message::
+
+    $ care ..
+    care warning: '..' not found (root = /, cwd = /usr/local/cedric/Git/proot, $PATH=(null))
 
 
 Features

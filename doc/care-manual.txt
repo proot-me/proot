@@ -342,10 +342,10 @@ programs differently and to search into the relevant files.
 Downloads
 =========
 
-CARE is heavily based on PRoot, that's why they are hosted in the same
+CARE is heavily based on PRoot_, that's why they are hosted in the same
 repository: http://github.proot.me.  Since CARE is supposed to work on
 any Linux systems, it is highly recommended to build it with its
-dedicated build environment (http://build.reproducible.io), or to use
+dedicated build environment: http://build.reproducible.io, or to use
 following binaries:
 
 * for x86_64: http://static.reproducible.io/care-x86_64
@@ -356,6 +356,7 @@ following binaries:
 
 * other architectures: on demand.
 
+.. _PRoot: http://proot.me
 
 Colophon
 ========
