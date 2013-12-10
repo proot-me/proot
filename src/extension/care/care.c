@@ -78,7 +78,7 @@ Item *queue_item(TALLOC_CTX *context, List **list, const char *value)
 		return NULL;
 
 	item->load = talloc_strdup(item, value);
-	if (item == NULL)
+	if (item->load == NULL)
 		return NULL;
 
 	STAILQ_INSERT_TAIL(*list, item, link);
