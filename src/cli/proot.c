@@ -25,6 +25,7 @@
 #include <sys/types.h> /* stat(2), */
 #include <sys/stat.h>  /* stat(2), */
 #include <unistd.h>    /* stat(2), */
+#include <stdio.h>     /* printf(3), fflush(3), */
 
 #include "cli/cli.h"
 #include "cli/notice.h"
@@ -155,9 +156,21 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 	return parse_integer_option(tracee, &tracee->verbose, value, "-v");
 }
 
+extern char __attribute__((weak)) _binary_licenses_start;
+extern char __attribute__((weak)) _binary_licenses_end;
+
 static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
 {
+	size_t size;
+
 	print_version(cli);
+	printf("\n%s\n", cli->colophon);
+	fflush(stdout);
+
+	size = &_binary_licenses_end - &_binary_licenses_start;
+	if (size > 0)
+		write(1, &_binary_licenses_start, size);
+
 	exit_failure = false;
 	return -1;
 }

@@ -20,7 +20,6 @@
  * 02110-1301 USA.
  */
 
-#define _ATFILE_SOURCE /* readlinkat(2), */
 #include <string.h>    /* string(3), */
 #include <stdarg.h>    /* va_*(3), */
 #include <assert.h>    /* assert(3), */
@@ -215,7 +214,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 	bool found;
 
 	assert(command != NULL);
-	is_explicit = (command[0] == '/' || command[0] == '.');
+	is_explicit = (strchr(command, '/') != NULL);
 
 	/* Is the command available without any $PATH look-up?  */
 	status = realpath2(tracee, host_path, command, true);
@@ -275,7 +274,7 @@ not_found:
 		command, get_root(tracee), path, paths);
 
 	/* Check if the command was found without any $PATH look-up
-	 * but it didn't start with "./" explicitly.  */
+	 * but it didn't contain "/".  */
 	if (found && !is_explicit)
 		notice(tracee, INFO, USER,
 			"to execute a local program, use the './' prefix, for example: ./%s", command);
@@ -348,6 +347,33 @@ void chop_finality(char *path)
 }
 
 /**
+ * Put in @path the result of readlink(/proc/@pid/fd/@fd).  This
+ * function returns -errno if an error occured, othrwise 0.
+ */
+int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
+{
+	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
+	int status;
+
+	/* Format the path to the "virtual" link. */
+	status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	pid, fd);
+	if (status < 0)
+		return -EBADF;
+	if ((size_t) status >= sizeof(link))
+		return -EBADF;
+
+	/* Read the value of this "virtual" link. */
+	status = readlink(link, path, PATH_MAX);
+	if (status < 0)
+		return -EBADF;
+	if (status >= PATH_MAX)
+		return -ENAMETOOLONG;
+	path[status] = '\0';
+
+	return 0;
+}
+
+/**
  * Copy in @host_path the equivalent of "@tracee->root +
  * canonicalize(@dir_fd + @guest_path)".  If @guest_path is not
  * absolute then it is relative to the directory referred by the
@@ -374,23 +400,12 @@ int translate_path(Tracee *tracee, char host_path[PATH_MAX],
 			return status;
 	}
 	else {
-		char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
 		struct stat statl;
 
-		/* Format the path to the "virtual" link. */
-		status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	tracee->pid, dir_fd);
+		/* /proc/@tracee->pid/fd/@dir_fd -> host_path.  */
+		status = readlink_proc_pid_fd(tracee->pid, dir_fd, host_path);
 		if (status < 0)
-			return -EBADF;
-		if ((size_t) status >= sizeof(link))
-			return -EBADF;
-
-		/* Read the value of this "virtual" link. */
-		status = readlink(link, host_path, PATH_MAX);
-		if (status < 0)
-			return -EBADF;
-		if (status >= PATH_MAX)
-			return -ENAMETOOLONG;
-		host_path[status] = '\0';
+			return status;
 
 		/* Ensure it points to a directory. */
 		status = stat(host_path, &statl);
@@ -658,18 +673,20 @@ static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 		return 0;
 
 	while ((dirent = readdir(dirp)) != NULL) {
-		/* Read the value of this "virtual" link. */
-#ifdef HAVE_READLINKAT
-		status = readlinkat(dirfd(dirp), dirent->d_name, path, PATH_MAX);
-#else
+		/* Read the value of this "virtual" link.  Don't use
+		 * readlinkat(2) here since it would require Linux >=
+		 * 2.6.16 and Glibc >= 2.4, whereas PRoot is supposed
+		 * to work on any Linux 2.6 systems.  */
+
 		char tmp[PATH_MAX];
 		if (strlen(proc_fd) + strlen(dirent->d_name) + 1 >= PATH_MAX)
 			continue;
+
 		strcpy(tmp, proc_fd);
 		strcat(tmp, "/");
 		strcat(tmp, dirent->d_name);
+
 		status = readlink(tmp, path, PATH_MAX);
-#endif
 		if (status < 0 || status >= PATH_MAX)
 			continue;
 		path[status] = '\0';

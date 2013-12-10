@@ -2,7 +2,7 @@ if [ ! -x ${ROOTFS}/bin/true ] || [ -z `which id` ] || [ -z `which mcookie` ] ||
     exit 125;
 fi
 
-if [ `id -u` == 0 ]; then
+if [ `id -u` -eq 0 ]; then
     exit 125;
 fi
 

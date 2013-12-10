@@ -2,7 +2,7 @@ if [ -z `which mcookie` ] || [ -z `which id` ] || [ -z `which mkdir` ] || [ -z `
     exit 125;
 fi
 
-if [ `id -u` == 0 ]; then
+if [ `id -u` -eq 0 ]; then
     exit 125;
 fi
 

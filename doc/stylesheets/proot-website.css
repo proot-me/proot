@@ -1,0 +1,13 @@
+@import url("website.css");
+
+h1 {
+    color: orange;
+}
+
+#contents a:hover {
+    border-bottom: 2px solid orange;
+}
+
+a {
+    border-bottom: 1px solid orange;
+}

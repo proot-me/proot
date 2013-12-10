@@ -91,6 +91,8 @@ extern Comparison compare_paths2(const char *path1, size_t length1, const char *
 extern size_t substitute_path_prefix(char path[PATH_MAX], size_t old_prefix_length,
 				const char *new_prefix, size_t new_prefix_length);
 
+extern int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX]);
+
 /* Check if path interpretable relatively to dirfd, see openat(2) for details. */
 #define AT_FD(dirfd, path) ((dirfd) != AT_FDCWD && ((path) != NULL && (path)[0] != '/'))
 
