@@ -237,14 +237,17 @@ static int archive_re_execute_sh(const Care *care)
 	N("${1+\"$@\"}");
 	N("");
 
-	N("if [ $? -ne %d ] && [ $nbargs -eq 0 ]; then", care->last_exit_status);
+	N("status=$?");
+	N("if [ $status -ne %d ] && [ $nbargs -eq 0 ]; then", care->last_exit_status);
 	N("echo \"care: The reproduced execution didn't return the same exit status as the\"");
 	N("echo \"care: original execution.  If it is unexpected, please report this bug\"");
 	N("echo \"care: to CARE/PRoot developers:\"");
-	N("echo \"care:     * mailing list: proot_me@googlegroups.com; or\"");
-	N("echo \"care:     * forum: https://groups.google.com/forum/?fromgroups#!forum/proot_me; or\"");
+	N("echo \"care:     * mailing list: reproducible@googlegroups.com; or\"");
+	N("echo \"care:     * forum: https://groups.google.com/forum/?fromgroups#!forum/reproducible; or\"");
 	N("echo \"care:     * issue tracker: https://github.com/cedric-vincent/PRoot/issues/\"");
 	N("fi");
+	N("");
+	N("exit $status");
 
 	return archive_close_file(care, file, "re-execute.sh");
 }
