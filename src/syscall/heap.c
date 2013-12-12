@@ -83,7 +83,7 @@ word_t translate_brk_enter(Tracee *tracee)
 		poke_reg(tracee, SYSARG_1 /* address */, 0);
 		poke_reg(tracee, SYSARG_2 /* length  */, heap_offset + tracee->heap->prealloc_size);
 		poke_reg(tracee, SYSARG_3 /* prot    */, PROT_READ | PROT_WRITE);
-		poke_reg(tracee, SYSARG_4 /* flags   */, MAP_PRIVATE | MAP_ANONYMOUS | MAP_32BIT);
+		poke_reg(tracee, SYSARG_4 /* flags   */, MAP_PRIVATE | MAP_ANONYMOUS);
 		poke_reg(tracee, SYSARG_5 /* fd      */, -1);
 		poke_reg(tracee, SYSARG_6 /* offset  */, 0);
 

@@ -8,7 +8,8 @@
 int main(int argc, char *argv[])
 {
 	char *const dummy_argv[] = { "test", "stage2", NULL };
-	int brk1, brk2, status;
+	long brk1, brk2;
+	int status;
 	struct rlimit rlimit;
 
 	switch (argc) {

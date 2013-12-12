@@ -135,9 +135,6 @@
 #    ifndef talloc_get_type_abort
 #        define talloc_get_type_abort talloc_get_type
 #    endif
-#    ifndef MAP_32BIT
-#        define MAP_32BIT 0
-#    endif
 #    ifndef FUTEX_PRIVATE_FLAG
 #        define FUTEX_PRIVATE_FLAG	128
 #    endif
