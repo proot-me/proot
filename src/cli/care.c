@@ -35,6 +35,7 @@
 #include "path/binding.h"
 #include "extension/extension.h"
 #include "extension/care/care.h"
+#include "extension/care/extract.h"
 #include "attribute.h"
 
 /* These should be included last.  */
@@ -117,6 +118,13 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 		write(1, &_binary_licenses_start, size);
 
 	exit_failure = false;
+	return -1;
+}
+
+static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *value)
+{
+	int status = extract_archive_from_file(value, false);
+	exit_failure = (status < 0);
 	return -1;
 }
 

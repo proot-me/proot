@@ -20,7 +20,11 @@ touch ł
 ln ł d
 ln -s dangling_symlink e
 
-for BUNCH in "FORMAT=cpio EXTRACT='cpio -idmuvF'"
+mkdir -p   x/y
+chmod -rwx x
+
+for BUNCH in "FORMAT=cpio EXTRACT='${CARE} -x'" "FORMAT=cpio.gz EXTRACT='${CARE} -x'" "FORMAT=cpio.lzo EXTRACT='${CARE} -x'"
+# "FORMAT=cpio EXTRACT='cpio -idmuvF'"
 # "FORMAT=tar  EXTRACT='tar -xf'"
 do
     eval $BUNCH
@@ -67,9 +71,18 @@ do
     [ "$F" = "dangling_symlink" ]
 
     cd ..
+
+    # Check: extractable archive
+    ${CARE} -o test.${FORMAT} chmod -R +rwx x
+
+    mkdir test-${FORMAT}-3
+    cd test-${FORMAT}-3
+    ${EXTRACT} ../test.${FORMAT}
+
+    cd ..
 done
 
 cd ..
-chmod +w -R ${TMP}
+chmod +rwx -R ${TMP}
 rm -fr ${TMP}
 

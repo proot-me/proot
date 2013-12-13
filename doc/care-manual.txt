@@ -67,8 +67,8 @@ interface.
 
     If this option is not specified, the default output file is
     ``care-<DATE>.cpio``.  The suffix of the *file* is used to select
-    the archive format.  The following table illustrates the speed and
-    size differences between the supported formats when creating a
+    the archive format.  The following table illustrates speed and
+    size differences between all supported formats when creating a
     CARE archive for ``emacs --eval '(kill-emacs)'``:
 
     =========  ==========  =============  ==========  ==========
@@ -159,6 +159,13 @@ interface.
 
 -d, --ignore-default-config
     Don't use the default options.
+
+-x file, --extract=file
+    Extract content of the archive *file*, then exit.
+
+    It is recommended to use this option to extract archives created
+    by CARE because most extracting tools -- that are not based on
+    libarchive -- are too limited to extract them correctly.
 
 -v value, --verbose=value
     Set the level of debug information to *value*.
@@ -271,13 +278,15 @@ between each other, they decide to use CARE.  First, Alice prepends
     ./path/proc.c: In function 'readlink_proc':
     ./path/proc.c:132:3: warning: ignoring return value of 'strtol'
     [...]
-     info: ----------------------------------------------------------------------
-     info: CARE output: care-130213072430.cpio
+    care info: ----------------------------------------------------------------------
+    care info: Hints:
+    care info:   - search for "conceal" in `care -h` if the execution didn't go as expected.
+    care info:   - use `care -x care-130213072430.cpio` to extract the output archive.
 
 Then she sends the ``care-130213072430.cpio`` file to Bob.  Now, he
 should be able to reproduce her issue on his system::
 
-    bob$ cpio -idmuvF care-130213072430.cpio
+    bob$ care -x care-130213072430.cpio
     [...]
     bob$ ./care-130213072430/re-execute.sh
 

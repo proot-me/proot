@@ -48,6 +48,7 @@ CARE_OBJECTS = 				\
 	cli/care-manual.o		\
 	extension/care/care.o		\
 	extension/care/final.o		\
+	extension/care/extract.o	\
 	extension/care/archive.o
 
 .DEFAULT_GOAL = proot

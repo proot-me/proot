@@ -56,6 +56,7 @@ static int handle_option_m(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_d(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_x(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
@@ -158,6 +159,15 @@ Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.",
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_V,
 	  .description = "Print version, copyright, license and contact, then exit.",
+	  .detail = NULL,
+	},
+	{ .class = "Options",
+	  .arguments = {
+		{ .name = "-x", .separator = ' ', .value = "file" },
+		{ .name = "--extract", .separator = '=', .value = "file" },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_x,
+	  .description = "Extract content of the archive *file*, then exit.",
 	  .detail = NULL,
 	},
 	{ .class = "Options",

@@ -42,7 +42,6 @@ typedef struct {
 	int (*add_filter)(struct archive *);
 	int hardlink_resolver_strategy;
 	const char *options;
-	const char *howto_extract;
 	char *const suffixes[NB_MAX_SUFFIXES];
 } Format;
 
@@ -53,7 +52,6 @@ static Format supported_formats[] = {
 		.add_filter	= NULL,
 		.options	= NULL,
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.howto_extract	= "cpio -idmuvF '%s'",
 	},
 	{
 		.suffixes	= { ".cpio.gz", NULL },
@@ -61,7 +59,6 @@ static Format supported_formats[] = {
 		.add_filter	= archive_write_add_filter_gzip,
 		.options	= "gzip:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.howto_extract	= "gzip -dc '%s' | cpio -idmuv",
 	},
 	{
 		.suffixes	= { ".cpio.lzo", NULL },
@@ -69,7 +66,6 @@ static Format supported_formats[] = {
 		.add_filter	= archive_write_add_filter_lzop,
 		.options	= "lzop:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.howto_extract	= "lzop -dc '%s' | cpio -idmuv",
 	},
 #if 0
 	{
@@ -165,12 +161,9 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		return NULL;
 	}
 
-	archive->howto_extract = format->howto_extract;
-
 	archive->handle = archive_write_new();
 	if (archive->handle == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't initialize archive structure: %s",
-			archive_error_string(archive->handle));
+		notice(tracee, WARNING, INTERNAL, "can't initialize archive structure");
 		return NULL;
 	}
 
