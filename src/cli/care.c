@@ -91,7 +91,14 @@ static int handle_option_d(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 
 static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
-	return parse_integer_option(tracee, &tracee->verbose, value, "-v");
+	int status;
+
+	status = parse_integer_option(tracee, &tracee->verbose, value, "-v");
+	if (status < 0)
+		return status;
+
+	global_verbose_level = tracee->verbose;
+	return 0;
 }
 
 extern char __attribute__((weak)) _binary_licenses_start;
@@ -385,6 +392,8 @@ static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 const Cli *get_care_cli(TALLOC_CTX *context)
 {
 	Options *options;
+
+	global_tool_name = care_cli.name;
 
 	options = talloc_zero(context, Options);
 	if (options == NULL)

@@ -78,20 +78,20 @@ static int archive_close_file(const Care *care, FILE *file, const char *name)
 
 	status = fstat(fd, &statl);
 	if (status < 0) {
-		notice(NULL, WARNING, SYSTEM, "can't get '%s' status", name);
+		notice(NULL, ERROR, SYSTEM, "can't get '%s' status", name);
 		goto end;
 	}
 
 	location = talloc_asprintf(care, "%s/%s", care->prefix, name);
 	if (location == NULL) {
-		notice(NULL, WARNING, INTERNAL, "can't allocate location for '%s'", name);
+		notice(NULL, ERROR, INTERNAL, "can't allocate location for '%s'", name);
 		status = -1;
 		goto end;
 	}
 
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
-		notice(NULL, WARNING, INTERNAL, "can't readlink(/proc/%d/fd/%d)", getpid(), fd);
+		notice(NULL, ERROR, INTERNAL, "can't readlink(/proc/%d/fd/%d)", getpid(), fd);
 		goto end;
 	}
 
@@ -114,20 +114,20 @@ static FILE *temp_file(const Care *care)
 
 	temp = talloc_asprintf(care, "%s/care-%d-XXXXXX", P_tmpdir, getpid());
 	if (temp == NULL) {
-		notice(NULL, WARNING, INTERNAL, "can't allocate temporary file name");
+		notice(NULL, ERROR, INTERNAL, "can't allocate temporary file name");
 		return NULL;
 	}
 
 	fd = mkstemp(temp);
 	if (fd < 0) {
-		notice(NULL, WARNING, SYSTEM, "can't create temporary file");
+		notice(NULL, ERROR, SYSTEM, "can't create temporary file");
 		return NULL;
 	}
 
 	file = fdopen(fd, "w");
 	if (file == NULL) {
 		close(fd);
-		notice(NULL, WARNING, INTERNAL, "can't open temporary file");
+		notice(NULL, ERROR, INTERNAL, "can't open temporary file");
 		return NULL;
 	}
 
@@ -138,7 +138,7 @@ static FILE *temp_file(const Care *care)
 #define N(format, ...)							\
 	do {								\
 		if (fprintf(file, format "\n", ##__VA_ARGS__) < 0) {	\
-			notice(NULL, WARNING, INTERNAL, "can't write file"); \
+			notice(NULL, ERROR, INTERNAL, "can't write file"); \
 			(void) fclose(file);				\
 			return -1;					\
 		}							\
@@ -161,7 +161,7 @@ static int archive_re_execute_sh(const Care *care)
 
 	file = temp_file(care);
 	if (file == NULL) {
-		notice(NULL, WARNING, INTERNAL, "can't create temporary file for 're-execute.sh'");
+		notice(NULL, ERROR, INTERNAL, "can't create temporary file for 're-execute.sh'");
 		return -1;
 	}
 
@@ -350,20 +350,20 @@ static int archive_myself(const Care *care)
 		errno = ENAMETOOLONG;
 	}
 	if (status < 0) {
-		notice(NULL, WARNING, SYSTEM, "can't readlink '/proc/self/exe'");
+		notice(NULL, ERROR, SYSTEM, "can't readlink '/proc/self/exe'");
 		return status;
 	}
 	path[status] = '\0';
 
 	status = lstat(path, &statl);
 	if (status < 0) {
-		notice(NULL, WARNING, INTERNAL, "can't lstat '%s'", path);
+		notice(NULL, ERROR, INTERNAL, "can't lstat '%s'", path);
 		return status;
 	}
 
 	location = talloc_asprintf(care, "%s/proot", care->prefix);
 	if (location == NULL) {
-		notice(NULL, WARNING, INTERNAL, "can't allocate location for 'proot'");
+		notice(NULL, ERROR, INTERNAL, "can't allocate location for 'proot'");
 		return -1;
 	}
 

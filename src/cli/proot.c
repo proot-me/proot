@@ -153,7 +153,14 @@ static int handle_option_0(Tracee *tracee, const Cli *cli UNUSED, char *value)
 
 static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
-	return parse_integer_option(tracee, &tracee->verbose, value, "-v");
+	int status;
+
+	status = parse_integer_option(tracee, &tracee->verbose, value, "-v");
+	if (status < 0)
+		return status;
+
+	global_verbose_level = tracee->verbose;
+	return 0;
 }
 
 extern char __attribute__((weak)) _binary_licenses_start;
@@ -337,5 +344,6 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 
 const Cli *get_proot_cli(TALLOC_CTX *context UNUSED)
 {
+	global_tool_name = proot_cli.name;
 	return &proot_cli;
 }

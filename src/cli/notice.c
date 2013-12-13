@@ -29,6 +29,9 @@
 #include "cli/notice.h"
 #include "tracee/tracee.h"
 
+int global_verbose_level;
+const char *global_tool_name;
+
 /**
  * Print @message to the standard error stream according to its
  * @severity and @origin.
@@ -40,12 +43,12 @@ void notice(const Tracee *tracee, Severity severity, Origin origin, const char *
 	int verbose_level;
 
 	if (tracee == NULL) {
-		verbose_level = 0;
-		tool_name = "";
+		verbose_level = global_verbose_level;
+		tool_name     = global_tool_name ?: "";
 	}
 	else {
 		verbose_level = tracee->verbose;
-		tool_name = tracee->tool_name;
+		tool_name     = tracee->tool_name;
 	}
 
 	if (verbose_level < 0 && severity != ERROR)

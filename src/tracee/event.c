@@ -231,7 +231,7 @@ static void check_architecture(Tracee *tracee)
 	if (!IS_CLASS64(elf_header) || sizeof(word_t) == sizeof(uint64_t))
 		return;
 
-	notice(NULL, ERROR, USER,
+	notice(tracee, ERROR, USER,
 		"'%s' is a 64-bit program whereas this version of "
 		"%s handles 32-bit programs only", path, tracee->tool_name);
 
@@ -242,7 +242,7 @@ static void check_architecture(Tracee *tracee)
 	if (strcmp(utsname.machine, "x86_64") != 0)
 		return;
 
-	notice(NULL, INFO, USER,
+	notice(tracee, INFO, USER,
 		"use a 64-bit version of %s instead, it supports both 32 and 64-bit programs",
 		tracee->tool_name);
 }
