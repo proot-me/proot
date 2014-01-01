@@ -114,6 +114,9 @@
 #    ifndef PTRACE_SET_SYSCALL
 #        define PTRACE_SET_SYSCALL	23
 #    endif
+#    ifndef PTRACE_SET_SYSCALL
+#        define PTRACE_SET_SYSCALL	23
+#    endif
 #    ifndef ADDR_NO_RANDOMIZE
 #        define ADDR_NO_RANDOMIZE	0x0040000
 #    endif
