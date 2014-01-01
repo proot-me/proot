@@ -41,6 +41,7 @@ OBJECTS += \
 	tracee/event.o		\
 	extension/extension.o	\
 	extension/kompat/kompat.o \
+	extension/link2symlink/link2symlink.o \
 	extension/fake_id0/fake_id0.o
 
 CARE_OBJECTS = 				\

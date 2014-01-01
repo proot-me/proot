@@ -465,6 +465,11 @@ int main(int argc, char *argv[])
 	if (status < 0)
 		goto error;
 
+	/* Force the link2symlink extension.  */
+	status = initialize_extension(tracee, link2symlink_callback, NULL);
+	if (status < 0)
+		notice(tracee, WARNING, INTERNAL, "link2symlink not initialized");
+
 	/* Start the first tracee.  */
 	status = launch_process(tracee);
 	if (status < 0) {
