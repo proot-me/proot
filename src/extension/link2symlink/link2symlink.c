@@ -29,6 +29,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg)
 {
 	char original[PATH_MAX];
 	char intermediate[PATH_MAX];
+	char new_intermediate[PATH_MAX];
 	char final[PATH_MAX];
 	char new_final[PATH_MAX];
 	char * name;
@@ -37,6 +38,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg)
 	int status;
 	int link_count;
 	int first_link = 1;
+	int intermediate_suffix = 1;
 
 	/* Note: this path was already canonicalized.  */
 	size = read_string(tracee, original, peek_reg(tracee, CURRENT, sysarg), PATH_MAX);
@@ -89,6 +91,12 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg)
 
 	if (first_link) {
 		/*Move the original content to the new path. */
+		do {
+			sprintf(new_intermediate, "%s%04d", intermediate, intermediate_suffix);		
+			intermediate_suffix++;
+		} while ((access(new_intermediate,F_OK) != -1) && (intermediate_suffix < 1000)); 
+		strcpy(intermediate, new_intermediate);
+
 		strcpy(final, intermediate);
 		strcat(final, ".0002");
 		status = rename(original, final);
@@ -282,6 +290,17 @@ static int handle_sysexit_end(Tracee *tracee)
 				return -ENAMETOOLONG;
 		}
 
+		name = strrchr(original, '/');
+		if (name == NULL)
+			name = original;
+		else
+			name++;
+
+		if (strncmp(name, PREFIX, strlen(PREFIX)) == 0) {
+			strcpy(final,original);
+			goto final_proc;
+		}
+
 		/* Check if it is a link */
 		status = lstat(original, &statl);
 
@@ -311,7 +330,7 @@ static int handle_sysexit_end(Tracee *tracee)
 			return -ENAMETOOLONG;
 		final[size] = '\0';
 
-		status = stat(final,&finalStat);
+		final_proc: status = lstat(final,&finalStat);
 		if (status < 0)
 			return status;
 
@@ -348,10 +367,10 @@ int link2symlink_callback(Extension *extension, ExtensionEvent event,
 	case INITIALIZATION: {
 		/* List of syscalls handled by this extensions.  */
 		static FilteredSysnum filtered_sysnums[] = {
-			{ PR_link, FILTER_SYSEXIT },
-			{ PR_linkat, FILTER_SYSEXIT },
-			{ PR_unlink, FILTER_SYSEXIT },
-			{ PR_unlinkat, FILTER_SYSEXIT },
+			{ PR_link,		FILTER_SYSEXIT },
+			{ PR_linkat,		FILTER_SYSEXIT },
+			{ PR_unlink,		FILTER_SYSEXIT },
+			{ PR_unlinkat,		FILTER_SYSEXIT },
 			{ PR_fstat,		FILTER_SYSEXIT },
 			{ PR_fstat64,		FILTER_SYSEXIT },
 			{ PR_fstatat64,		FILTER_SYSEXIT },
@@ -360,6 +379,8 @@ int link2symlink_callback(Extension *extension, ExtensionEvent event,
 			{ PR_newfstatat,	FILTER_SYSEXIT },
 			{ PR_stat,		FILTER_SYSEXIT },
 			{ PR_stat64,		FILTER_SYSEXIT },
+			{ PR_rename,		FILTER_SYSEXIT },
+			{ PR_renameat,		FILTER_SYSEXIT },
 			FILTERED_SYSNUM_END,
 		};
 		extension->filtered_sysnums = filtered_sysnums;
@@ -370,6 +391,28 @@ int link2symlink_callback(Extension *extension, ExtensionEvent event,
 		Tracee *tracee = TRACEE(extension);
 
 		switch (get_sysnum(tracee, ORIGINAL)) {
+		case PR_rename:
+			/*int rename(const char *oldpath, const char *newpath);
+			 *If newpath is a psuedo hard link decrement the link count.
+			 */
+
+			status = decrement_link_count(tracee, SYSARG_2);
+			if (status < 0)
+				return status;
+
+			break;
+
+		case PR_renameat:
+			/*int renameat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath);
+			 *If newpath is a psuedo hard link decrement the link count.
+			 */
+
+			status = decrement_link_count(tracee, SYSARG_4);
+			if (status < 0)
+				return status;
+
+			break;
+
 		case PR_unlink:
 			/* If path points a file that is an symlink to a file that begins
 			 *   with PREFIX, let the file be deleted, but also decrement the
