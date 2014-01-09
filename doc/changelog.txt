@@ -1,6 +1,9 @@
 Release v3.2.2
 ==============
 
++ Remove a useless memory layout constraint on x86_64 that bugs some
+  programs like java and or qemu.
+
 + It is now possible to launch the initial program from a relative
   path without specifying the "./" prefix, for example:
 

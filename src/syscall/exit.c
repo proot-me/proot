@@ -424,8 +424,8 @@ void translate_syscall_exit(Tracee *tracee)
 		if ((int) syscall_result >= 0) {
 			/* New processes have no heap.  */
 			bzero(tracee->heap, sizeof(Heap));
-		case PR_rt_sigreturn:
-		case PR_sigreturn:
+	case PR_rt_sigreturn:
+	case PR_sigreturn:
 			tracee->restore_original_regs = false;
 		}
 		goto end;
