@@ -5,6 +5,7 @@
 
 #include <stddef.h>
 #include "tracee/tracee.h"
+#include "attribute.h"
 
 typedef struct {
 	const char *name;
@@ -45,7 +46,7 @@ typedef struct Cli {
 } Cli;
 
 extern const Cli *get_proot_cli(TALLOC_CTX *context);
-extern const Cli * __attribute__((weak)) get_care_cli(TALLOC_CTX *context);
+extern const Cli * WEAK get_care_cli(TALLOC_CTX *context);
 
 extern void print_usage(Tracee *tracee, const Cli *cli, bool detailed);
 extern void print_version(const Cli *cli);

@@ -23,6 +23,16 @@
 #ifndef EXTRACT_H
 #define EXTRACT_H
 
-extern int extract_archive_from_file(const char *path, bool search4cookie);
+#include <stdint.h>
+#include "attribute.h"
+
+#define AUTOEXTRACT_SIGNATURE "I_LOVE_PIZZA"
+
+typedef struct {
+	char signature[sizeof(AUTOEXTRACT_SIGNATURE)];
+	uint64_t size;
+} PACKED AutoExtractInfo;
+
+extern int WEAK extract_archive_from_file(const char *path);
 
 #endif /* EXTRACT_H */

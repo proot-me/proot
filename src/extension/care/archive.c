@@ -20,14 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>   /* open(2), */
+#include <sys/types.h>   /* open(2), lseek(2), */
 #include <sys/stat.h>    /* open(2), */
 #include <fcntl.h>       /* open(2), */
-#include <unistd.h>      /* read(2), readlink(2), close(2), */
+#include <unistd.h>      /* read(2), readlink(2), close(2), lseek(2), */
 #include <errno.h>       /* errno, EACCES, */
 #include <assert.h>      /* assert(3), */
 #include <linux/limits.h> /* PATH_MAX, */
 #include <string.h>      /* strlen(3), strcmp(3), */
+#include <stdbool.h>     /* bool, true, false, */
 #include <talloc.h>      /* talloc(3), */
 #include <archive.h>     /* archive_*(3), */
 #include <archive_entry.h> /* archive_entry*(3), */
@@ -36,61 +37,64 @@
 #include "tracee/tracee.h"
 #include "cli/notice.h"
 
-#define NB_MAX_SUFFIXES 2
 typedef struct {
 	int (*set_format)(struct archive *);
 	int (*add_filter)(struct archive *);
 	int hardlink_resolver_strategy;
 	const char *options;
-	char *const suffixes[NB_MAX_SUFFIXES];
+	bool auto_extractable;
+	char *const suffix;
 } Format;
 
 static Format supported_formats[] = {
 	{
-		.suffixes	= { ".cpio", NULL },
+		.suffix 	= ".bin",
 		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= NULL,
 		.options	= NULL,
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.auto_extractable = true,
 	},
 	{
-		.suffixes	= { ".cpio.gz", NULL },
+		.suffix 	= ".bin-gz",
 		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= archive_write_add_filter_gzip,
 		.options	= "gzip:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.auto_extractable = true,
 	},
 	{
-		.suffixes	= { ".cpio.lzo", NULL },
+		.suffix 	= ".bin-lzo",
 		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= archive_write_add_filter_lzop,
 		.options	= "lzop:compression-level=1",
 		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.auto_extractable = true,
 	},
-#if 0
 	{
-		.suffixes	= { ".tar", NULL },
-		.set_format	= archive_write_set_format_gnutar,
+		.suffix		= ".cpio",
+		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= NULL,
 		.options	= NULL,
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR,
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.auto_extractable = false,
 	},
 	{
-		.suffixes	= { ".tar.gz", ".tgz" },
-		.set_format	= archive_write_set_format_gnutar,
+		.suffix		= ".cpio.gz",
+		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= archive_write_add_filter_gzip,
 		.options	= "gzip:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR,
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.auto_extractable = false,
 	},
 	{
-		.suffixes	= { ".tar.lzo", ".tzo" },
-		.set_format	= archive_write_set_format_gnutar,
+		.suffix		= ".cpio.lzo",
+		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= archive_write_add_filter_lzop,
 		.options	= "lzop:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR,
+		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
+		.auto_extractable = false,
 	},
-#endif
-	{0},
 };
 
 /**
@@ -103,7 +107,7 @@ static const Format *detect_format(const Tracee* tracee, const char *output, siz
 {
 	size_t length_output;
 	size_t nb_formats;
-	size_t i, j;
+	size_t i;
 
 	assert(output != NULL);
 
@@ -111,30 +115,84 @@ static const Format *detect_format(const Tracee* tracee, const char *output, siz
 	length_output = strlen(output);
 
 	for (i = 0; i < nb_formats; i++) {
-		for (j = 0; j < NB_MAX_SUFFIXES; j++) {
-			size_t length_suffix;
-			const char *suffix;
+		size_t length_suffix;
+		const char *suffix;
 
-			suffix = supported_formats[i].suffixes[j];
-			if (suffix == NULL)
-				continue;
+		suffix = supported_formats[i].suffix;
+		length_suffix = strlen(suffix);
 
-			length_suffix = strlen(suffix);
+		if (   length_suffix >= length_output
+		    || strcmp(output + length_output - length_suffix, suffix) != 0)
+			continue;
 
-			if (   length_suffix >= length_output
-			    || strcmp(output + length_output - length_suffix, suffix) != 0)
-				continue;
-
-			*suffix_length = length_suffix;
-			return &supported_formats[i];
-		}
+		*suffix_length = length_suffix;
+		return &supported_formats[i];
 	}
 
 	notice(tracee, WARNING, INTERNAL, "unknown format suffix, assuming '%s' format",
-		supported_formats[0].suffixes[0]);
+		supported_formats[0].suffix);
 
 	*suffix_length = 0;
 	return &supported_formats[0];
+}
+
+/**
+ * Copy "/proc/self/exe" into @destination.  This function returns -1
+ * if an error occured, otherwise the file descriptor of the
+ * destination.
+ */
+static int copy_self_exe(const Tracee *tracee, const char *destination)
+{
+	int output_fd;
+	int input_fd;
+	int status;
+
+	input_fd = open("/proc/self/exe", O_RDONLY);
+	if (input_fd < 0) {
+		notice(tracee, ERROR, SYSTEM, "can't open '/proc/self/exe'");
+		return -1;
+	}
+
+	output_fd = open(destination, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU|S_IRGRP|S_IXGRP);
+	if (output_fd < 0) {
+		notice(tracee, ERROR, SYSTEM, "can't open/create '%s'", destination);
+		status = -1;
+		goto end;
+	}
+
+	while (1) {
+		uint8_t buffer[4 * 1024];
+		ssize_t size;
+
+		status = read(input_fd, buffer, sizeof(buffer));
+		if (status < 0) {
+			notice(tracee, ERROR, SYSTEM, "can't read '/proc/self/exe'");
+			goto end;
+		}
+
+		if (status == 0)
+			break;
+
+		size = status;
+		status = write(output_fd, buffer, size);
+		if (status < 0) {
+			notice(tracee, ERROR, SYSTEM, "can't write '%s'", destination);
+			goto end;
+		}
+		if (status != size)
+			notice(tracee, WARNING, INTERNAL,
+				"wrote %zd bytes instead of %zd", (size_t) status, size);
+	}
+
+end:
+	(void) close(input_fd);
+
+	if (status < 0) {
+		(void) close(output_fd);
+		return -1;
+	}
+
+	return output_fd;
 }
 
 /**
@@ -160,6 +218,7 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		notice(tracee, ERROR, INTERNAL, "can't allocate archive structure");
 		return NULL;
 	}
+	archive->fd = -1;
 
 	archive->handle = archive_write_new();
 	if (archive->handle == NULL) {
@@ -200,7 +259,18 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		}
 	}
 
-	status = archive_write_open_filename(archive->handle, output);
+	if (format->auto_extractable) {
+		archive->fd = copy_self_exe(tracee, output);
+		if (archive->fd < 0)
+			return NULL;
+
+		/* Remember where the CARE binary ends.  */
+		archive->offset = lseek(archive->fd, 0, SEEK_CUR);
+
+		status = archive_write_open_fd(archive->handle, archive->fd);
+	}
+	else
+		status = archive_write_open_filename(archive->handle, output);
 	if (status != ARCHIVE_OK) {
 		notice(tracee, ERROR, INTERNAL, "can't open archive '%s': %s",
 			output, archive_error_string(archive->handle));

@@ -20,16 +20,20 @@
  * 02110-1301 USA.
  */
 
-#include <unistd.h>       /* lstat(2), readlink(2), getpid(2), */
+#include <unistd.h>       /* lstat(2), readlink(2), getpid(2), wirte(2), lssek(2), */
 #include <sys/stat.h>     /* struct stat, fchmod(2), */
 #include <linux/limits.h> /* PATH_MAX, */
 #include <sys/utsname.h>  /* uname(2), */
 #include <stdio.h>        /* fprintf(3), fdopen(3), fclose(3), P_tmpdir, */
 #include <stdlib.h>       /* mkstemp(3), */
 #include <errno.h>        /* errno, ENAMETOOLONG, */
+#include <string.h>       /* strcpy(3), */
+#include <endian.h>       /* htobe64(3), */
+#include <assert.h>       /* assert(3), */
 
 #include "extension/care/final.h"
 #include "extension/care/care.h"
+#include "extension/care/extract.h"
 #include "execve/ldso.h"
 #include "path/path.h"
 #include "cli/notice.h"
@@ -376,6 +380,7 @@ static int archive_myself(const Care *care)
  */
 int finalize_care(Care *care)
 {
+	char *extractor;
 	int status;
 
 	/* Generate & archive the "re-execute.sh" script. */
@@ -400,13 +405,37 @@ int finalize_care(Care *care)
 
 	finalize_archive(care->archive);
 
+	/* Append auto-extract information if needed.  */
+	if (care->archive->fd >= 0 && care->archive->offset > 0) {
+		AutoExtractInfo info;
+		off_t position;
+
+		strcpy(info.signature, AUTOEXTRACT_SIGNATURE);
+
+		/* Compute the size of the archive.  */
+		position = lseek(care->archive->fd, 0, SEEK_CUR);
+		assert(position > care->archive->offset);
+		info.size = htobe64(position - care->archive->offset);
+
+		status = write(care->archive->fd, &info, sizeof(info));
+		if (status != sizeof(info))
+			notice(NULL, WARNING, SYSTEM, "can't write auto-extract information");
+
+		(void) close(care->archive->fd);
+		care->archive->fd = -1;
+
+		extractor = talloc_asprintf(care, "./%s", care->output);
+	}
+	else
+		extractor = talloc_asprintf(care, "care -x %s", care->output);
+
 	notice(NULL, INFO, USER,
 		"----------------------------------------------------------------------");
 	notice(NULL, INFO, USER, "Hints:");
 	notice(NULL, INFO, USER,
 		"  - search for \"conceal\" in `care -h` if the execution didn't go as expected.");
 	notice(NULL, INFO, USER,
-		"  - use `care -x %s` to extract the output archive.", care->output);
+		"  - run `%s` to extract the output archive.", extractor ?: "care -x <archive>");
 
 	return 0;
 }

@@ -25,5 +25,7 @@
 
 #define UNUSED __attribute__((unused))
 #define FORMAT(a, b, c) __attribute__ ((format (a, b, c)))
+#define PACKED __attribute__((packed))
+#define WEAK   __attribute__((weak))
 
 #endif /* ATTRIBUTE_H */

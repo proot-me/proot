@@ -29,6 +29,8 @@
 #include <assert.h>     /* assert(3), */
 #include <errno.h>      /* errno(3), */
 #include <string.h>     /* strerror(3), */
+#include <inttypes.h>   /* PRI*, */
+#include <endian.h>     /* be64toh(3), */
 #include <archive.h>    /* archive_*(3), */
 #include <archive_entry.h> /* archive_entry*(3), */
 
@@ -146,13 +148,13 @@ end:
 
 /**
  * Extract the archive stored at the given @path.  This function
- * returns -1 if an error occured, otherwise 0.
+ * returns -1 if an error occurred, otherwise 0.
  */
-int extract_archive_from_file(const char *path, bool search4cookie)
+int extract_archive_from_file(const char *path)
 {
 	struct stat statf;
 	void *pointer;
-	size_t size;
+	uint64_t size;
 	int status2;
 	int status;
 
@@ -180,12 +182,28 @@ int extract_archive_from_file(const char *path, bool search4cookie)
 		goto end;
 	}
 
-	if (search4cookie) {
-		assert(0);
-	}
-	else {
-		pointer = mmapping;
-		size = statf.st_size;
+	pointer = mmapping;
+	size = statf.st_size;
+
+	/* Check if it's an auto-extractable archive.  */
+	if (size > sizeof(AutoExtractInfo)) {
+		const AutoExtractInfo *info;
+
+		info = (AutoExtractInfo *) ((uintptr_t) pointer + size - sizeof(AutoExtractInfo));
+
+		if (strcmp(info->signature, AUTOEXTRACT_SIGNATURE) == 0) {
+			/* The size was stored in big-endian byte order.  */
+			size = be64toh(info->size);
+			pointer = (void *)((uintptr_t) info - size);
+
+			notice(NULL, INFO, USER,
+				"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
+				(uint64_t)(pointer - mmapping), size);
+		}
+		/* Don't go further if an auto-extractable archive was
+		 * expected.  */
+		else if (strcmp(path, "/proc/self/exe") == 0)
+			return -1;
 	}
 
 	status = extract_archive_from_memory(pointer, size);

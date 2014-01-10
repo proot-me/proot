@@ -102,8 +102,8 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 	return 0;
 }
 
-extern char __attribute__((weak)) _binary_licenses_start;
-extern char __attribute__((weak)) _binary_licenses_end;
+extern char WEAK _binary_licenses_start;
+extern char WEAK _binary_licenses_end;
 
 static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
 {
@@ -123,13 +123,13 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 
 static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *value)
 {
-	int status = extract_archive_from_file(value, false);
+	int status = extract_archive_from_file(value);
 	exit_failure = (status < 0);
 	return -1;
 }
 
-extern char __attribute__((weak)) _binary_manual_start;
-extern char __attribute__((weak)) _binary_manual_end;
+extern char WEAK _binary_manual_start;
+extern char WEAK _binary_manual_end;
 
 static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *value UNUSED)
 {

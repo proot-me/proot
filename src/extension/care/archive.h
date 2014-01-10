@@ -32,7 +32,10 @@
 typedef struct {
 	struct archive *handle;
 	struct archive_entry_linkresolver *hardlink_resolver;
-	const char *howto_extract;
+
+	/* Information used to create an auto-extractable archive.  */
+	off_t offset;
+	int fd;
 } Archive;
 
 extern Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,

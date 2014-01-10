@@ -32,6 +32,7 @@
 
 #include "cli/cli.h"
 #include "cli/notice.h"
+#include "extension/care/extract.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
@@ -295,18 +296,27 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	char *const default_command[] = { "/bin/sh", NULL };
 	option_handler_t handler = NULL;
 	const Option *options;
+	const Cli *cli = NULL;
 	size_t i, j, k;
 	int status;
-	const Cli *cli;
 
-	/* As of now, only the PRoot CLI is supported, the code below
-	 * is just a mock-up.  */
-	if (get_care_cli != NULL && strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
-		cli = get_care_cli(tracee->ctx);
-	else
-		cli = get_proot_cli(tracee->ctx);
+	if (get_care_cli != NULL) {
+		/* Check if it's an auto-extractable CARE archive.  */
+		status = extract_archive_from_file("/proc/self/exe");
+		if (status == 0) {
+			/* Yes it is, nothing more to do.  */
+			exit_failure = 0;
+			return -1;
+		}
+
+		/* Check if it's a valid CARE tool name.  */
+		if (strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
+			cli = get_care_cli(tracee->ctx);
+	}
+
+	/* Unknown tool name?  Default to PRoot.  */
 	if (cli == NULL)
-		return -1;
+		cli = get_proot_cli(tracee->ctx);
 	tracee->tool_name = cli->name;
 
 	if (argc == 1) {
@@ -479,8 +489,7 @@ error:
 	TALLOC_FREE(tracee);
 
 	if (exit_failure) {
-		fprintf(stderr, "fatal error: see `%1$s --help` or `man %1$s`.\n",
-			basename(argv[0]));
+		fprintf(stderr, "fatal error: see `%s --help`.\n", basename(argv[0]));
 		exit(EXIT_FAILURE);
 	}
 	else

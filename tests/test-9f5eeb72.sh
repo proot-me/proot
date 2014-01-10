@@ -23,7 +23,16 @@ ln -s dangling_symlink e
 mkdir -p   x/y
 chmod -rwx x
 
-for BUNCH in "FORMAT=cpio EXTRACT='${CARE} -x'" "FORMAT=cpio.gz EXTRACT='${CARE} -x'" "FORMAT=cpio.lzo EXTRACT='${CARE} -x'"
+for BUNCH in \
+    "FORMAT=cpio     EXTRACT='${CARE} -x'" \
+    "FORMAT=cpio.gz  EXTRACT='${CARE} -x'" \
+    "FORMAT=cpio.lzo EXTRACT='${CARE} -x'" \
+    "FORMAT=bin      EXTRACT='${CARE} -x'" \
+    "FORMAT=bin-gz   EXTRACT='${CARE} -x'" \
+    "FORMAT=bin-lzo  EXTRACT='${CARE} -x'" \
+    "FORMAT=bin      EXTRACT='sh -c '"     \
+    "FORMAT=bin-gz   EXTRACT='sh -c '"     \
+    "FORMAT=bin-lzo  EXTRACT='sh -c '"
 # "FORMAT=cpio EXTRACT='cpio -idmuvF'"
 # "FORMAT=tar  EXTRACT='tar -xf'"
 do
@@ -33,6 +42,8 @@ do
     # Check: permissions, unordered archive, UTF-8, hard-links
     ${CARE} -o test.${FORMAT} cat a/b ł d a/c
 
+    ! chmod +w -R test-${FORMAT}-1
+    rm -fr test-${FORMAT}-1
     mkdir test-${FORMAT}-1
     cd test-${FORMAT}-1
     ${EXTRACT} ../test.${FORMAT}
@@ -56,6 +67,8 @@ do
     # Check: last archived version wins, symlinks
     ${CARE} -o test.${FORMAT} sh -c 'ls a; ls a/b; ls -l e'
 
+    ! chmod +w -R test-${FORMAT}-2
+    rm -fr test-${FORMAT}-2
     mkdir test-${FORMAT}-2
     cd test-${FORMAT}-2
     ${EXTRACT} ../test.${FORMAT}
@@ -75,6 +88,8 @@ do
     # Check: extractable archive
     ${CARE} -o test.${FORMAT} chmod -R +rwx x
 
+    ! chmod +w -R test-${FORMAT}-3
+    rm -fr test-${FORMAT}-3
     mkdir test-${FORMAT}-3
     cd test-${FORMAT}-3
     ${EXTRACT} ../test.${FORMAT}
