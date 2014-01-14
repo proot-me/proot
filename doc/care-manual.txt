@@ -121,6 +121,8 @@ interface.
     * /tmp/.ICE-unix
     * $XAUTHORITY
     * $ICEAUTHORITY
+    * /var/run/dbus/system_bus_socket
+    * /var/tmp/kdecache-$LOGNAME
 
     This is also typically the case for any other fifos or sockets.
     These paths are considered *volatile*, unless the ``-d`` option is
@@ -145,6 +147,9 @@ interface.
     * HTTPS_PROXY
     * FTP_PROXY
     * ALL_PROXY
+    * DBUS_SESSION_BUS_ADDRESS
+    * SESSION_MANAGER
+    * XDG_SESSION_COOKIE
 
     These environment variables are considered *volatile*, unless the
     ``-d`` option is specified.

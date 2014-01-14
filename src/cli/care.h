@@ -31,6 +31,8 @@ static char const *default_volatile_paths[] = {
 	"/tmp/.ICE-unix",
 	"$XAUTHORITY",
 	"$ICEAUTHORITY",
+	"/var/run/dbus/system_bus_socket",
+	"/var/tmp/kdecache-$LOGNAME",
 	NULL,
 };
 
@@ -44,6 +46,9 @@ static char const *default_volatile_envars[] = {
 	"HTTPS_PROXY",
 	"FTP_PROXY",
 	"ALL_PROXY",
+	"DBUS_SESSION_BUS_ADDRESS",
+	"SESSION_MANAGER",
+	"XDG_SESSION_COOKIE",
 	NULL,
 };
 
