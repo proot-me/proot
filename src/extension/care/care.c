@@ -181,6 +181,25 @@ static int generate_care(Extension *extension, const Options *options)
 			if (status < 0)
 				continue;
 
+			/* Sanity check.  */
+			if (strcmp(path, "/") == 0) {
+				const char *string;
+				const char *name;
+
+				name = talloc_get_name(item);
+				string = name == NULL || name[0] != '$'
+					? talloc_asprintf(tracee->ctx, "'%s'",
+							(const char *) item->load)
+					: talloc_asprintf(tracee->ctx, "'%s' (%s)",
+							(const char *) item->load, name);
+
+				notice(tracee, WARNING, USER,
+					"path %s was declared volatile but it leads to '/', "
+					"as a consequence it will *not* be considered volatile.",
+					string);
+				continue;
+			}
+
 			item2 = queue_item(care, &care->volatile_paths, path);
 			if (item2 == NULL)
 				continue;
