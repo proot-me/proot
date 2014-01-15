@@ -23,6 +23,7 @@
 #include <sys/types.h>  /* open(2), stat(2), */
 #include <sys/stat.h>   /* open(2), stat(2), */
 #include <fcntl.h>      /* open(2), */
+#include <stdint.h>     /* *int*_t, *INT*_MAX, */
 #include <unistd.h>     /* stat(2), */
 #include <sys/mman.h>   /* mmap(2), MAP_*, */
 #include <stdbool.h>    /* bool, true, false, */
@@ -189,21 +190,27 @@ int extract_archive_from_file(const char *path)
 	if (size > sizeof(AutoExtractInfo)) {
 		const AutoExtractInfo *info;
 
-		info = (AutoExtractInfo *) ((uintptr_t) pointer + size - sizeof(AutoExtractInfo));
+		/* "size" can be safely casted down to "uintptr_t"
+		 * here, otherwise mmap(2) would have failed previously.  */
+		info = (void *) ((uintptr_t) pointer + ((uintptr_t) size - sizeof(AutoExtractInfo)));
 
 		if (strcmp(info->signature, AUTOEXTRACT_SIGNATURE) == 0) {
 			/* The size was stored in big-endian byte order.  */
 			size = be64toh(info->size);
-			pointer = (void *)((uintptr_t) info - size);
+
+			/* Same comment about "size" casting.  */
+			pointer = (void *) ((uintptr_t) info - (uintptr_t) size);
 
 			notice(NULL, INFO, USER,
 				"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
-				(uint64_t)(pointer - mmapping), size);
+				(uint64_t) (pointer - mmapping), size);
 		}
 		/* Don't go further if an self-extractable archive was
 		 * expected.  */
-		else if (strcmp(path, "/proc/self/exe") == 0)
-			return -1;
+		else if (strcmp(path, "/proc/self/exe") == 0) {
+			status = -1;
+			goto end;
+		}
 	}
 
 	status = extract_archive_from_memory(pointer, size);
