@@ -56,7 +56,7 @@ static Format supported_formats[] = {
 		.auto_extractable = true,
 	},
 	{
-		.suffix 	= ".bin-gz",
+		.suffix 	= ".gz-bin",
 		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= archive_write_add_filter_gzip,
 		.options	= "gzip:compression-level=1",
@@ -64,7 +64,7 @@ static Format supported_formats[] = {
 		.auto_extractable = true,
 	},
 	{
-		.suffix 	= ".bin-lzo",
+		.suffix 	= ".lzo-bin",
 		.set_format	= archive_write_set_format_cpio,
 		.add_filter	= archive_write_add_filter_lzop,
 		.options	= "lzop:compression-level=1",

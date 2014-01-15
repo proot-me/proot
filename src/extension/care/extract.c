@@ -185,7 +185,7 @@ int extract_archive_from_file(const char *path)
 	pointer = mmapping;
 	size = statf.st_size;
 
-	/* Check if it's an auto-extractable archive.  */
+	/* Check if it's an self-extractable archive.  */
 	if (size > sizeof(AutoExtractInfo)) {
 		const AutoExtractInfo *info;
 
@@ -200,7 +200,7 @@ int extract_archive_from_file(const char *path)
 				"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
 				(uint64_t)(pointer - mmapping), size);
 		}
-		/* Don't go further if an auto-extractable archive was
+		/* Don't go further if an self-extractable archive was
 		 * expected.  */
 		else if (strcmp(path, "/proc/self/exe") == 0)
 			return -1;

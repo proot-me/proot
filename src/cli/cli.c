@@ -301,7 +301,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	int status;
 
 	if (get_care_cli != NULL) {
-		/* Check if it's an auto-extractable CARE archive.  */
+		/* Check if it's an self-extractable CARE archive.  */
 		status = extract_archive_from_file("/proc/self/exe");
 		if (status == 0) {
 			/* Yes it is, nothing more to do.  */

@@ -6,8 +6,8 @@
 Comprehensive Archiver for Reproducible Execution
 -------------------------------------------------
 
-:Date: 2013-12-02
-:Version: 2.0
+:Date: 2014-01-15
+:Version: 2.1
 :Manual section: 1
 
 
@@ -66,18 +66,21 @@ interface.
     Write the archive in *file*, its suffix specifies the format.
 
     If this option is not specified, the default output file is
-    ``care-<DATE>.cpio``.  The suffix of the *file* is used to select
+    ``care-<DATE>.bin``.  The suffix of the *file* is used to select
     the archive format.  The following table illustrates speed and
     size differences between all supported formats when creating a
     CARE archive for ``emacs --eval '(kill-emacs)'``:
 
-    =========  ==========  =============  ==========  ==========
-    format     total time  time overhead  final size  size ratio
-    =========  ==========  =============  ==========  ==========
-    .cpio           2.22s           ref.      80.6MB        ref.
-    .cpio.gz        4.93s           122%      32.8MB        0.40
-    .cpio.lzo       2.59s            17%      42.7MB        0.53
-    =========  ==========  =============  ==========  ==========
+    =========  ==========================  ====  ======
+    suffix     comment                     time  size
+    =========  ==========================  ====  ======
+    .bin       self-extractable .cpio      2.3s  79.2MB
+    .gz-bin    self-extractable .cpio.gz   4.7s  33.1MB
+    .lzo-bin   self-extractable .cpio.lzo  2.5s  42.7MB
+    .cpio      extractable with care -x    2.4s  77.9MB
+    .cpio.gz   extractable with care -x    4.7s  31.9MB
+    .cpio.lzo  extractable with care -x    2.5s  41.4MB
+    =========  ==========================  ====  ======
 
 -c path, --concealed-path=path
     Make *path* content appear empty during the original execution.
@@ -286,12 +289,12 @@ between each other, they decide to use CARE.  First, Alice prepends
     care info: ----------------------------------------------------------------------
     care info: Hints:
     care info:   - search for "conceal" in `care -h` if the execution didn't go as expected.
-    care info:   - use `care -x care-130213072430.cpio` to extract the output archive.
+    care info:   - use `./care-130213072430.bin` to extract the output archive.
 
-Then she sends the ``care-130213072430.cpio`` file to Bob.  Now, he
+Then she sends the ``care-130213072430.bin`` file to Bob.  Now, he
 should be able to reproduce her issue on his system::
 
-    bob$ care -x care-130213072430.cpio
+    bob$ ./care-130213072430.bin
     [...]
     bob$ ./care-130213072430/re-execute.sh
 

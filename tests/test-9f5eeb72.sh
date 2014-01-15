@@ -28,11 +28,11 @@ for BUNCH in \
     "FORMAT=cpio.gz  EXTRACT='${CARE} -x'" \
     "FORMAT=cpio.lzo EXTRACT='${CARE} -x'" \
     "FORMAT=bin      EXTRACT='${CARE} -x'" \
-    "FORMAT=bin-gz   EXTRACT='${CARE} -x'" \
-    "FORMAT=bin-lzo  EXTRACT='${CARE} -x'" \
+    "FORMAT=gz-bin   EXTRACT='${CARE} -x'" \
+    "FORMAT=lzo-bin  EXTRACT='${CARE} -x'" \
     "FORMAT=bin      EXTRACT='sh -c '"     \
-    "FORMAT=bin-gz   EXTRACT='sh -c '"     \
-    "FORMAT=bin-lzo  EXTRACT='sh -c '"
+    "FORMAT=gz-bin   EXTRACT='sh -c '"     \
+    "FORMAT=lzo-bin  EXTRACT='sh -c '"
 # "FORMAT=cpio EXTRACT='cpio -idmuvF'"
 # "FORMAT=tar  EXTRACT='tar -xf'"
 do

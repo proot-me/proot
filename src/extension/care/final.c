@@ -20,7 +20,7 @@
  * 02110-1301 USA.
  */
 
-#include <unistd.h>       /* lstat(2), readlink(2), getpid(2), wirte(2), lssek(2), */
+#include <unistd.h>       /* lstat(2), readlink(2), getpid(2), wirte(2), lseek(2), */
 #include <sys/stat.h>     /* struct stat, fchmod(2), */
 #include <linux/limits.h> /* PATH_MAX, */
 #include <sys/utsname.h>  /* uname(2), */
@@ -405,7 +405,7 @@ int finalize_care(Care *care)
 
 	finalize_archive(care->archive);
 
-	/* Append auto-extract information if needed.  */
+	/* Append self-extract information if needed.  */
 	if (care->archive->fd >= 0 && care->archive->offset > 0) {
 		AutoExtractInfo info;
 		off_t position;
@@ -419,7 +419,7 @@ int finalize_care(Care *care)
 
 		status = write(care->archive->fd, &info, sizeof(info));
 		if (status != sizeof(info))
-			notice(NULL, WARNING, SYSTEM, "can't write auto-extract information");
+			notice(NULL, WARNING, SYSTEM, "can't write self-extract information");
 
 		(void) close(care->archive->fd);
 		care->archive->fd = -1;
