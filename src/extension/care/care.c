@@ -157,10 +157,10 @@ static int generate_care(Extension *extension, const Options *options)
 		return -1;
 
 	cursor = strrchr(care->output, '/');
-	if (cursor != NULL)
-		cursor++;
-	else
+	if (cursor == NULL || strlen(cursor) == 1)
 		cursor = care->output;
+	else
+		cursor++;
 
 	care->prefix = talloc_strndup(care, cursor, strlen(cursor) - suffix_length);
 	if (care->prefix == NULL) {

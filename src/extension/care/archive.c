@@ -79,7 +79,11 @@ static void parse_suffix(const Tracee* tracee, Format *format,
 	cursor = string + strlen(string);
 	bzero(format, sizeof(Format));
 
-/* parse_wrapper: */
+/* parse_special: */
+
+	found = slurp_suffix(string, &cursor, "/");
+	if (found)
+		goto end;
 
 	found = slurp_suffix(string, &cursor, ".bin");
 	if (found) {
@@ -111,7 +115,7 @@ parse_filter:
 		format->options    = "gzip:compression-level=1";
 		format->set_format = archive_write_set_format_gnutar;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
-		goto end;
+		goto sanity_checks;
 	}
 
 	found = slurp_suffix(string, &cursor, ".tzo");
@@ -120,7 +124,7 @@ parse_filter:
 		format->options    = "lzop:compression-level=1";
 		format->set_format = archive_write_set_format_gnutar;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
-		goto end;
+		goto sanity_checks;
 	}
 
 	no_filter_found = true;
@@ -131,19 +135,20 @@ parse_format:
 	if (found) {
 		format->set_format = archive_write_set_format_cpio;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX;
-		goto end;
+		goto sanity_checks;
 	}
 
 	found = slurp_suffix(string, &cursor, ".tar");
 	if (found) {
 		format->set_format = archive_write_set_format_gnutar;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
-		goto end;
+		goto sanity_checks;
 	}
 
 	no_format_found = true;
 
-end:
+sanity_checks:
+
 	if (no_filter_found && no_format_found) {
 		format->add_filter = archive_write_add_filter_lzop;
 		format->options	  = "lzop:compression-level=1";
@@ -168,6 +173,7 @@ end:
 		no_format_found = false;
 	}
 
+end:
 	*suffix_length = strlen(cursor);
 }
 
@@ -253,6 +259,44 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		return NULL;
 	}
 	archive->fd = -1;
+
+	/* No format was set, content will be copied into a directory
+	 * instead of being archived.  */
+	if (format.set_format == NULL) {
+		int flags = ARCHIVE_EXTRACT_PERM
+			| ARCHIVE_EXTRACT_TIME
+			| ARCHIVE_EXTRACT_ACL
+			| ARCHIVE_EXTRACT_FFLAGS
+			| ARCHIVE_EXTRACT_XATTR
+			| (geteuid() == 0 ? ARCHIVE_EXTRACT_OWNER : 0);
+
+		archive->handle = archive_write_disk_new();
+		if (archive->handle == NULL) {
+			notice(tracee, WARNING, INTERNAL, "can't initialize archive structure");
+			return NULL;
+		}
+
+		status = archive_write_disk_set_options(archive->handle, flags);
+		if (status != ARCHIVE_OK) {
+			notice(tracee, ERROR, INTERNAL, "can't set archive options: %s",
+				archive_error_string(archive->handle));
+			return NULL;
+		}
+
+		status = archive_write_disk_set_standard_lookup(archive->handle);
+		if (status != ARCHIVE_OK) {
+			notice(tracee, ERROR, INTERNAL, "can't set archive lookup: %s",
+				archive_error_string(archive->handle));
+			return NULL;
+		}
+
+		archive->hardlink_resolver = archive_entry_linkresolver_new();
+		if (archive->hardlink_resolver != NULL)
+			archive_entry_linkresolver_set_strategy(archive->hardlink_resolver,
+								ARCHIVE_FORMAT_TAR);
+
+		return archive;
+	}
 
 	archive->handle = archive_write_new();
 	if (archive->handle == NULL) {

@@ -24,38 +24,41 @@ mkdir -p   x/y
 chmod -rwx x
 
 for BUNCH in \
-    "FORMAT=cpio          EXTRACT='${CARE} -x'" \
-    "FORMAT=cpio.gz       EXTRACT='${CARE} -x'" \
-    "FORMAT=cpio.lzo      EXTRACT='${CARE} -x'" \
-    "FORMAT=tar           EXTRACT='${CARE} -x'" \
-    "FORMAT=tgz           EXTRACT='${CARE} -x'" \
-    "FORMAT=tar.gz        EXTRACT='${CARE} -x'" \
-    "FORMAT=tzo           EXTRACT='${CARE} -x'" \
-    "FORMAT=tar.lzo       EXTRACT='${CARE} -x'" \
-    "FORMAT=bin           EXTRACT='${CARE} -x'" \
-    "FORMAT=bin           EXTRACT='sh -c'" \
-    "FORMAT=gz.bin        EXTRACT='sh -c'" \
-    "FORMAT=lzo.bin       EXTRACT='sh -c'" \
-    "FORMAT=cpio.bin      EXTRACT='sh -c'" \
-    "FORMAT=cpio.gz.bin   EXTRACT='sh -c'" \
-    "FORMAT=cpio.lzo.bin  EXTRACT='sh -c'" \
-    "FORMAT=tar.bin       EXTRACT='sh -c'" \
-    "FORMAT=tgz.bin       EXTRACT='sh -c'" \
-    "FORMAT=tzo.bin       EXTRACT='sh -c'" \
-    "FORMAT=tar.gz.bin    EXTRACT='sh -c'" \
-    "FORMAT=tar.lzo.bin   EXTRACT='sh -c'"
+    "FORMAT=/              EXTRACT=''" \
+    "FORMAT=.cpio          EXTRACT='${CARE} -x'" \
+    "FORMAT=.cpio.gz       EXTRACT='${CARE} -x'" \
+    "FORMAT=.cpio.lzo      EXTRACT='${CARE} -x'" \
+    "FORMAT=.tar           EXTRACT='${CARE} -x'" \
+    "FORMAT=.tgz           EXTRACT='${CARE} -x'" \
+    "FORMAT=.tar.gz        EXTRACT='${CARE} -x'" \
+    "FORMAT=.tzo           EXTRACT='${CARE} -x'" \
+    "FORMAT=.tar.lzo       EXTRACT='${CARE} -x'" \
+    "FORMAT=.bin           EXTRACT='${CARE} -x'" \
+    "FORMAT=.bin           EXTRACT='sh -c'" \
+    "FORMAT=.gz.bin        EXTRACT='sh -c'" \
+    "FORMAT=.lzo.bin       EXTRACT='sh -c'" \
+    "FORMAT=.cpio.bin      EXTRACT='sh -c'" \
+    "FORMAT=.cpio.gz.bin   EXTRACT='sh -c'" \
+    "FORMAT=.cpio.lzo.bin  EXTRACT='sh -c'" \
+    "FORMAT=.tar.bin       EXTRACT='sh -c'" \
+    "FORMAT=.tgz.bin       EXTRACT='sh -c'" \
+    "FORMAT=.tzo.bin       EXTRACT='sh -c'" \
+    "FORMAT=.tar.gz.bin    EXTRACT='sh -c'" \
+    "FORMAT=.tar.lzo.bin   EXTRACT='sh -c'"
 do
     eval $BUNCH
     CWD=${PWD}
 
     # Check: permissions, unordered archive, UTF-8, hard-links
-    ${CARE} -o test.${FORMAT} cat a/b ł d a/c
+    ${CARE} -o test${FORMAT} cat a/b ł d a/c
 
-    ! chmod +w -R test-${FORMAT}-1
-    rm -fr test-${FORMAT}-1
-    mkdir test-${FORMAT}-1
-    cd test-${FORMAT}-1
-    ${EXTRACT} ../test.${FORMAT}
+    if [ -n "${EXTRACT}" ]; then
+	! chmod +w -R test-${FORMAT}-1
+	rm -fr test-${FORMAT}-1
+	mkdir test-${FORMAT}-1
+	cd test-${FORMAT}-1
+	${EXTRACT} ../test${FORMAT}
+    fi
 
     test -d test/rootfs/${CWD}/a
     test -f test/rootfs/${CWD}/a/b
@@ -67,20 +70,24 @@ do
     INODE2=$(stat -c %i test/rootfs/${CWD}/ł)
     [ $INODE1 -eq $INODE2 ]
 
-    PERM1=$(stat -c %a ../a)
+    PERM1=$(stat -c %a ${CWD}/a)
     PERM2=$(stat -c %a test/rootfs/${CWD}/a)
     [ $PERM1 -eq $PERM2 ]
 
-    cd ..
+    if [ -n "${EXTRACT}" ]; then
+	cd ..
+    fi
 
     # Check: last archived version wins, symlinks
-    ${CARE} -o test.${FORMAT} sh -c 'ls a; ls a/b; ls -l e'
+    ${CARE} -o test${FORMAT} sh -c 'ls a; ls a/b; ls -l e'
 
-    ! chmod +w -R test-${FORMAT}-2
-    rm -fr test-${FORMAT}-2
-    mkdir test-${FORMAT}-2
-    cd test-${FORMAT}-2
-    ${EXTRACT} ../test.${FORMAT}
+    if [ -n "${EXTRACT}" ]; then
+	! chmod +w -R test-${FORMAT}-2
+	rm -fr test-${FORMAT}-2
+	mkdir test-${FORMAT}-2
+	cd test-${FORMAT}-2
+	${EXTRACT} ../test${FORMAT}
+    fi
 
     B=$(cat test/rootfs/${CWD}/a/b)
     [ x"$B" != x ]
@@ -92,18 +99,22 @@ do
     [ x"$F" != x ]
     [ "$F" = "dangling_symlink" ]
 
-    cd ..
+    if [ -n "${EXTRACT}" ]; then
+	cd ..
+    fi
 
     # Check: extractable archive
-    ${CARE} -o test.${FORMAT} chmod -R +rwx x
+    ${CARE} -o test${FORMAT} chmod -R +rwx x
 
-    ! chmod +w -R test-${FORMAT}-3
-    rm -fr test-${FORMAT}-3
-    mkdir test-${FORMAT}-3
-    cd test-${FORMAT}-3
-    ${EXTRACT} ../test.${FORMAT}
+    if [ -n "${EXTRACT}" ]; then
+	! chmod +w -R test-${FORMAT}-3
+	rm -fr test-${FORMAT}-3
+	mkdir test-${FORMAT}-3
+	cd test-${FORMAT}-3
+	${EXTRACT} ../test${FORMAT}
 
-    cd ..
+	cd ..
+    fi
 done
 
 cd ..

@@ -426,16 +426,19 @@ int finalize_care(Care *care)
 
 		extractor = talloc_asprintf(care, "`./%1$s` or `care -x %1$s`", care->output);
 	}
-	else
+	else if (care->output[strlen(care->output) - 1] != '/')
 		extractor = talloc_asprintf(care, "`care -x %s`", care->output);
+	else
+		extractor = NULL;
 
 	notice(NULL, INFO, USER,
 		"----------------------------------------------------------------------");
 	notice(NULL, INFO, USER, "Hints:");
 	notice(NULL, INFO, USER,
 		"  - search for \"conceal\" in `care -h` if the execution didn't go as expected.");
-	notice(NULL, INFO, USER,
-		"  - run %s to extract the output archive.", extractor ?: "`care -x <archive>`");
+
+	if (extractor != NULL)
+		notice(NULL, INFO, USER, "  - run %s to extract the output archive.", extractor);
 
 	return 0;
 }
