@@ -24,17 +24,26 @@ mkdir -p   x/y
 chmod -rwx x
 
 for BUNCH in \
-    "FORMAT=cpio     EXTRACT='${CARE} -x'" \
-    "FORMAT=cpio.gz  EXTRACT='${CARE} -x'" \
-    "FORMAT=cpio.lzo EXTRACT='${CARE} -x'" \
-    "FORMAT=bin      EXTRACT='${CARE} -x'" \
-    "FORMAT=gz-bin   EXTRACT='${CARE} -x'" \
-    "FORMAT=lzo-bin  EXTRACT='${CARE} -x'" \
-    "FORMAT=bin      EXTRACT='sh -c '"     \
-    "FORMAT=gz-bin   EXTRACT='sh -c '"     \
-    "FORMAT=lzo-bin  EXTRACT='sh -c '"
-# "FORMAT=cpio EXTRACT='cpio -idmuvF'"
-# "FORMAT=tar  EXTRACT='tar -xf'"
+    "FORMAT=cpio          EXTRACT='${CARE} -x'" \
+    "FORMAT=cpio.gz       EXTRACT='${CARE} -x'" \
+    "FORMAT=cpio.lzo      EXTRACT='${CARE} -x'" \
+    "FORMAT=tar           EXTRACT='${CARE} -x'" \
+    "FORMAT=tgz           EXTRACT='${CARE} -x'" \
+    "FORMAT=tar.gz        EXTRACT='${CARE} -x'" \
+    "FORMAT=tzo           EXTRACT='${CARE} -x'" \
+    "FORMAT=tar.lzo       EXTRACT='${CARE} -x'" \
+    "FORMAT=bin           EXTRACT='${CARE} -x'" \
+    "FORMAT=bin           EXTRACT='sh -c'" \
+    "FORMAT=gz.bin        EXTRACT='sh -c'" \
+    "FORMAT=lzo.bin       EXTRACT='sh -c'" \
+    "FORMAT=cpio.bin      EXTRACT='sh -c'" \
+    "FORMAT=cpio.gz.bin   EXTRACT='sh -c'" \
+    "FORMAT=cpio.lzo.bin  EXTRACT='sh -c'" \
+    "FORMAT=tar.bin       EXTRACT='sh -c'" \
+    "FORMAT=tgz.bin       EXTRACT='sh -c'" \
+    "FORMAT=tzo.bin       EXTRACT='sh -c'" \
+    "FORMAT=tar.gz.bin    EXTRACT='sh -c'" \
+    "FORMAT=tar.lzo.bin   EXTRACT='sh -c'"
 do
     eval $BUNCH
     CWD=${PWD}

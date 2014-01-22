@@ -104,6 +104,14 @@ static int extract_archive_from_memory(void *pointer, size_t size)
 		goto end;
 	}
 
+	status = archive_read_support_format_gnutar(archive);
+	if (status != ARCHIVE_OK) {
+		notice(NULL, ERROR, INTERNAL, "can't set archive format: %s",
+			archive_error_string(archive));
+		status = -1;
+		goto end;
+	}
+
 	status = archive_read_support_filter_gzip(archive);
 	if (status != ARCHIVE_OK) {
 		notice(NULL, ERROR, INTERNAL, "can't add archive filter: %s",

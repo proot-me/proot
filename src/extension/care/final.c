@@ -424,10 +424,10 @@ int finalize_care(Care *care)
 		(void) close(care->archive->fd);
 		care->archive->fd = -1;
 
-		extractor = talloc_asprintf(care, "./%s", care->output);
+		extractor = talloc_asprintf(care, "`./%1$s` or `care -x %1$s`", care->output);
 	}
 	else
-		extractor = talloc_asprintf(care, "care -x %s", care->output);
+		extractor = talloc_asprintf(care, "`care -x %s`", care->output);
 
 	notice(NULL, INFO, USER,
 		"----------------------------------------------------------------------");
@@ -435,7 +435,7 @@ int finalize_care(Care *care)
 	notice(NULL, INFO, USER,
 		"  - search for \"conceal\" in `care -h` if the execution didn't go as expected.");
 	notice(NULL, INFO, USER,
-		"  - run `%s` to extract the output archive.", extractor ?: "care -x <archive>");
+		"  - run %s to extract the output archive.", extractor ?: "`care -x <archive>`");
 
 	return 0;
 }

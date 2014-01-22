@@ -42,98 +42,133 @@ typedef struct {
 	int (*add_filter)(struct archive *);
 	int hardlink_resolver_strategy;
 	const char *options;
-	bool auto_extractable;
-	char *const suffix;
+	bool self_extractable;
 } Format;
 
-static Format supported_formats[] = {
-	{
-		.suffix 	= ".bin",
-		.set_format	= archive_write_set_format_cpio,
-		.add_filter	= NULL,
-		.options	= NULL,
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.auto_extractable = true,
-	},
-	{
-		.suffix 	= ".gz-bin",
-		.set_format	= archive_write_set_format_cpio,
-		.add_filter	= archive_write_add_filter_gzip,
-		.options	= "gzip:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.auto_extractable = true,
-	},
-	{
-		.suffix 	= ".lzo-bin",
-		.set_format	= archive_write_set_format_cpio,
-		.add_filter	= archive_write_add_filter_lzop,
-		.options	= "lzop:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.auto_extractable = true,
-	},
-	{
-		.suffix		= ".cpio",
-		.set_format	= archive_write_set_format_cpio,
-		.add_filter	= NULL,
-		.options	= NULL,
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.auto_extractable = false,
-	},
-	{
-		.suffix		= ".cpio.gz",
-		.set_format	= archive_write_set_format_cpio,
-		.add_filter	= archive_write_add_filter_gzip,
-		.options	= "gzip:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.auto_extractable = false,
-	},
-	{
-		.suffix		= ".cpio.lzo",
-		.set_format	= archive_write_set_format_cpio,
-		.add_filter	= archive_write_add_filter_lzop,
-		.options	= "lzop:compression-level=1",
-		.hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX,
-		.auto_extractable = false,
-	},
-};
+/**
+ * Move *@cursor backward -- within in the given @string -- if it
+ * reads @suffix once moved.
+ */
+static bool slurp_suffix(const char *string, const char **cursor, const char *suffix)
+{
+	size_t length;
+
+	length = strlen(suffix);
+	if (*cursor - length < string || strncmp(*cursor - length, suffix, length) != 0)
+		return false;
+
+	*cursor -= length;
+	return true;
+}
 
 /**
- * Detect the expected format for the given @output.  This function
- * returns NULL on error, otherwise the format descriptor and update
- * @suffix_length with the number of characters that describes the
- * format.
+ * Detect the expected format for the given @string.  This function
+ * always updates the @format structure and @suffix_length with the
+ * number of characters that describes the parsed format.
  */
-static const Format *detect_format(const Tracee* tracee, const char *output, size_t *suffix_length)
+static void parse_suffix(const Tracee* tracee, Format *format,
+			const char *string, size_t *suffix_length)
 {
-	size_t length_output;
-	size_t nb_formats;
-	size_t i;
+	const char *cursor;
+	bool found;
 
-	assert(output != NULL);
+	bool no_wrapper_found = false;
+	bool no_filter_found  = false;
+	bool no_format_found  = false;
 
-	nb_formats = sizeof(supported_formats) / sizeof(typeof(Format));
-	length_output = strlen(output);
+	cursor = string + strlen(string);
+	bzero(format, sizeof(Format));
 
-	for (i = 0; i < nb_formats; i++) {
-		size_t length_suffix;
-		const char *suffix;
+/* parse_wrapper: */
 
-		suffix = supported_formats[i].suffix;
-		length_suffix = strlen(suffix);
-
-		if (   length_suffix >= length_output
-		    || strcmp(output + length_output - length_suffix, suffix) != 0)
-			continue;
-
-		*suffix_length = length_suffix;
-		return &supported_formats[i];
+	found = slurp_suffix(string, &cursor, ".bin");
+	if (found) {
+		format->self_extractable = true;
+		goto parse_filter;
 	}
 
-	notice(tracee, WARNING, INTERNAL, "unknown format suffix, assuming '%s' format",
-		supported_formats[0].suffix);
+	no_wrapper_found = true;
 
-	*suffix_length = 0;
-	return &supported_formats[0];
+parse_filter:
+
+	found = slurp_suffix(string, &cursor, ".gz");
+	if (found) {
+		format->add_filter = archive_write_add_filter_gzip;
+		format->options    = "gzip:compression-level=1";
+		goto parse_format;
+	}
+
+	found = slurp_suffix(string, &cursor, ".lzo");
+	if (found) {
+		format->add_filter = archive_write_add_filter_lzop;
+		format->options	   = "lzop:compression-level=1";
+		goto parse_format;
+	}
+
+	found = slurp_suffix(string, &cursor, ".tgz");
+	if (found) {
+		format->add_filter = archive_write_add_filter_gzip;
+		format->options    = "gzip:compression-level=1";
+		format->set_format = archive_write_set_format_gnutar;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
+		goto end;
+	}
+
+	found = slurp_suffix(string, &cursor, ".tzo");
+	if (found) {
+		format->add_filter = archive_write_add_filter_lzop;
+		format->options    = "lzop:compression-level=1";
+		format->set_format = archive_write_set_format_gnutar;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
+		goto end;
+	}
+
+	no_filter_found = true;
+
+parse_format:
+
+	found = slurp_suffix(string, &cursor, ".cpio");
+	if (found) {
+		format->set_format = archive_write_set_format_cpio;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX;
+		goto end;
+	}
+
+	found = slurp_suffix(string, &cursor, ".tar");
+	if (found) {
+		format->set_format = archive_write_set_format_gnutar;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
+		goto end;
+	}
+
+	no_format_found = true;
+
+end:
+	if (no_filter_found && no_format_found) {
+		format->add_filter = archive_write_add_filter_lzop;
+		format->options	  = "lzop:compression-level=1";
+		format->set_format = archive_write_set_format_cpio;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX;
+		format->self_extractable = true;
+
+		if (no_wrapper_found)
+			notice(tracee, WARNING, USER,
+				"unknown suffix, assuming self-extractable format.");
+
+		no_wrapper_found = false;
+		no_filter_found  = false;
+		no_format_found  = false;
+	}
+
+	if (no_format_found) {
+		notice(tracee, WARNING, USER, "unknown format, assuming cpio format.");
+		format->set_format = archive_write_set_format_cpio;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX;
+
+		no_format_found = false;
+	}
+
+	*suffix_length = strlen(cursor);
 }
 
 /**
@@ -199,19 +234,18 @@ end:
  * Create a new archive structure (memory allocation attached to
  * @context) for the given @output file.  This function returns NULL
  * on error, otherwise the newly allocated archive structure. See
- * detect_format() for the meaning of @prefix_length.
+ * parse_suffix() for the meaning of @suffix_length.
  */
 Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
-		const char *output, size_t *prefix_length)
+		const char *output, size_t *suffix_length)
 {
-	const Format *format;
+	Format format;
 	Archive *archive;
 	int status;
 
 	assert(output != NULL);
 
-	format = detect_format(tracee, output, prefix_length);
-	assert(format != NULL);
+	parse_suffix(tracee, &format, output, suffix_length);
 
 	archive = talloc_zero(context, Archive);
 	if (archive == NULL) {
@@ -226,23 +260,23 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		return NULL;
 	}
 
-	assert(format->set_format != NULL);
-	status = format->set_format(archive->handle);
+	assert(format.set_format != NULL);
+	status = format.set_format(archive->handle);
 	if (status != ARCHIVE_OK) {
 		notice(tracee, ERROR, INTERNAL, "can't set archive format: %s",
 			archive_error_string(archive->handle));
 		return NULL;
 	}
 
-	if (format->hardlink_resolver_strategy != 0) {
+	if (format.hardlink_resolver_strategy != 0) {
 		archive->hardlink_resolver = archive_entry_linkresolver_new();
 		if (archive->hardlink_resolver != NULL)
 			archive_entry_linkresolver_set_strategy(archive->hardlink_resolver,
-								format->hardlink_resolver_strategy);
+								format.hardlink_resolver_strategy);
 	}
 
-	if (format->add_filter != NULL) {
-		status = format->add_filter(archive->handle);
+	if (format.add_filter != NULL) {
+		status = format.add_filter(archive->handle);
 		if (status != ARCHIVE_OK) {
 			notice(tracee, ERROR, INTERNAL, "can't add archive filter: %s",
 				archive_error_string(archive->handle));
@@ -250,8 +284,8 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		}
 	}
 
-	if (format->options != NULL) {
-		status = archive_write_set_options(archive->handle, format->options);
+	if (format.options != NULL) {
+		status = archive_write_set_options(archive->handle, format.options);
 		if (status != ARCHIVE_OK) {
 			notice(tracee, ERROR, INTERNAL, "can't set archive options: %s",
 				archive_error_string(archive->handle));
@@ -259,7 +293,7 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		}
 	}
 
-	if (format->auto_extractable) {
+	if (format.self_extractable) {
 		archive->fd = copy_self_exe(tracee, output);
 		if (archive->fd < 0)
 			return NULL;
