@@ -33,7 +33,7 @@ typedef struct {
 	struct archive *handle;
 	struct archive_entry_linkresolver *hardlink_resolver;
 
-	/* Information used to create an self-extractable archive.  */
+	/* Information used to create an self-extracting archive.  */
 	off_t offset;
 	int fd;
 } Archive;

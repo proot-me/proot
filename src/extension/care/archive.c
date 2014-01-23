@@ -42,7 +42,7 @@ typedef struct {
 	int (*add_filter)(struct archive *);
 	int hardlink_resolver_strategy;
 	const char *options;
-	bool self_extractable;
+	bool self_extracting;
 } Format;
 
 /**
@@ -87,7 +87,7 @@ static void parse_suffix(const Tracee* tracee, Format *format,
 
 	found = slurp_suffix(string, &cursor, ".bin");
 	if (found) {
-		format->self_extractable = true;
+		format->self_extracting = true;
 		goto parse_filter;
 	}
 
@@ -154,11 +154,11 @@ sanity_checks:
 		format->options	  = "lzop:compression-level=1";
 		format->set_format = archive_write_set_format_cpio;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX;
-		format->self_extractable = true;
+		format->self_extracting = true;
 
 		if (no_wrapper_found)
 			notice(tracee, WARNING, USER,
-				"unknown suffix, assuming self-extractable format.");
+				"unknown suffix, assuming self-extracting format.");
 
 		no_wrapper_found = false;
 		no_filter_found  = false;
@@ -166,9 +166,9 @@ sanity_checks:
 	}
 
 	if (no_format_found) {
-		notice(tracee, WARNING, USER, "unknown format, assuming cpio format.");
-		format->set_format = archive_write_set_format_cpio;
-		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX;
+		notice(tracee, WARNING, USER, "unknown format, assuming tar format.");
+		format->set_format = archive_write_set_format_gnutar;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
 
 		no_format_found = false;
 	}
@@ -337,7 +337,7 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		}
 	}
 
-	if (format.self_extractable) {
+	if (format.self_extracting) {
 		archive->fd = copy_self_exe(tracee, output);
 		if (archive->fd < 0)
 			return NULL;

@@ -6,7 +6,7 @@
 Comprehensive Archiver for Reproducible Execution
 -------------------------------------------------
 
-:Date: 2014-01-15
+:Date: 2014-01-24
 :Version: 2.1
 :Manual section: 1
 
@@ -62,25 +62,29 @@ options, then the command to launch.  This section describes the
 options supported by CARE, that is, the first part of its command-line
 interface.
 
--o file, --output=file
-    Write the archive in *file*, its suffix specifies the format.
+-o path, --output=path
+    Archive in *path*, its suffix specifies the format.
 
-    If this option is not specified, the default output file is
-    ``care-<DATE>.bin``.  The suffix of the *file* is used to select
-    the archive format.  The following table illustrates speed and
-    size differences between all supported formats when creating a
-    CARE archive for ``emacs --eval '(kill-emacs)'``:
+    The suffix of *path* is used to select the archive format, it can
+    be one of the following:
 
-    =========  ==========================  ====  ======
-    suffix     comment                     time  size
-    =========  ==========================  ====  ======
-    .bin       self-extractable .cpio      2.3s  79.2MB
-    .gz-bin    self-extractable .cpio.gz   4.7s  33.1MB
-    .lzo-bin   self-extractable .cpio.lzo  2.5s  42.7MB
-    .cpio      extractable with care -x    2.4s  77.9MB
-    .cpio.gz   extractable with care -x    4.7s  31.9MB
-    .cpio.lzo  extractable with care -x    2.5s  41.4MB
-    =========  ==========================  ====  ======
+    =========  ========================================================
+    suffix     comment
+    =========  ========================================================
+    /          don't archive, copy into the specified directory instead
+    .tar       most common archive format
+    .cpio      most portable archive format, it can archive sockets too
+    ?.gz       most common compression format, but slow
+    ?.lzo      fast compression format, but uncommon
+    ?.bin      see ``Self-extracting format`` section
+    ?.?.bin    see ``Self-extracting format`` section
+    .bin       see ``Self-extracting format`` section
+    =========  ========================================================
+
+    where "?" means the suffix must be combined with another one.  For
+    examples: ".tar.lzo", ".cpio.gz", ".tar.bin", ".cpio.lzo.bin", ...
+    If this option is not specified, the default output path is
+    ``care-<DATE>.bin``.
 
 -c path, --concealed-path=path
     Make *path* content appear empty during the original execution.
@@ -354,6 +358,63 @@ programs differently and to search into the relevant files.
 
 .. [#] https://launchpad.net/ubuntu/oneiric/+source/gcc-4.5/4.5.2-8ubuntu4
 .. [#] https://launchpad.net/ubuntu/+source/eglibc/2.13-0ubuntu13.2
+
+
+Self-extracting format
+======================
+
+The self-extracting format used by CARE starts with an extracting
+program, followed by a regular archive, and it ends with a special
+footer.  This latter contains the signature "I_LOVE_PIZZA" followed by
+the size of the embedded archive::
+
+    +------------------------+
+    |   extracting program   |
+    +------------------------+
+    |                        |
+    |    embedded archive    |
+    |                        |
+    +------------------------+
+    | uint8_t  signature[13] |
+    | uint64_t archive_size  |  # big-endian
+    +------------------------+
+
+The command ``care -x`` can be used against a self-extracting archive,
+even if they were not build for the same architecture.  For instance,
+a self-extracting archive produced for ARM can be extracted with a
+``care`` program built for x86_64, and vice versa.  It is also
+possible to use external tools to extract the embedded archive, for
+example::
+
+    $ care -o foo.tar.gz.bin /usr/bin/echo OK
+    [...]
+    OK
+    [...]
+
+    $ hexdump -C foo.tar.gz.bin | tail -3
+    0015b5b0  00 b0 2e 00 49 5f 4c 4f  56 45 5f 50 49 5a 5a 41  |....I_LOVE_PIZZA|
+    0015b5c0  00 00 00 00 00 00 12 b4  13                       |.........|
+    0015b5c9
+
+    $ file_size=`stat -c %s foo.tar.gz.bin`
+    $ archive_size=$((16#12b413))
+    $ footer_size=21
+    $ skip=$(($file_size - $archive_size - $footer_size))
+
+    $ dd if=foo.tar.gz.bin of=foo.tar.gz bs=1 skip=$skip count=$archive_size
+    1225747+0 records in
+    1225747+0 records out
+    1225747 bytes (1.2 MB) copied, 2.99546 s, 409 kB/s
+
+    $ file foo.tar.gz
+    foo.tar.gz: gzip compressed data, from Unix
+
+    $ tar -tzf foo.tar.gz
+    foo/rootfs/usr/
+    [...]
+    foo/re-execute.sh
+    foo/README.txt
+    foo/proot
 
 
 Downloads

@@ -4,25 +4,37 @@ CARE v2.1
 This release contains all the fixes from PRoot v3.2.2 [1] and the
 following new features:
 
-+ CARE can now produce self-extractable archives, this has become the
-  default behavior.  For example:
++ CARE now supports three new archive formats:
 
-    somewhere$ care echo OK
-    [...]
-    care info: ----------------------------------------------------------------
-    OK
-    care info: ----------------------------------------------------------------
-    [...]
-    care info:   - run `./care-140115135934.bin` to extract the output archive.
+  - a self-extracting format, this has become the default behavior.
+    Here's an example::
 
-    elsewhere$ ./care-140115135934.bin
-     info: archive found: offset = 195816, size = 3035122
-     info: extracted: care-140115135934/rootfs/usr
-     info: extracted: care-140115135934/rootfs/usr/local
-     [...]
-     info: extracted: care-140115135934/re-execute.sh
-     info: extracted: care-140115135934/README.txt
-     info: extracted: care-140115135934/proot
+      somewhere$ care echo OK
+      [...]
+      OK
+      [...]
+      care info:   - run `./care-140115135934.bin` to extract the output archive.
+
+      elsewhere$ ./care-140115135934.bin
+       info: archive found: offset = 195816, size = 3035122
+       info: extracted: care-140115135934/rootfs/usr
+       info: extracted: care-140115135934/rootfs/usr/local
+       [...]
+       info: extracted: care-140115135934/re-execute.sh
+       info: extracted: care-140115135934/README.txt
+       info: extracted: care-140115135934/proot
+
+   - the GNU tar format, this is the most commonly used archive
+     format.  It can be combined with all the compression formats
+     supported by CARE: ".tar.gz" or ".tar.lzo".
+
+   - a "copy" format where the content is copied directly into a
+     directory instead of being archived in a file.  For instance::
+
+       $ care -o foo/ echo OK
+       [...]
+       $ ls foo
+       README.txt  proot  re-execute.sh  rootfs/
 
 + It is recommended to use the new "-x/--extract" option to extract
   archives created by CARE, since most extracting tools -- that are

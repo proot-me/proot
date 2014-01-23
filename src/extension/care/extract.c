@@ -118,7 +118,7 @@ static int open_callback(struct archive *archive, void *data_)
 	}
 
 	/* Assume it's a regular archive if it physically can't be a
-	 * self-extractable one.  */
+	 * self-extracting one.  */
 	if (statf.st_size < (off_t) sizeof(AutoExtractInfo))
 		return ARCHIVE_OK;
 
@@ -136,7 +136,7 @@ static int open_callback(struct archive *archive, void *data_)
 
 	if (   status == sizeof(AutoExtractInfo)
 	    && strcmp(info.signature, AUTOEXTRACT_SIGNATURE) == 0) {
-		/* This is a self-extractable archive, retrive it's
+		/* This is a self-extracting archive, retrive it's
 		 * offset and size.  */
 
 		data->size = be64toh(info.size);
@@ -147,11 +147,11 @@ static int open_callback(struct archive *archive, void *data_)
 			(uint64_t) offset, data->size);
 	}
 	else {
-		/* This is not a self-extractable archive, assume it's
+		/* This is not a self-extracting archive, assume it's
 		 * a regular one...  */
 		offset = 0;
 
-		/* ... unless a self-extractable archive really was
+		/* ... unless a self-extracting archive really was
 		 * expected.  */
 		if (strcmp(data->path, "/proc/self/exe") == 0)
 			return ARCHIVE_FATAL;
@@ -285,7 +285,7 @@ int extract_archive_from_file(const char *path)
 	status = archive_read_open(archive, data, open_callback, read_callback, close_callback);
 	if (status != ARCHIVE_OK) {
 		/* Don't complain if no error message were registered,
-		 * ie. when testing for a self-extractable archive.  */
+		 * ie. when testing for a self-extracting archive.  */
 		if (archive_error_string(archive) != NULL)
 			notice(NULL, ERROR, INTERNAL, "can't read archive: %s",
 				archive_error_string(archive));
