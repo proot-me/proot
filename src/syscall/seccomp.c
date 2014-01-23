@@ -234,8 +234,7 @@ static int finalize_program_filter(struct sock_fprog *program)
  */
 static void free_program_filter(struct sock_fprog *program)
 {
-	if (program->filter != NULL)
-		TALLOC_FREE(program->filter);
+	TALLOC_FREE(program->filter);
 	program->len = 0;
 }
 

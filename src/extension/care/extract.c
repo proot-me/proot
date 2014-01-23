@@ -20,11 +20,12 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>  /* open(2), stat(2), */
-#include <sys/stat.h>   /* open(2), stat(2), */
+#include <sys/types.h>  /* open(2), fstat(2), lseek(2), */
+#include <sys/stat.h>   /* open(2), fstat(2), */
+#include <sys/stat.h>   /* open(2), */
 #include <fcntl.h>      /* open(2), */
 #include <stdint.h>     /* *int*_t, *INT*_MAX, */
-#include <unistd.h>     /* stat(2), */
+#include <unistd.h>     /* fstat(2), read(2), lseek(2), */
 #include <sys/mman.h>   /* mmap(2), MAP_*, */
 #include <stdbool.h>    /* bool, true, false, */
 #include <assert.h>     /* assert(3), */
@@ -78,16 +79,153 @@ static int extract_archive(struct archive *archive)
 	return result;
 }
 
-/**
- * Extract the archive pointed to by @pointer, with the given @size.
- * This function returns -1 if an error occured, otherwise 0.
- */
-static int extract_archive_from_memory(void *pointer, size_t size)
+/* Data used by archive_[open/read/close] callbacks.  */
+typedef struct
 {
-	int status2;
+	uint8_t buffer[4096];
+	const char *path;
+	size_t size;
+	int fd;
+} CallbackData;
+
+/**
+ * This callback is invoked by archive_open().  It returns ARCHIVE_OK
+ * if the underlying file or data source is successfully opened.  If
+ * the open fails, it calls archive_set_error() to register an error
+ * code and message and returns ARCHIVE_FATAL.
+ *
+ *  -- man 3 archive_read_open.
+ */
+static int open_callback(struct archive *archive, void *data_)
+{
+	CallbackData *data = talloc_get_type_abort(data_, CallbackData);
+	AutoExtractInfo info;
+	struct stat statf;
+	off_t offset;
 	int status;
 
+	/* Note: data->fd will be closed by close_callback().  */
+	data->fd = open(data->path, O_RDONLY);
+	if (data->fd < 0) {
+		archive_set_error(archive, errno, "can't open archive");
+		return ARCHIVE_FATAL;
+	}
+
+	status = fstat(data->fd, &statf);
+	if (status < 0) {
+		archive_set_error(archive, errno, "can't stat archive");
+		return ARCHIVE_FATAL;
+	}
+
+	/* Assume it's a regular archive if it physically can't be a
+	 * self-extractable one.  */
+	if (statf.st_size < (off_t) sizeof(AutoExtractInfo))
+		return ARCHIVE_OK;
+
+	offset = lseek(data->fd, statf.st_size - sizeof(AutoExtractInfo), SEEK_SET);
+	if (offset == (off_t) -1) {
+		archive_set_error(archive, errno, "can't seek in archive");
+		return ARCHIVE_FATAL;
+	}
+
+	status = read(data->fd, &info, sizeof(AutoExtractInfo));
+	if (status < 0) {
+		archive_set_error(archive, errno, "can't read archive");
+		return ARCHIVE_FATAL;
+	}
+
+	if (   status == sizeof(AutoExtractInfo)
+	    && strcmp(info.signature, AUTOEXTRACT_SIGNATURE) == 0) {
+		/* This is a self-extractable archive, retrive it's
+		 * offset and size.  */
+
+		data->size = be64toh(info.size);
+		offset = statf.st_size - data->size - sizeof(AutoExtractInfo);
+
+		notice(NULL, INFO, USER,
+			"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
+			(uint64_t) offset, data->size);
+	}
+	else {
+		/* This is not a self-extractable archive, assume it's
+		 * a regular one...  */
+		offset = 0;
+
+		/* ... unless a self-extractable archive really was
+		 * expected.  */
+		if (strcmp(data->path, "/proc/self/exe") == 0)
+			return ARCHIVE_FATAL;
+	}
+
+	offset = lseek(data->fd, offset, SEEK_SET);
+	if (offset == (off_t) -1) {
+		archive_set_error(archive, errno, "can't seek in archive");
+		return ARCHIVE_FATAL;
+	}
+
+	return ARCHIVE_OK;
+}
+
+/**
+ * This callback is invoked whenever the library requires raw bytes
+ * from the archive.  The read callback reads data into a buffer, set
+ * the @buffer argument to point to the available data, and return a
+ * count of the number of bytes available.  The library will invoke
+ * the read callback again only after it has consumed this data.  The
+ * library imposes no constraints on the size of the data blocks
+ * returned.  On end-of-file, the read callback returns zero.  On
+ * error, the read callback should invoke archive_set_error() to
+ * register an error code and message and returns -1.
+ *
+ *  -- man 3 archive_read_open.
+ */
+static ssize_t read_callback(struct archive *archive, void *data_, const void **buffer)
+{
+	CallbackData *data = talloc_get_type_abort(data_, CallbackData);
+	ssize_t size;
+
+	size = read(data->fd, data->buffer, sizeof(data->buffer));
+	if (size < 0) {
+		archive_set_error(archive, errno, "can't read archive");
+		return -1;
+	}
+
+	*buffer = data->buffer;
+	return size;
+}
+
+/**
+ * This callback is invoked by archive_close() when the archive
+ * processing is complete.  The callback returns ARCHIVE_OK on
+ * success.  On failure, the callback invokes archive_set_error() to
+ * register an error code and message and returns ARCHIVE_FATAL.
+ *
+ * -- man 3 archive_read_open
+ */
+static int close_callback(struct archive *archive, void *data_)
+{
+	CallbackData *data = talloc_get_type_abort(data_, CallbackData);
+	int status;
+
+	status = close(data->fd);
+	if (status < 0) {
+		archive_set_error(archive, errno, "can't close archive");
+		return ARCHIVE_WARN;
+	}
+
+	return ARCHIVE_OK;
+}
+
+/**
+ * Extract the archive stored at the given @path.  This function
+ * returns -1 if an error occurred, otherwise 0.
+ */
+int extract_archive_from_file(const char *path)
+{
 	struct archive *archive = NULL;
+	CallbackData *data = NULL;
+	int status2;
+	int status;
 
 	archive = archive_read_new();
 	if (archive == NULL) {
@@ -128,10 +266,29 @@ static int extract_archive_from_memory(void *pointer, size_t size)
 		goto end;
 	}
 
-	status = archive_read_open_memory(archive, pointer, size);
+	data = talloc_zero(NULL, CallbackData);
+	if (data == NULL) {
+		notice(NULL, ERROR, INTERNAL, "can't allocate callback data");
+		status = -1;
+		goto end;
+
+	}
+
+	data->path = talloc_strdup(data, path);
+	if (data->path == NULL) {
+		notice(NULL, ERROR, INTERNAL, "can't allocate callback data path");
+		status = -1;
+		goto end;
+
+	}
+
+	status = archive_read_open(archive, data, open_callback, read_callback, close_callback);
 	if (status != ARCHIVE_OK) {
-		notice(NULL, ERROR, INTERNAL, "can't read archive: %s",
-			archive_error_string(archive));
+		/* Don't complain if no error message were registered,
+		 * ie. when testing for a self-extractable archive.  */
+		if (archive_error_string(archive) != NULL)
+			notice(NULL, ERROR, INTERNAL, "can't read archive: %s",
+				archive_error_string(archive));
 		status = -1;
 		goto end;
 	}
@@ -152,88 +309,7 @@ end:
 		}
 	}
 
-	return status;
-}
-
-/**
- * Extract the archive stored at the given @path.  This function
- * returns -1 if an error occurred, otherwise 0.
- */
-int extract_archive_from_file(const char *path)
-{
-	struct stat statf;
-	void *pointer;
-	uint64_t size;
-	int status2;
-	int status;
-
-	void *mmapping = NULL;
-	int fd = -1;
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		status = -errno;
-		notice(NULL, ERROR, SYSTEM, "can't open \"%s\"", path);
-		goto end;
-	}
-
-	status = fstat(fd, &statf);
-	if (status < 0) {
-		status = -errno;
-		notice(NULL, ERROR, SYSTEM, "can't stat \"%s\"", path);
-		goto end;
-	}
-
-	mmapping = mmap(NULL, statf.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-	if (mmapping == MAP_FAILED) {
-		status = -errno;
-		notice(NULL, ERROR, SYSTEM, "can't mmap \"%s\"", path);
-		goto end;
-	}
-
-	pointer = mmapping;
-	size = statf.st_size;
-
-	/* Check if it's an self-extractable archive.  */
-	if (size > sizeof(AutoExtractInfo)) {
-		const AutoExtractInfo *info;
-
-		/* "size" can be safely casted down to "uintptr_t"
-		 * here, otherwise mmap(2) would have failed previously.  */
-		info = (void *) ((uintptr_t) pointer + ((uintptr_t) size - sizeof(AutoExtractInfo)));
-
-		if (strcmp(info->signature, AUTOEXTRACT_SIGNATURE) == 0) {
-			/* The size was stored in big-endian byte order.  */
-			size = be64toh(info->size);
-
-			/* Same comment about "size" casting.  */
-			pointer = (void *) ((uintptr_t) info - (uintptr_t) size);
-
-			notice(NULL, INFO, USER,
-				"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
-				(uint64_t) (pointer - mmapping), size);
-		}
-		/* Don't go further if an self-extractable archive was
-		 * expected.  */
-		else if (strcmp(path, "/proc/self/exe") == 0) {
-			status = -1;
-			goto end;
-		}
-	}
-
-	status = extract_archive_from_memory(pointer, size);
-end:
-	if (fd >= 0) {
-		status2 = close(fd);
-		if (status2 < 0)
-			notice(NULL, WARNING, SYSTEM, "can't close \"%s\"", path);
-	}
-
-	if (mmapping != NULL) {
-		status2 = munmap(mmapping, statf.st_size);
-		if (status2 < 0)
-			notice(NULL, WARNING, SYSTEM, "can't munmap \"%s\"", path);
-	}
+	TALLOC_FREE(data);
 
 	return status;
 }
