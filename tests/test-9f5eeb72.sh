@@ -1,4 +1,4 @@
-if [ -z `which mkdir` ] || [ -z `which chmod` ] || [ -z `which touch` ] || [ -z `which ln` ] || [ -z `which cpio` ] || [ -z `which stat` ] || [ -z `which cat` ] || [ -z `which readlink` ] || [ -z `which mcookie` ]; then
+if [ -z `which mkdir` ] || [ -z `which chmod` ] || [ -z `which touch` ] || [ -z `which ln` ] || [ -z `which cpio` ] || [ -z `which stat` ] || [ -z `which cat` ] || [ -z `which readlink` ] || [ -z `which mcookie` ] || [ -z `which mknod` ]; then
     exit 125;
 fi
 
@@ -19,7 +19,7 @@ chmod -w a
 touch ł
 ln ł d
 ln -s dangling_symlink e
-
+mknod f p
 mkdir -p   x/y
 chmod -rwx x
 
@@ -53,7 +53,7 @@ do
     ${CARE} -o test${FORMAT} cat a/b ł d a/c
 
     if [ -n "${EXTRACT}" ]; then
-	! chmod +w -R test-${FORMAT}-1
+	! chmod +rwx -R test-${FORMAT}-1
 	rm -fr test-${FORMAT}-1
 	mkdir test-${FORMAT}-1
 	cd test-${FORMAT}-1
@@ -76,13 +76,16 @@ do
 
     if [ -n "${EXTRACT}" ]; then
 	cd ..
+    else
+	! chmod +rwx -R test
+	rm -fr test
     fi
 
     # Check: last archived version wins, symlinks
     ${CARE} -o test${FORMAT} sh -c 'ls a; ls a/b; ls -l e'
 
     if [ -n "${EXTRACT}" ]; then
-	! chmod +w -R test-${FORMAT}-2
+	! chmod +rwx -R test-${FORMAT}-2
 	rm -fr test-${FORMAT}-2
 	mkdir test-${FORMAT}-2
 	cd test-${FORMAT}-2
@@ -101,19 +104,45 @@ do
 
     if [ -n "${EXTRACT}" ]; then
 	cd ..
+    else
+	! chmod +rwx -R test
+	rm -fr test
+    fi
+
+    # Check: non-regular files are archived/extractable
+    ${CARE} -d -p /dev -p /proc -o test${FORMAT} sh -c 'ls -l f'
+
+    if [ -n "${EXTRACT}" ]; then
+	! chmod +rwx -R test-${FORMAT}-1
+	rm -fr test-${FORMAT}-1
+	mkdir test-${FORMAT}-1
+	cd test-${FORMAT}-1
+	${EXTRACT} ../test${FORMAT}
+    fi
+
+    [ "fifo" = "$(stat -c %F test/rootfs/${CWD}/f)" ]
+
+    if [ -n "${EXTRACT}" ]; then
+	cd ..
+    else
+	! chmod +rwx -R test
+	rm -fr test
     fi
 
     # Check: extractable archive
     ${CARE} -o test${FORMAT} chmod -R +rwx x
 
     if [ -n "${EXTRACT}" ]; then
-	! chmod +w -R test-${FORMAT}-3
+	! chmod +rwx -R test-${FORMAT}-3
 	rm -fr test-${FORMAT}-3
 	mkdir test-${FORMAT}-3
 	cd test-${FORMAT}-3
 	${EXTRACT} ../test${FORMAT}
 
 	cd ..
+    else
+	! chmod +rwx -R test
+	rm -fr test
     fi
 done
 

@@ -152,8 +152,8 @@ sanity_checks:
 	if (no_filter_found && no_format_found) {
 		format->add_filter = archive_write_add_filter_lzop;
 		format->options	  = "lzop:compression-level=1";
-		format->set_format = archive_write_set_format_cpio;
-		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_CPIO_POSIX;
+		format->set_format = archive_write_set_format_gnutar;
+		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
 		format->self_extracting = true;
 
 		if (no_wrapper_found)
