@@ -383,7 +383,7 @@ command, for instance to enable its GDB server on port 1234::
 
     proot -R /mnt/armslack-12.2/ -q "qemu-arm -g 1234" emacs
 
-PRoot allows to mix transparently the emulated execution of guest
+PRoot allows one to mix transparently the emulated execution of guest
 programs and the native execution of host programs in the same
 file-system namespace.  It's typically useful to extend the list of
 available programs and to speed up build-time significantly.  This
