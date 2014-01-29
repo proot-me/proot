@@ -104,7 +104,7 @@ instance.
 Permission Namespace
 ====================
 
-Scratchbox2 (v2.4) has a permission engine that allows to fake
+Scratchbox2 (v2.4) has a permission engine that allows one to fake
 privileged operations, this engine is even more powerful than
 fakeroot's one.
 
