@@ -2,26 +2,6 @@
  Roadmap
 =========
 
-CARE v2.1
-=========
-
-* Based on PRoot v3.3
-
-* Add an append mode
-
-* Add an extract mode
-
-* Handle DBUS_SESSION_BUS_ADDRESS & SESSION_MANAGER automatically
-
-
-CARE v2.2
-=========
-
-* Add a "fake id" mode
-
-* Warn when an unemulated feature is used (ppoll, getcpu, flags, ...)
-
-
 PRoot v3.3: ptrace emulation
 ============================
 

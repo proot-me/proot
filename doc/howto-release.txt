@@ -96,7 +96,7 @@ Documentation Update
 
 2. regenerate the documentation: `make -C doc`
 
-3. regenerate the command-line interface: `cp doc/proot.h
-   src/cli/proot.h; $EDITOR src/cli.h`
+3. regenerate the command-line interface: `cp doc/*.h
+   src/cli/; $EDITOR src/cli/{proot,care}.h`
 
 4. upload the generated RPM .spec file to OBS
