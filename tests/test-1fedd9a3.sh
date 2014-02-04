@@ -40,3 +40,11 @@ stat -c %a ${TMP}/foo/bar | grep '^20$'
 
 chmod -R +rwx ${TMP}
 rm -fr ${TMP}
+
+mkdir -p ${TMP}/foo
+chmod -rwx ${TMP}
+
+! rm -fr ${TMP}
+[ $? -eq 0 ]
+
+${PROOT} -0 rm -fr ${TMP}

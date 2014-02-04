@@ -374,77 +374,76 @@ int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
 }
 
 /**
- * Copy in @host_path the equivalent of "@tracee->root +
- * canonicalize(@dir_fd + @guest_path)".  If @guest_path is not
- * absolute then it is relative to the directory referred by the
- * descriptor @dir_fd (AT_FDCWD is for the current working directory).
- * See the documentation of canonicalize() for the meaning of
- * @deref_final.  This function returns -errno if an error occured,
- * otherwise 0.
+ * Copy in @result the equivalent of "@tracee->root + canon(@dir_fd +
+ * @user_path)".  If @user_path is not absolute then it is relative to
+ * the directory referred by the descriptor @dir_fd (AT_FDCWD is for
+ * the current working directory).  See the documentation of
+ * canonicalize() for the meaning of @deref_final.  This function
+ * returns -errno if an error occured, otherwise 0.
  */
-int translate_path(Tracee *tracee, char host_path[PATH_MAX],
-		   int dir_fd, const char *guest_path, bool deref_final)
+int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
+		const char *user_path, bool deref_final)
 {
+	char guest_path[PATH_MAX];
 	int status;
 
 	/* Use "/" as the base if it is an absolute guest path. */
-	if (guest_path[0] == '/') {
-		strcpy(host_path, "/");
+	if (user_path[0] == '/') {
+		strcpy(result, "/");
 	}
-	/* It is relative to the current working directory or to a
-	 * directory referred by a descriptors, see openat(2) for
-	 * details. */
-	else if (dir_fd == AT_FDCWD) {
-		status = getcwd2(tracee, host_path);
+	/* It is relative to a directory referred by a descriptor, see
+	 * openat(2) for details. */
+	else if (dir_fd != AT_FDCWD) {
+		/* /proc/@tracee->pid/fd/@dir_fd -> result.  */
+		status = readlink_proc_pid_fd(tracee->pid, dir_fd, result);
 		if (status < 0)
 			return status;
-	}
-	else {
-		struct stat statl;
-
-		/* /proc/@tracee->pid/fd/@dir_fd -> host_path.  */
-		status = readlink_proc_pid_fd(tracee->pid, dir_fd, host_path);
-		if (status < 0)
-			return status;
-
-		/* Ensure it points to a directory. */
-		status = stat(host_path, &statl);
-		if (status < 0)
-			return -errno;
-		if (!S_ISDIR(statl.st_mode))
-			return -ENOTDIR;
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
-		status = detranslate_path(tracee, host_path, NULL);
+		status = detranslate_path(tracee, result, NULL);
+		if (status < 0)
+			return status;
+	}
+	/* It is relative to the current working directory.  */
+	else {
+		status = getcwd2(tracee, result);
 		if (status < 0)
 			return status;
 	}
 
 	VERBOSE(tracee, 2, "pid %d: translate(\"%s\" + \"%s\")",
-		tracee != NULL ? tracee->pid : 0, host_path, guest_path);
+		tracee != NULL ? tracee->pid : 0, result, user_path);
 
-	status = notify_extensions(tracee, GUEST_PATH, (intptr_t)host_path, (intptr_t)guest_path);
+	status = notify_extensions(tracee, GUEST_PATH, (intptr_t) result, (intptr_t) user_path);
 	if (status < 0)
 		return status;
 	if (status > 0)
 		goto skip;
 
+	/* So far "result" was used as a base path, it's time to join
+	 * it to the user path.  */
+	assert(result[0] == '/');
+	status = join_paths(2, guest_path, result, user_path);
+	if (status < 0)
+		return -status;
+	strcpy(result, "/");
+
 	/* Canonicalize regarding the new root. */
-	status = canonicalize(tracee, guest_path, deref_final, host_path, 0);
+	status = canonicalize(tracee, guest_path, deref_final, result, 0);
 	if (status < 0)
 		return status;
 
-	/* Final binding substitution to convert "host_path" into a host
+	/* Final binding substitution to convert "result" into a host
 	 * path, since canonicalize() works from the guest
 	 * point-of-view.  */
-	status = substitute_binding(tracee, GUEST, host_path);
+	status = substitute_binding(tracee, GUEST, result);
 	if (status < 0)
 		return status;
 
 skip:
 	VERBOSE(tracee, 2, "pid %d:          -> \"%s\"",
-		tracee != NULL ? tracee->pid : 0, host_path);
+		tracee != NULL ? tracee->pid : 0, result);
 	return 0;
 }
 
