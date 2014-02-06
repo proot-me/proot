@@ -78,6 +78,7 @@ void translate_syscall_exit(Tracee *tracee)
 #endif
 
 	case PR_getcwd: {
+		char path[PATH_MAX];
 		size_t new_size;
 		size_t size;
 		word_t output;
@@ -93,6 +94,11 @@ void translate_syscall_exit(Tracee *tracee)
 			status = -EINVAL;
 			break;
 		}
+
+		/* Ensure cwd still exists.  */
+		status = translate_path(tracee, path, AT_FDCWD, ".", false);
+		if (status < 0)
+			break;
 
 		new_size = strlen(tracee->fs->cwd) + 1;
 		if (size < new_size) {

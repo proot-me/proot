@@ -110,7 +110,7 @@ Not yet scheduled
 Fixes
 -----
 
-* Fix ``mkdir foo; cd foo; rmdir ../foo; readlink -e .``.
+* Fix ``mkdir foo; cd foo; rmdir ../foo; readlink /proc/self/cwd``.
 
 * Fix remaining bugs in sub-reconfiguration support::
 
