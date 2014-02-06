@@ -220,24 +220,24 @@ static void handle_host_path(const Tracee *tracee, const char *path, bool is_fin
 /**
  * Set @field to @value, iif @value is not -1
  */
-#define SET_ID(field, sysarg)														\
-	do {																									\
+#define SET_ID(field, sysarg)						\
+	do {								\
 		word_t value = peek_reg(tracee, ORIGINAL, sysarg);	\
-		if (value != (word_t)-1)														\
-			config->field = value;														\
+		if (value != (word_t)-1)				\
+			config->field = value;				\
 	} while (0)
 
 
-#define OVERRIDE_EPERM_AND_FORCE()											\
-	do {																									\
-		word_t result;																			\
-		/* Override only permission errors.  */							\
+#define OVERRIDE_EPERM_AND_FORCE()					\
+	do {								\
+		word_t result;						\
+		/* Override only permission errors.  */			\
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);	\
-		if ((int) result != -EPERM)													\
-			return 0;																					\
-																												\
-		/* Force success.  */																\
-		poke_reg(tracee, SYSARG_RESULT, 0);									\
+		if ((int) result != -EPERM)				\
+			return 0;					\
+									\
+		/* Force success.  */					\
+		poke_reg(tracee, SYSARG_RESULT, 0);			\
 	} while (0)
 
 
@@ -495,11 +495,19 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		return 1;
 
 	case INHERIT_CHILD: {
-		/* Copy the parent configuration to the child. The structure should not be
-		 * shared as uid/gid changes in one process should not affect the second
-		 * process.  */
+		/* Copy the parent configuration to the child.  The
+		 * structure should not be shared as uid/gid changes
+		 * in one process should not affect other processes.
+		 * This assertion is not true for POSIX threads
+		 * sharing the same group, however Linux threads never
+		 * share uid/gid information.  As a consequence, the
+		 * GlibC emulates the POSIX behavior on Linux by
+		 * sending a signal to all group threads to cause them
+		 * to invoke the system call too.  Finally, PRoot
+		 * doesn't have to worry about clone flags.
+		 */
 
-		Extension *parent = (Extension *)data1;
+		Extension *parent = (Extension *) data1;
 		extension->config = talloc_zero(extension, Config);
 		if (extension->config == NULL)
 			return -1;

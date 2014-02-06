@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <limits.h>
 
-void *routine(void *path)
+static void *routine(void *unused)
 {
 	int status;
 

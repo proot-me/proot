@@ -61,6 +61,9 @@ check-test-25069c13.c: test-25069c13
 check-test-1ffc8309.c: test-1ffc8309
 	$(call check_c,$<,env PROOT_FORCE_KOMPAT=1 $(PROOT) -k $(shell uname -r) ./$<)
 
+check-test-c5a7a0f0.c: test-c5a7a0f0
+	$(call check_c,$<,$(PROOT) -0 ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -127,6 +130,9 @@ test-5bed7143: test-5bed7143.c
 
 test-1ffc8309: test-1ffc8309.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-c5a7a0f0: test-c5a7a0f0.c
+	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output
