@@ -34,9 +34,6 @@ int main(void)
 	void *result;
 	int status;
 
-	if (getuid() != 0)
-		exit(125);
-
 	switch(fork()) {
 	case -1:
 		perror("fork");

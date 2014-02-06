@@ -15,10 +15,16 @@ chmod a-rwx ${TMP}
 ! ${PROOT} touch ${TMP}/foo/bar
 [ $? -eq 0 ]
 
+! ${PROOT} -i 123:456 touch ${TMP}/foo/bar
+[ $? -eq 0 ]
+
 ${PROOT} -0 touch ${TMP}/foo/bar
 
 stat -c %a ${TMP} | grep '^0$'
 ! stat -c %a ${TMP}/foo
+[ $? -eq 0 ]
+
+! ${PROOT} -i 123:456 stat -c %a ${TMP}/foo | grep '^0$'
 [ $? -eq 0 ]
 
 ${PROOT} -0 stat -c %a ${TMP}/foo | grep '^0$'
@@ -29,6 +35,9 @@ chmod a-rwx ${TMP}/foo
 chmod a-rwx ${TMP}
 
 ! ${PROOT} chmod g+w ${TMP}/foo/bar
+[ $? -eq 0 ]
+
+! ${PROOT} -i 123:456 chmod g+w ${TMP}/foo/bar
 [ $? -eq 0 ]
 
 ${PROOT} -0 chmod g+w ${TMP}/foo/bar
@@ -45,6 +54,9 @@ mkdir -p ${TMP}/foo
 chmod -rwx ${TMP}
 
 ! rm -fr ${TMP}
+[ $? -eq 0 ]
+
+! ${PROOT} -i 123:456 rm -fr ${TMP}
 [ $? -eq 0 ]
 
 ${PROOT} -0 rm -fr ${TMP}

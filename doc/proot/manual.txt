@@ -140,7 +140,7 @@ process instrumentation engine thanks to its extension mechanism, see
 the sources for further details.
 
 -k string, --kernel-release=string
-    Set the kernel release and compatibility level to *string*.
+    Make current kernel appear as kernel release *string*.
 
     If a program is run on a kernel older than the one expected by its
     GNU C library, the following error is reported: "FATAL: kernel too
@@ -149,7 +149,7 @@ the sources for further details.
     *string* but that are missing in the current kernel.
 
 -0, --root-id
-    Force some syscalls to behave as if executed by "root".
+    Make current user appear as "root" and fake its privileges.
 
     Some programs will refuse to work if they are not run with "root"
     privileges, even if there is no technical reason for that.  This
@@ -159,6 +159,14 @@ the sources for further details.
     changing the ownership of files, changing the root directory to
     ``/``, ...  Note that this option is quite limited compared to
     ``fakeroot``.
+
+-i uid:gid, --change-id=uid:gid
+    Make current user and group appear as *uid* and *gid*.
+
+    This option makes the current user and group appear as *uid* and
+    *gid*.  Likewise, files actually owned by the current user and
+    group appear as if they were owned by *uid* and *gid* instead.
+    Note that the ``-0`` option is the same as ``-i 0:0``.
 
 
 Alias options

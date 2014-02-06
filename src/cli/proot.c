@@ -145,10 +145,15 @@ static int handle_option_k(Tracee *tracee, const Cli *cli UNUSED, char *value)
 	return 0;
 }
 
-static int handle_option_0(Tracee *tracee, const Cli *cli UNUSED, char *value)
+static int handle_option_i(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
 	(void) initialize_extension(tracee, fake_id0_callback, value);
 	return 0;
+}
+
+static int handle_option_0(Tracee *tracee, const Cli *cli, char *value UNUSED)
+{
+	return handle_option_i(tracee, cli, "0:0");
 }
 
 static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)

@@ -48,6 +48,7 @@ check-test-16573e73.c: test-16573e73
 
 check-test-82ba4ba1.c: test-82ba4ba1
 	$(call check_c,$<,$(PROOT) -0 ./$<)
+	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
 check-test-kkkkkkkk.c: test-kkkkkkkk
 	$(call check_c,$<,$(PROOT) ./$<)
@@ -63,6 +64,7 @@ check-test-1ffc8309.c: test-1ffc8309
 
 check-test-c5a7a0f0.c: test-c5a7a0f0
 	$(call check_c,$<,$(PROOT) -0 ./$<)
+	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\

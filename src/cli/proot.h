@@ -36,7 +36,9 @@ static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_k(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_0(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_B(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value);
@@ -160,7 +162,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 		{ .name = "--kernel-release", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_k,
-	  .description = "Set the kernel release and compatibility level to *string*.",
+	  .description = "Make current kernel appear as kernel release *string*.",
 	  .detail = "\tIf a program is run on a kernel older than the one expected by its\n\
 \tGNU C library, the following error is reported: \"FATAL: kernel too\n\
 \told\".  To be able to run such programs, PRoot can emulate some of\n\
@@ -173,7 +175,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 		{ .name = "--root-id", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_0,
-	  .description = "Force some syscalls to behave as if executed by \"root\".",
+	  .description = "Make current user appear as \"root\" and fake its privileges.",
 	  .detail = "\tSome programs will refuse to work if they are not run with \"root\"\n\
 \tprivileges, even if there is no technical reason for that.  This\n\
 \tis typically the case with package managers.  This option allows\n\
@@ -182,6 +184,18 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 \tchanging the ownership of files, changing the root directory to\n\
 \t/, ...  Note that this option is quite limited compared to\n\
 \tfakeroot.",
+	},
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-i", .separator = ' ', .value = "uid:gid" },
+		{ .name = "--change-id", .separator = '=', .value = "uid:gid" },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_i,
+	  .description = "Make current user and group appear as *uid* and *gid*.",
+	  .detail = "\tThis option makes the current user and group appear as uid and\n\
+\tgid.  Likewise, files actually owned by the current user and\n\
+\tgroup appear as if they were owned by uid and gid instead.\n\
+\tNote that the -0 option is the same as -i 0:0.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
