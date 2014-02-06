@@ -440,7 +440,7 @@ Colophon
 ========
 
 Visit http://reproducible.io for help, bug reports, suggestions, patches, ...
-Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.
+Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.
 
 ::
 
