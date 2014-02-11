@@ -83,12 +83,6 @@ void translate_syscall_exit(Tracee *tracee)
 		size_t size;
 		word_t output;
 
-		/* Error reported by the kernel.  */
-		if ((int) syscall_result < 0)
-			goto end;
-
-		output = peek_reg(tracee, ORIGINAL, SYSARG_1);
-
 		size = (size_t) peek_reg(tracee, ORIGINAL, SYSARG_2);
 		if (size == 0) {
 			status = -EINVAL;
@@ -107,6 +101,7 @@ void translate_syscall_exit(Tracee *tracee)
 		}
 
 		/* Overwrite the path.  */
+		output = peek_reg(tracee, ORIGINAL, SYSARG_1);
 		status = write_data(tracee, output, tracee->fs->cwd, new_size);
 		if (status < 0)
 			break;

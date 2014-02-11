@@ -128,6 +128,11 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 #endif
 
+	case PR_getcwd:
+		set_sysnum(tracee, PR_void);
+		status = 0;
+		break;
+
 	case PR_fchdir:
 	case PR_chdir: {
 		char *tmp;
