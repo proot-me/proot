@@ -56,7 +56,7 @@ typedef struct {
 	struct Entry *entries;
 	struct Entry *dentries;
 
-	char *const *command;
+	char **command;
 	List *volatile_paths;
 	List *volatile_envars;
 	List *concealed_accesses;
