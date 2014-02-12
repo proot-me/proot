@@ -1,1 +1,0 @@
-doc/proot-manual.txt
