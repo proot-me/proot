@@ -52,13 +52,22 @@ static int handle_option_r(Tracee *tracee, const Cli *cli UNUSED, char *value)
 
 static int handle_option_b(Tracee *tracee, const Cli *cli UNUSED, char *value)
 {
-	char *ptr = strchr(value, ':');
-	if (ptr != NULL) {
-		*ptr = '\0';
-		ptr++;
+	char *host;
+	char *guest;
+
+	host = talloc_strdup(tracee->ctx, value);
+	if (host == NULL) {
+		notice(tracee, ERROR, INTERNAL, "can't allocate memory");
+		return -1;
 	}
 
-	new_binding(tracee, value, ptr, true);
+	guest = strchr(host, ':');
+	if (guest != NULL) {
+		*guest = '\0';
+		guest++;
+	}
+
+	new_binding(tracee, host, guest, true);
 	return 0;
 }
 
