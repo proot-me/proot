@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -33,7 +33,7 @@
 #include "path/binding.h"
 #include "path/path.h"
 #include "path/canon.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 
@@ -117,7 +117,7 @@ static void print_bindings(const Tracee *tracee)
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-static const Binding *get_binding(Tracee *tracee, Side side, const char path[PATH_MAX])
+static const Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 {
 	const Binding *binding;
 	size_t path_length = strlen(path);
@@ -168,7 +168,7 @@ static const Binding *get_binding(Tracee *tracee, Side side, const char path[PAT
  * Get the binding path for the given @path (relatively to the given
  * binding @side).
  */
-const char *get_path_binding(Tracee *tracee, Side side, const char path[PATH_MAX])
+const char *get_path_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 {
 	const Binding *binding;
 
@@ -236,13 +236,11 @@ const char *get_root(const Tracee* tracee)
  *     * 1 if it is a binding location and a substitution was performed
  *       ("asymmetric" binding)
  */
-int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
+int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
 {
 	const Path *reverse_ref;
 	const Path *ref;
 	const Binding *binding;
-	size_t path_length;
-	size_t new_length;
 
 	binding = get_binding(tracee, side, path);
 	if (!binding)
@@ -251,8 +249,6 @@ int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
 	/* Is it a "symetric" binding?  */
 	if (!binding->need_substitution)
 		return 0;
-
-	path_length = strlen(path);
 
 	switch (side) {
 	case GUEST:
@@ -270,51 +266,8 @@ int substitute_binding(Tracee *tracee, Side side, char path[PATH_MAX])
 		return -EACCES;
 	}
 
-	/* Substitute the leading ref' with reverse_ref'.  */
-	if (reverse_ref->length == 1) {
-		/* Special case when "-b /:/foo".  Substitute
-		 * "/foo/bin" with "/bin" not "//bin".  */
+	substitute_path_prefix(path, ref->length, reverse_ref->path, reverse_ref->length);
 
-		new_length = path_length - ref->length;
-		if (new_length != 0)
-			memmove(path, path + ref->length, new_length);
-		else {
-			/* Translating "/".  */
-			path[0] = '/';
-			new_length = 1;
-		}
-	}
-	else if (ref->length == 1) {
-		/* Special case when "-b /:/foo". Substitute
-		 * "/bin" with "/foo/bin" not "/foobin".  */
-
-		new_length = reverse_ref->length + path_length;
-		if (new_length >= PATH_MAX)
-			return -ENAMETOOLONG;
-
-		if (path_length > 1) {
-			memmove(path + reverse_ref->length, path, path_length);
-			memcpy(path, reverse_ref->path, reverse_ref->length);
-		}
-		else {
-			/* Translating "/".  */
-			memcpy(path, reverse_ref->path, reverse_ref->length);
-			new_length = reverse_ref->length;
-		}
-	}
-	else {
-		/* Generic substitution case.  */
-
-		new_length = path_length - ref->length + reverse_ref->length;
-		if (new_length >= PATH_MAX)
-			return -ENAMETOOLONG;
-
-		memmove(path + reverse_ref->length,
-			path + ref->length,
-			path_length - ref->length);
-		memcpy(path, reverse_ref->path, reverse_ref->length);
-	}
-	path[new_length] = '\0';
 	return 1;
 }
 
@@ -381,7 +334,7 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 				break;
 			}
 
-			if (tracee->verbose > 0) {
+			if (tracee->verbose > 0 && getenv("PROOT_IGNORE_MISSING_BINDINGS") == NULL) {
 				notice(tracee, WARNING, USER,
 					"both '%s' and '%s' are bound to '%s', "
 					"only the last binding is active.",
@@ -497,15 +450,11 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	if (binding == NULL)
 		return NULL;
 
-	/* Expand environment variables like $HOME.  */
-	if (host[0] == '$' && getenv(&host[1]))
-		host = getenv(&host[1]);
-
 	/* Canonicalize the host part of the binding, as expected by
 	 * get_binding().  */
 	status = realpath2(tracee->reconf.tracee, binding->host.path, host, true);
 	if (status < 0) {
-		if (must_exist)
+		if (must_exist && getenv("PROOT_IGNORE_MISSING_BINDINGS") == NULL)
 			notice(tracee, WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
 				host, strerror(-status));
 		goto error;
@@ -708,6 +657,7 @@ int initialize_bindings(Tracee *tracee)
 	Binding *binding;
 
 	/* Sanity checks.  */
+	assert(get_root(tracee) != NULL);
 	assert(tracee->fs->bindings.pending != NULL);
 	assert(tracee->fs->bindings.guest == NULL);
 	assert(tracee->fs->bindings.host == NULL);

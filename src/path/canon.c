@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -96,7 +96,6 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		 char guest_path[PATH_MAX], unsigned int recursion_level)
 {
 	char scratch_path[PATH_MAX];
-	bool pending_dot = false;
 	Finality is_final;
 	const char *cursor;
 	int status;
@@ -109,6 +108,9 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 	assert(user_path != NULL);
 	assert(guest_path != NULL);
 	assert(user_path != guest_path);
+
+	if (strnlen(guest_path, PATH_MAX) >= PATH_MAX)
+		return -ENAMETOOLONG;
 
 	if (user_path[0] != '/') {
 		/* Ensure 'guest_path' contains an absolute base of
@@ -127,21 +129,16 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		char component[NAME_MAX];
 		char host_path[PATH_MAX];
 
-		status = next_component(component, &cursor);
+		is_final = next_component(component, &cursor);
+		status = (int) is_final;
 		if (status < 0)
 			return status;
-		if (status == FINAL_SLASH && pending_dot)
-			is_final = FINAL_DOT;
-		else
-			is_final = status;
 
 		if (strcmp(component, ".") == 0) {
 			if (is_final)
 				is_final = FINAL_DOT;
-			pending_dot = true;
 			continue;
 		}
-		pending_dot = false;
 
 		if (strcmp(component, "..") == 0) {
 			pop_component(guest_path);

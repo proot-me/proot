@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -24,6 +24,7 @@
 #define LDSO_H
 
 #include <linux/limits.h>
+#include <stdbool.h>
 
 #include "tracee/array.h"
 
@@ -31,5 +32,6 @@ extern int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 			const char *define, const char *undefine);
 extern int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Array *envp);
 extern int compare_item_env(Array *array, size_t index, const char *name);
+extern bool is_env_name(const char *variable, const char *name);
 
 #endif /* LDSO_H */

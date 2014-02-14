@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -29,6 +29,7 @@
 typedef unsigned long word_t;
 
 #define SYSCALL_AVOIDER ((word_t) -2)
+#define SYSTRAP_NUM SYSARG_NUM
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
@@ -59,6 +60,10 @@ typedef unsigned long word_t;
     #define SYSNUMS_ABI2 sysnums_i386
     #define SYSNUMS_ABI3 sysnums_x32
 
+    #undef  SYSTRAP_NUM
+    #define SYSTRAP_NUM SYSARG_RESULT
+    #define SYSTRAP_SIZE 2
+
     #define SECCOMP_ARCHS {									\
 		{ .value = AUDIT_ARCH_X86_64, .nb_abis = 2, .abis = { ABI_DEFAULT, ABI_3 } },	\
 		{ .value = AUDIT_ARCH_I386,   .nb_abis = 1, .abis = { ABI_2 } }, 		\
@@ -74,6 +79,8 @@ typedef unsigned long word_t;
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm.h"
     #define SYSNUMS_ABI1    sysnums_arm
 
+    #define SYSTRAP_SIZE 4
+
     #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_ARM, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
 
     #define user_regs_struct user_regs
@@ -83,10 +90,17 @@ typedef unsigned long word_t;
     #define OFFSETOF_STAT_GID_32 0
     #define EM_ARM 40
 
+    /* The syscall number has to be valid on ARM, so use tuxcall(2) as
+     * the "void" syscall since it has no side effects.  */
+    #undef SYSCALL_AVOIDER
+    #define SYSCALL_AVOIDER ((word_t) 222)
+
 #elif defined(ARCH_ARM64)
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm64.h"
     #define SYSNUMS_ABI1    sysnums_arm64
+
+    #define SYSTRAP_SIZE 4
 
     #define user_regs_struct user_pt_regs
     #define HOST_ELF_MACHINE {183, 0};
@@ -99,6 +113,10 @@ typedef unsigned long word_t;
     #define SYSNUMS_HEADER1 "syscall/sysnums-i386.h"
     #define SYSNUMS_ABI1    sysnums_i386
 
+    #undef  SYSTRAP_NUM
+    #define SYSTRAP_NUM SYSARG_RESULT
+    #define SYSTRAP_SIZE 2
+
     #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_I386, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
 
     #define HOST_ELF_MACHINE {3, 6, 0};
@@ -110,6 +128,8 @@ typedef unsigned long word_t;
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-sh4.h"
     #define SYSNUMS_ABI1    sysnums_sh4
+
+    #define SYSTRAP_SIZE 2
 
     #define user_regs_struct pt_regs
     #define HOST_ELF_MACHINE {42, 0};

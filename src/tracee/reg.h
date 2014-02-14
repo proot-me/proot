@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -36,6 +36,7 @@ typedef enum {
 	SYSARG_6,
 	SYSARG_RESULT,
 	STACK_POINTER,
+	INSTR_POINTER,
 } Reg;
 
 extern int fetch_regs(Tracee *tracee);

@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -26,7 +26,7 @@
 #include <strings.h>    /* bzero(3), */
 
 #include "extension/extension.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "build.h"
 
 #include "compat.h"
@@ -106,7 +106,7 @@ int initialize_extension(Tracee *tracee, extension_callback_t callback, const ch
  * Rebuild a new list of extensions for this @child from its @parent.
  * The inheritance model is controlled by the @parent.
  */
-void inherit_extensions(Tracee *child, Tracee *parent, bool sub_reconf)
+void inherit_extensions(Tracee *child, Tracee *parent, word_t clone_flags)
 {
 	Extension *parent_extension;
 	Extension *child_extension;
@@ -116,13 +116,13 @@ void inherit_extensions(Tracee *child, Tracee *parent, bool sub_reconf)
 		return;
 
 	/* Sanity check.  */
-	assert(child->extensions == NULL || sub_reconf);
+	assert(child->extensions == NULL || clone_flags == CLONE_RECONF);
 
 	LIST_FOREACH(parent_extension, parent->extensions, link) {
 		/* Ask the parent how this extension is
 		 * inheritable.  */
 		status = parent_extension->callback(parent_extension, INHERIT_PARENT,
-						(intptr_t)child, sub_reconf);
+						(intptr_t)child, clone_flags);
 
 		/* Not inheritable.  */
 		if (status < 0)
@@ -144,7 +144,7 @@ void inherit_extensions(Tracee *child, Tracee *parent, bool sub_reconf)
 		else {
 			/* ... with another inheritance model.  */
 			child_extension->callback(child_extension, INHERIT_CHILD,
-						(intptr_t)parent_extension, sub_reconf);
+						(intptr_t)parent_extension, clone_flags);
 		}
 	}
 }

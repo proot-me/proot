@@ -26,6 +26,7 @@
 #include <stdbool.h>    /* bool, true, false, */
 #include <signal.h>     /* siginfo_t, */
 #include <sys/uio.h>    /* struct iovec, */
+#include <sys/param.h>  /* MIN(), MAX(), */
 
 #include "ptrace/ptrace.h"
 #include "tracee/tracee.h"
@@ -34,7 +35,7 @@
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "tracee/event.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 

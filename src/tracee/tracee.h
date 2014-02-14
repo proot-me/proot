@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -42,11 +42,12 @@ typedef enum {
 
 struct bindings;
 struct extensions;
+struct chained_syscalls;
 
 /* Information related to a file-system name-space.  */
 typedef struct {
 	struct {
-	     /* List of bindings as specified by the user but not canonicalized yet.  */
+		/* List of bindings as specified by the user but not canonicalized yet.  */
 		struct bindings *pending;
 
 		/* List of bindings canonicalized and sorted in the "guest" order.  */
@@ -59,6 +60,13 @@ typedef struct {
 	/* Current working directory, à la /proc/self/pwd.  */
 	char *cwd;
 } FileSystemNameSpace;
+
+/* Virtual heap, emulated with a regular memory mapping.  */
+typedef struct {
+	word_t base;
+	size_t size;
+	size_t prealloc_size;
+} Heap;
 
 /* Information related to a tracee process. */
 typedef struct tracee {
@@ -150,6 +158,12 @@ typedef struct tracee {
 		const char *paths;
 	} reconf;
 
+	/* Unrequested syscalls inserted by PRoot after an actual
+	 * syscall.  */
+	struct {
+		struct chained_syscalls *syscalls;
+		word_t final_result;
+	} chain;
 
 	/**********************************************************************
 	 * Private but inherited resources                                    *
@@ -161,13 +175,19 @@ typedef struct tracee {
 	/* State of the seccomp acceleration for this tracee.  */
 	enum { DISABLED = 0, DISABLING, ENABLED } seccomp;
 
+	/* Ensure the sysexit stage is always hit under seccomp.  */
+	bool sysexit_pending;
+
 
 	/**********************************************************************
-	 * Shared or private resources, depending on the CLONE_FS flag.       *
+	 * Shared or private resources, depending on the CLONE_FS/VM flags.   *
 	 **********************************************************************/
 
+	/* Information related to a file-system name-space.  */
 	FileSystemNameSpace *fs;
 
+	/* Virtual heap, emulated with a regular memory mapping.  */
+	Heap *heap;
 
 	/**********************************************************************
 	 * Shared resources until the tracee makes a call to execve().        *
@@ -207,6 +227,9 @@ typedef struct tracee {
 	 * host LD_LIBRARY_PATH hasn't changed).  */
 	const char *host_ldso_paths;
 	const char *guest_ldso_paths;
+
+	/* For diagnostic purpose.  */
+	const char *tool_name;
 
 } Tracee;
 

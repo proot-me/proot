@@ -23,15 +23,35 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 
+	status = setresgid(1, 1, 1);
+	if (status != 0) {
+		perror("setresgid");
+		exit(EXIT_FAILURE);
+	}
+
+	status = getresgid(&rgid, &egid, &sgid);
+	if (status != 0 || rgid != 1 || egid != 1 || sgid != 1) {
+		perror("getresgid");
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) rgid, (unsigned long) egid, (unsigned long) sgid);
+		exit(EXIT_FAILURE);
+	}
+
+	if (status != 0 || rgid != 1 || egid != 1 || sgid != 1) {
+		perror("getresgid");
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid, (unsigned long) euid, (unsigned long) suid);
+		exit(EXIT_FAILURE);
+	}
+
 	status = setresuid(1, 1, 1);
 	if (status != 0) {
 		perror("setresuid");
 		exit(EXIT_FAILURE);
 	}
 
-	status = setresgid(1, 1, 1);
-	if (status != 0) {
-		perror("setresgid");
+	status = getresuid(&ruid, &euid, &suid);
+	if (status != 0 || ruid != 1 || euid != 1 || suid != 1) {
+		perror("getresuid");
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid, (unsigned long) euid, (unsigned long) suid);
 		exit(EXIT_FAILURE);
 	}
 

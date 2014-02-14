@@ -1,6 +1,7 @@
-all: proot.1 cli.h proot.spec index.html
+OUTPUTS = proot.1 proot.h proot.spec proot/index.html care.h care/index.html
+all: $(OUTPUTS)
 
-proot.1: manual.txt
+%.1: %/manual.txt
 	rst2man $< $@
 
 %.xml: %.txt
@@ -10,17 +11,19 @@ proot.1: manual.txt
 	rst2html $< $@
 
 # Workaround to avoid unescaped C character.
-manual-quoted.txt: manual.txt
+%/manual-quoted.txt: %/manual.txt
 	sed 's/"/\\\\"/g' $^ > $@
 
-cli.h: stylesheets/cli.xsl manual-quoted.xml
+%.h: stylesheets/%-cli.xsl %/manual-quoted.xml
 	xsltproc --output $@ $^
 
-proot.spec:  stylesheets/rpm-spec.xsl manual.xml
+%.spec:  stylesheets/rpm-spec.xsl %/manual.xml
 	xsltproc --output $@ $^
+	echo "* $(shell date +'%a %b %d %Y') Cédric VINCENT <cedric.vincent@st.com>" >> $@
+	cat $*/changelog.txt >> $@
 
-index.html:  stylesheets/website.xsl manual.xml
-	xsltproc --output $@ $^
+%/index.html: stylesheets/website.xsl stylesheets/%-website.xsl %/manual.xml
+	xsltproc --output $@ stylesheets/$*-website.xsl $*/manual.xml
 
 clean:
-	rm -f *.xml manual-quoted.txt cli.h
+	rm -f *.xml $(OUTPUTS) *-quoted.*

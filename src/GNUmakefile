@@ -1,19 +1,22 @@
 # If you want to build outside of the source tree, use the -f option:
 #     make -f ${SOMEWHERE}/proot/src/GNUmakefile
 
-# the VPATH variable must points to the actual makefile directory
+# the VPATH variable must point to the actual makefile directory
 VPATH	:= $(dir $(lastword $(MAKEFILE_LIST)))
 GIT      = git
 RM       = rm
 INSTALL  = install
 CC       = gcc
 LD       = $(CC)
-CPPFLAGS = -D_FILE_OFFSET_BITS=64 -I. -I$(VPATH)
-CFLAGS   = -Wall -Wextra -O2
-LDFLAGS  = -ltalloc
+CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
+CFLAGS   += -Wall -Wextra -O2
+LDFLAGS  += -ltalloc
+CARE_LDFLAGS = -larchive
 
-OBJECTS = cli.o			\
-	notice.o		\
+OBJECTS += \
+	cli/cli.o		\
+	cli/proot.o		\
+	cli/notice.o		\
 	execve/execve.o		\
 	execve/interp.o		\
 	execve/elf.o		\
@@ -25,10 +28,12 @@ OBJECTS = cli.o			\
 	path/proc.o		\
 	syscall/seccomp.o	\
 	syscall/syscall.o	\
+	syscall/chain.o		\
 	syscall/enter.o		\
 	syscall/exit.o		\
 	syscall/sysnum.o	\
 	syscall/socket.o	\
+	syscall/heap.o		\
 	tracee/tracee.o		\
 	tracee/array.o		\
 	tracee/mem.o		\
@@ -40,8 +45,25 @@ OBJECTS = cli.o			\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o
 
+CARE_OBJECTS = 				\
+	cli/care.o			\
+	cli/care-manual.o		\
+	extension/care/care.o		\
+	extension/care/final.o		\
+	extension/care/extract.o	\
+	extension/care/archive.o
+
 .DEFAULT_GOAL = proot
 all: proot
+
+######################################################################
+# Sanity checks
+
+ifneq (,$(findstring care,$(MAKECMDGOALS)))
+ifneq ($(CARE_BUILD_ENV),ok)
+$(error care is supposed to be built with: http://build.reproducible.io)
+endif
+endif
 
 ######################################################################
 # Beautified output
@@ -70,11 +92,12 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 		then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
 		fi;
 
-CHECK_FEATURES = readlinkat process_vm seccomp_filter
+CHECK_FEATURES = process_vm seccomp_filter
 CHECK_PROGRAMS = $(foreach feature,$(CHECK_FEATURES),.check_$(feature))
 CHECK_OBJECTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).o)
+CHECK_RESULTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).res)
 
-.SILENT .IGNORE .INTERMEDIATE: $(CHECK_OBJECTS)
+.SILENT .IGNORE .INTERMEDIATE: $(CHECK_OBJECTS) $(CHECK_PROGRAMS)
 
 .check_%.o: .check_%.c
 	$(COMPILE:echo=false) $(silently) || true
@@ -82,20 +105,16 @@ CHECK_OBJECTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).o)
 .check_%: .check_%.o
 	$(LINK:echo=false) $(silently) || true
 
-# TODO: generate these lines automatically from $(CHECK_FEATURES)
-CHECK_READLINKAT = if [ -e .check_readlinkat ]; then echo "\#define HAVE_READLINKAT"; fi
-CHECK_PROCESS_VM = if [ -e .check_process_vm ]; then echo "\#define HAVE_PROCESS_VM"; fi
-CHECK_SECCOMP_FILTER = if [ -e .check_seccomp_filter ]; then echo "\#define HAVE_SECCOMP_FILTER"; fi
+.check_%.res: .check_%
+	$(Q)if [ -e $< ]; then echo "#define HAVE_$(shell echo $* | tr a-z A-Z)" > $@; else echo "" > $@; fi
 
-build.h: $(CHECK_PROGRAMS)
+build.h: $(CHECK_RESULTS)
 	$($(quiet)GEN)
 	$(Q)echo "/* This file is auto-generated, edit at your own risk.  */" > $@
 	$(Q)echo "#ifndef BUILD_H"      >> $@
 	$(Q)echo "#define BUILD_H"      >> $@
-	$(Q)sh -c '$(CHECK_VERSION)'     >> $@
-	$(Q)sh -c '$(CHECK_READLINKAT)'  >> $@
-	$(Q)sh -c '$(CHECK_PROCESS_VM)'  >> $@
-	$(Q)sh -c '$(CHECK_SECCOMP_FILTER)' >> $@
+	$(Q)sh -c '$(CHECK_VERSION)'    >> $@
+	$(Q)cat $^                      >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
 ######################################################################
@@ -105,25 +124,47 @@ SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
 COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$(@:.o=.c) -o $@
 LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
+OBJIFY = $($(quiet)GEN)									\
+	objcopy										\
+		--input binary								\
+		--output `objdump -f cli/cli.o |					\
+			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
+		--binary-architecture `objdump -f cli/cli.o |				\
+				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
+		$< $@
+
 proot: $(OBJECTS)
 	$(LINK)
 
+care: $(OBJECTS) $(CARE_OBJECTS)
+	$(LINK) $(CARE_LDFLAGS)
+
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
-USE_BUILD_H := $(patsubst $(SRC)%,%,$(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*.c $(SRC)*/*.c)))
+USE_BUILD_H := $(patsubst $(SRC)%,%,$(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*/*.c)))
 $(USE_BUILD_H): build.h
 
 %.o: %.c
 	@mkdir -p $(dir $@)
 	$(COMPILE)
 
+.INTERMEDIATE: manual
+manual: $(VPATH)/../doc/care/manual.txt
+	$(Q)cp $< $@
+
+cli/care-manual.o: manual cli/cli.o
+	$(OBJIFY)
+
+cli/%-licenses.o: licenses cli/cli.o
+	$(OBJIFY)
+
 ######################################################################
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) build.h: $(firstword $(MAKEFILE_LIST))
+$(OBJECTS) $(CARE_OBJECTS): $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
+DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 -include $(DEPS)
 
 ######################################################################
@@ -132,12 +173,18 @@ DEPS = $(OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 PREFIX = /usr/local
 DESTDIR = $(PREFIX)/bin
 
-.PHONY: clean distclean install uninstall
+.PHONY: clean distclean install install-care uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_PROGRAMS) $(CHECK_OBJECTS) $(OBJECTS) proot $(DEPS) build.h
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) proot care cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
 
+install-care: care
+	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
+
 uninstall:
 	-$(RM) -f $(DESTDIR)/proot
+
+uninstall-care:
+	-$(RM) -f $(DESTDIR)/care

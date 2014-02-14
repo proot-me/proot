@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -32,7 +32,7 @@ extern int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg);
 extern int set_sysarg_path(Tracee *tracee, char path[PATH_MAX], Reg reg);
 
 extern void translate_syscall(Tracee *tracee);
-extern void translate_syscall_enter(Tracee *tracee);
+extern int  translate_syscall_enter(Tracee *tracee);
 extern void translate_syscall_exit(Tracee *tracee);
 
 #endif /* SYSCALL_H */

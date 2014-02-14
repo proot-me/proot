@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -32,6 +32,7 @@
 #include "syscall/socket.h"
 #include "ptrace/ptrace.h"
 #include "ptrace/wait.h"
+#include "syscall/heap.h"
 #include "extension/extension.h"
 #include "execve/execve.h"
 #include "tracee/tracee.h"
@@ -88,7 +89,7 @@ static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
  * -errno if an error occured from the tracee's point-of-view (EFAULT
  * for instance), otherwise 0.
  */
-void translate_syscall_enter(Tracee *tracee)
+int translate_syscall_enter(Tracee *tracee)
 {
 	int flags;
 	int dirfd;
@@ -103,12 +104,13 @@ void translate_syscall_enter(Tracee *tracee)
 	char newpath[PATH_MAX];
 
 	word_t syscall_number;
+	bool special = false;
 
 	status = notify_extensions(tracee, SYSCALL_ENTER_START, 0, 0);
 	if (status < 0)
 		goto end;
 	if (status > 0)
-		return;
+		return 0;
 
 	/* Translate input arguments. */
 	syscall_number = get_sysnum(tracee, ORIGINAL);
@@ -129,6 +131,17 @@ void translate_syscall_enter(Tracee *tracee)
 	case PR_wait4:
 	case PR_waitpid:
 		status = translate_wait_enter(tracee);
+		break;
+
+#if !defined(ARCH_X86)
+	case PR_brk:
+		status = translate_brk_enter(tracee);
+		break;
+#endif
+
+	case PR_getcwd:
+		set_sysnum(tracee, PR_void);
+		status = 0;
 		break;
 
 	case PR_fchdir:
@@ -228,6 +241,12 @@ void translate_syscall_enter(Tracee *tracee)
 		break;						\
 	}
 
+#define PEEK_MEM2(addr, forced_errno) peek_mem(tracee, addr);	\
+	if (errno != 0) {					\
+		status = forced_errno ?: -errno;		\
+		break;						\
+	}
+
 #define POKE_MEM(addr, value) poke_mem(tracee, addr, value);	\
 	if (errno != 0) {					\
 		status = -errno;				\
@@ -236,13 +255,20 @@ void translate_syscall_enter(Tracee *tracee)
 
 	case PR_accept:
 	case PR_accept4:
+		/* Nothing special to do if no sockaddr was specified.  */
+		if (peek_reg(tracee, ORIGINAL, SYSARG_2) == 0) {
+			status = 0;
+			break;
+		}
+		special = true;
+		/* Fall through.  */
 	case PR_getsockname:
 	case PR_getpeername:{
 		int size;
 
 		/* Remember: PEEK_MEM puts -errno in status and breaks if an
 		 * error occured.  */
-		size = (int) PEEK_MEM(peek_reg(tracee, ORIGINAL, SYSARG_3));
+		size = (int) PEEK_MEM2(peek_reg(tracee, ORIGINAL, SYSARG_3), special ? -EINVAL : 0);
 
 		/* The "size" argument is both used as an input parameter
 		 * (max. size) and as an output parameter (actual size).  The
@@ -273,12 +299,20 @@ void translate_syscall_enter(Tracee *tracee)
 
 		case SYS_ACCEPT:
 		case SYS_ACCEPT4:
+			/* Nothing special to do if no sockaddr was specified.  */
+			sock_addr = PEEK_MEM(SYSARG_ADDR(2));
+			if (sock_addr == 0) {
+				status = 0;
+				break;
+			}
+			special = true;
+			/* Fall through.  */
 		case SYS_GETSOCKNAME:
 		case SYS_GETPEERNAME:
 			/* Remember: PEEK_MEM puts -errno in status and breaks
 			 * if an error occured.  */
 			size_addr =  PEEK_MEM(SYSARG_ADDR(3));
-			size = (int) PEEK_MEM(size_addr);
+			size = (int) PEEK_MEM2(size_addr, special ? -EINVAL : 0);
 
 			/* See case PR_accept for explanation.  */
 			poke_reg(tracee, SYSARG_6, size);
@@ -319,6 +353,7 @@ void translate_syscall_enter(Tracee *tracee)
 
 #undef SYSARG_ADDR
 #undef PEEK_MEM
+#undef PEEK_MEM2
 #undef POKE_MEM
 
 	case PR_access:
@@ -541,16 +576,6 @@ end:
 	if (status2 < 0)
 		status = status2;
 
-	/* Remember the tracee status for the "exit" stage and avoid
-	 * the actual syscall if an error occured during the
-	 * translation. */
-	if (status < 0) {
-		set_sysnum(tracee, PR_void);
-		poke_reg(tracee, SYSARG_RESULT, status);
-		tracee->status = status;
-	}
-	else
-		tracee->status = 1;
-
+	return status;
 }
 

@@ -4,59 +4,80 @@ How to Make a Release of PRoot?
 This document summarizes the required checks that shall be done before
 releasing PRoot.
 
-
-Sanity Checks
+Sanity checks
 -------------
 
-The PRoot's testsuite (`make -C test`) shall suffer no failure on:
+* arm (`make -C test` on STLinux)
+* sh4 (`make -C test` on STLinux)
+* x86 (`make -C test` on *all* OBS distros)
+* x86_64 (with *and* without seccomp):
+  - `make -C tests` on *all* OBS distros
+  - `make -C tests memcheck`
+  - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
+  - `make -C tests V=1 2>&1 | grep talloc`
 
-- x86_64 (all OBS distros + Slackware64)
-- x86    (all OBS distros)
-- arm    (STLinux)
-- sh4    (STLinux)
+LTP
+---
 
-The PRoot's testsuite under Valgrind/Memcheck (`make -C tests
-memcheck`) shall suffer no failure on:
+The "syscalls" testsuite from the Linux Test Project (`./configure
+--prefix=$PWD; make; make install; ./runltp -f syscalls`) shall suffer no
+regression on (with *and* without seccomp):
 
-- x86_64 (Slackware64)
+- x86_64
+- x86_64 with a x86_64 rootfs
+- x86_64 with a x86 rootfs
+- x86_64 & the "kompat" extension enabled
+- x86_64 with a x86_64 rootfs & the "kompat" extension enabled
+- x86_64 with a x86 rootfs & the "kompat" extension enabled
 
-The PRoot's testsuite with AddressSanitizer enabled
-(`CFLAGS=-fsanitize=address LDFLAGS=-lasan`) shall suffer no failure
-on:
+Libuv
+-----
 
-- x86_64 (Slackware64)
+The testsuite from the libuv package (`make test -j 4`) shall suffer
+no regression on (with *and* without seccomp):
 
-Talloc shall report no leak during all the PRoot's testsuite (`make -C
-tests V=1 2>&1 | grep talloc`) on:
+- x86_64
+- x86_64 with a x86_64 rootfs
+- x86_64 with a x86 rootfs
+- x86_64 & the "kompat" extension enabled
+- x86_64 with a x86_64 rootfs & the "kompat" extension enabled
+- x86_64 with a x86 rootfs & the "kompat" extension enabled
 
-- x86_64 (Slackware64)
-
-
-Use-Case Checks
----------------
+CoreUtils
+---------
 
 The GNU CoreUtils package (`./configure; make; make check`) shall
 suffer no regression on:
 
 - x86_64
+- x86_64 with the "kompat" extension enabled
 - x86_64 with a ARM rootfs (QEMU)
 
-The Perl package (`./Configure -de; make; make check`) shall suffer no
+Perl
+----
+
+The Perl package (`./configure.gnu; make; make check`) shall suffer no
 regression on:
 
 - x86_64
+- x86_64 with the "kompat" extension enabled
 - x86_64 with a x86 rootfs
+- x86_64 with a x86 rootfs and the "kompat" extension enabled
 - x86_64 with a ARM rootfs (QEMU)
 - x86_64 with a ARM rootfs (QEMU) under a x86 rootfs (sub-reconf')
+
+Open POSIX
+----------
 
 The Open POSIX Test Suite package (`make`) shall suffer no regression
 on:
 
 - x86_64
+- x86_64 with the "kompat" extension enabled
 
 
-Performance Checks
-------------------
+Performance
+-----------
 
 The following command shall suffer no non-undestood performance
 regression::
@@ -69,7 +90,13 @@ where "/usr/bin/true" is a symlink to "/bin/true".
 Documentation Update
 --------------------
 
-1. update the release number in "doc/manual.txt"
+0. update "doc/changelog.txt"
+
+1. update the release number in "doc/proot-manual.txt"
+
 2. regenerate the documentation: `make -C doc`
-3. regenerate the command-line interface: `cp doc/cli.h src/cli.h;
-   $EDITOR src/cli.h`
+
+3. regenerate the command-line interface: `cp doc/*.h
+   src/cli/; $EDITOR src/cli/{proot,care}.h`
+
+4. upload the generated RPM .spec file to OBS

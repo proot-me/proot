@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -33,12 +33,12 @@
 #include "execve/elf.h"
 #include "tracee/tracee.h"
 #include "tracee/array.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 /**
  * Check if the environment @variable has the given @name.
  */
-static inline bool is_env_name(const char *variable, const char *name)
+bool is_env_name(const char *variable, const char *name)
 {
 	size_t length = strlen(name);
 
@@ -226,7 +226,7 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
 		cursor2 += length2 + 1;
 	} while (*(cursor2 - 1) != '\0');
 
-	*(cursor1++) = '\0';
+	*cursor1 = '\0';
 
 	return 0;
 }

@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -26,5 +26,7 @@
 #define UNUSED __attribute__((unused))
 #define FORMAT(a, b, c) __attribute__ ((format (a, b, c)))
 #define DONT_INSTRUMENT __attribute__((no_instrument_function))
+#define PACKED __attribute__((packed))
+#define WEAK   __attribute__((weak))
 
 #endif /* ATTRIBUTE_H */

@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -34,7 +34,7 @@
 #include "tracee/array.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "path/path.h"
 #include "path/binding.h"
 #include "extension/extension.h"
@@ -139,8 +139,10 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 
 	VERBOSE(tracee, 3, "expand shebang: -> %s %s %s", u_interp, argument, u_path);
 
+	/* Note: argv[0] is not substituted if it is the NULL
+	 * terminator (argv->length == 1).  */
 	if (argument[0] != '\0') {
-		status = resize_array(argv, 0, 2);
+		status = resize_array(argv, 0, 2 + (argv->length == 1));
 		if (status < 0)
 			return status;
 
@@ -149,7 +151,7 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 			return status;
 	}
 	else {
-		status = resize_array(argv, 0, 1);
+		status = resize_array(argv, 0, 1 + (argv->length == 1));
 		if (status < 0)
 			return status;
 
@@ -195,7 +197,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 		return 0;
 
 	/* Rebuild a POD argv[], as expected by parse_config().  */
-	argv_pod = talloc_size(tracee->ctx, argv->length * sizeof(char **));
+	argv_pod = talloc_size(tracee->ctx, argv->length * sizeof(char *));
 	if (argv_pod == NULL)
 		return -ENOMEM;
 
@@ -263,7 +265,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 		return status;
 	}
 
-	inherit_extensions(tracee, dummy, true);
+	inherit_extensions(tracee, dummy, CLONE_RECONF);
 
 	/* Disable seccomp acceleration for this tracee and all its
 	 * children since unfiltered syscalls might be requested by
@@ -338,7 +340,7 @@ int translate_execve(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	if (tracee->qemu) {
+	if (tracee->qemu != NULL) {
 		status = read_item_string(argv, 0, &argv0);
 		if (status < 0)
 			return status;
@@ -399,11 +401,12 @@ int translate_execve(Tracee *tracee)
 	}
 
 	if (tracee->qemu != NULL) {
+		/* Sanity check.  */
+		assert(envp != NULL);
+
 		/* Prepend the QEMU command to the initial argv[] if
 		 * it's a "foreign" binary.  */
 		if (!is_host_elf(tracee, t_interp)) {
-			int i;
-
 			status = resize_array(argv, 0, 3);
 			if (status < 0)
 				return status;
@@ -452,12 +455,10 @@ int translate_execve(Tracee *tracee)
 		inhibit_rpath = (status > 0);
 	}
 
-	/* Dont't use the ELF interpreter as a loader if the host one
-	 * is compatible (currently the test is only "guest rootfs ==
-	 * host rootfs") or if there's no need for RPATH inhibition in
+	/* Dont't use the ELF interpreter as a loader if executing
+	 * QEMU or if there's no need for RPATH inhibition in
 	 * mixed-mode.  */
-	ignore_elf_interpreter = (compare_paths(get_root(tracee), "/") == PATHS_ARE_EQUAL
-				  || (tracee->qemu_pie_workaround && !inhibit_rpath));
+	ignore_elf_interpreter = (tracee->qemu_pie_workaround && !inhibit_rpath);
 
 	status = expand_interp(tracee, u_interp, t_interp, u_path /* dummy */,
 			       argv, extract_elf_interp, ignore_elf_interpreter);

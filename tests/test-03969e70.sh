@@ -16,6 +16,15 @@ fi
 
 env PATH='' ${PROOT} -r ${ROOTFS} -w /bin ./true
 
+env PATH='' ${PROOT} -r ${ROOTFS} -w / bin/true
+
+env PATH='' ${PROOT} -r ${ROOTFS} -w / bin/./true
+
+env PATH='' ${PROOT} -r ${ROOTFS} -w / ../bin/true
+
+! env PATH='' ${PROOT} -r ${ROOTFS} -w /bin/true ../true
+[ $? -eq 0 ]
+
 ! env --unset PATH ${PROOT} -r ${ROOTFS} true
 [ $? -eq 0 ]
 
@@ -23,3 +32,12 @@ env PATH='' ${PROOT} -r ${ROOTFS} -w /bin ./true
 [ $? -eq 0 ]
 
 env --unset PATH ${PROOT} -r ${ROOTFS} -w /bin ./true
+
+env --unset PATH ${PROOT} -r ${ROOTFS} -w / /bin/true
+
+env --unset PATH ${PROOT} -r ${ROOTFS} -w / /bin/./true
+
+env --unset PATH ${PROOT} -r ${ROOTFS} -w / ../bin/true
+
+! env --unset PATH ${PROOT} -r ${ROOTFS} -w /bin/true ../true
+[ $? -eq 0 ]

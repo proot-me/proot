@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,16 +20,12 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE     /* CLONE_*,  */
 #include <sched.h>      /* CLONE_*,  */
 #include <sys/types.h>  /* pid_t, */
 #include <sys/ptrace.h> /* ptrace(1), PTRACE_*, */
-#include <linux/ptrace.h> /* PTRACE_*, */
 #include <sys/types.h>  /* waitpid(2), */
 #include <sys/wait.h>   /* waitpid(2), */
 #include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
-#include <sys/time.h>   /* *rlimit(2), */
-#include <sys/resource.h> /* *rlimit(2), */
 #include <sys/utsname.h> /* uname(2), */
 #include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
 #include <string.h>     /* strcmp(3), */
@@ -40,7 +36,7 @@
 #include <talloc.h>     /* talloc_*, */
 
 #include "tracee/event.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "path/path.h"
 #include "path/binding.h"
 #include "syscall/syscall.h"
@@ -51,7 +47,6 @@
 
 #include "attribute.h"
 #include "compat.h"
-#include "build.h"
 
 /**
  * Launch the first process as specified by @tracee->cmdline[].  This
@@ -59,7 +54,6 @@
  */
 int launch_process(Tracee *tracee)
 {
-	struct rlimit rlimit;
 	long status;
 	pid_t pid;
 
@@ -85,60 +79,12 @@ int launch_process(Tracee *tracee)
 
 		/* RHEL4 uses an ASLR mechanism that creates conflicts
 		 * between the layout of QEMU and the layout of the
-		 * target program. */
+		 * target program.  Moreover it's easier to debug
+		 * PRoot with tracees' ASLR turned off.  */
 		status = personality(0xffffffff);
 		if (   status < 0
 		    || personality(status | ADDR_NO_RANDOMIZE) < 0)
 			notice(tracee, WARNING, INTERNAL, "can't disable ASLR");
-
-		/* 1. The ELF interpreter is explicitly used as a
-		 *    loader by PRoot, it means the Linux kernel
-		 *    allocates the heap segment for this loader, not
-		 *    for the application.  It isn't really a problem
-		 *    since the application re-uses the loader's heap
-		 *    transparently, i.e. its own brk points there.
-		 *
-		 * 2. When the current stack limit is set to a "high"
-		 *    value, the ELF interpreter is loaded to a "low"
-		 *    address, I guess it is the way the Linux kernel
-		 *    deals with this constraint.
-		 *
-		 * This two behaviors can be observed by running the
-		 * command "/usr/bin/cat /proc/self/maps", with/out
-		 * the ELF interpreter and with/out a high current
-		 * stack limit.
-		 *
-		 * When this two behaviors are combined, the dynamic
-		 * ELF linker might mmap a shared libraries to the
-		 * same address as the start of its heap if no heap
-		 * allocation was made prior this mmap.  This problem
-		 * was first observed with something similar to the
-		 * example below (because GNU make sets the current
-		 * limit to the maximum):
-		 *
-		 *     #!/usr/bin/make -f
-		 *
-		 *     SHELL=/lib64/ld-linux-x86-64.so.2 /usr/bin/bash
-		 *     FOO:=$(shell test -e /dev/null && echo OK)
-		 *
-		 *     all:
-		 *            @/usr/bin/test -n "$(FOO)"
-		 *
-		 * The code below is a workaround to this wrong
-		 * combination of behaviors, however it might create
-		 * conflict with tools that assume a "standard" stack
-		 * layout, like libgomp and QEMU.
-		 */
-		status = getrlimit(RLIMIT_STACK, &rlimit);
-		if (status >= 0 && rlimit.rlim_max == RLIM_INFINITY) {
-			/* "No one will need more than 256MB of stack memory" (tm).  */
-			rlimit.rlim_max = 256 * 1024 * 1024;
-			if (rlimit.rlim_cur > rlimit.rlim_max)
-				rlimit.rlim_cur = rlimit.rlim_max;
-			status = setrlimit(RLIMIT_STACK, &rlimit);
-		}
-		if (status < 0)
-			notice(tracee, WARNING, SYSTEM, "can't set the maximum stack size");
 
 		/* Synchronize with the tracer's event loop.  Without
 		 * this trick the tracer only sees the "return" from
@@ -147,16 +93,10 @@ int launch_process(Tracee *tracee)
 		 * does the same thing. */
 		kill(getpid(), SIGSTOP);
 
-#if defined(HAVE_SECCOMP_FILTER)
 		/* Improve performance by using seccomp mode 2, unless
 		 * this support is explicitly disabled.  */
-		if (getenv("PROOT_NO_SECCOMP") == NULL) {
-			status = enable_syscall_filtering(tracee);
-			if (status < 0)
-				notice(tracee, WARNING, INTERNAL,
-					"can't enable ptrace acceleration (seccomp mode 2)");
-		}
-#endif
+		if (getenv("PROOT_NO_SECCOMP") == NULL)
+			(void) enable_syscall_filtering(tracee);
 
 		/* Now process is ptraced, so the current rootfs is already the
 		 * guest rootfs.  Note: Valgrind can't handle execve(2) on
@@ -295,9 +235,9 @@ static void check_architecture(Tracee *tracee)
 	if (!IS_CLASS64(elf_header) || sizeof(word_t) == sizeof(uint64_t))
 		return;
 
-	notice(NULL, ERROR, USER,
-		"'%s' is a 64-bit program while this instance of "
-		"PRoot can handle 32-bit programs only", path);
+	notice(tracee, ERROR, USER,
+		"'%s' is a 64-bit program whereas this version of "
+		"%s handles 32-bit programs only", path, tracee->tool_name);
 
 	status = uname(&utsname);
 	if (status < 0)
@@ -306,8 +246,9 @@ static void check_architecture(Tracee *tracee)
 	if (strcmp(utsname.machine, "x86_64") != 0)
 		return;
 
-	notice(NULL, INFO, USER,
-		"use a 64-bit instance of PRoot to support both 32 and 64-bit programs");
+	notice(tracee, INFO, USER,
+		"use a 64-bit version of %s instead, it supports both 32 and 64-bit programs",
+		tracee->tool_name);
 }
 
 /**
@@ -435,10 +376,19 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	/* Don't overwrite restart_how if it is explicitly set
 	 * elsewhere, i.e in the ptrace emulation when single
 	 * stepping.  */
-	tracee->restart_how = tracee->restart_how
-		?: tracee->seccomp == ENABLED
-			? PTRACE_CONT
-			: PTRACE_SYSCALL;
+	if (tracee->restart_how == 0) {
+		/* When seccomp is enabled, all events are restarted in
+		 * non-stop mode, but this default choice could be overwritten
+		 * later if necessary.  The check against "sysexit_pending"
+		 * ensures PTRACE_SYSCALL (used to hit the exit stage under
+		 * seccomp) is not cleared due to an event that would happen
+		 * before the exit stage, eg. PTRACE_EVENT_EXEC for the exit
+		 * stage of execve(2).  */
+		if (tracee->seccomp == ENABLED && !tracee->sysexit_pending)
+			tracee->restart_how = PTRACE_CONT;
+		else
+			tracee->restart_how = PTRACE_SYSCALL;
+	}
 
 	/* Not a signal-stop by default.  */
 	signal = 0;
@@ -486,8 +436,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				 * Note that only the first bare SIGTRAP is
 				 * related to the tracing loop, others SIGTRAP
 				 * carry tracing information because of
-				 * TRACE*FORK/CLONE/EXEC.
-				 */
+				 * TRACE*FORK/CLONE/EXEC.  */
 				if (deliver_sigtrap)
 					break;  /* Deliver this signal as-is.  */
 
@@ -511,16 +460,39 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 			case SIGTRAP | 0x80:
 				signal = 0;
 
+				/* This tracee got signaled then freed during the
+				   sysenter stage but the kernel reports the sysexit
+				   stage; just discard this spurious tracee/event.  */
+				if (tracee->exe == NULL) {
+					ptrace(PTRACE_CONT, pid, 0, 0);
+					TALLOC_FREE(tracee);
+					continue;
+				}
+
 				switch (tracee->seccomp) {
 				case ENABLED:
-					/* When seccomp is enabled here, it
-					 * means sysexit has to be handled,
-					 * (by Proot or by an extension).  */
-					if (tracee->status == 0)
+					if (tracee->status == 0) {
+						/* sysenter: ensure the sysexit
+						 * stage will be hit under seccomp.  */
 						tracee->restart_how = PTRACE_SYSCALL;
+						tracee->sysexit_pending = true;
+					}
+					else {
+						/* sysexit: the next sysenter
+						 * will be notified by seccomp.  */
+						tracee->restart_how = PTRACE_CONT;
+						tracee->sysexit_pending = false;
+					}
 					/* Fall through.  */
 				case DISABLED:
 					translate_syscall(tracee);
+
+					/* This syscall has disabled seccomp.  */
+					if (tracee->seccomp == DISABLING) {
+						tracee->restart_how = PTRACE_SYSCALL;
+						tracee->seccomp = DISABLED;
+					}
+
 					break;
 
 				case DISABLING:
@@ -535,10 +507,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				}
 				break;
 
-/* With *vanilla* kernels PTRACE_EVENT_SECCOMP == 7.  */
-#if PTRACE_EVENT_SECCOMP == 8
 			case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
-#endif
 			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
 				unsigned long flags = 0;
 
@@ -573,7 +542,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				tracee->restart_how = PTRACE_CONT;
 				translate_syscall(tracee);
 
-				/* This syscall disables seccomp, so
+				/* This syscall has disabled seccomp, so
 				 * move the ptrace flow back to the
 				 * common path to ensure its sysexit
 				 * will be handled.  */

@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,7 +20,6 @@
  * 02110-1301 USA.
  */
 
-#define  _GNU_SOURCE /* strnlen(3), */
 #include <fcntl.h>  /* open(2), */
 #include <unistd.h> /* read(2), close(2), */
 #include <errno.h>  /* EACCES, ENOTSUP, */
@@ -34,7 +33,7 @@
 
 #include "execve/elf.h"
 #include "tracee/tracee.h"
-#include "notice.h"
+#include "cli/notice.h"
 #include "arch.h"
 
 #include "compat.h"
@@ -137,7 +136,7 @@ int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_heade
 	for (i = 0; i < elf_phnum; i++) {
 		status = read(fd, program_header, elf_phentsize);
 		if (status != elf_phentsize)
-			status = -errno;
+			return (status < 0 ? -errno : -ENOTSUP);
 
 		if (PROGRAM_FIELD(*elf_header, *program_header, type) == type) {
 			uint64_t start;

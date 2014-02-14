@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -26,6 +26,8 @@
 #include <errno.h>       /* errno(3), E* */
 
 #include "syscall/syscall.h"
+#include "syscall/chain.h"
+#include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
@@ -52,11 +54,9 @@ int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg)
 	}
 
 	/* Get the path from the tracee's memory space. */
-	size = read_string(tracee, path, src, PATH_MAX);
+	size = read_path(tracee, path, src);
 	if (size < 0)
 		return size;
-	if (size >= PATH_MAX)
-		return -ENAMETOOLONG;
 
 	path[size] = '\0';
 	return size;
@@ -116,12 +116,30 @@ void translate_syscall(Tracee *tracee)
 		tracee->restore_original_regs = false;
 
 		print_current_regs(tracee, 3, "sysenter start");
-		save_current_regs(tracee, ORIGINAL);
 
-		translate_syscall_enter(tracee);
+		/* Translate the syscall only if it was actually
+		 * requested by the tracee, it is not a syscall
+		 * chained by PRoot.  */
+		if (tracee->chain.syscalls == NULL) {
+			save_current_regs(tracee, ORIGINAL);
+			status = translate_syscall_enter(tracee);
+			save_current_regs(tracee, MODIFIED);
+		}
+		else {
+			status = notify_extensions(tracee, SYSCALL_CHAINED_ENTER, 0, 0);
+			tracee->restart_how = PTRACE_SYSCALL;
+		}
 
-		print_current_regs(tracee, 5, "sysenter end");
-		save_current_regs(tracee, MODIFIED);
+		/* Remember the tracee status for the "exit" stage and
+		 * avoid the actual syscall if an error was reported
+		 * by the translation/extension. */
+		if (status < 0) {
+			set_sysnum(tracee, PR_void);
+			poke_reg(tracee, SYSARG_RESULT, (word_t) status);
+			tracee->status = status;
+		}
+		else
+			tracee->status = 1;
 
 		/* Restore tracee's stack pointer now if it won't hit
 		 * the sysexit stage (i.e. when seccomp is enabled and
@@ -138,10 +156,26 @@ void translate_syscall(Tracee *tracee)
 
 		print_current_regs(tracee, 5, "sysexit start");
 
-		translate_syscall_exit(tracee);
+		/* Translate the syscall only if it was actually
+		 * requested by the tracee, it is not a syscall
+		 * chained by PRoot.  */
+		if (tracee->chain.syscalls == NULL)
+			translate_syscall_exit(tracee);
+		else
+			(void) notify_extensions(tracee, SYSCALL_CHAINED_EXIT, 0, 0);
 
-		print_current_regs(tracee, 4, "sysexit end");
+		/* Reset the tracee's status. */
+		tracee->status = 0;
+
+		/* Insert the next chained syscall, if any.  */
+		if (tracee->chain.syscalls != NULL)
+			chain_next_syscall(tracee);
 	}
 
 	(void) push_regs(tracee);
+
+	if (is_enter_stage)
+		print_current_regs(tracee, 5, "sysenter end" );
+	else
+		print_current_regs(tracee, 4, "sysexit end");
 }

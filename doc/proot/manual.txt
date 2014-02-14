@@ -6,8 +6,8 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2013-06-14
-:Version: 3.0.2
+:Date: 2014-01-09
+:Version: 3.2.2
 :Manual section: 1
 
 
@@ -26,8 +26,8 @@ or setup to do things like using an arbitrary directory as the new
 root filesystem, making files accessible somewhere else in the
 filesystem hierarchy, or executing programs built for another CPU
 architecture transparently through QEMU user-mode.  Also, developers
-can add their own features or use PRoot as a Linux process
-instrumentation engine thanks to its extension mechanism.  Technically
+can use PRoot as a generic Linux process instrumentation engine thanks
+to its extension mechanism, see CARE_ for an example.  Technically
 PRoot relies on ``ptrace``, an unprivileged system-call available in
 every Linux kernel.
 
@@ -58,6 +58,8 @@ programs perform access to system resources, PRoot translates their
 requests before sending them to the host kernel.  This means that
 guest programs can use host resources (devices, network, ...) just as
 if they were "normal" host programs.
+
+.. _CARE: http://reproducible.io
 
 
 Options
@@ -118,7 +120,7 @@ Regular options
 -v value, --verbose=value
     Set the level of debug information to *value*.
 
-    The higher the integer *value* is, the more detailled debug
+    The higher the integer *value* is, the more detailed debug
     information is printed to the standard error stream.  A negative
     *value* makes PRoot quiet except on fatal errors.
 
@@ -138,16 +140,16 @@ process instrumentation engine thanks to its extension mechanism, see
 the sources for further details.
 
 -k string, --kernel-release=string
-    Set the kernel release and compatibility level to *string*.
+    Make current kernel appear as kernel release *string*.
 
     If a program is run on a kernel older than the one expected by its
     GNU C library, the following error is reported: "FATAL: kernel too
     old".  To be able to run such programs, PRoot can emulate some of
-    the syscalls that are available in the kernel release specified by
+    the features that are available in the kernel release specified by
     *string* but that are missing in the current kernel.
 
 -0, --root-id
-    Force some syscalls to behave as if executed by "root".
+    Make current user appear as "root" and fake its privileges.
 
     Some programs will refuse to work if they are not run with "root"
     privileges, even if there is no technical reason for that.  This
@@ -157,6 +159,14 @@ the sources for further details.
     changing the ownership of files, changing the root directory to
     ``/``, ...  Note that this option is quite limited compared to
     ``fakeroot``.
+
+-i uid:gid, --change-id=uid:gid
+    Make current user and group appear as *uid* and *gid*.
+
+    This option makes the current user and group appear as *uid* and
+    *gid*.  Likewise, files actually owned by the current user and
+    group appear as if they were owned by *uid* and *gid* instead.
+    Note that the ``-0`` option is the same as ``-i 0:0``.
 
 
 Alias options
@@ -191,6 +201,7 @@ The following options are aliases for handy sets of options.
     * /proc/
     * /tmp/
     * $HOME
+    * *path*
 
 -B, -M
     obsolete, use ``-R`` instead.
@@ -249,8 +260,8 @@ is::
 ``mount --bind`` equivalent
 ---------------------------
 
-The bind mechanism permits to relocate files and directories.  This is
-typically useful to cheat programs that perform access to hard-coded
+The bind mechanism enables one to relocate files and directories.  This is
+typically useful to trick programs that perform access to hard-coded
 locations, like some installation scripts::
 
     proot -b /tmp/alternate_opt:/opt
@@ -431,9 +442,16 @@ PRoot
 -----
 
 The latest release of PRoot is packaged on http://packages.proot.me
-and sources are hosted on http://github.proot.me.  Also, highly
-compatible binaries are available on http://static.proot.me for a
-couple of architectures.
+and sources are hosted on http://github.proot.me.  It is also
+available as highly compatible static binaries:
+
+* for x86_64: http://static.proot.me/proot-x86_64
+
+* for x86: http://static.proot.me/proot-x86
+
+* for ARM: http://static.proot.me/proot-arm
+
+* other architectures: on demand.
 
 
 Rootfs
@@ -489,8 +507,8 @@ bindfs(1), fakeroot(1), fakechroot(1)
 Colophon
 ========
 
-Visit http://proot.me for help, bug reports, suggestions, patchs, ...
-Copyright (C) 2013 STMicroelectronics, licensed under GPL v2 or later.
+Visit http://proot.me for help, bug reports, suggestions, patches, ...
+Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.
 
 ::
 

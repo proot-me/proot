@@ -1,20 +1,23 @@
-if [ -z `which mcookie` ] || [ -z `which rm` ] || [ -z `which ln` ] || [ -z `which rmdir` ] || [ -z `which env` ]; then
+if [ -z `which mcookie` ] || [ -z `which rm` ] || [ -z `which ln` ] || [ -z `which realpath` ] || [ -z `which mkdir` ] || [ -z `which rmdir` ]; then
     exit 125;
 fi
 
 TMP="/tmp/$(mcookie)"
 TMP2="/tmp/$(mcookie)"
 
-export LAND=C
+RMDIR=$(realpath -e $(which rmdir))
+MKDIR=$(realpath -e $(which mkdir))
+
+export LANG=C
 
 ln -s /bin ${TMP}
-! rmdir ${TMP} > ${TMP}.ref 2>&1
-! ${PROOT} -v -1 rmdir ${TMP} > ${TMP}.res 2>&1
+! ${RMDIR} ${TMP} > ${TMP}.ref 2>&1
+! ${PROOT} -v -1 ${RMDIR} ${TMP} > ${TMP}.res 2>&1
 cmp ${TMP}.ref ${TMP}.res
 
 ln -s /this/does/not/exist ${TMP2}
-! mkdir ${TMP2} > ${TMP2}.ref 2>&1
-! ${PROOT} -v -1 mkdir ${TMP2} > ${TMP2}.res 2>&1
+! ${MKDIR} ${TMP2} > ${TMP2}.ref 2>&1
+! ${PROOT} -v -1 ${MKDIR} ${TMP2} > ${TMP2}.res 2>&1
 cmp ${TMP2}.ref ${TMP2}.res
 
 rm -f ${TMP}

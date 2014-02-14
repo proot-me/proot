@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -25,6 +25,7 @@
 #include <fcntl.h>    /* mknod(2), */
 #include <unistd.h>   /* mknod(2), */
 #include <stdlib.h>   /* mkdtemp(3), */
+#include <stdio.h>    /* P_tmpdir, */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -33,7 +34,7 @@
 
 #include "path/binding.h"
 #include "path/path.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 
@@ -46,6 +47,10 @@
 static int remove_glue(char *path)
 {
 	char *command;
+
+	/* Sanity checks.  */
+	assert(strncmp(P_tmpdir, path, strlen(P_tmpdir)) == 0);
+	assert(path[0] == '/');
 
 	command = talloc_asprintf(NULL, "find %s -empty -delete 2>/dev/null", path);
 	if (command != NULL) {
@@ -94,7 +99,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
 	if (tracee->glue == NULL) {
-		tracee->glue = talloc_asprintf(tracee, "/tmp/proot-%d-XXXXXX", getpid());
+		tracee->glue = talloc_asprintf(tracee, "%s/proot-%d-XXXXXX", P_tmpdir, getpid());
 		if (tracee->glue == NULL)
 			return 0;
 		talloc_set_name_const(tracee->glue, "$glue");
@@ -148,6 +153,12 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	}
 
 create_binding:
+	/* Sanity checks.  */
+	if (   strnlen(tracee->glue, PATH_MAX) >= PATH_MAX
+	    || strnlen(guest_path, PATH_MAX) >= PATH_MAX) {
+		notice(tracee, WARNING, INTERNAL, "installing the binding: guest path too long");
+		return 0;
+	}
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */

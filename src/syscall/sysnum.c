@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -27,7 +27,7 @@
 #include "tracee/abi.h"
 #include "tracee/reg.h"
 #include "arch.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include SYSNUMS_HEADER1
 
@@ -138,4 +138,24 @@ Sysnum get_sysnum(const Tracee *tracee, RegVersion version)
 void set_sysnum(Tracee *tracee, Sysnum sysnum)
 {
 	poke_reg(tracee, SYSARG_NUM, detranslate_sysnum(get_abi(tracee), sysnum));
+}
+
+/**
+ * Return the human readable name of @sysnum.
+ */
+const char *stringify_sysnum(Sysnum sysnum)
+{
+	#define SYSNUM(item) [ PR_ ## item ] = #item,
+	static const char *names[] = {
+		#include "syscall/sysnums.list"
+	};
+	#undef SYSNUM
+
+	if (sysnum == 0)
+		return "void";
+
+	if (sysnum >= PR_NB_SYSNUM)
+		return "";
+
+	return names[sysnum];
 }

@@ -1,6 +1,7 @@
 DIR    = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 ROOTFS = $(DIR)/rootfs
 PROOT  = $(DIR)/../src/proot
+CARE   = $(DIR)/../src/care
 CC     = gcc
 PROOT_RAW = $(PROOT)
 
@@ -21,28 +22,49 @@ check_failure: $(CHECK_TESTS)
 	@bash -c '! test -e failure'
 
 check-%.sh: %.sh setup
-	$(Q)env PROOT_RAW="$(PROOT_RAW)" PROOT="$(PROOT)" ROOTFS=$(ROOTFS) sh -ex $< $(silently); $(call check,$*)
+	$(Q)env CARE="$(CARE)" PROOT_RAW="$(PROOT_RAW)" PROOT="$(PROOT)" ROOTFS=$(ROOTFS) sh -ex $< $(silently); $(call check,$*)
 
 check-%.c: $(ROOTFS)/bin/% setup
-	$(call check_c,$*,$(PROOT) -b /proc $(ROOTFS) /bin/$*)
+	$(call check_c,$*,$(PROOT) -b /proc -r $(ROOTFS) /bin/$*)
 
 # Special cases.
 check-test-bdc90417.c: test-bdc90417
-	$(call check_c,$<,$(PROOT) -w . / $<)
+	$(call check_c,$<,$(PROOT) -w . / ./$<)
 
 check-test-af062114.c: test-af062114
 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true -b . -b /lib -b /lib64 -b /proc $(ROOTFS) ./$< | grep -- --inhibit-rpath)
-	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<')
+#	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<') deprecated
 
 check-test-5bed7141.c: test-5bed7141
-	$(call check_c,$<,$(PROOT) $<)
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-5bed7143.c: test-5bed7143
+	$(call check_c,$<,$(PROOT) -r $(ROOTFS) -b . ./$<)
+	$(call check_c,$<,$(PROOT) ./$<)
 
 check-test-16573e73.c: test-16573e73
 	$(call check_c,$<,$(PROOT) ./$<)
 	$(call check_c,$<,$(PROOT) ./$< 1)
 
 check-test-82ba4ba1.c: test-82ba4ba1
-	$(call check_c,$<,$(PROOT) -0 $<)
+	$(call check_c,$<,$(PROOT) -0 ./$<)
+	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
+
+check-test-kkkkkkkk.c: test-kkkkkkkk
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-25069c12.c: test-25069c12
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-25069c13.c: test-25069c13
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-1ffc8309.c: test-1ffc8309
+	$(call check_c,$<,env PROOT_FORCE_KOMPAT=1 $(PROOT) -k $(shell uname -r) ./$<)
+
+check-test-c5a7a0f0.c: test-c5a7a0f0
+	$(call check_c,$<,$(PROOT) -0 ./$<)
+	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
@@ -93,6 +115,27 @@ test-5bed7141: test-5bed7141.c
 
 test-16573e73: test-16573e73.c
 	$(Q)$(CC) $< -static -o $@ $(silently) || true
+
+test-82ba4ba1: test-82ba4ba1.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-kkkkkkkk: test-kkkkkkkk.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-25069c12: test-25069c12.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-25069c13: test-25069c13.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-5bed7143: test-5bed7143.c
+	$(Q)$(CC) $< -static -o $@ $(silently) || true
+
+test-1ffc8309: test-1ffc8309.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-c5a7a0f0: test-c5a7a0f0.c
+	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

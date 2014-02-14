@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,255 +20,50 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE    /* get_current_dir_name(3), */
-#include <stdio.h>     /* printf(3), */
-#include <string.h>    /* string(3), */
-#include <stdlib.h>    /* exit(3), strtol(3), */
-#include <stdbool.h>   /* bool, true, false, */
-#include <assert.h>    /* assert(3), */
-#include <sys/wait.h>  /* wait(2), */
-#include <sys/types.h> /* stat(2), */
-#include <sys/stat.h>  /* stat(2), */
-#include <unistd.h>    /* stat(2), */
-#include <errno.h>     /* errno(3), */
-#include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
-#include <sys/queue.h> /* LIST_*, */
-#include <talloc.h>    /* talloc_*, */
-#include <execinfo.h>  /* backtrace_symbols(3), */
-#include <limits.h>    /* INT_MAX, */
+#include <stdio.h>         /* printf(3), */
+#include <stdbool.h>       /* bool, true, false,  */
+#include <linux/limits.h>  /* ARG_MAX, PATH_MAX, */
+#include <string.h>        /* str*(3), basename(3),  */
+#include <talloc.h>        /* talloc*,  */
+#include <stdlib.h>        /* exit(3), EXIT_*, strtol(3), getenv(3), */
+#include <assert.h>        /* assert(3),  */
+#include <sys/types.h>     /* getpid(2),  */
+#include <unistd.h>        /* getpid(2),  */
+#include <errno.h>         /* errno(3), */
+#include <execinfo.h>      /* backtrace_symbols(3), */
+#include <limits.h>        /* INT_MAX, */
 
-#include "cli.h"
-#include "notice.h"
-#include "path/path.h"
-#include "path/canon.h"
-#include "path/binding.h"
+#include "cli/cli.h"
+#include "cli/notice.h"
+#include "extension/care/extract.h"
+#include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
-#include "extension/extension.h"
+#include "path/binding.h"
+#include "path/canon.h"
+#include "path/path.h"
+
 #include "build.h"
-
-#include "attribute.h"
-#include "compat.h"
-
-static int handle_option_r(Tracee *tracee, char *value)
-{
-	Binding *binding;
-
-	/* ``chroot $PATH`` is semantically equivalent to ``mount
-	 * --bind $PATH /``.  */
-	binding = new_binding(tracee, value, "/", true);
-	if (binding == NULL)
-		return -1;
-
-	return 0;
-}
-
-static int handle_option_b(Tracee *tracee, char *value)
-{
-	char *ptr = strchr(value, ':');
-	if (ptr != NULL) {
-		*ptr = '\0';
-		ptr++;
-	}
-
-	new_binding(tracee, value, ptr, true);
-	return 0;
-}
-
-static int handle_option_q(Tracee *tracee, char *value)
-{
-	size_t nb_args;
-	char *ptr;
-	size_t i;
-
-	nb_args = 0;
-	ptr = value;
-	while (1) {
-		nb_args++;
-
-		/* Keep consecutive non-space characters.  */
-		while (*ptr != ' ' && *ptr != '\0')
-			ptr++;
-
-		/* End-of-string ?  */
-		if (*ptr == '\0')
-			break;
-
-		/* Skip consecutive space separators.  */
-		while (*ptr == ' ' && *ptr != '\0')
-			ptr++;
-
-		/* End-of-string ?  */
-		if (*ptr == '\0')
-			break;
-	}
-
-	tracee->qemu = talloc_zero_array(tracee, char *, nb_args + 1);
-	if (tracee->qemu == NULL)
-		return -1;
-	talloc_set_name_const(tracee->qemu, "@qemu");
-
-	i = 0;
-	ptr = value;
-	while (1) {
-		tracee->qemu[i] = ptr;
-		i++;
-
-		/* Keep consecutive non-space characters.  */
-		while (*ptr != ' ' && *ptr != '\0')
-			ptr++;
-
-		/* End-of-string ?  */
-		if (*ptr == '\0')
-			break;
-
-		/* Remove consecutive space separators.  */
-		while (*ptr == ' ' && *ptr != '\0')
-			*ptr++ = '\0';
-
-		/* End-of-string ?  */
-		if (*ptr == '\0')
-			break;
-	}
-	assert(i == nb_args);
-
-	new_binding(tracee, "/", HOST_ROOTFS, true);
-	new_binding(tracee, "/dev/null", "/etc/ld.so.preload", false);
-
-	return 0;
-}
-
-static int handle_option_w(Tracee *tracee, char *value)
-{
-	tracee->fs->cwd = talloc_strdup(tracee->fs, value);
-	if (tracee->fs->cwd == NULL)
-		return -1;
-	talloc_set_name_const(tracee->fs->cwd, "$cwd");
-	return 0;
-}
-
-static int handle_option_k(Tracee *tracee, char *value)
-{
-	int status;
-
-	status = initialize_extension(tracee, kompat_callback, value);
-	if (status < 0)
-		notice(tracee, WARNING, INTERNAL, "option \"-k %s\" discarded", value);
-
-	return 0;
-}
-
-static int handle_option_0(Tracee *tracee, char *value)
-{
-	(void) initialize_extension(tracee, fake_id0_callback, value);
-	return 0;
-}
-
-static int handle_option_v(Tracee *tracee, char *value)
-{
-	char *end_ptr = NULL;
-
-	errno = 0;
-	tracee->verbose = strtol(value, &end_ptr, 10);
-	if (errno != 0 || end_ptr == value) {
-		notice(tracee, ERROR, USER, "option `-v` expects an integer value.");
-		return -1;
-	}
-
-	return 0;
-}
-
-static bool exit_failure = true;
-
-static int handle_option_V(Tracee *tracee UNUSED, char *value UNUSED)
-{
-	printf("%s %s\n\n", logo, version);
-	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
-#if defined(HAVE_PROCESS_VM)
-		"yes",
-#else
-		"no",
-#endif
-#if defined(HAVE_SECCOMP_FILTER)
-		"yes"
-#else
-		"no"
-#endif
-		);
-	exit_failure = false;
-	return -1;
-}
-
-static void print_usage(Tracee *, bool);
-static int handle_option_h(Tracee *tracee, char *value UNUSED)
-{
-	print_usage(tracee, true);
-	exit_failure = false;
-	return -1;
-}
-
-static int handle_option_R(Tracee *tracee, char *value)
-{
-	int status;
-	int i;
-
-	status = handle_option_r(tracee, value);
-	if (status < 0)
-		return status;
-
-	for (i = 0; recommended_bindings[i] != NULL; i++)
-		new_binding(tracee, recommended_bindings[i], NULL, false);
-	return 0;
-}
-
-static int handle_option_B(Tracee *tracee, char *value UNUSED)
-{
-	int i;
-
-	notice(tracee, INFO, USER, "option '-B' is obsolete, use '-R' instead.");
-
-	for (i = 0; recommended_bindings[i] != NULL; i++)
-		new_binding(tracee, recommended_bindings[i], NULL, false);
-
-	return 0;
-}
-
-static int handle_option_Q(Tracee *tracee, char *value)
-{
-	int status;
-
-	notice(tracee, INFO, USER, "option '-Q' is obsolete, use '-q' and '-R' instead.");
-
-	status = handle_option_q(tracee, value);
-	if (status < 0)
-		return status;
-
-	status = handle_option_B(tracee, NULL);
-	if (status < 0)
-		return status;
-
-	return 0;
-}
-
-#define NB_OPTIONS (sizeof(options) / sizeof(Option))
 
 /**
  * Print a (@detailed) usage of PRoot.
  */
-static void print_usage(Tracee *tracee, bool detailed)
+void print_usage(Tracee *tracee, const Cli *cli, bool detailed)
 {
 	const char *current_class = "none";
+	const Option *options;
 	size_t i, j;
 
 #define DETAIL(a) if (detailed) a
 
-	DETAIL(printf("PRoot %s: %s.\n\n", version, subtitle));
-	printf("Usage:\n  %s\n", synopsis);
+	DETAIL(printf("%s %s: %s.\n\n", cli->name, cli->version, cli->subtitle));
+	printf("Usage:\n  %s\n", cli->synopsis);
 	DETAIL(printf("\n"));
 
-	for (i = 0; i < NB_OPTIONS; i++) {
+	options = cli->options;
+	for (i = 0; options[i].class != NULL; i++) {
 		for (j = 0; ; j++) {
-			Argument *argument = &(options[i].arguments[j]);
+			const Argument *argument = &(options[i].arguments[j]);
 
 			if (!argument->name || (!detailed && j != 0)) {
 				DETAIL(printf("\n"));
@@ -302,12 +97,41 @@ static void print_usage(Tracee *tracee, bool detailed)
 	notify_extensions(tracee, PRINT_USAGE, detailed, 0);
 
 	if (detailed)
-		printf("%s\n", colophon);
+		printf("%s\n", cli->colophon);
 }
 
-static void print_execve_help(const Tracee *tracee, const char *argv0)
+/**
+ * Print the version of PRoot.
+ */
+void print_version(const Cli *cli)
+{
+	printf("%s %s\n\n", cli->logo, cli->version);
+	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
+#if defined(HAVE_PROCESS_VM)
+		"yes",
+#else
+		"no",
+#endif
+#if defined(HAVE_SECCOMP_FILTER)
+		"yes"
+#else
+		"no"
+#endif
+		);
+}
+
+static void print_execve_help(const Tracee *tracee, const char *argv0, int status)
 {
 	notice(tracee, WARNING, SYSTEM, "execve(\"%s\")", argv0);
+
+	/* Ubuntu kernel bug?  */
+	if (status == -EPERM && getenv("PROOT_NO_SECCOMP") == NULL) {
+		notice(tracee, INFO, USER,
+"It seems your kernel contains this bug: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1202161\n"
+"To workaround it, set the env. variable PROOT_NO_SECCOMP to 1.");
+		return;
+	}
+
 	notice(tracee, INFO, USER, "possible causes:\n"
 "  * <program> is a script but its interpreter (eg. /bin/sh) was not found;\n"
 "  * <program> is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
@@ -315,7 +139,7 @@ static void print_execve_help(const Tracee *tracee, const char *argv0)
 "  * <qemu> does not work correctly (if specified).");
 }
 
-static void print_error_separator(const Tracee *tracee, Argument *argument)
+static void print_error_separator(const Tracee *tracee, const Argument *argument)
 {
 	if (argument->separator == '\0')
 		notice(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
@@ -383,13 +207,6 @@ static int initialize_cwd(Tracee *tracee)
 	char path[PATH_MAX];
 	int status;
 
-	/* Default to "." if none were specified.  */
-	if (tracee->fs->cwd == NULL) {
-		status = handle_option_w(tracee, ".");
-		if (status < 0)
-			return -1;
-	}
-
 	/* Compute the base directory.  */
 	if (tracee->fs->cwd[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, path);
@@ -433,8 +250,7 @@ static int initialize_cwd(Tracee *tracee)
 }
 
 /**
- * Initialize @tracee->exe and @tracee->cmdline from @cmdline, and resolve the
- * full host path to @command@tracee->qemu[0].
+ * Initialize @tracee->exe and @tracee->cmdline from @cmdline.
  */
 static int initialize_command(Tracee *tracee, char *const *cmdline)
 {
@@ -470,56 +286,8 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 		return -1;
 	talloc_set_name_const(tracee->exe, "$exe");
 
-	/* Nothing else to do ?  */
-	if (tracee->qemu == NULL)
-		return 0;
-
-	/* Resolve the full guest path to tracee->qemu[0].  */
-	status = which(tracee->reconf.tracee, tracee->reconf.paths, path, tracee->qemu[0]);
-	if (status < 0)
-		return -1;
-
-	/* Actually tracee->qemu[0] has to be a host path from the tracee's
-	 * point-of-view, not from the PRoot's point-of-view.  See
-	 * translate_execve() for details.  */
-	if (tracee->reconf.tracee != NULL) {
-		status = detranslate_path(tracee->reconf.tracee, path, NULL);
-		if (status < 0)
-			return -1;
-	}
-
-	tracee->qemu[0] = talloc_strdup(tracee->qemu, path);
-	if (tracee->qemu[0] == NULL)
-		return -1;
-
-	/**
-	 * There's a bug when using the ELF interpreter as a loader (as PRoot
-	 * does) on PIE programs that uses constructors (typically QEMU v1.1+).
-	 * In this case, constructors are called twice as you can see on the
-	 * test below:
-	 *
-	 *     $ cat test.c
-	 *     static void __attribute__((constructor)) init(void) { puts("OK"); }
-	 *     int main() { return 0; }
-	 *
-	 *     $ gcc -fPIC -pie test.c -o test
-	 *     $ ./test
-	 *     OK
-	 *
-	 *     $ /lib64/ld-linux-x86-64.so.2 ./test
-	 *     OK
-	 *     OK
-	 *
-	 * Actually, PRoot doesn't have to use the ELF interpreter as a loader
-	 * if QEMU isn't nested.  When QEMU is nested (sub reconfiguration), the
-	 * user has to use either a version of QEMU prior v1.1 or a version of
-	 * QEMU compiled with the --disable-pie option.
-	 */
-	tracee->qemu_pie_workaround = (tracee->reconf.tracee == NULL);
 	return 0;
 }
-
-static char *default_command[] = { "/bin/sh", NULL };
 
 /**
  * Configure @tracee according to the command-line arguments stored in
@@ -528,12 +296,34 @@ static char *default_command[] = { "/bin/sh", NULL };
  */
 int parse_config(Tracee *tracee, size_t argc, char *argv[])
 {
+	char *const default_command[] = { "/bin/sh", NULL };
 	option_handler_t handler = NULL;
+	const Option *options;
+	const Cli *cli = NULL;
 	size_t i, j, k;
 	int status;
 
+	if (get_care_cli != NULL) {
+		/* Check if it's an self-extracting CARE archive.  */
+		status = extract_archive_from_file("/proc/self/exe");
+		if (status == 0) {
+			/* Yes it is, nothing more to do.  */
+			exit_failure = 0;
+			return -1;
+		}
+
+		/* Check if it's a valid CARE tool name.  */
+		if (strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
+			cli = get_care_cli(tracee->ctx);
+	}
+
+	/* Unknown tool name?  Default to PRoot.  */
+	if (cli == NULL)
+		cli = get_proot_cli(tracee->ctx);
+	tracee->tool_name = cli->name;
+
 	if (argc == 1) {
-		print_usage(tracee, false);
+		print_usage(tracee, cli, false);
 		return -1;
 	}
 
@@ -542,7 +332,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 
 		/* The current argument is the value of a short option.  */
 		if (handler != NULL) {
-			status = handler(tracee, arg);
+			status = handler(tracee, cli, arg);
 			if (status < 0)
 				return status;
 			handler = NULL;
@@ -552,12 +342,13 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		if (arg[0] != '-')
 			break; /* End of PRoot options. */
 
-		for (j = 0; j < NB_OPTIONS; j++) {
-			Option *option = &options[j];
+		options = cli->options;
+		for (j = 0; options[j].class != NULL; j++) {
+			const Option *option = &options[j];
 
 			/* A given option has several aliases.  */
 			for (k = 0; ; k++) {
-				Argument *argument;
+				const Argument *argument;
 				size_t length;
 
 				argument = &option->arguments[k];
@@ -579,7 +370,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 
 				/* No option value.  */
 				if (!argument->value) {
-					status = option->handler(tracee, arg);
+					status = option->handler(tracee, cli, NULL);
 					if (status < 0)
 						return -1;
 					goto known_option;
@@ -588,7 +379,7 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 				/* Value coalesced with to its option.  */
 				if (argument->separator == arg[length]) {
 					assert(strlen(arg) >= length);
-					status = option->handler(tracee, &arg[length + 1]);
+					status = option->handler(tracee, cli, &arg[length + 1]);
 					if (status < 0)
 						return -1;
 					goto known_option;
@@ -616,36 +407,26 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		}
 	}
 
-	/* When no guest rootfs were specified: if the first bare
-	 * option is a directory, then the old command-line interface
-	 * (similar to the chroot one) is expected.  Otherwise this is
-	 * the new command-line interface where the default guest
-	 * rootfs is "/".  */
-	if (get_root(tracee) == NULL) {
-		char path[PATH_MAX];
-		struct stat buf;
+#define HOOK_CONFIG(callback)						\
+	do {								\
+		if (cli->callback != NULL) {				\
+			status = cli->callback(tracee, cli, argc, argv, i); \
+			if (status < 0)					\
+				return -1;				\
+			i = status;					\
+		}							\
+	} while (0)
 
-		if (argv[i] != NULL
-		    && realpath2(tracee->reconf.tracee, path, argv[i], true) == 0
-		    && stat(path, &buf) == 0
-		    && S_ISDIR(buf.st_mode)) {
-			notice(tracee, INFO, USER,
-				"neither `-r` or `-R` were specified, assuming"
-				" '%s' is the new root file-system.", argv[i]);
-			status = handle_option_r(tracee, argv[i]);
-			i++;
-		}
-		else
-			status = handle_option_r(tracee, "/");
-		if (status < 0)
-			return -1;
-	}
+	HOOK_CONFIG(pre_initialize_bindings);
 
 	/* The guest rootfs is now known: bindings specified by the
 	 * user (tracee->bindings.user) can be canonicalized.  */
 	status = initialize_bindings(tracee);
 	if (status < 0)
 		return -1;
+
+	HOOK_CONFIG(post_initialize_bindings);
+	HOOK_CONFIG(pre_initialize_cwd);
 
 	/* Bindings are now installed (tracee->bindings.guest &
 	 * tracee->bindings.host): the current working directory can
@@ -654,16 +435,25 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	if (status < 0)
 		return -1;
 
-	/* Bindings are now installed and the current working directory is
-	 * canonicalized: resolve path to @tracee->exe and @tracee->qemu.  */
+	HOOK_CONFIG(post_initialize_cwd);
+	HOOK_CONFIG(pre_initialize_command);
+
+	/* Bindings are now installed and the current working
+	 * directory is canonicalized: resolve path to @tracee->exe
+	 * and configure @tracee->cmdline.  */
 	status = initialize_command(tracee, i < argc ? &argv[i] : default_command);
 	if (status < 0)
 		return -1;
+
+	HOOK_CONFIG(post_initialize_command);
+#undef HOOK_CONFIG
 
 	print_config(tracee);
 
 	return 0;
 }
+
+bool exit_failure = true;
 
 int main(int argc, char *argv[])
 {
@@ -691,7 +481,7 @@ int main(int argc, char *argv[])
 	/* Start the first tracee.  */
 	status = launch_process(tracee);
 	if (status < 0) {
-		print_execve_help(tracee, tracee->exe);
+		print_execve_help(tracee, tracee->exe, status);
 		goto error;
 	}
 
@@ -702,13 +492,67 @@ error:
 	TALLOC_FREE(tracee);
 
 	if (exit_failure) {
-		fprintf(stderr, "proot error: see `proot --help` or `man proot`.\n");
+		fprintf(stderr, "fatal error: see `%s --help`.\n", basename(argv[0]));
 		exit(EXIT_FAILURE);
 	}
 	else
 		exit(EXIT_SUCCESS);
 }
 
+/**
+ * Convert @value into an integer, then put the result into
+ * *@variable.  This function prints a warning and returns -1 if a
+ * conversion error occured, otherwise it returns 0.
+ */
+int parse_integer_option(const Tracee *tracee, int *variable, const char *value, const char *option)
+{
+	char *end_ptr = NULL;
+
+	errno = 0;
+	*variable = strtol(value, &end_ptr, 10);
+	if (errno != 0 || end_ptr == value) {
+		notice(tracee, ERROR, USER, "option `%s` expects an integer value.", option);
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Expand the environment variable in front of @string, if any.  For
+ * example, this function can expand "$HOME" or "$HOME/.ICEauthority".
+ */
+const char *expand_front_variable(TALLOC_CTX *context, const char *string)
+{
+	const char *suffix;
+	char *expanded;
+	ptrdiff_t size;
+
+	if (string[0] != '$')
+		return string;
+
+	suffix = strchr(string, '/');
+	if (suffix == NULL)
+		return (getenv(&string[1]) ?: string);
+
+	size = suffix - string;
+	if (size <= 1)
+		return string;
+
+	expanded = talloc_strndup(context, &string[1], size - 1);
+	if (expanded == NULL)
+		return string;
+
+	expanded = getenv(expanded);
+	if (expanded == NULL)
+		return string;
+
+	expanded = talloc_asprintf(context, "%s%s", expanded, suffix);
+	if (expanded == NULL)
+		return string;
+
+	return expanded;
+}
 
 /* Here follows the support for GCC function instrumentation.  Build
  * with CFLAGS='-finstrument-functions -O0 -g' and LDFLAGS='-rdynamic'

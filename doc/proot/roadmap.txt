@@ -2,8 +2,8 @@
  Roadmap
 =========
 
-v3.1: ptrace emulation
-======================
+PRoot v3.3: ptrace emulation
+============================
 
 Highlight
 ---------
@@ -62,11 +62,27 @@ New features
 Fixes
 -----
 
-* Improve code coverage of PRoot.
+* Fix ``proot -0 -w samba-4.0 ./configure``
+
+* Replace tracee->reconf.paths with tracee->reconf.env + getenv2()
+
+* Replace system("find %s -empty -delete") with a built-in function
+
+* Fix ``proot  fuser -uv .``::
+
+      Cannot stat file /proc/29916/fd/99: No such file or directory
+
+      $ ls -l /proc/29916/fd/99
+      lrwx------ 1 cedric users 64 Sep 12 14:13 /proc/29916/fd/99 -> socket:[214998506]
+
+      strace  fuser -uv .
+      ...
+      stat("/proc/29916/fd/99", {st_mode=S_IFSOCK|0777, st_size=0, ...}) = 0
+      ...
 
 
-v3.2: FS cache
-==============
+PRoot v3.4: FS cache
+====================
 
 Highlight
 ---------
@@ -81,8 +97,8 @@ The internal structure of this FS cache could also be used to emulate
 the "getdents" syscall in order to add or hide entries.
 
 
-v3.3: custom loader
-===================
+PRoot v3.5: custom loader
+=========================
 
 Highlight
 ---------
@@ -91,11 +107,6 @@ Currently, PRoot relies on the loader embedded in the GNU dynamic
 linker, sadly this latter suffers from a couple of bugs and
 limitations that avoid some programs to run correctly under PRoot (and
 CARE).  For examples:
-
-    * programs that have a custom heap allocator might crash: a
-      typical example is Bash.  The current workaround in PRoot is to
-      limit the stack size to 256MB, which in turn might make other
-      programs crash.
 
     * programs that use constructors might crash: a typical example is
       QEMU.  There's a workaround in PRoot for QEMU only.
@@ -124,7 +135,7 @@ Not yet scheduled
 Fixes
 -----
 
-* Fix ``mkdir foo; cd foo; rmdir ../foo; readlink -e .``.
+* Fix ``mkdir foo; cd foo; rmdir ../foo; readlink /proc/self/cwd``.
 
 * Fix remaining bugs in sub-reconfiguration support::
 
@@ -158,6 +169,11 @@ Fixes
       DT_DIR  .
       DT_REG  readdir
       DT_REG  fstab
+
+* Less than awesome error message::
+
+    $ care ..
+    care warning: '..' not found (root = /, cwd = /usr/local/cedric/Git/proot, $PATH=(null))
 
 
 Features

@@ -1,0 +1,18 @@
+=========
+ Roadmap
+=========
+
+CARE v2.2
+=========
+
+* Based on PRoot v3.3
+
+* Add an append/incremental mode
+
+
+CARE v2.3
+=========
+
+* Add a "fake id" mode
+
+* Warn when an unemulated feature is used (ppoll, getcpu, flags, ...)

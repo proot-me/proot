@@ -2,7 +2,7 @@ if [ ! -x ${ROOTFS}/bin/readdir ] || [ ! -x ${ROOTFS}/bin/cat ] || [ -z `which m
     exit 125;
 fi
 
-if [ `id -u` == 0 ]; then
+if [ `id -u` -eq 0 ]; then
     exit 125;
 fi
 

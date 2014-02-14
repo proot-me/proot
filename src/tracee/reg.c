@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -37,9 +37,11 @@
 #include <linux/elf.h>  /* NT_PRSTATUS */
 #endif
 
+#include "syscall/sysnum.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
-#include "notice.h"
+#include "cli/notice.h"
+#include "compat.h"
 
 /**
  * Compute the offset of the register @reg_name in the USER area.
@@ -65,6 +67,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(r9),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
     };
 
     static off_t reg_offset_x86[] = {
@@ -77,11 +80,12 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(rbp),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
     };
 
     #undef  REG
     #define REG(tracee, version, index)					\
-	(*(word_t*) (tracee->_regs[ORIGINAL].cs == 0x23			\
+	(*(word_t*) (tracee->_regs[version].cs == 0x23			\
 		? (((uint8_t *) &tracee->_regs[version]) + reg_offset_x86[index]) \
 		: (((uint8_t *) &tracee->_regs[version]) + reg_offset[index])))
 
@@ -97,6 +101,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(uregs[5]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(uregs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(uregs[13]),
+	[INSTR_POINTER] = USER_REGS_OFFSET(uregs[15]),
     };
 
 #elif defined(ARCH_ARM64)
@@ -114,6 +119,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(regs[5]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(sp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
     };
 
 #elif defined(ARCH_X86)
@@ -128,6 +134,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(ebp),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(eax),
 	[STACK_POINTER] = USER_REGS_OFFSET(esp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(eip),
     };
 
 #elif defined(ARCH_SH4)
@@ -142,6 +149,7 @@
 	[SYSARG_6]      = USER_REGS_OFFSET(regs[1]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(regs[15]),
+	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
     };
 
 #else
@@ -191,13 +199,15 @@ void print_current_regs(Tracee *tracee, int verbose_level, const char *message)
 		return;
 
 	notice(tracee, INFO, INTERNAL,
-		"pid %d: %s: %ld, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx]",
-		tracee->pid, message, peek_reg(tracee, CURRENT, SYSARG_NUM),
+		"pid %d: %s: %s(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx, %d]",
+		tracee->pid, message,
+		stringify_sysnum(get_sysnum(tracee, CURRENT)),
 		peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
 		peek_reg(tracee, CURRENT, SYSARG_3), peek_reg(tracee, CURRENT, SYSARG_4),
 		peek_reg(tracee, CURRENT, SYSARG_5), peek_reg(tracee, CURRENT, SYSARG_6),
 		peek_reg(tracee, CURRENT, SYSARG_RESULT),
-		peek_reg(tracee, CURRENT, STACK_POINTER));
+		peek_reg(tracee, CURRENT, STACK_POINTER),
+		get_abi(tracee));
 }
 
 /**
@@ -284,6 +294,18 @@ int push_regs(Tracee *tracee)
 
 		status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_PRSTATUS, &regs);
 #else
+#    if defined(ARCH_ARM_EABI)
+		/* On ARM, a special ptrace request is required to
+		 * change effectively the syscall number during a
+		 * ptrace-stop.  */
+		word_t current_sysnum = REG(tracee, CURRENT, SYSARG_NUM);
+		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
+			status = ptrace(PTRACE_SET_SYSCALL, tracee->pid, 0, current_sysnum);
+			if (status < 0)
+				notice(tracee, WARNING, SYSTEM, "can't set the syscall number");
+		}
+#    endif
+
 		status = ptrace(PTRACE_SETREGS, tracee->pid, NULL, &tracee->_regs[CURRENT]);
 #endif
 		if (status < 0)

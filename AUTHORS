@@ -1,5 +1,5 @@
-The copyright holder for PRoot is STMicroelectronics, this tool is
-developed in the Compilation Expertise Center by:
+The copyright holder for PRoot and CARE is STMicroelectronics, these
+tools are developed in the Compilation Expertise Center by:
 
 Cédric VINCENT <cedric.vincent@st.com>
         Original author, maintainer.
@@ -7,17 +7,20 @@ Cédric VINCENT <cedric.vincent@st.com>
 Rémi DURAFFORT <remi.duraffort@st.com>
         Improved the -0 feature, many experiments, bug reports, fixes, and articles.
 
+Christophe GUILLON <christophe.guillon@st.com>
+        Improved CARE, plugin experiments, bug reports, and fixes.
+
 Yves JANIN <yves.janin@st.com>
         Support for the i386 architecture, many experiments and bug reports.
+
+Antoine MOYNAULT <antoine.moynault@st.com>
+        Many experiments and bug reports.
 
 Claire ROBINE <claire.robine@st.com>
         Many bug fixes.
 
 Clément BAZIN <clement@bazin-fr.org>
         Plugins interface, dependency tracker plugin, and bug reports.
-
-Christophe GUILLON <christophe.guillon@st.com>
-        Relocatable build directory, plugin experiments, and bug reports.
 
 Christian BERTIN <christian.bertin@st.com>
         Valuable support.

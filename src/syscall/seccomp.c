@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -45,7 +45,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "extension/extension.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 #include "attribute.h"
@@ -234,8 +234,7 @@ static int finalize_program_filter(struct sock_fprog *program)
  */
 static void free_program_filter(struct sock_fprog *program)
 {
-	if (program->filter != NULL)
-		TALLOC_FREE(program->filter);
+	TALLOC_FREE(program->filter);
 	program->len = 0;
 }
 
@@ -252,7 +251,7 @@ static void free_program_filter(struct sock_fprog *program)
  *
  * This function returns -errno if an error occurred, otherwise 0.
  */
-static int set_seccomp_filters(const Tracee *tracee, const FilteredSysnum *sysnums)
+static int set_seccomp_filters(const FilteredSysnum *sysnums)
 {
 	SeccompArch seccomp_archs[] = SECCOMP_ARCHS;
 	size_t nb_archs = sizeof(seccomp_archs) / sizeof(SeccompArch);
@@ -311,10 +310,8 @@ static int set_seccomp_filters(const Tracee *tracee, const FilteredSysnum *sysnu
 		goto end;
 
 	status = prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
-	if (status < 0) {
-		notice(tracee, WARNING, SYSTEM, "prctl(PR_SET_NO_NEW_PRIVS)");
+	if (status < 0)
 		goto end;
-	}
 
 	/* To output this BPF program for debug purpose:
 	 *
@@ -322,10 +319,8 @@ static int set_seccomp_filters(const Tracee *tracee, const FilteredSysnum *sysnu
 	 */
 
 	status = prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &program);
-	if (status < 0) {
-		notice(tracee, WARNING, SYSTEM, "prctl(PR_SET_SECCOMP)");
+	if (status < 0)
 		goto end;
-	}
 
 	status = 0;
 end:
@@ -340,6 +335,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_access,		0 },
 	{ PR_acct,		0 },
 	{ PR_bind,		0 },
+	{ PR_brk,		FILTER_SYSEXIT },
 	{ PR_chdir,		FILTER_SYSEXIT },
 	{ PR_chmod,		0 },
 	{ PR_chown,		0 },
@@ -347,7 +343,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_chroot,		0 },
 	{ PR_connect,		0 },
 	{ PR_creat,		0 },
-	{ PR_execve,		0 },
+	{ PR_execve,		FILTER_SYSEXIT },
 	{ PR_faccessat,		0 },
 	{ PR_fchdir,		FILTER_SYSEXIT },
 	{ PR_fchmodat,		0 },
@@ -386,8 +382,8 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_readlink,		FILTER_SYSEXIT },
 	{ PR_readlinkat,	FILTER_SYSEXIT },
 	{ PR_removexattr,	0 },
-	{ PR_rename,		0 },
-	{ PR_renameat,		0 },
+	{ PR_rename,		FILTER_SYSEXIT },
+	{ PR_renameat,		FILTER_SYSEXIT },
 	{ PR_rmdir,		0 },
 	{ PR_rt_sigreturn,	FILTER_SYSEXIT },
 	{ PR_setxattr,		0 },
@@ -427,10 +423,12 @@ static int merge_filtered_sysnums(TALLOC_CTX *context, FilteredSysnum **sysnums,
 {
 	size_t i, j;
 
+	assert(sysnums != NULL);
+
 	if (*sysnums == NULL) {
 		/* Start with no sysnums but the terminator.  */
 		*sysnums = talloc_array(context, FilteredSysnum, 1);
-		if (sysnums == NULL)
+		if (*sysnums == NULL)
 			return -ENOMEM;
 
 		(*sysnums)[0].value = PR_void;
@@ -496,10 +494,20 @@ int enable_syscall_filtering(const Tracee *tracee)
 		}
 	}
 
-	status = set_seccomp_filters(tracee, filtered_sysnums);
+	status = set_seccomp_filters(filtered_sysnums);
 	if (status < 0)
 		return status;
 
+	return 0;
+}
+
+#else
+
+#include "tracee/tracee.h"
+#include "attribute.h"
+
+int enable_syscall_filtering(const Tracee *tracee UNUSED)
+{
 	return 0;
 }
 

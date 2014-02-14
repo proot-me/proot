@@ -182,6 +182,7 @@ static const Sysnum sysnums_arm[] = {
 	[ 219 ] = PR_mincore,
 	[ 220 ] = PR_madvise,
 	[ 221 ] = PR_fcntl64,
+	[ 222 ] = PR_void,
 	[ 224 ] = PR_gettid,
 	[ 225 ] = PR_readahead,
 	[ 226 ] = PR_setxattr,

@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -24,6 +24,15 @@
 #define COMPAT_H
 
 /* Local definitions for compatibility with old and/or broken distros... */
+#    ifndef AT_RANDOM
+#        define AT_RANDOM		25
+#    endif
+#    ifndef AT_SYSINFO
+#        define AT_SYSINFO		32
+#    endif
+#    ifndef AT_SYSINFO_EHDR
+#        define AT_SYSINFO_EHDR		33
+#    endif
 #    ifndef AT_FDCWD
 #        define AT_FDCWD		-100
 #    endif
@@ -76,7 +85,7 @@
 #        define PTRACE_O_TRACEEXIT	0x00000040
 #    endif
 #    ifndef PTRACE_O_TRACESECCOMP
-#        define PTRACE_O_TRACESECCOMP	0 /* Optional */
+#        define PTRACE_O_TRACESECCOMP	0x00000080
 #    endif
 #    ifndef PTRACE_EVENT_FORK
 #        define PTRACE_EVENT_FORK	1
@@ -100,7 +109,16 @@
 #        define PTRACE_EVENT_SECCOMP	7
 #    endif
 #    ifndef PTRACE_EVENT_SECCOMP2
-#        define PTRACE_EVENT_SECCOMP2	7
+#        if PTRACE_EVENT_SECCOMP == 7
+#            define PTRACE_EVENT_SECCOMP2	8
+#        elif PTRACE_EVENT_SECCOMP == 8
+#            define PTRACE_EVENT_SECCOMP2	7
+#        else
+#            error "unknown PTRACE_EVENT_SECCOMP value"
+#        endif
+#    endif
+#    ifndef PTRACE_SET_SYSCALL
+#        define PTRACE_SET_SYSCALL	23
 #    endif
 #    ifndef ADDR_NO_RANDOMIZE
 #        define ADDR_NO_RANDOMIZE	0x0040000
@@ -123,7 +141,16 @@
 #    ifndef talloc_get_type_abort
 #        define talloc_get_type_abort talloc_get_type
 #    endif
-#    ifndef MIN
-#        define MIN(a, b) ((a) < (b) ? (a) : (b))
+#    ifndef FUTEX_PRIVATE_FLAG
+#        define FUTEX_PRIVATE_FLAG	128
+#    endif
+#    ifndef EFD_SEMAPHORE
+#        define EFD_SEMAPHORE		1
+#    endif
+#    ifndef F_DUPFD_CLOEXEC
+#        define F_DUPFD_CLOEXEC		1030
+#    endif
+#    ifndef O_CLOEXEC
+#        define O_CLOEXEC		02000000
 #    endif
 #endif /* COMPAT_H */

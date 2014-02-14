@@ -34,7 +34,7 @@
 #include "tracee/event.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "attribute.h"
 

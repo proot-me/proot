@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,7 +20,6 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE     /* CLONE_*,  */
 #include <sched.h>      /* CLONE_*,  */
 #include <sys/types.h>  /* pid_t, size_t, */
 #include <stdlib.h>     /* NULL, */
@@ -40,7 +39,7 @@
 #include "ptrace/ptrace.h"
 #include "ptrace/wait.h"
 #include "extension/extension.h"
-#include "notice.h"
+#include "cli/notice.h"
 
 #include "compat.h"
 
@@ -176,9 +175,10 @@ Tracee *new_dummy_tracee(TALLOC_CTX *context)
 		goto no_mem;
 
 	/* By default new tracees have an empty file-system
-	 * name-space.  */
+	 * name-space and heap.  */
 	tracee->fs = talloc_zero(tracee, FileSystemNameSpace);
-	if (tracee->fs == NULL)
+	tracee->heap = talloc_zero(tracee, Heap);
+	if (tracee->fs == NULL || tracee->heap == NULL)
 		goto no_mem;
 
 	return tracee;
@@ -363,6 +363,28 @@ int new_child(Tracee *parent, word_t clone_flags)
 
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
+	child->sysexit_pending = parent->sysexit_pending;
+
+	/* If CLONE_VM is set, the calling process and the child
+	 * process run in the same memory space [...] any memory
+	 * mapping or unmapping performed with mmap(2) or munmap(2) by
+	 * the child or calling process also affects the other
+	 * process.
+	 *
+	 * If CLONE_VM is not set, the child process runs in a
+	 * separate copy of the memory space of the calling process at
+	 * the time of clone().  Memory writes or file
+	 * mappings/unmappings performed by one of the processes do
+	 * not affect the other, as with fork(2).
+	 *
+	 * -- clone(2) man-page
+	 */
+	TALLOC_FREE(child->heap);
+	child->heap = ((clone_flags & CLONE_VM) != 0)
+		? talloc_reference(child, parent->heap)
+		: talloc_memdup(child, parent->heap, sizeof(Heap));
+	if (child->heap == NULL)
+		return -ENOMEM;
 
 	/* If CLONE_PARENT is set, then the parent of the new child
 	 * (as returned by getppid(2)) will be the same as that of the
@@ -453,7 +475,9 @@ int new_child(Tracee *parent, word_t clone_flags)
 	child->host_ldso_paths  = talloc_reference(child, parent->host_ldso_paths);
 	child->guest_ldso_paths = talloc_reference(child, parent->guest_ldso_paths);
 
-	inherit_extensions(child, parent, false);
+	child->tool_name = parent->tool_name;
+
+	inherit_extensions(child, parent, clone_flags);
 
 	/* Restart the child tracee if it was already alive but
 	 * stopped until that moment.  */

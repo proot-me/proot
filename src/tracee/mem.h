@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -26,6 +26,7 @@
 #include <limits.h>    /* PATH_MAX, */
 #include <sys/types.h> /* pid_t, size_t, */
 #include <sys/uio.h>   /* struct iovec, */
+#include <errno.h>     /* ENAMETOOLONG, */
 
 #include "arch.h" /* word_t, */
 #include "tracee/tracee.h"
@@ -37,5 +38,26 @@ extern int read_string(const Tracee *tracee, char *dest_tracer, word_t src_trace
 extern word_t peek_mem(const Tracee *tracee, word_t address);
 extern void poke_mem(const Tracee *tracee, word_t address, word_t value);
 extern word_t alloc_mem(Tracee *tracee, ssize_t size);
+extern int clear_mem(const Tracee *tracee, word_t address, size_t size);
+
+/**
+ * Copy to @dest_tracer at most PATH_MAX bytes -- including the
+ * end-of-string terminator -- from the string pointed to by
+ * @src_tracee within the memory space of the @tracee process.  This
+ * function returns -errno on error, otherwise it returns the number
+ * in bytes of the string, including the end-of-string terminator.
+ */
+static inline int read_path(const Tracee *tracee, char dest_tracer[PATH_MAX], word_t src_tracee)
+{
+	int status;
+
+	status = read_string(tracee, dest_tracer, src_tracee, PATH_MAX);
+	if (status < 0)
+		return status;
+	if (status >= PATH_MAX)
+		return -ENAMETOOLONG;
+
+	return status;
+}
 
 #endif /* TRACEE_MEM_H */

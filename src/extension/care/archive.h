@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,32 +20,28 @@
  * 02110-1301 USA.
  */
 
-#ifndef NOTICE_H
-#define NOTICE_H
+#ifndef ARCHIVE_H
+#define ARCHIVE_H
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <stdint.h>
 
 #include "tracee/tracee.h"
-#include "attribute.h"
 
-/* Specify where a notice is coming from. */
-typedef enum {
-	SYSTEM,
-	INTERNAL,
-	USER,
-	TALLOC,
-} Origin;
+typedef struct {
+	struct archive *handle;
+	struct archive_entry_linkresolver *hardlink_resolver;
 
-/* Specify the severity of a notice. */
-typedef enum {
-	ERROR,
-	WARNING,
-	INFO,
-} Severity;
+	/* Information used to create an self-extracting archive.  */
+	off_t offset;
+	int fd;
+} Archive;
 
-#define VERBOSE(tracee, level, message, args...) do {			\
-		if (tracee == NULL || tracee->verbose >= (level))	\
-			notice(tracee, INFO, INTERNAL, (message), ## args); \
-	} while (0)
+extern Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
+				const char *output, size_t *prefix_length);
+extern int finalize_archive(Archive *archive);
+extern int archive(const Tracee* tracee, Archive *archive,
+		const char *path, const char *alternate_path, const struct stat *statl);
 
-extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(gnu_printf, 4, 5);
-
-#endif /* NOTICE_H */
+#endif /* ARCHIVE_H */

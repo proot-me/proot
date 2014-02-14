@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -39,6 +39,6 @@ typedef enum {
 extern Action readlink_proc(const Tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX],
 			const char component[NAME_MAX],	Comparison comparison);
 
-extern size_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
+extern ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
 
 #endif /* PROC_H */

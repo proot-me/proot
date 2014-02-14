@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -53,13 +53,15 @@ typedef enum {
 	/* The tracee enters a syscall, and PRoot hasn't do anything
 	 * yet.  If the extension returns > 0, then PRoot skips its
 	 * own handling.  If the extension returns < 0, then PRoot
-	 * reports this errno to the tracee.  */
+	 * cancels the syscall and reports this errno to the
+	 * tracee.  */
 	SYSCALL_ENTER_START,
 
 	/* The tracee enters a syscall, and PRoot has already handled
 	 * it: "(int) data1" is the current status, it is < 0 when
 	 * something went wrong.  If the extension returns < 0, then
-	 * PRoot reports this errno to the tracee.  */
+	 * PRoot cancels the syscall and reports this errno to the
+	 * tracee.  */
 	SYSCALL_ENTER_END,
 
 	/* The tracee exits a syscall, and PRoot hasn't do anything
@@ -79,21 +81,33 @@ typedef enum {
 	 * skips its own handling.  */
 	NEW_STATUS,
 
-	/* Ask how this extension is inheritable: "(Tracee *) data1" is the
-	 * child tracee and "(bool) data2" specifies if it's a
-	 * sub-reconfiguration.  The meaning of the returned value is:
+	/* Ask how this extension is inheritable: "(Tracee *) data1"
+	 * is the child tracee and "(bool) data2" is the clone(2)
+	 * flags (CLONE_RECONF for sub-reconfiguration).  The meaning
+	 * of the returned value is:
 	 *
 	 *   < 0 : not inheritable
 	 *  == 0 : inheritable + shared configuration.
 	 *   > 0 : inheritable + call INHERIT_CHILD.  */
 	INHERIT_PARENT,
 
-	/* Control the inheritance: "(Extension *) data1" is the extension of
-	 * the parent and "(bool) data2" specifies if it's a
-	 * sub-reconfiguration.  For instance the extension in the child could
-	 * create a new configuration depending on the parent's
-	 * configuration.  */
+	/* Control the inheritance: "(Extension *) data1" is the
+	 * extension of the parent and "(word_t) data2" is the clone(2)
+	 * flags (CLONE_RECONF for sub-reconfiguration).  For instance
+	 * the extension for the child could use a configuration
+	 * different from the parent's configuration.  */
 	INHERIT_CHILD,
+
+	/* The tracee enters a "chained" syscall, that is, an
+	 * unrequested syscall inserted by PRoot after an actual
+	 * syscall.  If the extension returns < 0, then PRoot cancels
+	 * the syscall and reports this errno to the tracee.  */
+	SYSCALL_CHAINED_ENTER,
+
+	/* The tracee exists a "chained" syscall, that is, an
+	 * unrequested syscall inserted by PRoot after an actual
+	 * syscall.  */
+	SYSCALL_CHAINED_EXIT,
 
 	/* Initialize the extension: "(const char *) data1" is its
 	 * argument that was passed to the command-line interface.  If
@@ -112,6 +126,8 @@ typedef enum {
 	 * for a detailed usage.  See print_usage() as an example.  */
 	PRINT_USAGE,
 } ExtensionEvent;
+
+#define CLONE_RECONF ((word_t) -1)
 
 struct extension;
 typedef int (*extension_callback_t)(struct extension *extension, ExtensionEvent event,
@@ -136,7 +152,7 @@ typedef struct extension {
 typedef LIST_HEAD(extensions, extension) Extensions;
 
 extern int initialize_extension(Tracee *tracee, extension_callback_t callback, const char *cli);
-extern void inherit_extensions(Tracee *child, Tracee *parent, bool sub_reconf);
+extern void inherit_extensions(Tracee *child, Tracee *parent, word_t clone_flags);
 
 /**
  * Notify all extensions of @tracee that the given @event occured.
@@ -162,5 +178,6 @@ static inline int notify_extensions(Tracee *tracee, ExtensionEvent event,
 /* Built-in extensions.  */
 extern int kompat_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
+extern int care_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 
 #endif /* EXTENSION_H */

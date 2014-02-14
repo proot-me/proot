@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2014 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,8 +20,6 @@
  * 02110-1301 USA.
  */
 
-#define _GNU_SOURCE
-
 #include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <sys/types.h>  /* pid_t, size_t, */
 #include <stdlib.h>     /* NULL, */
@@ -34,12 +32,14 @@
 #include <stdint.h>     /* uint8_t, */
 #include <sys/uio.h>    /* process_vm_*, struct iovec, */
 #include <unistd.h>     /* sysconf(3), */
+#include <sys/mman.h>   /* mmap(2), munmap(2), MAP_*, */
 
 #include "tracee/mem.h"
 #include "tracee/abi.h"
+#include "syscall/heap.h"
 #include "arch.h"            /* word_t, NO_MISALIGNED_ACCESS */
 #include "build.h"           /* HAVE_PROCESS_VM,  */
-#include "notice.h"
+#include "cli/notice.h"
 
 /**
  * Load the word at the given @address, potentially *not* aligned.
@@ -93,6 +93,9 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 	uint8_t *last_dest_word;
 	uint8_t *last_src_word;
 
+	if (belongs_to_heap_prealloc(tracee, dest_tracee))
+		return -EFAULT;
+
 #if defined(HAVE_PROCESS_VM)
 	struct iovec local;
 	struct iovec remote;
@@ -121,6 +124,9 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 			return -EFAULT;
 		}
 	}
+
+	if (nb_trailing_bytes == 0)
+		return 0;
 
 	/* Copy the bytes in the last word carefully since we have to
 	 * overwrite only the relevant ones. */
@@ -157,6 +163,9 @@ int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *sr
 	size_t size;
 	int status;
 	int i;
+
+	if (belongs_to_heap_prealloc(tracee, dest_tracee))
+		return -EFAULT;
 
 #if defined(HAVE_PROCESS_VM)
 	struct iovec remote;
@@ -203,6 +212,9 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 	uint8_t *last_src_word;
 	uint8_t *last_dest_word;
 
+	if (belongs_to_heap_prealloc(tracee, src_tracee))
+		return -EFAULT;
+
 #if defined(HAVE_PROCESS_VM)
 	long status;
 	struct iovec local;
@@ -233,6 +245,9 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 		}
 		store_word(&dest[i], word);
 	}
+
+	if (nb_trailing_bytes == 0)
+		return 0;
 
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond @dest_tracer. */
@@ -270,6 +285,9 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word
 
 	uint8_t *src_word;
 	uint8_t *dest_word;
+
+	if (belongs_to_heap_prealloc(tracee, src_tracee))
+		return -EFAULT;
 
 #if defined(HAVE_PROCESS_VM)
 	/* [process_vm] system calls do not check the memory regions
@@ -391,6 +409,11 @@ word_t peek_mem(const Tracee *tracee, word_t address)
 {
 	word_t result = 0;
 
+	if (belongs_to_heap_prealloc(tracee, address)) {
+		errno = EFAULT;
+		return 0;
+	}
+
 #if defined(HAVE_PROCESS_VM)
 	int status;
 	struct iovec local;
@@ -411,6 +434,12 @@ word_t peek_mem(const Tracee *tracee, word_t address)
 	errno = 0;
 	result = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
 
+	/* From ptrace(2) manual: "Unfortunately, under Linux,
+	 * different variations of this fault will return EIO or
+	 * EFAULT more or less arbitrarily."  */
+	if (errno == EIO)
+		errno = EFAULT;
+
 	/* Use only the 32 LSB when running a 32-bit process on a
 	 * 64-bit kernel. */
 	if (is_32on64_mode(tracee))
@@ -427,6 +456,11 @@ word_t peek_mem(const Tracee *tracee, word_t address)
 void poke_mem(const Tracee *tracee, word_t address, word_t value)
 {
 	word_t tmp;
+
+	if (belongs_to_heap_prealloc(tracee, address)) {
+		errno = EFAULT;
+		return;
+	}
 
 #if defined(HAVE_PROCESS_VM)
 	int status;
@@ -460,6 +494,13 @@ void poke_mem(const Tracee *tracee, word_t address, word_t value)
 
 	errno = 0;
 	(void) ptrace(PTRACE_POKEDATA, tracee->pid, address, value);
+
+	/* From ptrace(2) manual: "Unfortunately, under Linux,
+	 * different variations of this fault will return EIO or
+	 * EFAULT more or less arbitrarily."  */
+	if (errno == EIO)
+		errno = EFAULT;
+
 	return;
 }
 
@@ -497,4 +538,26 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 	 * area. */
 	poke_reg(tracee, STACK_POINTER, stack_pointer);
 	return stack_pointer;
+}
+
+/**
+ * Clear @size bytes at the given @address in the @tracee's memory
+ * space.  This function returns -errno if an error occured, otherwise
+ * 0.
+ */
+int clear_mem(const Tracee *tracee, word_t address, size_t size)
+{
+	int status;
+	void *zeros;
+
+	if (belongs_to_heap_prealloc(tracee, address))
+		return -EFAULT;
+
+	zeros = mmap(NULL, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (zeros == MAP_FAILED)
+		return -errno;
+
+	status = write_data(tracee, address, zeros, size);
+	munmap(zeros, size);
+	return status;
 }
