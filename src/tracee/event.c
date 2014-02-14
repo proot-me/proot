@@ -464,9 +464,8 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				   sysenter stage but the kernel reports the sysexit
 				   stage; just discard this spurious tracee/event.  */
 				if (tracee->exe == NULL) {
-					ptrace(PTRACE_CONT, pid, 0, 0);
-					TALLOC_FREE(tracee);
-					continue;
+					tracee->restart_how = PTRACE_CONT;
+					return 0;
 				}
 
 				switch (tracee->seccomp) {
