@@ -393,209 +393,196 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	/* Not a signal-stop by default.  */
 	signal = 0;
 
-	/* A do-while block is used in order to preserve the initial
-	 * indentation ...  */
-	do {
-		if (tracee_status == -1) {
-			; /* This value is only used to tell PRoot not
-			   * to handle this event.  */
-		}
-		else if (WIFEXITED(tracee_status)) {
-			last_exit_status = WEXITSTATUS(tracee_status);
-			VERBOSE(tracee, 1, "pid %d: exited with status %d",
-				pid, last_exit_status);
-		}
-		else if (WIFSIGNALED(tracee_status)) {
-			check_architecture(tracee);
-			VERBOSE(tracee, (int) (last_exit_status != -1),
-				"pid %d: terminated with signal %d",
-				pid, WTERMSIG(tracee_status));
-		}
-		else if (WIFSTOPPED(tracee_status)) {
-			/* Don't use WSTOPSIG() to extract the signal
-			 * since it clears the PTRACE_EVENT_* bits. */
-			signal = (tracee_status & 0xfff00) >> 8;
+	if (tracee_status == -1) {
+		; /* This value is only used to tell PRoot not
+		   * to handle this event.  */
+	}
+	else if (WIFEXITED(tracee_status)) {
+		last_exit_status = WEXITSTATUS(tracee_status);
+		VERBOSE(tracee, 1, "pid %d: exited with status %d", pid, last_exit_status);
+	}
+	else if (WIFSIGNALED(tracee_status)) {
+		check_architecture(tracee);
+		VERBOSE(tracee, (int) (last_exit_status != -1),
+			"pid %d: terminated with signal %d", pid, WTERMSIG(tracee_status));
+	}
+	else if (WIFSTOPPED(tracee_status)) {
+		/* Don't use WSTOPSIG() to extract the signal
+		 * since it clears the PTRACE_EVENT_* bits. */
+		signal = (tracee_status & 0xfff00) >> 8;
 
-			switch (signal) {
-				static bool deliver_sigtrap = false;
+		switch (signal) {
+			static bool deliver_sigtrap = false;
 
-			case SIGTRAP: {
-				const unsigned long default_ptrace_options = (
-					PTRACE_O_TRACESYSGOOD	|
-					PTRACE_O_TRACEFORK	|
-					PTRACE_O_TRACEVFORK	|
-					PTRACE_O_TRACEVFORKDONE	|
-					PTRACE_O_TRACEEXEC	|
-					PTRACE_O_TRACECLONE	|
-					PTRACE_O_TRACEEXIT);
+		case SIGTRAP: {
+			const unsigned long default_ptrace_options = (
+				PTRACE_O_TRACESYSGOOD	|
+				PTRACE_O_TRACEFORK	|
+				PTRACE_O_TRACEVFORK	|
+				PTRACE_O_TRACEVFORKDONE	|
+				PTRACE_O_TRACEEXEC	|
+				PTRACE_O_TRACECLONE	|
+				PTRACE_O_TRACEEXIT);
 
-				/* Distinguish some events from others and
-				 * automatically trace each new process with
-				 * the same options.
-				 *
-				 * Note that only the first bare SIGTRAP is
-				 * related to the tracing loop, others SIGTRAP
-				 * carry tracing information because of
-				 * TRACE*FORK/CLONE/EXEC.  */
-				if (deliver_sigtrap)
-					break;  /* Deliver this signal as-is.  */
+			/* Distinguish some events from others and
+			 * automatically trace each new process with
+			 * the same options.
+			 *
+			 * Note that only the first bare SIGTRAP is
+			 * related to the tracing loop, others SIGTRAP
+			 * carry tracing information because of
+			 * TRACE*FORK/CLONE/EXEC.  */
+			if (deliver_sigtrap)
+				break;  /* Deliver this signal as-is.  */
 
-				deliver_sigtrap = true;
+			deliver_sigtrap = true;
 
-				/* Try to enable seccomp mode 2...  */
+			/* Try to enable seccomp mode 2...  */
+			status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
+					default_ptrace_options | PTRACE_O_TRACESECCOMP);
+			if (status < 0) {
+				/* ... otherwise use default options only.  */
 				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
-						default_ptrace_options | PTRACE_O_TRACESECCOMP);
+						default_ptrace_options);
 				if (status < 0) {
-					/* ... otherwise use default options only.  */
-					status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
-							default_ptrace_options);
-					if (status < 0) {
-						notice(tracee, ERROR, SYSTEM,
-							"ptrace(PTRACE_SETOPTIONS)");
-						exit(EXIT_FAILURE);
-					}
+					notice(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
+					exit(EXIT_FAILURE);
 				}
 			}
-				/* Fall through. */
-			case SIGTRAP | 0x80:
-				signal = 0;
+		}
+			/* Fall through. */
+		case SIGTRAP | 0x80:
+			signal = 0;
 
-				/* This tracee got signaled then freed during the
-				   sysenter stage but the kernel reports the sysexit
-				   stage; just discard this spurious tracee/event.  */
-				if (tracee->exe == NULL) {
-					tracee->restart_how = PTRACE_CONT;
-					return 0;
-				}
-
-				switch (tracee->seccomp) {
-				case ENABLED:
-					if (tracee->status == 0) {
-						/* sysenter: ensure the sysexit
-						 * stage will be hit under seccomp.  */
-						tracee->restart_how = PTRACE_SYSCALL;
-						tracee->sysexit_pending = true;
-					}
-					else {
-						/* sysexit: the next sysenter
-						 * will be notified by seccomp.  */
-						tracee->restart_how = PTRACE_CONT;
-						tracee->sysexit_pending = false;
-					}
-					/* Fall through.  */
-				case DISABLED:
-					translate_syscall(tracee);
-
-					/* This syscall has disabled seccomp.  */
-					if (tracee->seccomp == DISABLING) {
-						tracee->restart_how = PTRACE_SYSCALL;
-						tracee->seccomp = DISABLED;
-					}
-
-					break;
-
-				case DISABLING:
-					/* Seccomp was disabled by the
-					 * previous syscall, but its
-					 * sysenter stage was already
-					 * handled.  */
-					tracee->seccomp = DISABLED;
-					if (tracee->status == 0)
-						tracee->status = 1;
-					break;
-				}
-				break;
-
-			case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
-			case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
-				unsigned long flags = 0;
-
-				signal = 0;
-
-				if (!seccomp_detected) {
-					VERBOSE(tracee, 1,
-						"ptrace acceleration (seccomp mode 2) enabled");
-					tracee->seccomp = ENABLED;
-					seccomp_detected = true;
-				}
-
-				/* Use the common ptrace flow if
-				 * seccomp was explicitely disabled
-				 * for this tracee.  */
-				if (tracee->seccomp != ENABLED)
-					break;
-
-				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
-				if (status < 0)
-					break;
-
-				/* Use the common ptrace flow when
-				 * sysexit has to be handled.  */
-				if ((flags & FILTER_SYSEXIT) != 0) {
-					tracee->restart_how = PTRACE_SYSCALL;
-					break;
-				}
-
-				/* Otherwise, handle the sysenter
-				 * stage right now.  */
+			/* This tracee got signaled then freed during the
+			   sysenter stage but the kernel reports the sysexit
+			   stage; just discard this spurious tracee/event.  */
+			if (tracee->exe == NULL) {
 				tracee->restart_how = PTRACE_CONT;
+				return 0;
+			}
+
+			switch (tracee->seccomp) {
+			case ENABLED:
+				if (tracee->status == 0) {
+					/* sysenter: ensure the sysexit
+					 * stage will be hit under seccomp.  */
+					tracee->restart_how = PTRACE_SYSCALL;
+					tracee->sysexit_pending = true;
+				}
+				else {
+					/* sysexit: the next sysenter
+					 * will be notified by seccomp.  */
+					tracee->restart_how = PTRACE_CONT;
+					tracee->sysexit_pending = false;
+				}
+				/* Fall through.  */
+			case DISABLED:
 				translate_syscall(tracee);
 
-				/* This syscall has disabled seccomp, so
-				 * move the ptrace flow back to the
-				 * common path to ensure its sysexit
-				 * will be handled.  */
-				if (tracee->seccomp == DISABLING)
+				/* This syscall has disabled seccomp.  */
+				if (tracee->seccomp == DISABLING) {
 					tracee->restart_how = PTRACE_SYSCALL;
+					tracee->seccomp = DISABLED;
+				}
+
+				break;
+
+			case DISABLING:
+				/* Seccomp was disabled by the
+				 * previous syscall, but its sysenter
+				 * stage was already handled.  */
+				tracee->seccomp = DISABLED;
+				if (tracee->status == 0)
+					tracee->status = 1;
+				break;
+			}
+			break;
+
+		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
+		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
+			unsigned long flags = 0;
+
+			signal = 0;
+
+			if (!seccomp_detected) {
+				VERBOSE(tracee, 1, "ptrace acceleration (seccomp mode 2) enabled");
+				tracee->seccomp = ENABLED;
+				seccomp_detected = true;
+			}
+
+			/* Use the common ptrace flow if seccomp was
+			 * explicitely disabled for this tracee.  */
+			if (tracee->seccomp != ENABLED)
+				break;
+
+			status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
+			if (status < 0)
+				break;
+
+			/* Use the common ptrace flow when
+			 * sysexit has to be handled.  */
+			if ((flags & FILTER_SYSEXIT) != 0) {
+				tracee->restart_how = PTRACE_SYSCALL;
 				break;
 			}
 
-			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
-				signal = 0;
-				(void) new_child(tracee, CLONE_VFORK);
-				break;
+			/* Otherwise, handle the sysenter
+			 * stage right now.  */
+			tracee->restart_how = PTRACE_CONT;
+			translate_syscall(tracee);
 
-			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
-			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
-				signal = 0;
-				(void) new_child(tracee, 0);
-				break;
-
-			case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
-			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
-			case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
-				signal = 0;
-				break;
-
-			case SIGSTOP:
-				/* Stop this tracee until PRoot has received
-				 * the EVENT_*FORK|CLONE notification.  */
-				if (tracee->exe == NULL) {
-					tracee->sigstop = SIGSTOP_PENDING;
-					signal = -1;
-				}
-
-				/* For each tracee, the first SIGSTOP
-				 * is only used to notify the tracer.  */
-				if (tracee->sigstop == SIGSTOP_IGNORED) {
-					tracee->sigstop = SIGSTOP_ALLOWED;
-					signal = 0;
-				}
-				break;
-
-			default:
-				/* Deliver this signal as-is.  */
-				break;
-			}
+			/* This syscall has disabled seccomp, so move
+			 * the ptrace flow back to the common path to
+			 * ensure its sysexit will be handled.  */
+			if (tracee->seccomp == DISABLING)
+				tracee->restart_how = PTRACE_SYSCALL;
+			break;
 		}
 
-		/* Clear the pending event, if any.  */
-		tracee->as_ptracee.event4.proot.pending = false;
+		case SIGTRAP | PTRACE_EVENT_VFORK << 8:
+			signal = 0;
+			(void) new_child(tracee, CLONE_VFORK);
+			break;
 
-		return signal;
-	} while (0);
+		case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+		case SIGTRAP | PTRACE_EVENT_CLONE << 8:
+			signal = 0;
+			(void) new_child(tracee, 0);
+			break;
 
-	assert(0);
+		case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
+		case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
+		case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
+			signal = 0;
+			break;
+
+		case SIGSTOP:
+			/* Stop this tracee until PRoot has received
+			 * the EVENT_*FORK|CLONE notification.  */
+			if (tracee->exe == NULL) {
+				tracee->sigstop = SIGSTOP_PENDING;
+				signal = -1;
+			}
+
+			/* For each tracee, the first SIGSTOP
+			 * is only used to notify the tracer.  */
+			if (tracee->sigstop == SIGSTOP_IGNORED) {
+				tracee->sigstop = SIGSTOP_ALLOWED;
+				signal = 0;
+			}
+			break;
+
+		default:
+			/* Deliver this signal as-is.  */
+			break;
+		}
+	}
+
+	/* Clear the pending event, if any.  */
+	tracee->as_ptracee.event4.proot.pending = false;
+
+	return signal;
 }
 
 /**
