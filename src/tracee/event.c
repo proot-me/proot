@@ -400,7 +400,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 			; /* This value is only used to tell PRoot not
 			   * to handle this event.  */
 		}
-		if (WIFEXITED(tracee_status)) {
+		else if (WIFEXITED(tracee_status)) {
 			last_exit_status = WEXITSTATUS(tracee_status);
 			VERBOSE(tracee, 1, "pid %d: exited with status %d",
 				pid, last_exit_status);
