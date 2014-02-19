@@ -219,16 +219,20 @@ int translate_ptrace_exit(Tracee *tracee)
 		return 0;  /* Don't restart the ptracee.  */
 
 	case PTRACE_GETSIGINFO:
+	case PTRACE_GETFPREGS:
 	case PTRACE_GETREGS: {
 		size_t size;
 		union {
 			siginfo_t siginfo;
 			struct user_regs_struct regs;
+			struct user_fpregs_struct fpregs;
 		} buffer;
 
-		size = (request == PTRACE_GETSIGINFO ?
-			sizeof(buffer.siginfo) :
-			sizeof(buffer.regs));
+		size = (request == PTRACE_GETSIGINFO
+			? sizeof(buffer.siginfo)
+			: request == PTRACE_GETFPREGS
+			? sizeof(buffer.fpregs)
+			: sizeof(buffer.regs));
 
 		status = ptrace(request, pid, NULL, &buffer);
 		if (status < 0)
@@ -242,16 +246,20 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	case PTRACE_SETSIGINFO:
+	case PTRACE_SETFPREGS:
 	case PTRACE_SETREGS: {
 		size_t size;
 		union {
 			siginfo_t siginfo;
 			struct user_regs_struct regs;
+			struct user_fpregs_struct fpregs;
 		} buffer;
 
-		size = (request == PTRACE_GETSIGINFO ?
-			sizeof(buffer.siginfo) :
-			sizeof(buffer.regs));
+		size = (request == PTRACE_GETSIGINFO
+			? sizeof(buffer.siginfo)
+			: request == PTRACE_SETFPREGS
+			? sizeof(buffer.fpregs)
+			: sizeof(buffer.regs));
 
 		status = read_data(ptracer, &buffer, data, size);
 		if (status < 0)
