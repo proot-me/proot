@@ -403,9 +403,10 @@ int new_child(Tracee *parent, word_t clone_flags)
 
 	/* Depending on how the new process is created, it may be
 	 * automatically traced by the parent's tracer.  */
-	ptrace_options = ( clone_flags == 0		? PTRACE_O_TRACEFORK
-			: (clone_flags & CLONE_VFORK)	? PTRACE_O_TRACEVFORK
-			: 				  PTRACE_O_TRACECLONE);
+	ptrace_options = ( clone_flags == 0			? PTRACE_O_TRACEFORK
+			: (clone_flags & 0xFF) == SIGCHLD	? PTRACE_O_TRACEFORK
+			: (clone_flags & CLONE_VFORK) != 0	? PTRACE_O_TRACEVFORK
+			: 					  PTRACE_O_TRACECLONE);
 	if (   (ptrace_options & parent->as_ptracee.options) != 0
 	    || (clone_flags & CLONE_PTRACE) != 0) {
 		Tracee *ptracer = parent->as_ptracee.ptracer;
