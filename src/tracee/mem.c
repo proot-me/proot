@@ -29,7 +29,7 @@
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
 #include <string.h>     /* memcpy(3), */
-#include <stdint.h>     /* uint8_t, */
+#include <stdint.h>     /* uint*_t, */
 #include <sys/uio.h>    /* process_vm_*, struct iovec, */
 #include <unistd.h>     /* sysconf(3), */
 #include <sys/mman.h>   /* mmap(2), munmap(2), MAP_*, */
@@ -405,7 +405,7 @@ fallback:
  * memory space.  The caller must test errno to check if an error
  * occured.
  */
-word_t peek_mem(const Tracee *tracee, word_t address)
+word_t peek_word(const Tracee *tracee, word_t address)
 {
 	word_t result = 0;
 
@@ -453,7 +453,7 @@ word_t peek_mem(const Tracee *tracee, word_t address)
  * the given @value.  The caller must test errno to check if an error
  * occured.
  */
-void poke_mem(const Tracee *tracee, word_t address, word_t value)
+void poke_word(const Tracee *tracee, word_t address, word_t value)
 {
 	word_t tmp;
 

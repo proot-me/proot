@@ -304,11 +304,9 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
  * Copy config->@field to the tracee's memory location pointed to by @sysarg.
  */
 #define POKE_MEM_ID(sysarg, field) do {					\
-	int status = write_data(tracee,					\
-			peek_reg(tracee, ORIGINAL, sysarg),		\
-			&config->field, sizeof(config->field));		\
-	if (status < 0)							\
-		return status;						\
+	poke_uint16(tracee, peek_reg(tracee, ORIGINAL, sysarg), config->field);	\
+	if (errno != 0)							\
+		return -errno;						\
 } while (0)
 
 /**
@@ -609,8 +607,9 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	case PR_lstat:
 	case PR_fstat: {
 		word_t address;
-		word_t uid, gid;
 		Reg sysarg;
+		uid_t uid;
+		gid_t gid;
 
 		/* Override only if it succeed.  */
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
@@ -625,25 +624,26 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 		address = peek_reg(tracee, ORIGINAL, sysarg);
 
+		/* Sanity checks.  */
+		assert(__builtin_types_compatible_p(uid_t, uint32_t));
+		assert(__builtin_types_compatible_p(gid_t, uint32_t));
+
 		/* Get the uid & gid values from the 'stat' structure.  */
-		uid = peek_mem(tracee, address + offsetof_stat_uid(tracee));
+		uid = peek_uint32(tracee, address + offsetof_stat_uid(tracee));
 		if (errno != 0)
 			uid = 0; /* Not fatal.  */
 
-		gid = peek_mem(tracee, address + offsetof_stat_gid(tracee));
+		gid = peek_uint32(tracee, address + offsetof_stat_gid(tracee));
 		if (errno != 0)
 			gid = 0; /* Not fatal.  */
-
-		/* These values are 32-bit width, even on 64-bit architecture.  */
-		uid &= 0xFFFFFFFF;
-		gid &= 0xFFFFFFFF;
 
 		/* Override only if the file is owned by the current user.
 		 * Errors are not fatal here.  */
 		if (uid == getuid())
-			poke_mem(tracee, address + offsetof_stat_uid(tracee), config->ruid);
+			poke_uint32(tracee, address + offsetof_stat_uid(tracee), config->ruid);
+
 		if (gid == getgid())
-			poke_mem(tracee, address + offsetof_stat_gid(tracee), config->rgid);
+			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->rgid);
 
 		return 0;
 	}

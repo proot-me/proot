@@ -142,7 +142,7 @@ int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr
 	if (sock_addr == 0)
 		return 0;
 
-	size = (int) peek_mem(tracee, size_addr);
+	size = peek_int32(tracee, size_addr);
 	if (errno != 0)
 		return -errno;
 
@@ -174,9 +174,9 @@ int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr
 	if (is_truncated)
 		size = max_size + 1;
 
-	status = write_data(tracee, size_addr, &size, sizeof(size));
-	if (status < 0)
-		return status;
+	poke_int32(tracee, size_addr, size);
+	if (errno != 0)
+		return -errno;
 
 	return 0;
 }

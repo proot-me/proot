@@ -235,22 +235,18 @@ int translate_syscall_enter(Tracee *tracee)
 
 #define SYSARG_ADDR(n) (args_addr + ((n) - 1) * sizeof_word(tracee))
 
-#define PEEK_MEM(addr) peek_mem(tracee, addr);			\
-	if (errno != 0) {					\
-		status = -errno;				\
-		break;						\
+#define PEEK_WORD(addr, forced_errno)		\
+	peek_word(tracee, addr);		\
+	if (errno != 0) {			\
+		status = forced_errno ?: -errno; \
+		break;				\
 	}
 
-#define PEEK_MEM2(addr, forced_errno) peek_mem(tracee, addr);	\
-	if (errno != 0) {					\
-		status = forced_errno ?: -errno;		\
-		break;						\
-	}
-
-#define POKE_MEM(addr, value) poke_mem(tracee, addr, value);	\
-	if (errno != 0) {					\
-		status = -errno;				\
-		break;						\
+#define POKE_WORD(addr, value)			\
+	poke_word(tracee, addr, value);		\
+	if (errno != 0) {			\
+		status = -errno;		\
+		break;				\
 	}
 
 	case PR_accept:
@@ -266,9 +262,9 @@ int translate_syscall_enter(Tracee *tracee)
 	case PR_getpeername:{
 		int size;
 
-		/* Remember: PEEK_MEM puts -errno in status and breaks if an
+		/* Remember: PEEK_WORD puts -errno in status and breaks if an
 		 * error occured.  */
-		size = (int) PEEK_MEM2(peek_reg(tracee, ORIGINAL, SYSARG_3), special ? -EINVAL : 0);
+		size = (int) PEEK_WORD(peek_reg(tracee, ORIGINAL, SYSARG_3), special ? -EINVAL : 0);
 
 		/* The "size" argument is both used as an input parameter
 		 * (max. size) and as an output parameter (actual size).  The
@@ -300,7 +296,7 @@ int translate_syscall_enter(Tracee *tracee)
 		case SYS_ACCEPT:
 		case SYS_ACCEPT4:
 			/* Nothing special to do if no sockaddr was specified.  */
-			sock_addr = PEEK_MEM(SYSARG_ADDR(2));
+			sock_addr = PEEK_WORD(SYSARG_ADDR(2), 0);
 			if (sock_addr == 0) {
 				status = 0;
 				break;
@@ -309,10 +305,10 @@ int translate_syscall_enter(Tracee *tracee)
 			/* Fall through.  */
 		case SYS_GETSOCKNAME:
 		case SYS_GETPEERNAME:
-			/* Remember: PEEK_MEM puts -errno in status and breaks
+			/* Remember: PEEK_WORD puts -errno in status and breaks
 			 * if an error occured.  */
-			size_addr =  PEEK_MEM(SYSARG_ADDR(3));
-			size = (int) PEEK_MEM2(size_addr, special ? -EINVAL : 0);
+			size_addr =  PEEK_WORD(SYSARG_ADDR(3), 0);
+			size = (int) PEEK_WORD(size_addr, special ? -EINVAL : 0);
 
 			/* See case PR_accept for explanation.  */
 			poke_reg(tracee, SYSARG_6, size);
@@ -328,10 +324,10 @@ int translate_syscall_enter(Tracee *tracee)
 		if (status <= 0)
 			break;
 
-		/* Remember: PEEK_MEM puts -errno in status and breaks if an
+		/* Remember: PEEK_WORD puts -errno in status and breaks if an
 		 * error occured.  */
-		sock_addr = PEEK_MEM(SYSARG_ADDR(2));
-		size      = PEEK_MEM(SYSARG_ADDR(3));
+		sock_addr = PEEK_WORD(SYSARG_ADDR(2), 0);
+		size      = PEEK_WORD(SYSARG_ADDR(3), 0);
 
 		sock_addr_saved = sock_addr;
 		status = translate_socketcall_enter(tracee, &sock_addr, size);
@@ -342,19 +338,18 @@ int translate_syscall_enter(Tracee *tracee)
 		poke_reg(tracee, SYSARG_5, sock_addr_saved);
 		poke_reg(tracee, SYSARG_6, size);
 
-		/* Remember: POKE_MEM puts -errno in status and breaks if an
+		/* Remember: POKE_WORD puts -errno in status and breaks if an
 		 * error occured.  */
-		POKE_MEM(SYSARG_ADDR(2), sock_addr);
-		POKE_MEM(SYSARG_ADDR(3), sizeof(struct sockaddr_un));
+		POKE_WORD(SYSARG_ADDR(2), sock_addr);
+		POKE_WORD(SYSARG_ADDR(3), sizeof(struct sockaddr_un));
 
 		status = 0;
 		break;
 	}
 
 #undef SYSARG_ADDR
-#undef PEEK_MEM
-#undef PEEK_MEM2
-#undef POKE_MEM
+#undef PEEK_WORD
+#undef POKE_WORD
 
 	case PR_access:
 	case PR_acct:

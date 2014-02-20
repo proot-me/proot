@@ -195,7 +195,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (status < 0)
 			return -errno;
 
-		poke_mem(ptracer, data, result);
+		poke_word(ptracer, data, result);
 		if (errno != 0)
 			return -errno;
 
@@ -209,7 +209,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (errno != 0)
 			return -errno;
 
-		poke_mem(ptracer, data, result);
+		poke_word(ptracer, data, result);
 		if (errno != 0)
 			return -errno;
 
@@ -283,11 +283,14 @@ int translate_ptrace_exit(Tracee *tracee)
 		word_t remote_iovec_base;
 		word_t remote_iovec_len;
 
-		remote_iovec_base = peek_mem(ptracer, data);
+		remote_iovec_base = peek_word(ptracer, data);
 		if (errno != 0)
 			return -errno;
 
-		remote_iovec_len = peek_mem(ptracer, data + sizeof_word(tracee));
+		/* Sanity check.  */
+		assert(__builtin_types_compatible_p(typeof(iovec.iov_len), word_t));
+
+		remote_iovec_len = peek_word(ptracer, data + sizeof_word(tracee));
 		if (errno != 0)
 			return -errno;
 
@@ -309,7 +312,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			return status;
 
 		/* Update the remote vector length.  */
-		poke_mem(ptracer, data + sizeof_word(tracee), remote_iovec_len);
+		poke_word(ptracer, data + sizeof_word(tracee), remote_iovec_len);
 		if (errno != 0)
 			return -errno;
 

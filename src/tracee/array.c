@@ -326,9 +326,9 @@ int fetch_array(Tracee *tracee, Array **array_, Reg reg, size_t nb_entries)
 			return -ENOMEM;
 		array->_cache = tmp;
 
-		pointer = peek_mem(tracee, address + i * sizeof_word(tracee));
+		pointer = peek_word(tracee, address + i * sizeof_word(tracee));
 		if (errno != 0)
-			return -EFAULT;
+			return -errno;
 
 		array->_cache[i].remote = pointer;
 		array->_cache[i].local = NULL;

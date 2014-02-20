@@ -148,7 +148,7 @@ int translate_wait_exit(Tracee *ptracer)
 	/* Update the child status of ptracer's wait(2), if any.  */
 	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
 	if (address != 0) {
-		poke_mem(ptracer, address, PTRACEE.event4.ptracer.value);
+		poke_int32(ptracer, address, PTRACEE.event4.ptracer.value);
 		if (errno != 0)
 			return -errno;
 
@@ -300,7 +300,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		poke_reg(ptracer, SYSARG_RESULT, ptracee->pid);
 		address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
 		if (address != 0) {
-			poke_mem(ptracer, address, PTRACEE.event4.ptracer.value);
+			poke_int32(ptracer, address, PTRACEE.event4.ptracer.value);
 			if (errno != 0)
 				poke_reg(ptracer, SYSARG_RESULT, (word_t) -errno);
 

@@ -587,7 +587,7 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 	stack_pointer = pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
 
 	/* Read: argc */
-	data = peek_mem(tracee, pointer);
+	data = peek_word(tracee, pointer);
 	if (errno != 0)
 		return;
 
@@ -597,7 +597,7 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 
 	/* Skip: envp, 0 */
 	do {
-		data = peek_mem(tracee, pointer);
+		data = peek_word(tracee, pointer);
 		if (errno != 0)
 			return;
 		pointer += sizeof_word(tracee);
@@ -605,7 +605,7 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 
 	/* Read: auxv[] */
 	do {
-		data = peek_mem(tracee, pointer);
+		data = peek_word(tracee, pointer);
 		if (errno != 0)
 			return;
 
@@ -614,7 +614,7 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 		 * the uname syscall, and only this latter is
 		 * currently hooked by PRoot.  */
 		if (data == AT_SYSINFO_EHDR || data == AT_SYSINFO)
-			poke_mem(tracee, pointer, AT_IGNORE);
+			poke_word(tracee, pointer, AT_IGNORE);
 
 		pointer += 2 * sizeof_word(tracee);
 	} while (data != 0);
