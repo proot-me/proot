@@ -334,7 +334,7 @@ int event_loop()
 			break;
 		}
 
-		/* Get the information about this tracee. */
+		/* Get information about this tracee. */
 		tracee = get_tracee(NULL, pid, true);
 		assert(tracee != NULL);
 
@@ -344,12 +344,8 @@ int event_loop()
 		if (status != 0)
 			continue;
 
-		/* The ptracer is notified before any changes made by
-		 * PRoot.  TODO: to be fixed for the exit stage.  */
-		if (tracee->as_ptracee.ptracer != NULL) {
-			bool keep_stopped;
-
-			keep_stopped = handle_ptracee_event(tracee, tracee_status);
+		if (tracee->as_ptracee.ptracer) {
+			bool keep_stopped = handle_ptracee_event(tracee, tracee_status);
 			if (keep_stopped)
 				continue;
 		}

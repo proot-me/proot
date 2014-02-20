@@ -337,7 +337,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 
 	/* Get the pid of the parent's new child.  */
 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);
-	if (status < 0) {
+	if (status < 0 || pid == 0) {
 		notice(parent, WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
 		return status;
 	}

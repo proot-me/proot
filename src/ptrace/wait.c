@@ -201,18 +201,20 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			break;
 
 #define PTRACE_EVENT_VFORKDONE PTRACE_EVENT_VFORK_DONE
-#define CASE_FILTER_EVENT(name, statement) case SIGTRAP | PTRACE_EVENT_ ##name << 8: \
+#define CASE_FILTER_EVENT(name, statement) \
+		case SIGTRAP | PTRACE_EVENT_ ##name << 8:			\
 			PTRACEE.tracing_started = true;				\
+			handled_by_proot_first = true;				\
 			if ((PTRACEE.options & PTRACE_O_TRACE ##name) == 0)	\
 				statement;					\
 			break;
 
-			CASE_FILTER_EVENT(FORK,      return false);
-			CASE_FILTER_EVENT(VFORK,     return false);
-			CASE_FILTER_EVENT(VFORKDONE, return false);
-			CASE_FILTER_EVENT(CLONE,     return false);
-			CASE_FILTER_EVENT(EXIT,      return false);
-			CASE_FILTER_EVENT(EXEC,      event = __W_STOPCODE(SIGTRAP));
+		CASE_FILTER_EVENT(FORK,      return false);
+		CASE_FILTER_EVENT(VFORK,     return false);
+		CASE_FILTER_EVENT(VFORKDONE, return false);
+		CASE_FILTER_EVENT(CLONE,     return false);
+		CASE_FILTER_EVENT(EXIT,      return false);
+		CASE_FILTER_EVENT(EXEC,      event = __W_STOPCODE(SIGTRAP));
 
 			/* Never reached.  */
 			assert(0);
@@ -270,8 +272,9 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		signal = handle_tracee_event(ptracee, PTRACEE.event4.proot.value);
 		PTRACEE.event4.proot.value = signal;
 
-		/* The computed signal is alwasy 0 since we can come
-		 * in this block only on sysexit (as for now).  */
+		/* The computed signal is always 0 since we can come
+		 * in this block only on sysexit and special events
+		 * (as for now).  */
 		assert(signal == 0);
 	}
 

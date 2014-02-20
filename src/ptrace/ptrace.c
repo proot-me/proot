@@ -143,8 +143,14 @@ int translate_ptrace_exit(Tracee *tracee)
 	 * has to be in the "stopped for ptracer" state.  */
 	ptracer = tracee;
 	ptracee = get_stopped_ptracee(ptracer, pid, false, __WALL);
-	if (ptracee == NULL)
+	if (ptracee == NULL) {
+		/* Ensure we didn't get there only because inheritance
+		 * mechanism has missed this one.  */
+		ptracee = get_tracee(tracee, pid, false);
+		assert(ptracee == NULL || ptracee->parent != NULL);
+
 		return -ESRCH;
+	}
 
 	/* Sanity checks.  */
 	if (   PTRACEE.is_zombie
