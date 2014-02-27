@@ -474,6 +474,7 @@ required when PRoot is used as a ``mount --bind`` equivalent only.
 
   * http://download.openvz.org/template/precreated/
   * http://cdimage.ubuntu.com/ubuntu-core/releases/
+  * https://images.linuxcontainers.org/images/
 
 * Gentoo for a lot of architectures:
 

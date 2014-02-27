@@ -29,12 +29,21 @@ to get reliable bug reports, demonstrations, academic experiences,
 tutorials, portable applications, minimal rootfs, file-system
 coverage, ...
 
-By default, the *reproduced* execution uses environment variables and
-files from the archive, not from the *actual* Linux system.  However,
-events external to the monitored programs -- like key strokes or
-network packets -- are *not* archived; it's up to the user to
-automatize or document such external interaction.
+By design, CARE does not record events at all.  Instead, it archives
+environment variables and accessed file-system components -- before
+modification -- during the so-called *initial* execution.  Then, to
+reproduce this execution, the ``re-execute.sh`` script embedded into
+the archive restores the environment variables and relaunches the
+command confined into the saved file-system.  That way, both *initial*
+and *reproduced* executions should produce the same results as they
+use the same context, assuming they do not rely on external events --
+like key strokes or network packets -- or that these external events
+are replayed manually or automatically, using umockdev_ for instance.
+That means it is possible to alter explicitly the reproduced
+executions by changing content of the saved file-system, or by
+replaying different external events.
 
+.. _umockdev: https://github.com/martinpitt/umockdev/
 
 Privacy
 -------
