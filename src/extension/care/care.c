@@ -405,6 +405,7 @@ static void handle_host_path(Extension *extension, const char *path)
 	}
 
 	/* Format the location within the archive.  */
+	location = NULL;
 	assert(path[0] == '/');
 	if (strlen(path) < PATH_MAX) {
 		char path2[PATH_MAX];
@@ -414,17 +415,9 @@ static void handle_host_path(Extension *extension, const char *path)
 		 * (concealed path or PRoot sub-reconfiguration).  */
 		strcpy(path2, path);
 		status = detranslate_path(tracee, path2, NULL);
-		if (status < 0) {
-			notice(tracee, WARNING, INTERNAL, "can't detranslate %s", path);
-			return;
-		}
-
-		location = talloc_asprintf(tracee->ctx, "%s/rootfs%s", care->prefix, path2);
-		if (location == NULL) {
-			notice(tracee, WARNING, INTERNAL,
-				"can't allocate location for '%s'", path);
-			return;
-		}
+		if (status >= 0)
+			location = talloc_asprintf(tracee->ctx, "%s/rootfs%s", care->prefix, path2);
+		/* On error "location" is NULL, so it's OK.  */
 	}
 
 	status = archive(tracee, care->archive, path, location, &statl);
