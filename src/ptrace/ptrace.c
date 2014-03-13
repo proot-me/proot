@@ -279,7 +279,7 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	case PTRACE_GETREGSET: {
-		struct iovec iovec;
+		struct iovec local_iovec;
 		word_t remote_iovec_base;
 		word_t remote_iovec_len;
 
@@ -287,34 +287,68 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (errno != 0)
 			return -errno;
 
+		remote_iovec_len = peek_word(ptracer, data + sizeof_word(tracee));
+		if (errno != 0)
+			return -errno;
+
 		/* Sanity check.  */
-		assert(__builtin_types_compatible_p(typeof(iovec.iov_len), word_t));
+		assert(__builtin_types_compatible_p(typeof(local_iovec.iov_len), word_t));
+
+		local_iovec.iov_len  = remote_iovec_len;
+		local_iovec.iov_base = talloc_zero_size(ptracer->ctx, remote_iovec_len);
+		if (local_iovec.iov_base == NULL)
+			return -ENOMEM;
+
+		status = ptrace(PTRACE_GETREGSET, pid, address, &local_iovec);
+		if (status < 0)
+			return status;
+
+		remote_iovec_len = local_iovec.iov_len =
+			MIN(remote_iovec_len, local_iovec.iov_len);
+
+		/* Update remote vector content.  */
+		status = writev_data(ptracer, remote_iovec_base, &local_iovec, 1);
+		if (status < 0)
+			return status;
+
+		/* Update remote vector length.  */
+		poke_word(ptracer, data + sizeof_word(tracee), remote_iovec_len);
+		if (errno != 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_SETREGSET: {
+		struct iovec local_iovec;
+		word_t remote_iovec_base;
+		word_t remote_iovec_len;
+
+		remote_iovec_base = peek_word(ptracer, data);
+		if (errno != 0)
+			return -errno;
 
 		remote_iovec_len = peek_word(ptracer, data + sizeof_word(tracee));
 		if (errno != 0)
 			return -errno;
 
-		iovec.iov_len  = remote_iovec_len;
-		iovec.iov_base = talloc_zero_size(ptracer->ctx, remote_iovec_len);
-		if (iovec.iov_base == NULL)
+		/* Sanity check.  */
+		assert(__builtin_types_compatible_p(typeof(local_iovec.iov_len), word_t));
+
+		local_iovec.iov_len  = remote_iovec_len;
+		local_iovec.iov_base = talloc_zero_size(ptracer->ctx, remote_iovec_len);
+		if (local_iovec.iov_base == NULL)
 			return -ENOMEM;
 
-		status = ptrace(PTRACE_GETREGSET, pid, address, &iovec);
+		/* Copy remote content into the local vector.  */
+		status = read_data(ptracer, local_iovec.iov_base,
+				remote_iovec_base, local_iovec.iov_len);
 		if (status < 0)
 			return status;
 
-		/* Sanity check.  */
-		remote_iovec_len = iovec.iov_len = MIN(remote_iovec_len, iovec.iov_len);
-
-		/* Update the remote vector content.  */
-		status = writev_data(ptracer, remote_iovec_base, &iovec, 1);
+		status = ptrace(PTRACE_SETREGSET, pid, address, &local_iovec);
 		if (status < 0)
 			return status;
-
-		/* Update the remote vector length.  */
-		poke_word(ptracer, data + sizeof_word(tracee), remote_iovec_len);
-		if (errno != 0)
-			return -errno;
 
 		return 0;  /* Don't restart the ptracee.  */
 	}
