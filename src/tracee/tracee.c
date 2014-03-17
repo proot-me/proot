@@ -257,6 +257,29 @@ int new_child(Tracee *parent, word_t clone_flags)
 }
 
 /**
+ * Helper for swap_config().
+ */
+static void reparent_config(Tracee *new_parent, Tracee *old_parent)
+{
+	new_parent->verbose = old_parent->verbose;
+	new_parent->qemu_pie_workaround = old_parent->qemu_pie_workaround;
+
+#define REPARENT(field) do {							\
+		talloc_reparent(old_parent, new_parent, old_parent->field);	\
+		new_parent->field = old_parent->field;				\
+	} while(0);
+
+	REPARENT(fs);
+	REPARENT(exe);
+	REPARENT(cmdline);
+	REPARENT(qemu);
+	REPARENT(glue);
+	REPARENT(extensions);
+
+#undef REPARENT
+}
+
+/**
  * Swap configuration (pointers and parentality) between @tracee1 and @tracee2.
  */
 int swap_config(Tracee *tracee1, Tracee *tracee2)
@@ -267,32 +290,11 @@ int swap_config(Tracee *tracee1, Tracee *tracee2)
 	if (tmp == NULL)
 		return -ENOMEM;
 
-#if defined(TALLOC_VERSION_MAJOR) && TALLOC_VERSION_MAJOR >= 2
-	void reparent_config(Tracee *new_parent, Tracee *old_parent) {
-		new_parent->verbose = old_parent->verbose;
-		new_parent->qemu_pie_workaround = old_parent->qemu_pie_workaround;
-
-		#define REPARENT(field) do {						\
-			talloc_reparent(old_parent, new_parent, old_parent->field);	\
-			new_parent->field = old_parent->field;				\
-		} while(0);
-
-		REPARENT(fs);
-		REPARENT(exe);
-		REPARENT(cmdline);
-		REPARENT(qemu);
-		REPARENT(glue);
-		REPARENT(extensions);
-	}
-
 	reparent_config(tmp,     tracee1);
 	reparent_config(tracee1, tracee2);
 	reparent_config(tracee2, tmp);
 
 	return 0;
-#else
-	return -ENOSYS;
-#endif
 }
 
 /* Send the KILL signal to all tracees.  */

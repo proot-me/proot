@@ -185,7 +185,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	  .description = "Print the user manual, then exit.",
 	  .detail = NULL,
 	},
-	{0},
+	END_OF_OPTIONS,
 	},
 };
 

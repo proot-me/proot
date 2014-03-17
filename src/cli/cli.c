@@ -154,20 +154,23 @@ static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 	if (!argv)
 		return;
 
-	void append(const char *post) {
-		ssize_t length = sizeof(string) - (strlen(string) + strlen(post));
-		if (length <= 0)
-			return;
-		strncat(string, post, length);
-	}
+#define APPEND(post)							\
+	do {								\
+		ssize_t length = sizeof(string) - (strlen(string) + strlen(post)); \
+		if (length <= 0)					\
+			return;						\
+		strncat(string, post, length);				\
+	} while (0)
 
-	append(prompt);
-	append(" =");
+	APPEND(prompt);
+	APPEND(" =");
 	for (i = 0; argv[i] != NULL; i++) {
-		append(" ");
-		append(argv[i]);
+		APPEND(" ");
+		APPEND(argv[i]);
 	}
 	string[sizeof(string) - 1] = '\0';
+
+#undef APPEND
 
 	notice(tracee, INFO, USER, "%s", string);
 }

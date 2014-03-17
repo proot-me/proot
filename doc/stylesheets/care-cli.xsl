@@ -45,7 +45,7 @@ static Cli care_cli = {
 	.options = {
 </xsl:text>
     <xsl:apply-templates select="//option_group" mode="options" />
-  <xsl:text>	{0},
+  <xsl:text>	END_OF_OPTIONS,
 	},
 };
 

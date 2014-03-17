@@ -129,69 +129,72 @@ static void kill_all_tracees2(int signum, siginfo_t *siginfo UNUSED, void *ucont
 		_exit(EXIT_FAILURE);
 }
 
+/**
+ * Helper for print_talloc_hierarchy().
+ */
+static void print_talloc_chunk(const void *ptr, int depth, int max_depth UNUSED,
+			int is_ref, void *data UNUSED)
+{
+	const char *name;
+	size_t count;
+	size_t size;
+
+	name = talloc_get_name(ptr);
+	size = talloc_get_size(ptr);
+	count = talloc_reference_count(ptr);
+
+	if (depth == 0)
+		return;
+
+	while (depth-- > 1)
+		fprintf(stderr, "\t");
+
+	fprintf(stderr, "%-16s ", name);
+
+	if (is_ref)
+		fprintf(stderr, "-> %-8p", ptr);
+	else {
+		fprintf(stderr, "%-8p  %zd bytes  %zd ref'", ptr, size, count);
+
+		if (name[0] == '$') {
+			fprintf(stderr, "\t(\"%s\")", (char *)ptr);
+		}
+		if (name[0] == '@') {
+			char **argv;
+			int i;
+
+			fprintf(stderr, "\t(");
+			for (i = 0, argv = (char **)ptr; argv[i] != NULL; i++)
+				fprintf(stderr, "\"%s\", ", argv[i]);
+			fprintf(stderr, ")");
+		}
+		else if (strcmp(name, "Tracee") == 0) {
+			fprintf(stderr, "\t(pid = %d)", ((Tracee *)ptr)->pid);
+		}
+		else if (strcmp(name, "Bindings") == 0) {
+			Tracee *tracee;
+
+			tracee = TRACEE(ptr);
+
+			if (ptr == tracee->fs->bindings.pending)
+				fprintf(stderr, "\t(pending)");
+			else if (ptr == tracee->fs->bindings.guest)
+				fprintf(stderr, "\t(guest)");
+			else if (ptr == tracee->fs->bindings.host)
+				fprintf(stderr, "\t(host)");
+		}
+		else if (strcmp(name, "Binding") == 0) {
+			Binding *binding = (Binding *)ptr;
+			fprintf(stderr, "\t(%s:%s)", binding->host.path, binding->guest.path);
+		}
+	}
+
+	fprintf(stderr, "\n");
+}
+
 /* Print on stderr the complete talloc hierarchy.  */
 static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED, void *ucontext UNUSED)
 {
-	void print_talloc_chunk(const void *ptr, int depth, int max_depth UNUSED,
-				int is_ref, void *data UNUSED)
-	{
-		const char *name;
-		size_t count;
-		size_t size;
-
-		name = talloc_get_name(ptr);
-		size = talloc_get_size(ptr);
-		count = talloc_reference_count(ptr);
-
-		if (depth == 0)
-			return;
-
-		while (depth-- > 1)
-			fprintf(stderr, "\t");
-
-		fprintf(stderr, "%-16s ", name);
-
-		if (is_ref)
-			fprintf(stderr, "-> %-8p", ptr);
-		else {
-			fprintf(stderr, "%-8p  %zd bytes  %zd ref'", ptr, size, count);
-
-			if (name[0] == '$') {
-				fprintf(stderr, "\t(\"%s\")", (char *)ptr);
-			}
-			if (name[0] == '@') {
-				char **argv;
-				int i;
-
-				fprintf(stderr, "\t(");
-				for (i = 0, argv = (char **)ptr; argv[i] != NULL; i++)
-					fprintf(stderr, "\"%s\", ", argv[i]);
-				fprintf(stderr, ")");
-			}
-			else if (strcmp(name, "Tracee") == 0) {
-				fprintf(stderr, "\t(pid = %d)", ((Tracee *)ptr)->pid);
-			}
-			else if (strcmp(name, "Bindings") == 0) {
-				 Tracee *tracee;
-
-				 tracee = TRACEE(ptr);
-
-				 if (ptr == tracee->fs->bindings.pending)
-					 fprintf(stderr, "\t(pending)");
-				 else if (ptr == tracee->fs->bindings.guest)
-					 fprintf(stderr, "\t(guest)");
-				 else if (ptr == tracee->fs->bindings.host)
-					 fprintf(stderr, "\t(host)");
-			}
-			else if (strcmp(name, "Binding") == 0) {
-				Binding *binding = (Binding *)ptr;
-				fprintf(stderr, "\t(%s:%s)", binding->host.path, binding->guest.path);
-			}
-		}
-
-		fprintf(stderr, "\n");
-	}
-
 	switch (signum) {
 	case SIGUSR1:
 		talloc_report_depth_cb(NULL, 0, 100, print_talloc_chunk, NULL);

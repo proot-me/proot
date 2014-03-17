@@ -46,7 +46,7 @@ typedef enum {
 			notice(tracee, INFO, INTERNAL, (message), ## args); \
 	} while (0)
 
-extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(gnu_printf, 4, 5);
+extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(printf, 4, 5);
 
 extern int global_verbose_level;
 extern const char *global_tool_name;

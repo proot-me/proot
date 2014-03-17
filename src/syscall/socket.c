@@ -37,7 +37,7 @@
 /* The sockaddr_un structure has exactly the same layout on all
  * architectures.  */
 static const off_t offsetof_path = offsetof(struct sockaddr_un, sun_path);
-static struct sockaddr_un sockaddr_un__;
+extern struct sockaddr_un sockaddr_un__;
 static const size_t sizeof_path  = sizeof(sockaddr_un__.sun_path);
 
 /**

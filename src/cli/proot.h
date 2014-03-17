@@ -245,7 +245,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	  .description = "obsolete, use -q and -R instead.",
 	  .detail = "",
 	},
-	{0},
+	END_OF_OPTIONS,
 	},
 };
 

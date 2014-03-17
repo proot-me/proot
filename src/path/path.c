@@ -706,18 +706,21 @@ end:
 }
 
 /**
+ * Helper for list_open_fd().
+ */
+static int list_open_fd_callback(const Tracee *tracee, int fd, char path[PATH_MAX])
+{
+	VERBOSE(tracee, 1, "pid %d: access to \"%s\" (fd %d) won't be translated until closed",
+		tracee->pid, path, fd);
+	return 0;
+}
+
+/**
  * Warn for files that are open. It is useful right after PRoot has
  * attached a process.
  */
 int list_open_fd(const Tracee *tracee)
 {
-	int list_open_fd_callback(const Tracee *tracee, int fd, char path[PATH_MAX])
-	{
-		VERBOSE(tracee, 1,
-			"pid %d: access to \"%s\" (fd %d) won't be translated until closed",
-			tracee->pid, path, fd);
-		return 0;
-	}
 	return foreach_fd(tracee, list_open_fd_callback);
 }
 
