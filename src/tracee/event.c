@@ -25,7 +25,6 @@
 #include <sys/ptrace.h> /* ptrace(1), PTRACE_*, */
 #include <sys/types.h>  /* waitpid(2), */
 #include <sys/wait.h>   /* waitpid(2), */
-#include <sys/personality.h> /* personality(2), ADDR_NO_RANDOMIZE, */
 #include <sys/utsname.h> /* uname(2), */
 #include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
 #include <string.h>     /* strcmp(3), */
@@ -75,15 +74,6 @@ int launch_process(Tracee *tracee)
 		 * translated until they are closed. */
 		if (tracee->verbose > 0)
 			list_open_fd(tracee);
-
-		/* RHEL4 uses an ASLR mechanism that creates conflicts
-		 * between the layout of QEMU and the layout of the
-		 * target program.  Moreover it's easier to debug
-		 * PRoot with tracees' ASLR turned off.  */
-		status = personality(0xffffffff);
-		if (   status < 0
-		    || personality(status | ADDR_NO_RANDOMIZE) < 0)
-			notice(tracee, WARNING, INTERNAL, "can't disable ASLR");
 
 		/* Synchronize with the tracer's event loop.  Without
 		 * this trick the tracer only sees the "return" from
