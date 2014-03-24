@@ -24,8 +24,6 @@
 #include <sys/stat.h> /* mkdir(2), */
 #include <fcntl.h>    /* mknod(2), */
 #include <unistd.h>   /* mknod(2), */
-#include <stdlib.h>   /* mkdtemp(3), */
-#include <stdio.h>    /* P_tmpdir, */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -34,37 +32,10 @@
 
 #include "path/binding.h"
 #include "path/path.h"
+#include "path/temp.h"
 #include "cli/notice.h"
 
 #include "compat.h"
-
-/**
- * Delete only empty files and directories from the glue: the files
- * created by the user inside this glue are left.
- *
- * Note: this is a Talloc desctructor.
- */
-static int remove_glue(char *path)
-{
-	char *command;
-
-	/* Sanity checks.  */
-	assert(strncmp(P_tmpdir, path, strlen(P_tmpdir)) == 0);
-	assert(path[0] == '/');
-
-	command = talloc_asprintf(NULL, "find %s -empty -delete 2>/dev/null", path);
-	if (command != NULL) {
-		int status;
-
-		status = system(command);
-		if (status != 0)
-			notice(NULL, INFO, USER, "can't delete '%s'", path);
-	}
-
-	TALLOC_FREE(command);
-
-	return 0;
-}
 
 /**
  * Build in a temporary filesystem the glue between the guest part and
@@ -99,17 +70,12 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
 	if (tracee->glue == NULL) {
-		tracee->glue = talloc_asprintf(tracee, "%s/proot-%d-XXXXXX", P_tmpdir, getpid());
-		if (tracee->glue == NULL)
-			return 0;
-		talloc_set_name_const(tracee->glue, "$glue");
-
-		if (mkdtemp(tracee->glue) == NULL) {
-			TALLOC_FREE(tracee->glue);
+		tracee->glue = create_temp_directory(tracee, tracee->tool_name);
+		if (tracee->glue == NULL) {
+			notice(tracee, ERROR, INTERNAL, "can't create glue rootfs");
 			return 0;
 		}
-
-		talloc_set_destructor(tracee->glue, remove_glue);
+		talloc_set_name_const(tracee->glue, "$glue");
 	}
 
 	comparison = compare_paths(tracee->glue, host_path);

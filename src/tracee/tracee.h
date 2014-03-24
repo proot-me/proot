@@ -172,7 +172,7 @@ typedef struct tracee {
 	bool qemu_pie_workaround;
 
 	/* Path to glue between the guest rootfs and the host rootfs.  */
-	char *glue;
+	const char *glue;
 
 	/* List of extensions enabled for this tracee.  */
 	struct extensions *extensions;
