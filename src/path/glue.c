@@ -56,7 +56,8 @@
  * This glue allows operations on paths that do not exist in the guest
  * rootfs but that were specified as the guest part of a binding.
  */
-mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX], Finality is_final)
+mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MAX],
+		Finality finality)
 {
 	bool belongs_to_gluefs;
 	Comparison comparison;
@@ -85,7 +86,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	 * hate how the potential type of the final component is propagated
 	 * from initialize_binding() down to here, sadly there's no elegant way
 	 * to know its type at this stage.  */
-	if (is_final) {
+	if (IS_FINAL(finality)) {
 		type = tracee->glue_type;
 		mode = (belongs_to_gluefs ? 0777 : 0);
 	}
@@ -108,7 +109,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	 * the final component since it will be pointed to by the
 	 * binding being initialized (from the example,
 	 * "$GUEST/black/holes/and/revelations" -> "$HOST/opt").  */
-	if (status >= 0 || errno == EEXIST || is_final)
+	if (status >= 0 || errno == EEXIST || IS_FINAL(finality))
 		return type;
 
 	/* mkdir/mknod are supposed to always succeed in

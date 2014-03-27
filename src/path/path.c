@@ -99,23 +99,25 @@ Finality next_component(char component[NAME_MAX], const char **cursor)
 }
 
 /**
- * Put an end-of-string ('\0') right before the last component of @path.
+ * Put an end-of-string ('\0') right before the last component of
+ * @path and return a pointer to this latter.  Note: as for now, it is
+ * assumed @path[0] is '/'.
  */
-void pop_component(char *path)
+char *pop_component(char *path)
 {
-	int offset;
+	size_t offset;
+	size_t length;
 
 	/* Sanity checks. */
 	assert(path != NULL);
+	assert(path[0] == '/');
 
-	offset = strlen(path) - 1;
-	assert(offset >= 0);
+	length = strlen(path);
+	offset = length - 1;
 
 	/* Don't pop over "/", it doesn't mean anything. */
-	if (offset == 0) {
-		assert(path[0] == '/' && path[1] == '\0');
-		return;
-	}
+	if (offset == 0)
+		return &path[1];  /* Empty string.  */
 
 	/* Skip trailing path separators. */
 	while (offset > 1 && path[offset] == '/')
@@ -125,9 +127,12 @@ void pop_component(char *path)
 	while (offset > 1 && path[offset] != '/')
 		offset--;
 
-	/* Cut the end of the string before the last component. */
+	/* Cut the end of the string before last component. */
 	path[offset] = '\0';
-	assert(path[0] == '/');
+
+	/* Return pointer to last component.  */
+	assert(offset + 1 < length);
+	return &path[offset + 1];
 }
 
 /**
