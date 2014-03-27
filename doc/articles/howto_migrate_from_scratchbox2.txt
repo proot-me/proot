@@ -1,4 +1,4 @@
-.. include:: ../stylesheets/article-html.txt
+.. include:: stylesheets/article-html.txt
 
 ========================================
 How to migrate from Scratchbox2 to PRoot

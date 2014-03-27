@@ -14,7 +14,7 @@ all: $(OUTPUTS)
 %/manual-quoted.txt: %/manual.txt
 	sed 's/"/\\\\"/g' $^ > $@
 
-%.h: stylesheets/%-cli.xsl %/manual-quoted.xml
+%.h: %/stylesheets/cli.xsl %/manual-quoted.xml
 	xsltproc --output $@ $^
 
 %.spec:  stylesheets/rpm-spec.xsl %/manual.xml
@@ -22,8 +22,8 @@ all: $(OUTPUTS)
 	echo "* $(shell date +'%a %b %d %Y') Cédric VINCENT <cedric.vincent@st.com>" >> $@
 	cat $*/changelog.txt >> $@
 
-%/index.html: stylesheets/website.xsl stylesheets/%-website.xsl %/manual.xml
-	xsltproc --output $@ stylesheets/$*-website.xsl $*/manual.xml
+%/index.html: stylesheets/website.xsl %/stylesheets/website.xsl %/manual.xml
+	xsltproc --output $@ $*/stylesheets/website.xsl $*/manual.xml
 
 clean:
 	rm -f *.xml $(OUTPUTS) *-quoted.*
