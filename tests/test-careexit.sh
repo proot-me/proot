@@ -20,6 +20,6 @@ set +e
 ${TMP}/re-execute.sh sh -c 'exit 132'
 status=$?
 set -e
-[ $status = 132 ]
+[ $status -eq 132 ]
 
 rm -f ${TMP}.cpio
