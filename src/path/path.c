@@ -431,7 +431,7 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 	assert(result[0] == '/');
 	status = join_paths(2, guest_path, result, user_path);
 	if (status < 0)
-		return -status;
+		return status;
 	strcpy(result, "/");
 
 	/* Canonicalize regarding the new root. */
