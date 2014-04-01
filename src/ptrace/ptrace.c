@@ -84,6 +84,36 @@ int translate_ptrace_enter(Tracee *tracee)
 }
 
 /**
+ * Return USER @offset converted from the current @ptracer's ABI to
+ * the one currently used by PRoot.
+ */
+static word_t convert_user_offset(const Tracee *ptracer, word_t offset)
+{
+#if defined(ARCH_X86_64)
+	if (get_abi(ptracer) == ABI_2) {
+		static off_t conversion[] = {
+			05, /* ?bx */	11, /* ?cx */	12, /* ?dx */
+			13, /* ?si */	14, /* ?di */	04, /* ?bp */
+			10, /* ?ax */	23, /* ds */	24, /* es */
+			25, /* fs */	26, /* gs */	15, /* orig_?ax */
+			16, /* ?ip */	17, /* cs */	18, /* eflags */
+			19, /* ?sp */	20, /* ss */ };
+
+		/* Sanity checks.  */
+		if ((offset % sizeof(uint32_t)) != 0)
+			return (word_t) -1;
+
+		offset /= sizeof(uint32_t);
+		if (offset >= sizeof(conversion) / sizeof(typeof(conversion[0])))
+			return (word_t) -1;
+
+		offset = conversion[offset] * sizeof(uint64_t);
+	}
+#endif
+	return offset;
+}
+
+/**
  * Emulate the ptrace syscall made by @tracee.  This function returns
  * -errno if an error occured (unsupported request), otherwise 0.
  */
@@ -202,9 +232,13 @@ int translate_ptrace_exit(Tracee *tracee)
 		return 0;  /* Don't restart the ptracee.  */
 	}
 
+	case PTRACE_PEEKUSER:
+		address = convert_user_offset(ptracer, address);
+		if (address == (word_t) -1)
+			return -EIO;
+		/* Fall through.  */
 	case PTRACE_PEEKTEXT:
 	case PTRACE_PEEKDATA:
-	case PTRACE_PEEKUSER:
 		result = (word_t) ptrace(request, pid, address, NULL);
 		if (errno != 0)
 			return -errno;
@@ -215,9 +249,13 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		return 0;  /* Don't restart the ptracee.  */
 
+	case PTRACE_POKEUSER:
+		address = convert_user_offset(ptracer, address);
+		if (address == (word_t) -1)
+			return -EIO;
+		/* Fall through.  */
 	case PTRACE_POKETEXT:
 	case PTRACE_POKEDATA:
-	case PTRACE_POKEUSER:
 		status = ptrace(request, pid, address, data);
 		if (status < 0)
 			return -errno;
@@ -287,7 +325,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (errno != 0)
 			return -errno;
 
-		remote_iovec_len = peek_word(ptracer, data + sizeof_word(tracee));
+		remote_iovec_len = peek_word(ptracer, data + sizeof_word(ptracer));
 		if (errno != 0)
 			return -errno;
 
@@ -312,7 +350,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			return status;
 
 		/* Update remote vector length.  */
-		poke_word(ptracer, data + sizeof_word(tracee), remote_iovec_len);
+		poke_word(ptracer, data + sizeof_word(ptracer), remote_iovec_len);
 		if (errno != 0)
 			return -errno;
 
@@ -328,7 +366,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (errno != 0)
 			return -errno;
 
-		remote_iovec_len = peek_word(ptracer, data + sizeof_word(tracee));
+		remote_iovec_len = peek_word(ptracer, data + sizeof_word(ptracer));
 		if (errno != 0)
 			return -errno;
 

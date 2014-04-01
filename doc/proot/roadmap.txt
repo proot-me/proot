@@ -28,9 +28,7 @@ Remaining issues:
     proot warning: ptrace(GETEVENTMSG): No such process
     warning: linux_ptrace_test_ret_to_nx: WTERMSIG 11 is not SIGKILL!
 
-* ``proot -r slackware-14.0 strace /bin/true``::
-
-    upeek: ptrace(PTRACE_PEEKUSER,21919,44,0): Input/output error
+* ``proot-x86_64 -r slackware-14.0-x86 strace true``
 
 * ptrace-tests from utrace
 
