@@ -40,6 +40,7 @@ OBJECTS += \
 	tracee/reg.o		\
 	tracee/event.o		\
 	ptrace/ptrace.o		\
+	ptrace/user.o		\
 	ptrace/wait.o		\
 	extension/extension.o	\
 	extension/kompat/kompat.o \

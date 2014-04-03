@@ -27,8 +27,10 @@
 #include <signal.h>     /* siginfo_t, */
 #include <sys/uio.h>    /* struct iovec, */
 #include <sys/param.h>  /* MIN(), MAX(), */
+#include <string.h>     /* memcpy(3), */
 
 #include "ptrace/ptrace.h"
+#include "ptrace/user.h"
 #include "tracee/tracee.h"
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
@@ -81,36 +83,6 @@ int translate_ptrace_enter(Tracee *tracee)
 	}
 
 	return 0;
-}
-
-/**
- * Return USER @offset converted from the current @ptracer's ABI to
- * the one currently used by PRoot.
- */
-static word_t convert_user_offset(const Tracee *ptracer, word_t offset)
-{
-#if defined(ARCH_X86_64)
-	if (get_abi(ptracer) == ABI_2) {
-		static off_t conversion[] = {
-			05, /* ?bx */	11, /* ?cx */	12, /* ?dx */
-			13, /* ?si */	14, /* ?di */	04, /* ?bp */
-			10, /* ?ax */	23, /* ds */	24, /* es */
-			25, /* fs */	26, /* gs */	15, /* orig_?ax */
-			16, /* ?ip */	17, /* cs */	18, /* eflags */
-			19, /* ?sp */	20, /* ss */ };
-
-		/* Sanity checks.  */
-		if ((offset % sizeof(uint32_t)) != 0)
-			return (word_t) -1;
-
-		offset /= sizeof(uint32_t);
-		if (offset >= sizeof(conversion) / sizeof(typeof(conversion[0])))
-			return (word_t) -1;
-
-		offset = conversion[offset] * sizeof(uint64_t);
-	}
-#endif
-	return offset;
 }
 
 /**
@@ -233,9 +205,11 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	case PTRACE_PEEKUSER:
-		address = convert_user_offset(ptracer, address);
-		if (address == (word_t) -1)
-			return -EIO;
+		if (get_abi(ptracer) == ABI_2) {
+			address = convert_user_offset(address);
+			if (address == (word_t) -1)
+				return -EIO;
+		}
 		/* Fall through.  */
 	case PTRACE_PEEKTEXT:
 	case PTRACE_PEEKDATA:
@@ -250,9 +224,11 @@ int translate_ptrace_exit(Tracee *tracee)
 		return 0;  /* Don't restart the ptracee.  */
 
 	case PTRACE_POKEUSER:
-		address = convert_user_offset(ptracer, address);
-		if (address == (word_t) -1)
-			return -EIO;
+		if (get_abi(ptracer) == ABI_2) {
+			address = convert_user_offset(address);
+			if (address == (word_t) -1)
+				return -EIO;
+		}
 		/* Fall through.  */
 	case PTRACE_POKETEXT:
 	case PTRACE_POKEDATA:
@@ -270,6 +246,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			siginfo_t siginfo;
 			struct user_regs_struct regs;
 			struct user_fpregs_struct fpregs;
+			uint32_t regs32[USER32_NB_REGS];
 		} buffer;
 
 		size = (request == PTRACE_GETSIGINFO
@@ -281,6 +258,15 @@ int translate_ptrace_exit(Tracee *tracee)
 		status = ptrace(request, pid, NULL, &buffer);
 		if (status < 0)
 			return -errno;
+
+		if (request == PTRACE_GETREGS && get_abi(ptracer) == ABI_2) {
+			struct user_regs_struct regs64;
+
+			memcpy(&regs64, &buffer.regs, sizeof(struct user_regs_struct));
+
+			convert_user_regs_struct(false,	(uint64_t *) &regs64, buffer.regs32);
+			size = sizeof(buffer.regs32);
+		}
 
 		status = write_data(ptracer, data, &buffer, size);
 		if (status < 0)
@@ -297,17 +283,29 @@ int translate_ptrace_exit(Tracee *tracee)
 			siginfo_t siginfo;
 			struct user_regs_struct regs;
 			struct user_fpregs_struct fpregs;
+			uint32_t regs32[USER32_NB_REGS];
 		} buffer;
 
 		size = (request == PTRACE_GETSIGINFO
 			? sizeof(buffer.siginfo)
 			: request == PTRACE_SETFPREGS
 			? sizeof(buffer.fpregs)
+			: get_abi(ptracer) == ABI_2
+			? sizeof(buffer.regs32)
 			: sizeof(buffer.regs));
 
 		status = read_data(ptracer, &buffer, data, size);
 		if (status < 0)
 			return status;
+
+		if (request == PTRACE_SETREGS && get_abi(ptracer) == ABI_2) {
+			uint32_t regs32[USER32_NB_REGS];
+
+			memcpy(regs32, buffer.regs32, sizeof(regs32));
+
+			convert_user_regs_struct(true, (uint64_t *) &buffer.regs, regs32);
+			size = sizeof(buffer.regs);
+		}
 
 		status = ptrace(request, pid, NULL, &buffer);
 		if (status < 0)

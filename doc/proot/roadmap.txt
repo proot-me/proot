@@ -15,11 +15,10 @@ process.  The solution is to emulate this syscall in PRoot.
 
 Remaining issues:
 
-* ``proot proot-v2.3 test-33333333``
+* ``proot make -C proot/tests``::
 
-* ``proot strace-4.7 true``::
-
-    strace-4.7: Unknown pid: 21578
+    CHECK test-092c5e26 FAILED
+    CHECK test-33333333 FAILED
 
 * ``proot gdb-7.6 true``::
 
@@ -28,13 +27,9 @@ Remaining issues:
     proot warning: ptrace(GETEVENTMSG): No such process
     warning: linux_ptrace_test_ret_to_nx: WTERMSIG 11 is not SIGKILL!
 
-* ``proot-x86_64 -r slackware-14.0-x86 strace true``
+* support under seccomp, ex. ``proot strace-4.7 true``::
 
-* ptrace-tests from utrace
-
-    * PTRACE_ATTACH
-
-* support under seccomp.
+    strace-4.7: Unknown pid: 21578
 
 
 New features
