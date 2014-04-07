@@ -255,11 +255,11 @@ const char *create_temp_file(const Tracee *tracee, const char *prefix)
 		return NULL;
 
 	fd = mkstemp(name);
-	close(fd);
 	if (fd < 0) {
 		notice(tracee, ERROR, SYSTEM, "can't create temporary file");
 		return NULL;
 	}
+	close(fd);
 
 	talloc_set_destructor(name, remove_temp_file);
 
@@ -293,7 +293,8 @@ FILE* open_temp_file(const Tracee *tracee, const char *prefix)
 	return file;
 
 error:
-	close(fd);
+	if (fd >= 0)
+		close(fd);
 	notice(tracee, ERROR, SYSTEM, "can't create temporary file");
 	return NULL;
 }
