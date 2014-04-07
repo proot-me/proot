@@ -4,9 +4,9 @@ compiler: gcc
 
 before_install:
  - sudo apt-get update -qq
- - sudo apt-get install -qq libtalloc-dev
+ - sudo apt-get install -qq libtalloc-dev libarchive-dev uthash-dev
 
-script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src && env PATH=/bin:/usr/bin:/sbin:/usr/sbin make -C tests; fi
+script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src proot care CARE_BUILD_ENV=ok&& env PATH=/bin:/usr/bin:/sbin:/usr/sbin make -C tests; fi
 
 env:
   global:
@@ -21,5 +21,5 @@ addons:
       description: "PRoot"
     notification_email: cedric.vincent@gmail.com
     build_command_prepend:
-    build_command: make -C src
+    build_command: make -C src proot care CARE_BUILD_ENV=ok
     branch_pattern: coverity_scan
