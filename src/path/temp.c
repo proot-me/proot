@@ -77,14 +77,17 @@ static int clean_temp_cwd()
 
 			/* Recurse.  */
 			status = clean_temp_cwd();
-			if (status < 0)
-				return status;
+			if (status < 0) {
+				nb_errors = -1;
+				goto end;
+			}
 			nb_errors += status;
 
 			status = chdir("..");
 			if (status < 0) {
 				notice(NULL, ERROR, SYSTEM, "can't chdir to '..'");
-				return -1;
+				nb_errors = -1;
+				goto end;
 			}
 
 			status = rmdir(entry->d_name);
@@ -103,6 +106,8 @@ static int clean_temp_cwd()
 		nb_errors++;
 	}
 
+end:
+	(void) closedir(dir);
 	return nb_errors;
 }
 
