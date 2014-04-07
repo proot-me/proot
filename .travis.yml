@@ -6,4 +6,20 @@ before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq libtalloc-dev
 
-script: make -C src && env PATH=/bin:/usr/bin:/sbin:/usr/sbin make -C tests
+script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src && env PATH=/bin:/usr/bin:/sbin:/usr/sbin make -C tests; fi
+
+env:
+  global:
+   # The next declration is the encrypted COVERITY_SCAN_TOKEN, created
+   #   via the "travis encrypt" command using the project repo's public key
+   - secure: "G2fG/oWcEOiG+RYLCK3XOO/7ZXn4LoiIyOT4fxxJzb43gu/90lEkbwsALqVAAjh/Fn5T4rYqiECeJ0jEhxvWak1pK/jkFshfXzL34yaY8ZLNtwvnFf7+DDtsj1Hx136TEjYuyc/jasoTf/3fNlIX6Oh1BB6c0UtJfHwTfbreRbI="
+
+addons:
+  coverity_scan:
+    project:
+      name: "cedric-vincent/PRoot"
+      description: "PRoot"
+    notification_email: cedric.vincent@gmail.com
+    build_command_prepend:
+    build_command: make -C src
+    branch_pattern: coverity_scan
