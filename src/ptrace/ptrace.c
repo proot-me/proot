@@ -160,7 +160,6 @@ int translate_ptrace_exit(Tracee *tracee)
 	    || pid == (word_t) -1)
 		return -ESRCH;
 
-	errno = 0;
 	switch (request) {
 	case PTRACE_SYSCALL:
 		PTRACEE.ignore_syscall = false;
@@ -205,7 +204,7 @@ int translate_ptrace_exit(Tracee *tracee)
 	}
 
 	case PTRACE_PEEKUSER:
-		if (get_abi(ptracer) == ABI_2) {
+		if (is_32on64_mode(ptracer)) {
 			address = convert_user_offset(address);
 			if (address == (word_t) -1)
 				return -EIO;
@@ -213,6 +212,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		/* Fall through.  */
 	case PTRACE_PEEKTEXT:
 	case PTRACE_PEEKDATA:
+		errno = 0;
 		result = (word_t) ptrace(request, pid, address, NULL);
 		if (errno != 0)
 			return -errno;
@@ -224,7 +224,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		return 0;  /* Don't restart the ptracee.  */
 
 	case PTRACE_POKEUSER:
-		if (get_abi(ptracer) == ABI_2) {
+		if (is_32on64_mode(ptracer)) {
 			address = convert_user_offset(address);
 			if (address == (word_t) -1)
 				return -EIO;
@@ -259,7 +259,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (status < 0)
 			return -errno;
 
-		if (request == PTRACE_GETREGS && get_abi(ptracer) == ABI_2) {
+		if (request == PTRACE_GETREGS && is_32on64_mode(ptracer)) {
 			struct user_regs_struct regs64;
 
 			memcpy(&regs64, &buffer.regs, sizeof(struct user_regs_struct));
@@ -290,7 +290,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			? sizeof(buffer.siginfo)
 			: request == PTRACE_SETFPREGS
 			? sizeof(buffer.fpregs)
-			: get_abi(ptracer) == ABI_2
+			: is_32on64_mode(ptracer)
 			? sizeof(buffer.regs32)
 			: sizeof(buffer.regs));
 
@@ -298,7 +298,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (status < 0)
 			return status;
 
-		if (request == PTRACE_SETREGS && get_abi(ptracer) == ABI_2) {
+		if (request == PTRACE_SETREGS && is_32on64_mode(ptracer)) {
 			uint32_t regs32[USER32_NB_REGS];
 
 			memcpy(regs32, buffer.regs32, sizeof(regs32));
