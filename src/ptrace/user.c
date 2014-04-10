@@ -24,6 +24,8 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <sys/types.h>
+#include <sys/user.h>
+#include <stddef.h>
 
 #include "ptrace/user.h"
 
@@ -72,6 +74,23 @@ static inline size_t convert_user_regs_index(size_t index)
 #define USER32_DEBUGREG_SIZE	(8 * sizeof(uint32_t))
 
 /**
+ * Return the offset in the "debugreg" field of a 64-bit "user" area
+ * that corresponds to the specified @offset in the "debugreg" field
+ * of a 32-bit "user" area.
+ */
+static inline size_t convert_user_debugreg_offset(size_t offset)
+{
+	size_t index;
+
+	/* Sanity check.  */
+	assert(offset >= USER32_DEBUGREG_OFFSET
+	    && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE);
+
+	index = (offset - USER32_DEBUGREG_OFFSET) / sizeof(uint8_t);
+	return offsetof(struct user, u_debugreg) + index;
+}
+
+/**
  * Return the offset in a 64-bit "user" area that corresponds to the
  * specified @offset in a 32-bit "user" area.  This function returns
  * "(word_t) -1" if the specified @offset is invalid.
@@ -112,7 +131,7 @@ word_t convert_user_offset(word_t offset)
 	else if (offset >= USER32_COMM_OFFSET && offset < USER32_COMM_OFFSET + USER32_COMM_SIZE)
 		return (word_t) -1;  /* Not yet supported.  */
 	else if (offset >= USER32_DEBUGREG_OFFSET && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE)
-		return (word_t) -1;  /* Not yet supported.  */
+		return convert_user_debugreg_offset(offset);
 
 	return (word_t) -1;  /* Unknown offset.  */
 }
