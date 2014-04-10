@@ -18,6 +18,8 @@ CARE v2.2
 * In concealed-accesses.txt, print the name of the program that tried
   to access a concealed path too.
 
+* Fake the full utsname structure.
+
 
 CARE v2.3
 =========

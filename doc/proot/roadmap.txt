@@ -20,12 +20,11 @@ Remaining issues:
     CHECK test-092c5e26 FAILED
     CHECK test-33333333 FAILED
 
-* ``proot gdb-7.6 true``::
+* ``proot gdb-7.6 true``:
 
-    ...
-    warning: linux_test_for_tracefork: failed to kill second child
-    proot warning: ptrace(GETEVENTMSG): No such process
-    warning: linux_ptrace_test_ret_to_nx: WTERMSIG 11 is not SIGKILL!
+  - on x86_64: ``warning: linux_ptrace_test_ret_to_nx: WTERMSIG 11 is not SIGKILL!``
+
+  - on x86: ``./common/linux-ptrace.c:117: internal-error: linux_ptrace_test_ret_to_nx: Assertion `WIFSTOPPED (status)' failed.
 
 * support under seccomp, ex. ``proot strace-4.7 true``::
 
@@ -34,6 +33,10 @@ Remaining issues:
 
 New features
 ------------
+
+* Start a login shell (``env -i sh -l``) instead of ``/bin/sh``.
+
+* Mention "container" in the documentation.
 
 * Do not seccomp-trace any syscalls when there are no bindings.  This
   should improve performance of ATOS extensions a alot.
@@ -48,8 +51,6 @@ New features
   or maybe something like that::
 
       proot [bindings] readlink /proc/proot/detranslate/usr/local/bin
-
-* Add an option to start a login shell instead of ``/bin/sh``.
 
 
 Fixes
