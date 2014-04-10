@@ -20,35 +20,15 @@
  * 02110-1301 USA.
  */
 
-#ifndef NOTICE_H
-#define NOTICE_H
+#ifndef TEMP_H
+#define TEMP_H
+
+#include <talloc.h>
 
 #include "tracee/tracee.h"
-#include "attribute.h"
 
-/* Specify where a notice is coming from. */
-typedef enum {
-	SYSTEM,
-	INTERNAL,
-	USER,
-	TALLOC,
-} Origin;
+extern const char *create_temp_directory(const Tracee *tracee, const char *prefix);
+extern const char *create_temp_file(const Tracee *tracee, const char *prefix);
+extern FILE* open_temp_file(const Tracee *tracee, const char *prefix);
 
-/* Specify the severity of a notice. */
-typedef enum {
-	ERROR,
-	WARNING,
-	INFO,
-} Severity;
-
-#define VERBOSE(tracee, level, message, args...) do {			\
-		if (tracee == NULL || tracee->verbose >= (level))	\
-			notice(tracee, INFO, INTERNAL, (message), ## args); \
-	} while (0)
-
-extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(printf, 4, 5);
-
-extern int global_verbose_level;
-extern const char *global_tool_name;
-
-#endif /* NOTICE_H */
+#endif /* TEMP_H */

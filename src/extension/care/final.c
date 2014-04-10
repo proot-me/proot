@@ -24,8 +24,7 @@
 #include <sys/stat.h>     /* struct stat, fchmod(2), */
 #include <linux/limits.h> /* PATH_MAX, */
 #include <sys/utsname.h>  /* uname(2), */
-#include <stdio.h>        /* fprintf(3), fdopen(3), fclose(3), P_tmpdir, */
-#include <stdlib.h>       /* mkstemp(3), */
+#include <stdio.h>        /* fprintf(3), fclose(3), */
 #include <errno.h>        /* errno, ENAMETOOLONG, */
 #include <string.h>       /* strcpy(3), */
 #include <endian.h>       /* htobe64(3), */
@@ -36,6 +35,7 @@
 #include "extension/care/extract.h"
 #include "execve/ldso.h"
 #include "path/path.h"
+#include "path/temp.h"
 #include "cli/notice.h"
 
 /**
@@ -105,39 +105,6 @@ end:
 	return status;
 }
 
-/**
- * Create a temporary file and return its stream.  Note: tmpfile(3)
- * can't be used here since it unlinks the name of the temporary file,
- * this latter is required in archive_close_file().
- */
-static FILE *temp_file(const Care *care)
-{
-	char *temp;
-	FILE *file;
-	int fd;
-
-	temp = talloc_asprintf(care, "%s/care-%d-XXXXXX", P_tmpdir, getpid());
-	if (temp == NULL) {
-		notice(NULL, ERROR, INTERNAL, "can't allocate temporary file name");
-		return NULL;
-	}
-
-	fd = mkstemp(temp);
-	if (fd < 0) {
-		notice(NULL, ERROR, SYSTEM, "can't create temporary file");
-		return NULL;
-	}
-
-	file = fdopen(fd, "w");
-	if (file == NULL) {
-		close(fd);
-		notice(NULL, ERROR, INTERNAL, "can't open temporary file");
-		return NULL;
-	}
-
-	return file;
-}
-
 /* Helpers for archive_* functions.  */
 #define N(format, ...)							\
 	do {								\
@@ -163,7 +130,7 @@ static int archive_re_execute_sh(const Care *care)
 	int status;
 	int i;
 
-	file = temp_file(care);
+	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
 		notice(NULL, ERROR, INTERNAL, "can't create temporary file for 're-execute.sh'");
 		return -1;
@@ -270,7 +237,7 @@ static int archive_concealed_accesses_txt(const Care *care)
 	if (care->concealed_accesses == NULL)
 		return 0;
 
-	file = temp_file(care);
+	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
 		notice(NULL, WARNING, INTERNAL,
 			"can't create temporary file for 'concealed-accesses.txt'");
@@ -292,7 +259,7 @@ static int archive_readme_txt(const Care *care)
 {
 	FILE *file;
 
-	file = temp_file(care);
+	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
 		notice(NULL, WARNING, INTERNAL, "can't create temporary file for 'README.txt'");
 		return -1;

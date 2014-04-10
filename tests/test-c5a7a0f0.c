@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <pthread.h>
 
-static void *setuid_124(void *path)
+static void *setuid_124(void *unused)
 {
 	int status;
 

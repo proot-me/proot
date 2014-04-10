@@ -58,6 +58,8 @@ typedef struct {
 	} shifts[MAX_ARG_SHIFT];
 } Modif;
 
+#define NONE {{0, 0, 0}}
+
 typedef struct {
 	const char *release;
 	int emulated_release;
@@ -162,7 +164,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,28),
 			.new_sysarg_num   = PR_accept,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 		modify_syscall(tracee, config, &modif);
 		return 0;
@@ -172,7 +174,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_dup2,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 
 		/* "If oldfd equals newfd, then dup3() fails with the
@@ -189,7 +191,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_epoll_create,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 
 		/* "the size argument is ignored, but must be greater
@@ -204,7 +206,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,19),
 			.new_sysarg_num   = PR_epoll_wait,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 		modify_syscall(tracee, config, &modif);
 		return 0;
@@ -216,7 +218,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_eventfd,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 
 		modified = modify_syscall(tracee, config, &modif);
@@ -362,7 +364,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_inotify_init,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 		modify_syscall(tracee, config, &modif);
 		return 0;
@@ -445,7 +447,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_pipe,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 		modify_syscall(tracee, config, &modif);
 		return 0;
@@ -454,7 +456,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 	case PR_pselect6: {
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,16),
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 #if defined(ARCH_X86_64)
 		modif.new_sysarg_num = (get_abi(tracee) != ABI_2 ? PR_select : PR__newselect);
@@ -503,7 +505,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		Modif modif = {
 			.expected_release = KERNEL_VERSION(2,6,27),
 			.new_sysarg_num   = PR_signalfd,
-			.shifts		  = {{0}}
+			.shifts		  = NONE
 		};
 
 		/* "In Linux up to version 2.6.26, the flags argument

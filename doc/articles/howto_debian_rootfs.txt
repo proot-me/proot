@@ -1,4 +1,4 @@
-.. include:: ../stylesheets/article-html.txt
+.. include:: stylesheets/article-html.txt
 
 =======================================
 How to Set Up a Debian RootFS for PRoot

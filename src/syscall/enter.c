@@ -146,55 +146,56 @@ int translate_syscall_enter(Tracee *tracee)
 
 	case PR_fchdir:
 	case PR_chdir: {
+		struct stat statl;
 		char *tmp;
 
+		/* The ending "." ensures an error will be reported if
+		 * path does not exist or if it is not a directory.  */
 		if (syscall_number == PR_chdir) {
 			status = get_sysarg_path(tracee, path, SYSARG_1);
 			if (status < 0)
 				break;
 
-			/* The ending "." ensures canonicalize() will report
-			 * an error if path does not exist or if it is not a
-			 * directory.  */
-			if (path[0] != '/')
-				status = join_paths(3, newpath, tracee->fs->cwd, path, ".");
-			else
-				status = join_paths(2, newpath, path, ".");
+			status = join_paths(2, oldpath, path, ".");
 			if (status < 0)
 				break;
 
-			/* Initiale state for canonicalization.  */
-			strcpy(path, "/");
-
-			status = canonicalize(tracee, newpath, true, path, 0);
-			if (status < 0)
-				break;
+			dirfd = AT_FDCWD;
 		}
 		else {
+			strcpy(oldpath, ".");
 			dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
-
-			/* Sadly this method doesn't detranslate statefully,
-			 * this means that there's an ambiguity when several
-			 * bindings are from the same host path:
-			 *
-			 *    $ proot -m /tmp:/a -m /tmp:/b fchdir_getcwd /a
-			 *    /b
-			 *
-			 *    $ proot -m /tmp:/b -m /tmp:/a fchdir_getcwd /a
-			 *    /a
-			 *
-			 * A solution would be to follow each file descriptor
-			 * just like it is done for cwd.
-			 */
-
-			status = translate_path(tracee, path, dirfd, ".", true);
-			if (status < 0)
-				break;
-
-			status = detranslate_path(tracee, path, NULL);
-			if (status < 0)
-				break;
 		}
+
+		status = translate_path(tracee, path, dirfd, oldpath, true);
+		if (status < 0)
+			break;
+
+		status = lstat(path, &statl);
+		if (status < 0)
+			break;
+
+		/* Check this directory is accessible.  */
+		if ((statl.st_mode & S_IXUSR) == 0)
+			return -EACCES;
+
+		/* Sadly this method doesn't detranslate statefully,
+		 * this means that there's an ambiguity when several
+		 * bindings are from the same host path:
+		 *
+		 *    $ proot -m /tmp:/a -m /tmp:/b fchdir_getcwd /a
+		 *    /b
+		 *
+		 *    $ proot -m /tmp:/b -m /tmp:/a fchdir_getcwd /a
+		 *    /a
+		 *
+		 * A solution would be to follow each file descriptor
+		 * just like it is done for cwd.
+		 */
+
+		status = detranslate_path(tracee, path, NULL);
+		if (status < 0)
+			break;
 
 		/* Remove the trailing "/" or "/.".  */
 		chop_finality(path);

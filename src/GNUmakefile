@@ -26,6 +26,7 @@ OBJECTS += \
 	path/canon.o		\
 	path/path.o		\
 	path/proc.o		\
+	path/temp.o		\
 	syscall/seccomp.o	\
 	syscall/syscall.o	\
 	syscall/chain.o		\

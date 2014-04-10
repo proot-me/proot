@@ -62,10 +62,12 @@ int main()
 	if (status < 0)
 		exit(EXIT_FAILURE);
 
-	/* TODO:
 	if (get_current_dir_name() != NULL || errno != ENOENT)
 		exit(EXIT_FAILURE);
-	*/
+
+	status = rmdir(path2);
+	if (status < 0)
+		exit(EXIT_FAILURE);
 
 	exit(EXIT_SUCCESS);
 }

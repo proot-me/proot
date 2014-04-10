@@ -1,4 +1,4 @@
-.. include:: ../stylesheets/article-html.txt
+.. include:: stylesheets/article-html.txt
 
 ================================================
 Extending QEMU User-Mode with PRoot: Why and How
