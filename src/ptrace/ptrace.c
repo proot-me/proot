@@ -229,9 +229,26 @@ int translate_ptrace_exit(Tracee *tracee)
 			if (address == (word_t) -1)
 				return -EIO;
 		}
-		/* Fall through.  */
+
+		status = ptrace(request, pid, address, data);
+		if (status < 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+
 	case PTRACE_POKETEXT:
 	case PTRACE_POKEDATA:
+		if (is_32on64_mode(ptracer)) {
+			word_t tmp;
+
+			errno = 0;
+			tmp = (word_t) ptrace(PTRACE_PEEKDATA, ptracee->pid, address, NULL);
+			if (errno != 0)
+				return -errno;
+
+			data |= (tmp & 0xFFFFFFFF00000000ULL);
+		}
+
 		status = ptrace(request, pid, address, data);
 		if (status < 0)
 			return -errno;
