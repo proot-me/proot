@@ -27,6 +27,8 @@
 
 #include "ptrace/user.h"
 
+#if defined(ARCH_X86_64)
+
 /**
  * Return the index in the "regs" field of a 64-bit "user" area that
  * corresponds to the specified @index in the "regs" field of a 32-bit
@@ -135,3 +137,5 @@ void convert_user_regs_struct(bool reverse, uint64_t *user_regs64,
 			user_regs32[index32] = (uint32_t) user_regs64[index64];
 	}
 }
+
+#endif /* ARCH_X86_64 */

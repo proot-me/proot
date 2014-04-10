@@ -25,6 +25,7 @@
 #include <assert.h>
 
 #include "arch.h"
+#include "attribute.h"
 
 #if defined(ARCH_X86_64)
 
