@@ -249,6 +249,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		}
 
 		default:
+			PTRACEE.tracing_started = true;
 			break;
 		}
 	}
@@ -259,9 +260,9 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		keep_stopped = false;
 
 	/* A process is not traced right from the TRACEME request; it
-	 * is traced from its first SIGSTOP, whether this signal was
-	 * sent by itself with raise(2) or it was induced by a
-	 * PTRACE_EVENT_*.  */
+	 * is traced from the first received signal, whether it was
+	 * raised by the process itself (implicitly or explicitly), or
+	 * it was induced by a PTRACE_EVENT_*.  */
 	if (!PTRACEE.tracing_started)
 		return false;
 
