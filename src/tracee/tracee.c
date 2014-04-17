@@ -211,13 +211,13 @@ static Tracee *new_tracee(pid_t pid)
 }
 
 /**
- * Return the first stopped (i.e. not running) tracee with the given
+ * Return the first [stopped?] tracee with the given
  * @pid (-1 for any) which has the given @ptracer, and which has a
  * pending event for its ptracer if @only_with_pevent is true.  See
  * wait(2) manual for the meaning of @wait_options.  This function
  * returns NULL if there's no such ptracee.
  */
-Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
+static Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
 			bool only_with_pevent, word_t wait_options)
 {
 	Tracee *ptracee;
@@ -235,7 +235,8 @@ Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 	 */
 #define EXPECTED_CLONE(tracee) (((wait_options & __WALL) != 0)				\
 			    || (((wait_options & __WCLONE) != 0) && (tracee)->clone)	\
-			    || !(tracee)->clone)
+			    || (((wait_options & __WCLONE) == 0) && !(tracee)->clone))
+
 
 	/* Return zombies first.  */
 	LIST_FOREACH(ptracee, &PTRACER.zombies, link) {
@@ -263,6 +264,12 @@ Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 		if (!EXPECTED_CLONE(ptracee))
 			continue;
 
+		/* No need to do more checks if its stopped state
+		 * doesn't matter.  Be careful when using such
+		 * maybe-running tracee.  */
+		if (!only_stopped)
+			return ptracee;
+
 		/* Is this tracee in the stopped state?  */
 		if (ptracee->running)
 			continue;
@@ -280,6 +287,24 @@ Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 	return NULL;
 }
 
+/**
+ * Helper for get_ptracee(), this ensures only a stopped tracee is
+ * returned (or NULL).
+ */
+Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
+			bool only_with_pevent, word_t wait_options)
+{
+	return get_ptracee(ptracer, pid, true, only_with_pevent, wait_options);
+}
+
+/**
+ * Helper for get_ptracee(), this ensures no running tracee is
+ * returned.
+ */
+bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options)
+{
+	return (get_ptracee(ptracer, pid, false, false, wait_options) != NULL);
+}
 
 /**
  * Return the entry related to the tracee @pid.  If no entry were

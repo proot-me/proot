@@ -240,6 +240,7 @@ typedef struct tracee {
 extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
 extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 				bool only_with_pevent, word_t wait_options);
+extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);

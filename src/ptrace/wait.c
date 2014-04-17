@@ -135,8 +135,15 @@ int translate_wait_exit(Tracee *ptracer)
 			return -ECHILD;
 
 		/* Non blocking wait(2) ?  */
-		if ((options & WNOHANG) != 0)
-			return 0;
+		if ((options & WNOHANG) != 0) {
+			/* if WNOHANG was specified and one or more
+			 * child(ren) specified by pid exist, but have
+			 * not yet changed state, then 0 is returned.
+			 * On error, -1 is returned.
+			 *
+			 * -- man 2 waitpid  */
+			return (has_ptracees(ptracer, pid, options) ? 0 : -ECHILD);
+		}
 
 		/* Otherwise put this ptracer in the "waiting for
 		 * ptracee" state, it will be woken up in
