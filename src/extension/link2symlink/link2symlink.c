@@ -17,7 +17,7 @@
 #include "attribute.h"
 
 #define PREFIX ".l2s."
-
+#define DELETED_SUFFIX " (deleted)"
 
 /**
  * Move the path pointed to by @tracee's @sysarg to a new location,
@@ -174,6 +174,8 @@ static int decrement_link_count(Tracee *tracee, Reg sysarg)
 
 	/* Check if it is a converted link already.  */
 	status = lstat(original, &statl);
+	if (status < 0)
+		return 0;
 
 	if (!S_ISLNK(statl.st_mode)) 
 		return 0;
@@ -275,7 +277,9 @@ static int handle_sysexit_end(Tracee *tracee)
 			return 0;
 
 		if (sysnum == PR_fstat64 || sysnum == PR_fstat) {
-			status = readlink_proc_pid_fd(tracee->pid, peek_reg(tracee, CURRENT, SYSARG_1), original);
+			status = readlink_proc_pid_fd(tracee->pid, peek_reg(tracee, MODIFIED, SYSARG_1), original);
+			if (strcmp(original + strlen(original) - strlen(DELETED_SUFFIX), DELETED_SUFFIX) == 0)
+				original[strlen(original) - strlen(DELETED_SUFFIX)] = '\0'; 
 			if (status < 0)
 				return status;
 		} else {
@@ -283,7 +287,7 @@ static int handle_sysexit_end(Tracee *tracee)
 				sysarg_path = SYSARG_2;
 			else
 				sysarg_path = SYSARG_1;
-			size = read_string(tracee, original, peek_reg(tracee, CURRENT, sysarg_path), PATH_MAX);
+			size = read_string(tracee, original, peek_reg(tracee, MODIFIED, sysarg_path), PATH_MAX);
 			if (size < 0)
 				return size;
 			if (size >= PATH_MAX)
@@ -296,13 +300,18 @@ static int handle_sysexit_end(Tracee *tracee)
 		else
 			name++;
 
-		if (strncmp(name, PREFIX, strlen(PREFIX)) == 0) {
-			strcpy(final,original);
-			goto final_proc;
-		}
-
 		/* Check if it is a link */
 		status = lstat(original, &statl);
+
+		if (strncmp(name, PREFIX, strlen(PREFIX)) == 0) {
+			if (S_ISLNK(statl.st_mode)) {
+				strcpy(intermediate,original);
+				goto intermediate_proc;
+			} else {
+				strcpy(final,original);
+				goto final_proc;
+			}
+		}
 
 		if (!S_ISLNK(statl.st_mode)) 
 			return 0;
@@ -323,7 +332,7 @@ static int handle_sysexit_end(Tracee *tracee)
 		if (strncmp(name, PREFIX, strlen(PREFIX)) != 0)
 			return 0;
 
-		size = readlink(intermediate, final, PATH_MAX);
+		intermediate_proc: size = readlink(intermediate, final, PATH_MAX);
 		if (size < 0)
 			return size;
 		if (size >= PATH_MAX)
@@ -331,7 +340,7 @@ static int handle_sysexit_end(Tracee *tracee)
 		final[size] = '\0';
 
 		final_proc: status = lstat(final,&finalStat);
-		if (status < 0)
+		if (status < 0) 
 			return status;
 
 		finalStat.st_nlink = atoi(final + strlen(final) - 4);
@@ -489,8 +498,9 @@ int link2symlink_callback(Extension *extension, ExtensionEvent event,
 		return 0;
 	}
 
-	case SYSCALL_EXIT_END:
+	case SYSCALL_EXIT_END: {
 		return handle_sysexit_end(TRACEE(extension));
+	}
 
 	default:
 		return 0;
