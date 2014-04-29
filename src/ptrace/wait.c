@@ -198,7 +198,53 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	if (WIFSTOPPED(event)) {
 		switch ((event & 0xfff00) >> 8) {
 		case SIGTRAP | 0x80:
-			if (PTRACEE.ignore_syscall)
+			/* If the PTRACE_O_TRACEEXEC option is not in
+			 * effect, all successful calls to execve(2)
+			 * by the traced process will cause it to be
+			 * sent a SIGTRAP signal, giving the parent a
+			 * chance to gain control before the new
+			 * program begins execution. [...] the
+			 * PTRACE_O_TRACEEXEC option disables legacy
+			 * SIGTRAP generation on execve(2).
+			 *
+			 * -- man 2 ptrace
+			 *
+			 * PRoot always enables PTRACE_O_TRACEEXEC, so
+			 * it never gets the bare SIGTRAP event sent
+			 * once an execve(2) as successfully returned.
+			 * To emulate a correct behavior for ptracers
+			 * that doesn't enable PTRACE_O_TRACEEXEC,
+			 * PRoot converts the execve(2) sysexit into
+			 * this SIGTRAP, if the ptracer doesn't
+			 * monitor syscall events.  TODO: otherwise,
+			 * chain SIGTRAP.
+			 */
+			if (ptracee->status != 0  /* sysexit */
+			    && get_sysnum(ptracee, ORIGINAL) == PR_execve
+			    && (PTRACEE.options & PTRACE_O_TRACEEXEC) == 0
+			    && fetch_regs(ptracee) >= 0
+			    && (int) peek_reg(ptracee, CURRENT, SYSARG_RESULT) >= 0) {
+				static bool warned = false;
+
+				PTRACEE.tracing_started = true;
+				handled_by_proot_first = true;
+
+				if (PTRACEE.ignore_syscall) {
+					event = __W_STOPCODE(SIGTRAP);
+					break;
+				}
+				else if (!warned) {
+					notice(ptracer, WARNING, INTERNAL,
+						"PTRACE_SYSCALL && !PTRACE_O_TRACEEXEC "
+						"combination not supported yet");
+					warned = true;
+
+					/* TODO:
+					 * PTRACEE.event4.ptracer.value2 = __W_STOPCODE(SIGTRAP);
+					 */
+				}
+			}
+			else if (PTRACEE.ignore_syscall)
 				return false;
 
 			if ((PTRACEE.options & PTRACE_O_TRACESYSGOOD) == 0)
@@ -208,20 +254,20 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			break;
 
 #define PTRACE_EVENT_VFORKDONE PTRACE_EVENT_VFORK_DONE
-#define CASE_FILTER_EVENT(name, statement) \
+#define CASE_FILTER_EVENT(name) \
 		case SIGTRAP | PTRACE_EVENT_ ##name << 8:			\
+			if ((PTRACEE.options & PTRACE_O_TRACE ##name) == 0)	\
+				return false;					\
 			PTRACEE.tracing_started = true;				\
 			handled_by_proot_first = true;				\
-			if ((PTRACEE.options & PTRACE_O_TRACE ##name) == 0)	\
-				statement;					\
 			break;
 
-		CASE_FILTER_EVENT(FORK,      return false);
-		CASE_FILTER_EVENT(VFORK,     return false);
-		CASE_FILTER_EVENT(VFORKDONE, return false);
-		CASE_FILTER_EVENT(CLONE,     return false);
-		CASE_FILTER_EVENT(EXIT,      return false);
-		CASE_FILTER_EVENT(EXEC,      event = __W_STOPCODE(SIGTRAP));
+		CASE_FILTER_EVENT(FORK);
+		CASE_FILTER_EVENT(VFORK);
+		CASE_FILTER_EVENT(VFORKDONE);
+		CASE_FILTER_EVENT(CLONE);
+		CASE_FILTER_EVENT(EXIT);
+		CASE_FILTER_EVENT(EXEC);
 
 			/* Never reached.  */
 			assert(0);

@@ -25,4 +25,4 @@ ${PROOT} ${COMMAND} > ${TMP4}
 
 cmp ${TMP2} ${TMP4}
 
-#rm -f ${TMP1} ${TMP2} ${TMP3} ${TMP4}
+rm -f ${TMP1} ${TMP2} ${TMP3} ${TMP4} ${TMP5}
