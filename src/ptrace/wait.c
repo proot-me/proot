@@ -219,7 +219,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			 * monitor syscall events.  TODO: otherwise,
 			 * chain SIGTRAP.
 			 */
-			if (ptracee->status != 0  /* sysexit */
+			if (IS_IN_SYSEXIT(ptracee)
 			    && get_sysnum(ptracee, ORIGINAL) == PR_execve
 			    && (PTRACEE.options & PTRACE_O_TRACEEXEC) == 0
 			    && fetch_regs(ptracee) >= 0
@@ -250,7 +250,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			if ((PTRACEE.options & PTRACE_O_TRACESYSGOOD) == 0)
 				event &= ~(0x80 << 8);
 
-			handled_by_proot_first = (ptracee->status != 0);
+			handled_by_proot_first = IS_IN_SYSEXIT(ptracee);
 			break;
 
 #define PTRACE_EVENT_VFORKDONE PTRACE_EVENT_VFORK_DONE

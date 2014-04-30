@@ -453,7 +453,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 
 			switch (tracee->seccomp) {
 			case ENABLED:
-				if (tracee->status == 0) {
+				if (IS_IN_SYSENTER(tracee)) {
 					/* sysenter: ensure the sysexit
 					 * stage will be hit under seccomp.  */
 					tracee->restart_how = PTRACE_SYSCALL;
@@ -482,7 +482,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				 * previous syscall, but its sysenter
 				 * stage was already handled.  */
 				tracee->seccomp = DISABLED;
-				if (tracee->status == 0)
+				if (IS_IN_SYSENTER(tracee))
 					tracee->status = 1;
 				break;
 			}

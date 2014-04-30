@@ -125,6 +125,9 @@ typedef struct tracee {
 	 *   -errno: exit syscall with error.  */
 	int status;
 
+#define IS_IN_SYSENTER(tracee) ((tracee)->status == 0)
+#define IS_IN_SYSEXIT(tracee) (!IS_IN_SYSENTER(tracee))
+
 	/* How this tracee is restarted.  */
 	enum __ptrace_request restart_how;
 
