@@ -337,7 +337,7 @@ int event_loop()
 		if (status != 0)
 			continue;
 
-		if (tracee->as_ptracee.ptracer) {
+		if (tracee->as_ptracee.ptracer != NULL) {
 			bool keep_stopped = handle_ptracee_event(tracee, tracee_status);
 			if (keep_stopped)
 				continue;

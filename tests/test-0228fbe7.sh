@@ -29,6 +29,6 @@ grep -v 'sid 1: exited with status 0' >${TMP1}
 env PTRACER_BEHAVIOR_2=1 ${PROOT} ${ROOTFS}/bin/ptrace-2 ${ROOTFS}/bin/true 2>&1 | \
 grep -v 'sid 1: exited with status 0' >${TMP2}
 
-# TODO: cmp ${TMP1} ${TMP2}
+cmp ${TMP1} ${TMP2}
 
 rm -f ${TMP1} ${TMP2}

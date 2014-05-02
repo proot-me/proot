@@ -513,7 +513,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 		child->sigstop = SIGSTOP_ALLOWED;
 
 		/* Notify its ptracer if it is ready to be traced.  */
-		if (child->as_ptracee.ptracer != 0) {
+		if (child->as_ptracee.ptracer != NULL) {
 			/* Sanity check.  */
 			assert(!child->as_ptracee.tracing_started);
 
