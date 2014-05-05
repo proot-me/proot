@@ -432,8 +432,9 @@ int new_child(Tracee *parent, word_t clone_flags)
 			: (clone_flags & 0xFF) == SIGCHLD	? PTRACE_O_TRACEFORK
 			: (clone_flags & CLONE_VFORK) != 0	? PTRACE_O_TRACEVFORK
 			: 					  PTRACE_O_TRACECLONE);
-	if (   (ptrace_options & parent->as_ptracee.options) != 0
-	    || (clone_flags & CLONE_PTRACE) != 0) {
+	if (parent->as_ptracee.ptracer != NULL
+	    && (   (ptrace_options & parent->as_ptracee.options) != 0
+		|| (clone_flags & CLONE_PTRACE) != 0)) {
 		Tracee *ptracer = parent->as_ptracee.ptracer;
 		child->as_ptracee.ptracer = ptracer;
 		PTRACER.nb_ptracees++;
