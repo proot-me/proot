@@ -451,8 +451,6 @@ void translate_syscall_exit(Tracee *tracee)
 		goto end;
 	}
 
-
-	/* "status" was updated in syscall/exit.c.  */
 	poke_reg(tracee, SYSARG_RESULT, (word_t) status);
 
 end:

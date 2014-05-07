@@ -65,23 +65,8 @@ static const char *stringify_ptrace(enum __ptrace_request request)
  */
 int translate_ptrace_enter(Tracee *tracee)
 {
-	word_t request;
-
 	/* The ptrace syscall have to be emulated since it can't be nested.  */
 	set_sysnum(tracee, PR_void);
-
-	request = peek_reg(tracee, CURRENT, SYSARG_1);
-	switch (request) {
-	case PTRACE_ATTACH:
-		notice(tracee, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
-			stringify_ptrace(request));
-		return -ENOTSUP;
-
-	default:
-		/* Other requests are handled at the exit stage.  */
-		break;
-	}
-
 	return 0;
 }
 
@@ -129,6 +114,33 @@ int translate_ptrace_exit(Tracee *tracee)
 				PTRACER.waits_in = WAITS_IN_PROOT;
 			}
 		}
+
+		return 0;
+	}
+
+	/* The ATTACH, SEIZE, and INTERRUPT requests are the only ones
+	 * where the ptracee is in an unknown state.  */
+	if (request == PTRACE_ATTACH) {
+		ptracer = tracee;
+		ptracee = get_tracee(ptracer, pid, false);
+		if (ptracee == NULL)
+			return -ESRCH;
+
+		/* The emulated ptrace in PRoot has the same
+		 * limitation as the real ptrace in the Linux kernel:
+		 * only one tracer per process.  */
+		if (PTRACEE.ptracer != NULL || ptracee == ptracer)
+			return -EPERM;
+
+		PTRACEE.ptracer = ptracer;
+		PTRACER.nb_ptracees++;
+
+		/* The tracee is sent a SIGSTOP, but will not
+		 * necessarily have stopped by the completion of this
+		 * call.
+		 *
+		 * -- man 2 ptrace.  */
+		kill(pid, SIGSTOP);
 
 		return 0;
 	}

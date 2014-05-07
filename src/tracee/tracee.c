@@ -288,7 +288,7 @@ static Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
 }
 
 /**
- * Helper for get_ptracee(), this ensures only a stopped tracee is
+ * Wrapper for get_ptracee(), this ensures only a stopped tracee is
  * returned (or NULL).
  */
 Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
@@ -298,7 +298,7 @@ Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 }
 
 /**
- * Helper for get_ptracee(), this ensures no running tracee is
+ * Wrapper for get_ptracee(), this ensures no running tracee is
  * returned.
  */
 bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options)
