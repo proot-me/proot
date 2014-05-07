@@ -153,7 +153,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		/* Ensure we didn't get there only because inheritance
 		 * mechanism has missed this one.  */
 		ptracee = get_tracee(tracee, pid, false);
-		assert(ptracee == NULL || ptracee->parent != NULL);
+		assert(ptracee == NULL || ptracee->exe != NULL);
 
 		return -ESRCH;
 	}

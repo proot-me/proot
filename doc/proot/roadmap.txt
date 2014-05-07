@@ -20,12 +20,6 @@ Remaining issues:
     CHECK test-092c5e26 FAILED
     CHECK test-33333333 FAILED
 
-* ``proot gdb-7.6 true``:
-
-  - on x86_64: ``warning: linux_ptrace_test_ret_to_nx: WTERMSIG 11 is not SIGKILL!``
-
-  - on x86: ``./common/linux-ptrace.c:117: internal-error: linux_ptrace_test_ret_to_nx: Assertion `WIFSTOPPED (status)' failed.
-
 * support under seccomp, ex. ``proot strace-4.7 true``::
 
     strace-4.7: Unknown pid: 21578
