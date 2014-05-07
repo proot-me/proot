@@ -93,6 +93,7 @@ int translate_ptrace_exit(Tracee *tracee)
 {
 	word_t request, pid, address, data, result;
 	Tracee *ptracee, *ptracer;
+	int forced_signal = -1;
 	int signal;
 	int status;
 
@@ -154,16 +155,19 @@ int translate_ptrace_exit(Tracee *tracee)
 	switch (request) {
 	case PTRACE_SYSCALL:
 		PTRACEE.ignore_syscall = false;
+		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
 	case PTRACE_CONT:
 		PTRACEE.ignore_syscall = true;
+		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
 	case PTRACE_SINGLESTEP:
 		ptracee->restart_how = PTRACE_SINGLESTEP;
+		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
@@ -407,6 +411,11 @@ int translate_ptrace_exit(Tracee *tracee)
 	signal = PTRACEE.event4.proot.pending
 		? handle_tracee_event(ptracee, PTRACEE.event4.proot.value)
 		: PTRACEE.event4.proot.value;
+
+	/* The restarting signal from the ptracer overrides the
+	 * restarting signal from PRoot.  */
+	if (forced_signal != -1)
+		signal = forced_signal;
 
 	(void) restart_tracee(ptracee, signal);
 

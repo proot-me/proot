@@ -249,38 +249,6 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			/* Never reached.  */
 			assert(0);
 
-		case SIGSTOP:
-			if (!PTRACEE.tracing_started) {
-				PTRACEE.tracing_started = true;
-
-				/* Starting SIGSTOP are never propagated.  */
-				PTRACEE.event4.proot.value = -1;
-			}
-			break;
-
-		case SIGTRAP: {
-			siginfo_t siginfo;
-			int status;
-
-			/* Ptrace emulation might generate SIGTRAP
-			 * events that PRoot's event loop doesn't care
-			 * about, like:
-			 *
-			 * - legacy execve notification (c.f. "case
-			 *   SIGTRAP | 0x80" above).
-			 *
-			 * - PTRACE_SINGLESTEP notifications; and
-			 *
-			 * - breakpoint notifications.
-			 */
-			status = ptrace(PTRACE_GETSIGINFO, ptracee->pid, NULL, &siginfo);
-			if (status >= 0
-			    && (siginfo.si_pid == getpid()
-				|| (   siginfo.si_code != SI_USER
-				    && siginfo.si_code != SI_TKILL)))
-				PTRACEE.event4.proot.value = -1;
-		}
-			/* Fall through.  */
 		default:
 			PTRACEE.tracing_started = true;
 			break;
