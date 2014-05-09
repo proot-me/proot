@@ -86,8 +86,8 @@ static inline size_t convert_user_debugreg_offset(size_t offset)
 	assert(offset >= USER32_DEBUGREG_OFFSET
 	    && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE);
 
-	index = (offset - USER32_DEBUGREG_OFFSET) / sizeof(uint8_t);
-	return offsetof(struct user, u_debugreg) + index;
+	index = (offset - USER32_DEBUGREG_OFFSET) / sizeof(uint32_t);
+	return offsetof(struct user, u_debugreg) + index * sizeof(uint64_t);
 }
 
 /**
