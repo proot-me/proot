@@ -262,35 +262,55 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		return 0;  /* Don't restart the ptracee.  */
 
-	case PTRACE_GETSIGINFO:
-	case PTRACE_GETFPREGS:
+	case PTRACE_GETSIGINFO: {
+		siginfo_t siginfo;
+
+		status = ptrace(request, pid, NULL, &siginfo);
+		if (status < 0)
+			return -errno;
+
+		status = write_data(ptracer, data, &siginfo, sizeof(siginfo));
+		if (status < 0)
+			return status;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_SETSIGINFO: {
+		siginfo_t siginfo;
+
+		status = read_data(ptracer, &siginfo, data, sizeof(siginfo));
+		if (status < 0)
+			return status;
+
+		status = ptrace(request, pid, NULL, &siginfo);
+		if (status < 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
 	case PTRACE_GETREGS: {
 		size_t size;
 		union {
-			siginfo_t siginfo;
 			struct user_regs_struct regs;
-			struct user_fpregs_struct fpregs;
 			uint32_t regs32[USER32_NB_REGS];
 		} buffer;
-
-		size = (request == PTRACE_GETSIGINFO
-			? sizeof(buffer.siginfo)
-			: request == PTRACE_GETFPREGS
-			? sizeof(buffer.fpregs)
-			: sizeof(buffer.regs));
 
 		status = ptrace(request, pid, NULL, &buffer);
 		if (status < 0)
 			return -errno;
 
-		if (request == PTRACE_GETREGS && is_32on64_mode(ptracer)) {
+		if (is_32on64_mode(tracee)) {
 			struct user_regs_struct regs64;
 
 			memcpy(&regs64, &buffer.regs, sizeof(struct user_regs_struct));
-
 			convert_user_regs_struct(false,	(uint64_t *) &regs64, buffer.regs32);
+
 			size = sizeof(buffer.regs32);
 		}
+		else
+			size = sizeof(buffer.regs);
 
 		status = write_data(ptracer, data, &buffer, size);
 		if (status < 0)
@@ -299,22 +319,14 @@ int translate_ptrace_exit(Tracee *tracee)
 		return 0;  /* Don't restart the ptracee.  */
 	}
 
-	case PTRACE_SETSIGINFO:
-	case PTRACE_SETFPREGS:
 	case PTRACE_SETREGS: {
 		size_t size;
 		union {
-			siginfo_t siginfo;
 			struct user_regs_struct regs;
-			struct user_fpregs_struct fpregs;
 			uint32_t regs32[USER32_NB_REGS];
 		} buffer;
 
-		size = (request == PTRACE_GETSIGINFO
-			? sizeof(buffer.siginfo)
-			: request == PTRACE_SETFPREGS
-			? sizeof(buffer.fpregs)
-			: is_32on64_mode(ptracer)
+		size = (is_32on64_mode(ptracer)
 			? sizeof(buffer.regs32)
 			: sizeof(buffer.regs));
 
@@ -322,13 +334,88 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (status < 0)
 			return status;
 
-		if (request == PTRACE_SETREGS && is_32on64_mode(ptracer)) {
+		if (is_32on64_mode(ptracer)) {
 			uint32_t regs32[USER32_NB_REGS];
 
 			memcpy(regs32, buffer.regs32, sizeof(regs32));
-
 			convert_user_regs_struct(true, (uint64_t *) &buffer.regs, regs32);
-			size = sizeof(buffer.regs);
+		}
+
+		status = ptrace(request, pid, NULL, &buffer);
+		if (status < 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_GETFPREGS: {
+		size_t size;
+		union {
+			struct user_fpregs_struct fpregs;
+			uint32_t fpregs32[USER32_NB_FPREGS];
+		} buffer;
+
+		status = ptrace(request, pid, NULL, &buffer);
+		if (status < 0)
+			return -errno;
+
+		if (is_32on64_mode(tracee)) {
+#if 0 /* TODO */
+			struct user_fpregs_struct fpregs64;
+
+			memcpy(&fpregs64, &buffer.fpregs, sizeof(struct user_fpregs_struct));
+			convert_user_fpregs_struct(false, (uint64_t *) &fpregs64, buffer.fpregs32);
+#else
+			static bool warned = false;
+			if (!warned)
+				notice(ptracer, WARNING, INTERNAL,
+					"ptrace 32-bit request '%s' not supported on 64-bit yet",
+					stringify_ptrace(request));
+			warned = true;
+			bzero(&buffer, sizeof(buffer));
+#endif
+			size = sizeof(buffer.fpregs32);
+		}
+		else
+			size = sizeof(buffer.fpregs);
+
+		status = write_data(ptracer, data, &buffer, size);
+		if (status < 0)
+			return status;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_SETFPREGS: {
+		size_t size;
+		union {
+			struct user_fpregs_struct fpregs;
+			uint32_t fpregs32[USER32_NB_FPREGS];
+		} buffer;
+
+		size = (is_32on64_mode(ptracer)
+			? sizeof(buffer.fpregs32)
+			: sizeof(buffer.fpregs));
+
+		status = read_data(ptracer, &buffer, data, size);
+		if (status < 0)
+			return status;
+
+		if (is_32on64_mode(ptracer)) {
+#if 0 /* TODO */
+			uint32_t fpregs32[USER32_NB_FPREGS];
+
+			memcpy(fpregs32, buffer.fpregs32, sizeof(fpregs32));
+			convert_user_regs_struct(true, (uint64_t *) &buffer.fpregs, fpregs32);
+#else
+			static bool warned = false;
+			if (!warned)
+				notice(ptracer, WARNING, INTERNAL,
+					"ptrace 32-bit request '%s' not supported on 64-bit yet",
+					stringify_ptrace(request));
+			warned = true;
+			return -ENOTSUP;
+#endif
 		}
 
 		status = ptrace(request, pid, NULL, &buffer);
@@ -411,6 +498,15 @@ int translate_ptrace_exit(Tracee *tracee)
 			return status;
 
 		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_GETFPXREGS: {
+		static bool warned = false;
+		if (!warned)
+			notice(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
+				stringify_ptrace(request));
+		warned = true;
+		return -ENOTSUP;
 	}
 
 	default:
