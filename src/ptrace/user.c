@@ -28,6 +28,7 @@
 #include <stddef.h>
 
 #include "ptrace/user.h"
+#include "cli/notice.h"
 
 #if defined(ARCH_X86_64)
 
@@ -97,6 +98,8 @@ static inline size_t convert_user_debugreg_offset(size_t offset)
  */
 word_t convert_user_offset(word_t offset)
 {
+	const char *area_name = NULL;
+
 	if (/* offset >= 0 && */ offset < USER32_REGS_OFFSET + USER32_REGS_SIZE) {
 		/* Sanity checks.  */
 		if ((offset % sizeof(uint32_t)) != 0)
@@ -105,34 +108,37 @@ word_t convert_user_offset(word_t offset)
 		return convert_user_regs_index(offset / sizeof(uint32_t)) * sizeof(uint64_t);
 	}
 	else if (offset == USER32_FPVALID_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "fpvalid"; /* Not yet supported.  */
 	else if (offset >= USER32_I387_OFFSET && offset < USER32_I387_OFFSET + USER32_I387_SIZE)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "i387"; /* Not yet supported.  */
 	else if (offset == USER32_TSIZE_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "tsize"; /* Not yet supported.  */
 	else if (offset == USER32_DSIZE_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "dsize"; /* Not yet supported.  */
 	else if (offset == USER32_SSIZE_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "ssize"; /* Not yet supported.  */
 	else if (offset == USER32_START_CODE_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "start_code"; /* Not yet supported.  */
 	else if (offset == USER32_START_STACK_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "start_stack"; /* Not yet supported.  */
 	else if (offset == USER32_SIGNAL_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "signal"; /* Not yet supported.  */
 	else if (offset == USER32_RESERVED_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "reserved"; /* Not yet supported.  */
 	else if (offset == USER32_AR0_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "ar0"; /* Not yet supported.  */
 	else if (offset == USER32_FPSTATE_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "fpstate"; /* Not yet supported.  */
 	else if (offset == USER32_MAGIC_OFFSET)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "magic"; /* Not yet supported.  */
 	else if (offset >= USER32_COMM_OFFSET && offset < USER32_COMM_OFFSET + USER32_COMM_SIZE)
-		return (word_t) -1;  /* Not yet supported.  */
+		area_name = "comm"; /* Not yet supported.  */
 	else if (offset >= USER32_DEBUGREG_OFFSET && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE)
 		return convert_user_debugreg_offset(offset);
+	else
+		area_name = "<unknown>";
 
+	notice(NULL, WARNING, INTERNAL, "ptrace user area '%s' not supported yet", area_name);
 	return (word_t) -1;  /* Unknown offset.  */
 }
 
