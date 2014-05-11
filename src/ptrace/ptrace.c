@@ -38,13 +38,18 @@
 #include "tracee/abi.h"
 #include "tracee/event.h"
 #include "cli/notice.h"
+#include "arch.h"
 
 #include "compat.h"
+
+#if defined(ARCH_X86_64) || defined(ARCH_X86)
+#include <asm/ldt.h>    /* struct user_desc, */
+#endif
 
 static const char *stringify_ptrace(enum __ptrace_request request)
 {
 #define CASE_STR(a) case a: return #a; break;
-	switch (request) {
+	switch ((int) request) {
 	CASE_STR(PTRACE_TRACEME)	CASE_STR(PTRACE_PEEKTEXT)	CASE_STR(PTRACE_PEEKDATA)
 	CASE_STR(PTRACE_PEEKUSER)	CASE_STR(PTRACE_POKETEXT)	CASE_STR(PTRACE_POKEDATA)
 	CASE_STR(PTRACE_POKEUSER)	CASE_STR(PTRACE_CONT)		CASE_STR(PTRACE_KILL)
@@ -54,7 +59,9 @@ static const char *stringify_ptrace(enum __ptrace_request request)
 	CASE_STR(PTRACE_SYSCALL)	CASE_STR(PTRACE_SETOPTIONS)	CASE_STR(PTRACE_GETEVENTMSG)
 	CASE_STR(PTRACE_GETSIGINFO)	CASE_STR(PTRACE_SETSIGINFO)	CASE_STR(PTRACE_GETREGSET)
 	CASE_STR(PTRACE_SETREGSET)	CASE_STR(PTRACE_SEIZE)		CASE_STR(PTRACE_INTERRUPT)
-	CASE_STR(PTRACE_LISTEN) default: return "PTRACE_???"; }
+	CASE_STR(PTRACE_LISTEN)		CASE_STR(PTRACE_SET_SYSCALL)
+	CASE_STR(PTRACE_GET_THREAD_AREA)	CASE_STR(PTRACE_SET_THREAD_AREA)
+	default: return "PTRACE_???"; }
 }
 
 /**
@@ -424,6 +431,36 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		return 0;  /* Don't restart the ptracee.  */
 	}
+
+#if defined(ARCH_X86_64) || defined(ARCH_X86)
+	case PTRACE_GET_THREAD_AREA: {
+		struct user_desc user_desc;
+
+		status = ptrace(request, pid, address, &user_desc);
+		if (status < 0)
+			return -errno;
+
+		status = write_data(ptracer, data, &user_desc, sizeof(user_desc));
+		if (status < 0)
+			return status;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+
+	case PTRACE_SET_THREAD_AREA: {
+		struct user_desc user_desc;
+
+		status = read_data(ptracer, &user_desc, data, sizeof(user_desc));
+		if (status < 0)
+			return status;
+
+		status = ptrace(request, pid, address, &user_desc);
+		if (status < 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+	}
+#endif
 
 	case PTRACE_GETREGSET: {
 		struct iovec local_iovec;
