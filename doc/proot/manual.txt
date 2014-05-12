@@ -83,7 +83,7 @@ Regular options
     is used to relocate host files and directories, see the ``-b``
     option and the ``Examples`` section for details.
 
-    It is recommended to use the ``-R`` option instead.
+    It is recommended to use the ``-R`` or ``-S`` options instead.
 
 -b path, --bind=path, -m path, --mount=path
     Make the content of *path* accessible in the guest rootfs.
@@ -203,11 +203,23 @@ The following options are aliases for handy sets of options.
     * $HOME
     * *path*
 
--B, -M
-    obsolete, use ``-R`` instead.
+-S path
+    Alias: ``-0 -r *path*`` + a couple of recommended ``-b``.
 
--Q command
-    obsolete, use ``-q`` and ``-R`` instead.
+    This option is useful to safely create and install packages into
+    the guest rootfs.  It is similar to the ``-R`` option expect it
+    enables the ``-0`` option and binds only the following minimal set
+    of paths to avoid unexpected changes on host files:
+
+    * /etc/host.conf
+    * /etc/hosts
+    * /etc/resolv.conf
+    * /dev/
+    * /sys/
+    * /proc/
+    * /tmp/
+    * $HOME
+    * *path*
 
 
 Exit Status
@@ -361,6 +373,38 @@ recommended paths::
     pts/6    proot -R /mnt/slackware-8.0/
     pts/6    /lib/ld-linux.so.2 /bin/sh
     pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
+
+
+``chroot`` + ``mount --bind`` + ``su`` equivalent
+-------------------------------------------------
+
+Some programs will not work correctly if they are not run by the
+"root" user, this is typically the case with package managers.  PRoot
+can fake the root identity and its privileges when the ``-0`` (zero)
+option is specified::
+
+    proot -r /mnt/slackware-8.0/ -0
+    
+    # id
+    uid=0(root) gid=0(root) [...]
+    
+    # mkdir /tmp/foo
+    # chmod a-rwx /tmp/foo
+    # echo 'I bypass file-system permissions.' > /tmp/foo/bar
+    # cat /tmp/foo/bar
+    I bypass file-system permissions.
+
+This option is typically required to create or install packages into
+the guest rootfs.  Note it is *not* recommended to use the ``-R``
+option when installing packages since they may try to update bound
+system files, like ``/etc/group``.  Instead, it is recommended to use
+the ``-S`` option.  This latter enables the ``-0`` option and binds
+only paths that are known to not be updated by packages::
+
+    proot -S /mnt/slackware-8.0/
+    
+    # installpkg perl.tgz
+    Installing package perl...
 
 
 ``chroot`` + ``mount --bind`` + ``binfmt_misc`` equivalent

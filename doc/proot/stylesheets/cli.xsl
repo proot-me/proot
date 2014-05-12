@@ -78,10 +78,22 @@ static Cli proot_cli = {
 </xsl:text>
   </xsl:template>
 
-  <!-- Recommanded bindings declarations -->
+  <!-- Recommended bindings declarations -->
 
   <xsl:template match="option_string[.='-R']">
-    <xsl:text>static char *recommended_bindings[] = {
+    <xsl:text>static const char *recommended_bindings[] = {
+</xsl:text>
+    <xsl:apply-templates select="ancestor-or-self::option_list_item//list_item" />
+    <xsl:text>	NULL,
+};
+
+</xsl:text>
+  </xsl:template>
+
+  <!-- Recommended "su" bindings declarations -->
+
+  <xsl:template match="option_string[.='-S']">
+    <xsl:text>static const char *recommended_su_bindings[] = {
 </xsl:text>
     <xsl:apply-templates select="ancestor-or-self::option_list_item//list_item" />
     <xsl:text>	NULL,

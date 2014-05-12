@@ -203,53 +203,47 @@ static int handle_option_h(Tracee *tracee, const Cli *cli, char *value UNUSED)
 	return -1;
 }
 
+static void new_bindings(Tracee *tracee, const char *bindings[], const char *value)
+{
+	int i;
+
+	for (i = 0; bindings[i] != NULL; i++) {
+		const char *path;
+
+		path = (strcmp(bindings[i], "*path*") != 0
+			? expand_front_variable(tracee->ctx, bindings[i])
+			: value);
+
+		new_binding(tracee, path, NULL, false);
+	}
+}
+
 static int handle_option_R(Tracee *tracee, const Cli *cli, char *value)
 {
 	int status;
-	int i;
 
 	status = handle_option_r(tracee, cli, value);
 	if (status < 0)
 		return status;
 
-	for (i = 0; recommended_bindings[i] != NULL; i++) {
-		const char *path;
-
-		path = (strcmp(recommended_bindings[i], "*path*") != 0
-			? expand_front_variable(tracee->ctx, recommended_bindings[i])
-			: value);
-
-		new_binding(tracee, path, NULL, false);
-	}
-	return 0;
-}
-
-static int handle_option_B(Tracee *tracee, const Cli *cli UNUSED, char *value UNUSED)
-{
-	int i;
-
-	notice(tracee, INFO, USER,
-		"option '-B' (and '-Q') is obsolete, "
-		"use '-R path/to/rootfs' (maybe with '-q') instead.");
-
-	for (i = 0; recommended_bindings[i] != NULL; i++)
-		new_binding(tracee, expand_front_variable(tracee->ctx, recommended_bindings[i]),
-			NULL, false);
+	new_bindings(tracee, recommended_bindings, value);
 
 	return 0;
 }
 
-static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value)
+static int handle_option_S(Tracee *tracee, const Cli *cli, char *value)
 {
 	int status;
 
-	status = handle_option_q(tracee, cli, value);
+	status = handle_option_0(tracee, cli, value);
 	if (status < 0)
 		return status;
 
-	status = handle_option_B(tracee, cli, NULL);
+	status = handle_option_r(tracee, cli, value);
 	if (status < 0)
 		return status;
+
+	new_bindings(tracee, recommended_su_bindings, value);
 
 	return 0;
 }
