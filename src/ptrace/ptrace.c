@@ -61,6 +61,7 @@ static const char *stringify_ptrace(enum __ptrace_request request)
 	CASE_STR(PTRACE_SETREGSET)	CASE_STR(PTRACE_SEIZE)		CASE_STR(PTRACE_INTERRUPT)
 	CASE_STR(PTRACE_LISTEN)		CASE_STR(PTRACE_SET_SYSCALL)
 	CASE_STR(PTRACE_GET_THREAD_AREA)	CASE_STR(PTRACE_SET_THREAD_AREA)
+	CASE_STR(PTRACE_SINGLEBLOCK)
 	default: return "PTRACE_???"; }
 }
 
@@ -186,6 +187,12 @@ int translate_ptrace_exit(Tracee *tracee)
 
 	case PTRACE_SINGLESTEP:
 		ptracee->restart_how = PTRACE_SINGLESTEP;
+		forced_signal = (int) data;
+		status = 0;
+		break;  /* Restart the ptracee.  */
+
+	case PTRACE_SINGLEBLOCK:
+		ptracee->restart_how = PTRACE_SINGLEBLOCK;
 		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */

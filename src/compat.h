@@ -126,6 +126,9 @@
 #    ifndef PTRACE_SET_THREAD_AREA
 #        define PTRACE_SET_THREAD_AREA	26
 #    endif
+#    ifndef PTRACE_SINGLEBLOCK
+#        define PTRACE_SINGLEBLOCK	33
+#    endif
 #    ifndef ADDR_NO_RANDOMIZE
 #        define ADDR_NO_RANDOMIZE	0x0040000
 #    endif
