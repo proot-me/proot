@@ -257,8 +257,10 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	/* In these cases, the ptracee isn't really alive anymore.  To
 	 * ensure it will not be in limbo, PRoot restarts it whether
 	 * its ptracer is waiting for it or not.  */
-	else if (WIFEXITED(event) || WIFSIGNALED(event))
+	else if (WIFEXITED(event) || WIFSIGNALED(event)) {
+		PTRACEE.tracing_started = true;
 		keep_stopped = false;
+	}
 
 	/* A process is not traced right from the TRACEME request; it
 	 * is traced from the first received signal, whether it was
