@@ -95,6 +95,8 @@ typedef struct tracee {
 		LIST_HEAD(zombies, tracee) zombies;
 
 		pid_t wait_pid;
+		word_t wait_options;
+
 		enum {
 			DOESNT_WAIT = 0,
 			WAITS_IN_KERNEL,

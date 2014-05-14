@@ -222,22 +222,6 @@ static Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
 {
 	Tracee *ptracee;
 
-	/* __WCLONE: Wait for "clone" children only.  If omitted then
-	 * wait for "non-clone" children only.  (A "clone" child is
-	 * one which delivers no signal, or a signal other than
-	 * SIGCHLD to its parent upon termination.)  This option is
-	 * ignored if __WALL is also specified.
-	 *
-	 * __WALL: Wait for all children, regardless of type ("clone"
-	 * or "non-clone").
-	 *
-	 * -- wait(2) man-page
-	 */
-#define EXPECTED_CLONE(tracee) (((wait_options & __WALL) != 0)				\
-			    || (((wait_options & __WCLONE) != 0) && (tracee)->clone)	\
-			    || (((wait_options & __WCLONE) == 0) && !(tracee)->clone))
-
-
 	/* Return zombies first.  */
 	LIST_FOREACH(ptracee, &PTRACER.zombies, link) {
 		/* Not the ptracee you're looking for?  */
@@ -245,7 +229,7 @@ static Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
 			continue;
 
 		/* Not the expected kind of cloned process?  */
-		if (!EXPECTED_CLONE(ptracee))
+		if (!EXPECTED_WAIT_CLONE(wait_options, ptracee))
 			continue;
 
 		return ptracee;
@@ -261,7 +245,7 @@ static Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
 			continue;
 
 		/* Not the expected kind of cloned process?  */
-		if (!EXPECTED_CLONE(ptracee))
+		if (!EXPECTED_WAIT_CLONE(wait_options, ptracee))
 			continue;
 
 		/* No need to do more checks if its stopped state

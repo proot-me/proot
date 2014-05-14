@@ -150,6 +150,7 @@ int translate_wait_exit(Tracee *ptracer)
 		 * ptracee" state, it will be woken up in
 		 * handle_ptracee_event() later.  */
 		PTRACER.wait_pid = pid;
+		PTRACER.wait_options = options;
 		return 0;
 	}
 
@@ -295,7 +296,8 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	/* Note: wait_pid is set in translate_wait_exit() if no
 	 * ptracee event was pending when the ptracer started to
 	 * wait.  */
-	if (PTRACER.wait_pid == -1 || PTRACER.wait_pid == ptracee->pid) {
+	if (   (PTRACER.wait_pid == -1 || PTRACER.wait_pid == ptracee->pid)
+	    && EXPECTED_WAIT_CLONE(PTRACER.wait_options, ptracee)) {
 		word_t address;
 		bool restarted;
 
