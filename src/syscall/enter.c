@@ -122,6 +122,12 @@ int translate_syscall_enter(Tracee *tracee)
 
 	case PR_execve:
 		status = translate_execve(tracee);
+
+		/* Something went wrong, restore ptracee's loading
+		 * state.  */
+		if (status < 0)
+			tracee->as_ptracee.is_loaded = true;
+
 		break;
 
 	case PR_ptrace:

@@ -119,6 +119,7 @@ typedef struct tracee {
 		bool ignore_syscall;
 		word_t options;
 		bool is_zombie;
+		bool is_loaded;
 	} as_ptracee;
 
 	/* Current status:
@@ -129,6 +130,8 @@ typedef struct tracee {
 
 #define IS_IN_SYSENTER(tracee) ((tracee)->status == 0)
 #define IS_IN_SYSEXIT(tracee) (!IS_IN_SYSENTER(tracee))
+#define IS_IN_SYSEXIT2(tracee, sysnum) (IS_IN_SYSEXIT(tracee) \
+				     && get_sysnum((tracee), ORIGINAL) == sysnum)
 
 	/* How this tracee is restarted.  */
 	enum __ptrace_request restart_how;

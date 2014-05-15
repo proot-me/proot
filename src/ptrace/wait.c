@@ -213,13 +213,27 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			 * be delivered (much) later.
 			 *
 			 * -- man 2 ptrace
-			 */
-			if (IS_IN_SYSEXIT(ptracee)
-			    && get_sysnum(ptracee, ORIGINAL) == PR_execve
+			 *
+			 * Note about the is_loader/PR_close trick: it
+			 * is required to make GDB usable under PRoot.
+			 * GDB assumes the program is loaded in memory
+			 * once execve(2) has completed, however this
+			 * is not the case under PRoot since it
+			 * replaces the executed programs with a
+			 * loader (the ELF interpreter for now).  As a
+			 * consequence, only the loader is in memory
+			 * and GDB will fail to set breakpoints on the
+			 * program.  A workaround is to delay the
+			 * execve(2) notification until the ELF
+			 * interpreter has loaded the program in
+			 * memory, that is, until the first PR_close
+			 * has completed.  */
+			if (IS_IN_SYSEXIT2(ptracee, (PTRACEE.is_loaded ? PR_execve : PR_close))
 			    && (PTRACEE.options & PTRACE_O_TRACEEXEC) == 0
 			    && fetch_regs(ptracee) >= 0
 			    && (int) peek_reg(ptracee, CURRENT, SYSARG_RESULT) >= 0) {
 				kill(ptracee->pid, SIGTRAP);
+				PTRACEE.is_loaded = true;
 			}
 
 			if (PTRACEE.ignore_syscall)

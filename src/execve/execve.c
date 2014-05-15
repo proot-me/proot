@@ -104,6 +104,13 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 	if (status < 0)
 		return status;
 
+	/* Specific support for GDB: it assumes the program is loaded
+	 * in memory once execve() has completed, however this is not
+	 * the case under PRoot since it replaces the executed
+	 * programs with a loader (the ELF interpreter for now).  */
+	if (callback == extract_elf_interp)
+		tracee->as_ptracee.is_loaded = (status == 0);
+
 	/* No interpreter was found, in this case we execute the
 	 * translation of u_path (t_interp) directly. */
 	if (status == 0) {
