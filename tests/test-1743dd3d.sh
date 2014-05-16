@@ -9,9 +9,9 @@ mkdir -p ${ROOTFS}/tmp
 echo '#!/bin/true' > ${ROOTFS}/${TMP}
 
 chmod -x ${ROOTFS}/${TMP}
-! ${PROOT} ${ROOTFS} ${TMP}
+! ${PROOT} -r ${ROOTFS} ${TMP}
 
 chmod +x ${ROOTFS}/${TMP}
-${PROOT} ${ROOTFS} ${TMP}
+${PROOT} -r ${ROOTFS} ${TMP}
 
 rm -f ${ROOTFS}/${TMP}

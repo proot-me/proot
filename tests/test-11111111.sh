@@ -53,7 +53,7 @@ if [ -z ${PROOT_STAGE2} ]; then
 
     generate $REF
 
-    env PROOT_STAGE2=$REF ${PROOT} -w ${PWD} / sh ./$0
+    env PROOT_STAGE2=$REF ${PROOT} -w ${PWD} sh ./$0
     exit $?
 fi
 

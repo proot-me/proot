@@ -11,11 +11,11 @@ TMP=/tmp/${D1}/${D2}
 mkdir -p ${TMP}
 ln -s ${TMP}/./. ${TMP}/${LINK}
 
-${PROOT} / \ls ${TMP}/${LINK} | grep ^${LINK}$
-${PROOT} / \ls ${TMP}/${LINK}/ | grep ^${LINK}$
-${PROOT} / \ls ${TMP}/${LINK}/. | grep ^${LINK}$
-${PROOT} / \ls ${TMP}/${LINK}/.. | grep ^${D2}$
-${PROOT} / \ls ${TMP}/${LINK}/./.. | grep ^${D2}$
+${PROOT} \ls ${TMP}/${LINK} | grep ^${LINK}$
+${PROOT} \ls ${TMP}/${LINK}/ | grep ^${LINK}$
+${PROOT} \ls ${TMP}/${LINK}/. | grep ^${LINK}$
+${PROOT} \ls ${TMP}/${LINK}/.. | grep ^${D2}$
+${PROOT} \ls ${TMP}/${LINK}/./.. | grep ^${D2}$
 
 rm ${TMP}/${LINK}
 touch ${TMP}/${F}
