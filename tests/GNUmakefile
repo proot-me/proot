@@ -66,6 +66,12 @@ check-test-c5a7a0f0.c: test-c5a7a0f0
 	$(call check_c,$<,$(PROOT) -0 ./$<)
 	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
+check-test-a3e68988.c: test-a3e68988
+#	@which strace >/dev/null 2>&1 || rm $<
+#	$(call check_c,$<,$(PROOT) strace -e trace=none ./$<)
+	@which gdb >/dev/null 2>&1 || rm $<
+	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -136,6 +142,9 @@ test-1ffc8309: test-1ffc8309.c
 
 test-c5a7a0f0: test-c5a7a0f0.c
 	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
+
+test-a3e68988: test-a3e68988.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

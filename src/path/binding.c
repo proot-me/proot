@@ -274,7 +274,7 @@ int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
 /**
  * Remove @binding from all the @tracee's lists of bindings it belongs to.
  */
-static int remove_binding_from_all_lists(const Tracee *tracee, Binding *binding)
+void remove_binding_from_all_lists(const Tracee *tracee, Binding *binding)
 {
        if (IS_LINKED(binding, link.pending))
 	       CIRCLEQ_REMOVE_(tracee, binding, pending);
@@ -284,8 +284,6 @@ static int remove_binding_from_all_lists(const Tracee *tracee, Binding *binding)
 
        if (IS_LINKED(binding, link.host))
 	       CIRCLEQ_REMOVE_(tracee, binding, host);
-
-       return 0;
 }
 
 /**
@@ -380,13 +378,40 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 /**
  * c.f. function above.
  */
-void insort_binding2(Tracee *tracee, Binding *binding)
+static void insort_binding2(const Tracee *tracee, Binding *binding)
 {
 	binding->need_substitution =
 		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
 
 	insort_binding(tracee, GUEST, binding);
 	insort_binding(tracee, HOST, binding);
+}
+
+/**
+ * Create and insert a new binding (@host_path:@guest_path) into the
+ * list of @ptracee's bindings.  The Talloc parent of this new binding
+ * is @context.  This function returns NULL if an error occurred,
+ * otherwise a pointer to the newly created binding.
+ */
+Binding *insort_binding3(const Tracee *tracee, const TALLOC_CTX *context,
+			const char host_path[PATH_MAX],
+			const char guest_path[PATH_MAX])
+{
+	Binding *binding;
+
+	binding = talloc_zero(context, Binding);
+	if (binding == NULL)
+		return NULL;
+
+	strcpy(binding->host.path, host_path);
+	strcpy(binding->guest.path, guest_path);
+
+	binding->host.length = strlen(binding->host.path);
+	binding->guest.length = strlen(binding->guest.path);
+
+	insort_binding2(tracee, binding);
+
+	return binding;
 }
 
 /**

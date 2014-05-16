@@ -28,9 +28,11 @@
 #include <stdbool.h>    /* bool, true, false, */
 #include <signal.h>     /* siginfo_t, TRAP_*, */
 #include <unistd.h>     /* getpid(2), */
+#include <talloc.h>     /* talloc*, */
 
 #include "ptrace/wait.h"
 #include "ptrace/ptrace.h"
+#include "execve/auxv.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
@@ -226,6 +228,15 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	if (WIFSTOPPED(event)) {
 		switch ((event & 0xfff00) >> 8) {
 		case SIGTRAP | 0x80:
+			/* Fix ELF auxiliary vectors.  So far, this is
+			 * only required to make GDB work correctly
+			 * under PRoot.  */
+			if (IS_IN_SYSEXIT2(ptracee, PR_execve)
+			    && fetch_regs(ptracee) >= 0
+			    && (int) peek_reg(ptracee, CURRENT, SYSARG_RESULT) >= 0) {
+				fix_elf_aux_vectors(ptracee);
+			}
+
 			/* If the PTRACE_O_TRACEEXEC option is *not*
 			 * in effect for the execing tracee, the
 			 * kernel delivers an extra SIGTRAP to the

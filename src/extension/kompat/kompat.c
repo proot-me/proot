@@ -619,7 +619,7 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 			poke_word(tracee, pointer, AT_IGNORE);
 
 		pointer += 2 * sizeof_word(tracee);
-	} while (data != 0);
+	} while (data != AT_NULL);
 
 	/* Add the AT_RANDOM vector only if needed.  */
 	if (!needs_kompat(config, KERNEL_VERSION(2,6,29)))

@@ -187,17 +187,9 @@ create_binding:
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */
-	binding = talloc_zero(tracee->glue, Binding);
+	binding = insort_binding3(tracee, tracee->glue, tracee->glue, guest_path);
 	if (binding == NULL)
 		return 0;
-
-	strcpy(binding->host.path, tracee->glue);
-	strcpy(binding->guest.path, guest_path);
-
-	binding->host.length = strlen(binding->host.path);
-	binding->guest.length = strlen(binding->guest.path);
-
-	insort_binding2(tracee, binding);
 
 	/* TODO: emulation of getdents(parent(guest_path)) to finalize
 	 * the glue, "black" in getdents("/") from the example.  */

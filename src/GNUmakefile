@@ -21,6 +21,7 @@ OBJECTS += \
 	execve/interp.o		\
 	execve/elf.o		\
 	execve/ldso.o		\
+	execve/auxv.o		\
 	path/binding.o		\
 	path/glue.o		\
 	path/canon.o		\
