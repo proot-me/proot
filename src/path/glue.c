@@ -71,7 +71,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
 	if (tracee->glue == NULL) {
-		tracee->glue = create_temp_directory(tracee, tracee->tool_name);
+		tracee->glue = create_temp_directory(NULL, tracee->tool_name);
 		if (tracee->glue == NULL) {
 			notice(tracee, ERROR, INTERNAL, "can't create glue rootfs");
 			return 0;
