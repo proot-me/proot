@@ -35,25 +35,25 @@ else
     COMMAND2="-0 ${TMP} ${TMP} ${TMP2}"
 fi
 
-  ${PROOT} -q true / ${TMP}
-! ${PROOT} -q false / ${TMP}
+  ${PROOT} -q true ${TMP}
+! ${PROOT} -q false ${TMP}
 [ $? -eq 0 ]
 
-  (cd /; ${PROOT} -q ./$(which true) / ${TMP})
-! (cd /; ${PROOT} -q ./$(which false) / ${TMP})
+  (cd /; ${PROOT} -q ./$(which true) ${TMP})
+! (cd /; ${PROOT} -q ./$(which false) ${TMP})
 [ $? -eq 0 ]
 
-HOST_LD_LIBRARY_PATH=$(${PROOT} -q 'echo --' / env | grep LD_LIBRARY_PATH)
+HOST_LD_LIBRARY_PATH=$(${PROOT} -q 'echo --' env | grep LD_LIBRARY_PATH)
 test ! -z "${HOST_LD_LIBRARY_PATH}"
 
 unset LD_LIBRARY_PATH
-${PROOT} -q 'echo --' / ${TMP} | grep -- "^-- -U LD_LIBRARY_PATH ${COMMAND1}$"
-${PROOT} -q 'echo --' / env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST1}$"
-env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' / ${TMP} | grep -- "^${TEST2}$"
+${PROOT} -q 'echo --' ${TMP} | grep -- "^-- -U LD_LIBRARY_PATH ${COMMAND1}$"
+${PROOT} -q 'echo --' env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST1}$"
+env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' ${TMP} | grep -- "^${TEST2}$"
 
-env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' / env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST3}$"
+env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST3}$"
 
-${PROOT} -q 'echo --' / env LD_TRACE_LOADED_OBJECTS=1 ${TMP} | grep -E -- "^${TEST4}$"
+${PROOT} -q 'echo --' env LD_TRACE_LOADED_OBJECTS=1 ${TMP} | grep -E -- "^${TEST4}$"
 
 env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c ${TMP} | grep -- "^${TEST5}$"
 env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c "sh -c ${TMP}" | grep -- "^${TEST52}$"

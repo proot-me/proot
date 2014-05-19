@@ -223,8 +223,21 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 
 	/* Is the command available without any $PATH look-up?  */
 	status = realpath2(tracee, host_path, command, true);
-	found = (   status == 0 && stat(host_path, &statr) == 0
-	       && S_ISREG(statr.st_mode) && (statr.st_mode & S_IXUSR) != 0);
+	if (status == 0 && stat(host_path, &statr) == 0) {
+		if (!S_ISREG(statr.st_mode)) {
+			notice(tracee, ERROR, USER, "'%s' is not a regular file", command);
+			return -EACCES;
+		}
+
+		if ((statr.st_mode & S_IXUSR) == 0) {
+			notice(tracee, ERROR, USER, "'%s' is not executable", command);
+			return -EACCES;
+		}
+
+		found = true;
+	}
+	else
+		found = false;
 
 	/* Is the the explicit command was found?  */
 	if (is_explicit) {
@@ -275,13 +288,13 @@ not_found:
 	if (status < 0)
 		strcpy(path, "<unknown>");
 
-	notice(tracee, WARNING, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
+	notice(tracee, ERROR, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
 		command, get_root(tracee), path, paths);
 
 	/* Check if the command was found without any $PATH look-up
 	 * but it didn't contain "/".  */
 	if (found && !is_explicit)
-		notice(tracee, INFO, USER,
+		notice(tracee, ERROR, USER,
 			"to execute a local program, use the './' prefix, for example: ./%s", command);
 
 	return -1;
@@ -575,8 +588,8 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 }
 
 /**
- * Check if the translated @t_path belongs to the guest rootfs, that
- * is, isn't from a binding.
+ * Check if the translated @host_path belongs to the guest rootfs,
+ * that is, isn't from a binding.
  */
 bool belongs_to_guestfs(const Tracee *tracee, const char *host_path)
 {

@@ -166,9 +166,9 @@ static Binding *new_concealing_binding(Tracee *tracee, const char *path, bool mu
 	}
 
 	if (S_ISDIR(statl.st_mode))
-		temp = create_temp_directory(tracee, tracee->tool_name);
+		temp = create_temp_directory(NULL, tracee->tool_name);
 	else
-		temp = create_temp_file(tracee, tracee->tool_name);
+		temp = create_temp_file(NULL, tracee->tool_name);
 	if (temp == NULL) {
 		notice(tracee, WARNING, INTERNAL, "can't conceal %s", path);
 		return NULL;

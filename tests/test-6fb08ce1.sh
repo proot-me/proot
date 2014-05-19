@@ -5,6 +5,6 @@ fi
 TMP=/tmp/$(mcookie)
 echo "OK" > ${TMP}
 
-${PROOT} -b ${TMP}:/etc/fstab -b /dev/null -b /etc  / cat /etc/fstab | grep ^OK$
+${PROOT} -b ${TMP}:/etc/fstab -b /dev/null -b /etc cat /etc/fstab | grep ^OK$
 
 rm ${TMP}

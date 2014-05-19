@@ -122,7 +122,7 @@ void print_version(const Cli *cli)
 
 static void print_execve_help(const Tracee *tracee, const char *argv0, int status)
 {
-	notice(tracee, WARNING, SYSTEM, "execve(\"%s\")", argv0);
+	notice(tracee, ERROR, SYSTEM, "execve(\"%s\")", argv0);
 
 	/* Ubuntu kernel bug?  */
 	if (status == -EPERM && getenv("PROOT_NO_SECCOMP") == NULL) {

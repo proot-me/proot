@@ -8,12 +8,12 @@ mkdir -p ${ROOTFS}/${TMP}
 A=$(mcookie)
 B=$(mcookie)
 
-ln -s /bin/true   ${ROOTFS}/${TMP}/${A}
-ln -s ${TMP}/${A} ${ROOTFS}/${TMP}/${B}
+ln -s /bin/true   -r ${ROOTFS}/${TMP}/${A}
+ln -s ${TMP}/${A} -r ${ROOTFS}/${TMP}/${B}
 
-env PATH=${TMP} ${PROOT} ${ROOTFS} ${B}
+env PATH=${TMP} ${PROOT} -r ${ROOTFS} ${B}
 
 rm -f ${TMP}/${B}  # just in case it also exists in the host env.
-${PROOT} ${ROOTFS} /${TMP}/${B}
+${PROOT} -r ${ROOTFS} /${TMP}/${B}
 
 rm -fr ${ROOTFS}/${TMP}

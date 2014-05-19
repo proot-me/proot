@@ -22,10 +22,8 @@
 
 #include <string.h>    /* str*(3), */
 #include <assert.h>    /* assert(3), */
-#include <sys/types.h> /* stat(2), */
-#include <sys/stat.h>  /* stat(2), */
-#include <unistd.h>    /* stat(2), */
 #include <stdio.h>     /* printf(3), fflush(3), */
+#include <unistd.h>    /* write(2), */
 
 #include "cli/cli.h"
 #include "cli/notice.h"
@@ -203,53 +201,47 @@ static int handle_option_h(Tracee *tracee, const Cli *cli, char *value UNUSED)
 	return -1;
 }
 
+static void new_bindings(Tracee *tracee, const char *bindings[], const char *value)
+{
+	int i;
+
+	for (i = 0; bindings[i] != NULL; i++) {
+		const char *path;
+
+		path = (strcmp(bindings[i], "*path*") != 0
+			? expand_front_variable(tracee->ctx, bindings[i])
+			: value);
+
+		new_binding(tracee, path, NULL, false);
+	}
+}
+
 static int handle_option_R(Tracee *tracee, const Cli *cli, char *value)
 {
 	int status;
-	int i;
 
 	status = handle_option_r(tracee, cli, value);
 	if (status < 0)
 		return status;
 
-	for (i = 0; recommended_bindings[i] != NULL; i++) {
-		const char *path;
-
-		path = (strcmp(recommended_bindings[i], "*path*") != 0
-			? expand_front_variable(tracee->ctx, recommended_bindings[i])
-			: value);
-
-		new_binding(tracee, path, NULL, false);
-	}
-	return 0;
-}
-
-static int handle_option_B(Tracee *tracee, const Cli *cli UNUSED, char *value UNUSED)
-{
-	int i;
-
-	notice(tracee, INFO, USER,
-		"option '-B' (and '-Q') is obsolete, "
-		"use '-R path/to/rootfs' (maybe with '-q') instead.");
-
-	for (i = 0; recommended_bindings[i] != NULL; i++)
-		new_binding(tracee, expand_front_variable(tracee->ctx, recommended_bindings[i]),
-			NULL, false);
+	new_bindings(tracee, recommended_bindings, value);
 
 	return 0;
 }
 
-static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value)
+static int handle_option_S(Tracee *tracee, const Cli *cli, char *value)
 {
 	int status;
 
-	status = handle_option_q(tracee, cli, value);
+	status = handle_option_0(tracee, cli, value);
 	if (status < 0)
 		return status;
 
-	status = handle_option_B(tracee, cli, NULL);
+	status = handle_option_r(tracee, cli, value);
 	if (status < 0)
 		return status;
+
+	new_bindings(tracee, recommended_su_bindings, value);
 
 	return 0;
 }
@@ -317,7 +309,7 @@ static int post_initialize_command(Tracee *tracee, const Cli *cli UNUSED,
  * are not required on the command line, i.e.  "-w" and "-r".
  */
 static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
-			size_t argc UNUSED, char *const *argv, size_t cursor)
+			size_t argc UNUSED, char *const *argv UNUSED, size_t cursor)
 {
 	int status;
 
@@ -328,27 +320,9 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 			return -1;
 	}
 
-	/* When no guest rootfs were specified: if the first bare
-	 * option is a directory, then the old command-line interface
-	 * (similar to the chroot one) is expected.  Otherwise this is
-	 * the new command-line interface where the default guest
-	 * rootfs is "/".  */
+	 /* The default guest rootfs is "/" if none was specified.  */
 	if (get_root(tracee) == NULL) {
-		char path[PATH_MAX];
-		struct stat buf;
-
-		if (argv[cursor] != NULL
-		    && realpath2(tracee->reconf.tracee, path, argv[cursor], true) == 0
-		    && stat(path, &buf) == 0
-		    && S_ISDIR(buf.st_mode)) {
-			notice(tracee, INFO, USER,
-				"neither `-r` or `-R` were specified, assuming"
-				" '%s' is the new root file-system.", argv[cursor]);
-			status = handle_option_r(tracee, cli, argv[cursor]);
-			cursor++;
-		}
-		else
-			status = handle_option_r(tracee, cli, "/");
+		status = handle_option_r(tracee, cli, "/");
 		if (status < 0)
 			return -1;
 	}

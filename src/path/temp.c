@@ -198,21 +198,26 @@ static int remove_temp_file(char *path)
 
 /**
  * Create a path name with the following format:
- * "/tmp/@prefix-$PID-XXXXXX".  This function returns NULL if an error
- * occurred, otherwise an *autofreed* C string.
+ * "/tmp/@prefix-$PID-XXXXXX".  The returned C string is either
+ * auto-freed if @tracee is NULL, or attached to @tracee->ctx.  This
+ * function returns NULL if an error occurred.
  */
 static char *create_temp_name(const Tracee *tracee, const char *prefix)
 {
-	void *autofreed;
+	TALLOC_CTX *context;
 	char *name;
 
-	autofreed = talloc_autofree_context();
-	if (autofreed == NULL) {
-		notice(tracee, ERROR, INTERNAL, "can't allocate memory");
-		return NULL;
+	if (tracee == NULL) {
+		context = talloc_autofree_context();
+		if (context == NULL) {
+			notice(tracee, ERROR, INTERNAL, "can't allocate memory");
+			return NULL;
+		}
 	}
+	else
+		context = tracee->ctx;
 
-	name = talloc_asprintf(autofreed, "%s/%s-%d-XXXXXX", P_tmpdir, prefix, getpid());
+	name = talloc_asprintf(context, "%s/%s-%d-XXXXXX", P_tmpdir, prefix, getpid());
 	if (name == NULL) {
 		notice(tracee, ERROR, INTERNAL, "can't allocate memory");
 		return NULL;
@@ -222,9 +227,11 @@ static char *create_temp_name(const Tracee *tracee, const char *prefix)
 }
 
 /**
- * Create a directory that will be automatically removed on PRoot
- * termination.  This function returns NULL on error, otherwise the
- * absolute path name to the created directory (@prefix-ed).
+ * Create a directory that will be automatically removed either on
+ * PRoot termination if @tracee is NULL, or once its path name
+ * (attached to @tracee->ctx) is freed.  This function returns NULL on
+ * error, otherwise the absolute path name to the created directory
+ * (@prefix-ed).
  */
 const char *create_temp_directory(const Tracee *tracee, const char *prefix)
 {
@@ -246,9 +253,10 @@ const char *create_temp_directory(const Tracee *tracee, const char *prefix)
 }
 
 /**
- * Create a file that will be automatically removed on PRoot
- * termination.  This function returns NULL on error, otherwise the
- * absolute path name to the created file (@prefix-ed).
+ * Create a file that will be automatically removed either on PRoot
+ * termination if @tracee is NULL, or once its path name (attached to
+ * @tracee->ctx) is freed.  This function returns NULL on error,
+ * otherwise the absolute path name to the created file (@prefix-ed).
  */
 const char *create_temp_file(const Tracee *tracee, const char *prefix)
 {

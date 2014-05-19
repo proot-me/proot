@@ -7,7 +7,7 @@
 #define VERSION "3.2.2"
 #endif
 
-static char *recommended_bindings[] = {
+static const char *recommended_bindings[] = {
 	"/etc/host.conf",
 	"/etc/hosts",
 	"/etc/hosts.equiv",
@@ -19,6 +19,19 @@ static char *recommended_bindings[] = {
 	"/etc/nsswitch.conf",
 	"/etc/resolv.conf",
 	"/etc/localtime",
+	"/dev/",
+	"/sys/",
+	"/proc/",
+	"/tmp/",
+	"$HOME",
+	"*path*",
+	NULL,
+};
+
+static const char *recommended_su_bindings[] = {
+	"/etc/host.conf",
+	"/etc/hosts",
+	"/etc/nsswitch.conf",
 	"/dev/",
 	"/sys/",
 	"/proc/",
@@ -40,8 +53,7 @@ static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_0(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_B(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_S(Tracee *tracee, const Cli *cli, char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
 static int post_initialize_command(Tracee *, const Cli *, size_t, char *const *, size_t);
@@ -76,7 +88,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 \tis used to relocate host files and directories, see the -b\n\
 \toption and the Examples section for details.\n\
 \t\n\
-\tIt is recommended to use the -R option instead.",
+\tIt is recommended to use the -R or -S options instead.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -230,20 +242,23 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
-		{ .name = "-B", .separator = '\0', .value = NULL },
-		{ .name = "-M", .separator = '\0', .value = NULL },
+		{ .name = "-S", .separator = ' ', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_B,
-	  .description = "obsolete, use -R instead.",
-	  .detail = "",
-	},
-	{ .class = "Alias options",
-	  .arguments = {
-		{ .name = "-Q", .separator = ' ', .value = "command" },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_Q,
-	  .description = "obsolete, use -q and -R instead.",
-	  .detail = "",
+	  .handler = handle_option_S,
+	  .description = "Alias: -0 -r *path* + a couple of recommended -b.",
+	  .detail = "\tThis option is useful to safely create and install packages into\n\
+\tthe guest rootfs.  It is similar to the -R option expect it\n\
+\tenables the -0 option and binds only the following minimal set\n\
+\tof paths to avoid unexpected changes on host files:\n\
+\t\n\
+\t    * /etc/host.conf\n\
+\t    * /etc/hosts\n\
+\t    * /etc/nsswitch.conf\n\
+\t    * /dev/\n\
+\t    * /sys/\n\
+\t    * /proc/\n\
+\t    * /tmp/\n\
+\t    * $HOME",
 	},
 	END_OF_OPTIONS,
 	},

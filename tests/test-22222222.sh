@@ -12,8 +12,8 @@ mkdir -p ${ROOTFS}/tmp
 touch ${ROOTFS}/tmp/${REGULAR}
 ln -fs /tmp/${REGULAR} ${ROOTFS}/tmp/${SYMLINK}
 
-${PROOT} -b /tmp:/ced ${ROOTFS} /bin/readlink /tmp/${SYMLINK} | grep ^/tmp/${REGULAR}$
-${PROOT} -b /tmp:/ced ${ROOTFS} /bin/readlink /ced/${SYMLINK} | grep ^/ced/${REGULAR}$
+${PROOT} -b /tmp:/ced -r ${ROOTFS} /bin/readlink /tmp/${SYMLINK} | grep ^/tmp/${REGULAR}$
+${PROOT} -b /tmp:/ced -r ${ROOTFS} /bin/readlink /ced/${SYMLINK} | grep ^/ced/${REGULAR}$
 
 rm -f /tmp/${REGULAR}
 rm -f /tmp/${SYMLINK}

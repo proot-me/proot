@@ -3,7 +3,7 @@ if [ ! -x  ${ROOTFS}/bin/pwd ] || [ -z `which mkdir` ] || [ -z `which grep` ] ||
 fi
 
 mkdir -p ${ROOTFS}/${PWD}
-${PROOT} -v 1 -w . ${ROOTFS} pwd | grep ^${PWD}$
+${PROOT} -v 1 -w . -r ${ROOTFS} pwd | grep ^${PWD}$
 
 TMP=/tmp/$(mcookie)
 mkdir ${TMP}
