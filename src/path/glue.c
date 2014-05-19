@@ -20,10 +20,10 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h> /* mkdir(2), */
-#include <sys/stat.h> /* mkdir(2), */
+#include <sys/types.h> /* mkdir(2), lstat(2), */
+#include <sys/stat.h> /* mkdir(2), lstat(2), */
 #include <fcntl.h>    /* mknod(2), */
-#include <unistd.h>   /* mknod(2), */
+#include <unistd.h>   /* mknod(2), lstat(2), unlink(2), rmdir(2), */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -36,6 +36,59 @@
 #include "cli/notice.h"
 
 #include "compat.h"
+
+/**
+ * Remove @path if it is empty only.
+ *
+ * Note: this is a Talloc destructor.
+ */
+static int remove_placeholder(char *path)
+{
+	struct stat statl;
+	int status;
+
+	status = lstat(path, &statl);
+	if (status) {
+		notice(NULL, WARNING, SYSTEM, "can't stat placeholder '%s'", path);
+		return 0; /* Not fatal.  */
+	}
+
+	if (!S_ISDIR(statl.st_mode)) {
+		if (statl.st_size != 0) {
+			notice(NULL, WARNING, USER, "placeholder '%s' is not empty", path);
+			return 0; /* Not fatal.  */
+		}
+		status = unlink(path);
+	}
+	else
+		status = rmdir(path);
+	if (status) {
+		notice(NULL, WARNING, SYSTEM, "can't remove placeholder '%s'", path);
+		return 0; /* Not fatal.  */
+	}
+
+	return 0;
+}
+
+/**
+ * Attach a copy of @path to the autofree context, and set its
+ * destructor to remove_placeholder().
+ */
+static void set_placeholder_destructor(const char *path)
+{
+	TALLOC_CTX *autofreed;
+	char *placeholder;
+
+	autofreed = talloc_autofree_context();
+	if (autofreed == NULL)
+		return;
+
+	placeholder = talloc_strdup(autofreed, path);
+	if (placeholder == NULL)
+		return;
+
+	talloc_set_destructor(placeholder, remove_placeholder);
+}
 
 /**
  * Build in a temporary filesystem the glue between the guest part and
@@ -104,6 +157,11 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 		status = mkdir(host_path, mode);
 	else /* S_IFREG, S_IFCHR, S_IFBLK, S_IFIFO or S_IFSOCK.  */
 		status = mknod(host_path, mode | type, 0);
+
+	/* Remove placeholders from the guest rootfs once PRoot is
+	 * terminated.  */
+	if (status >= 0 && !belongs_to_gluefs)
+		set_placeholder_destructor(host_path);
 
 	/* Nothing else to do if the path already exists or if it is
 	 * the final component since it will be pointed to by the

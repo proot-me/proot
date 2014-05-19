@@ -575,8 +575,8 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 }
 
 /**
- * Check if the translated @t_path belongs to the guest rootfs, that
- * is, isn't from a binding.
+ * Check if the translated @host_path belongs to the guest rootfs,
+ * that is, isn't from a binding.
  */
 bool belongs_to_guestfs(const Tracee *tracee, const char *host_path)
 {
