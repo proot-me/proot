@@ -181,11 +181,19 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 {
 	static char *self_exe = NULL;
+	static int no_subreconf = -1;
+
 	char path[PATH_MAX];
 	char **argv_pod;
 	Tracee *dummy;
 	int status;
 	size_t i;
+
+	if (no_subreconf == -1)
+		no_subreconf = (int) (getenv("PROOT_NO_SUBRECONF") != NULL);
+
+	if (no_subreconf != 0)
+		return 0;
 
 	/* The path to PRoot itself is cached.  */
 	if (self_exe == NULL) {
