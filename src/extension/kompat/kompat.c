@@ -686,7 +686,7 @@ static void emulate_fd_flags(Tracee *tracee, word_t fd, Reg sysarg, int emulated
 	if ((emulated_flags & flags & O_NONBLOCK) != 0)
 		register_chained_syscall(tracee, PR_fcntl, fd, F_SETFL, O_NONBLOCK, 0, 0, 0);
 
-	tracee->chain.final_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+	force_chain_final_result(tracee, peek_reg(tracee, CURRENT, SYSARG_RESULT));
 }
 
 /**
@@ -769,7 +769,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 			return 0;
 
 		register_chained_syscall(tracee, PR_fcntl, result, F_SETFD, FD_CLOEXEC, 0, 0, 0);
-		tracee->chain.final_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+		force_chain_final_result(tracee, peek_reg(tracee, CURRENT, SYSARG_RESULT));
 		return 0;
 	}
 

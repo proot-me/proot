@@ -31,6 +31,7 @@
 
 #include "ptrace/ptrace.h"
 #include "ptrace/user.h"
+#include "ptrace/wait.h"
 #include "tracee/tracee.h"
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
@@ -109,6 +110,8 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		PTRACEE.ptracer = ptracer;
 		PTRACER.nb_ptracees++;
+
+		add_direct_ptracee(ptracer, ptracee->pid);
 
 		/* Detect when the ptracer has gone to wait before the
 		 * ptracee has did the ptrace(ATTACHME) request.  */

@@ -28,6 +28,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/socket.h"
+#include "syscall/chain.h"
 #include "syscall/heap.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -441,8 +442,18 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_wait4:
 	case PR_waitpid:
-		if (tracee->as_ptracer.waits_in != WAITS_IN_PROOT)
+		if (tracee->as_ptracer.waits_in != WAITS_IN_PROOT) {
+			pid_t pid;
+
+			/* See ptrace/wait.c for explanation.  */
+			pid = (pid_t) syscall_result;
+			if (pid > 0 && is_exited_direct_ptracee(tracee, pid)) {
+				remove_exited_direct_ptracee(tracee, pid);
+				restart_original_syscall(tracee);
+			}
+
 			goto end;
+		}
 
 		status = translate_wait_exit(tracee);
 		break;

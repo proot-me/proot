@@ -22,6 +22,7 @@
 
 #include <sys/ptrace.h> /* PTRACE_*,  */
 #include <sys/wait.h>   /* __WALL,  */
+#include <sys/queue.h>  /* LIST_*,  */
 #include <errno.h>      /* E*, */
 #include <assert.h>     /* assert(3), */
 #include <stdbool.h>    /* bool, true, false, */
@@ -110,6 +111,37 @@ int translate_wait_enter(Tracee *ptracer)
 }
 
 /**
+ * Update pid & wait status of @ptracer's wait(2) for the given
+ * @ptracee.
+ */
+static int update_wait_status(Tracee *ptracer, Tracee *ptracee)
+{
+	const int event = PTRACEE.event4.ptracer.value;
+	word_t address;
+
+	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
+	if (address != 0) {
+		poke_int32(ptracer, address, event);
+		if (errno != 0)
+			return -errno;
+	}
+
+	PTRACEE.event4.ptracer.pending = false;
+
+	/* Under PRoot, the kernel will report its termination once
+	 * again to its parent since "ptracer != parent" from kernel's
+	 * point-of-view.  PRoot has to mask this second notification
+	 * not to make the parent/ptracer confused.  */
+	if (   (WIFEXITED(event) || WIFSIGNALED(event))
+	    && is_direct_ptracee(ptracer, ptracee->pid)) {
+		set_exited_direct_ptracee(ptracer, ptracee->pid);
+	}
+
+	return ptracee->pid;
+}
+
+
+/**
  * Emulate the wait* syscall made by @ptracer if it was in the context
  * of the ptrace mechanism. This function returns -errno if an error
  * occured, otherwise the pid of the expected tracee.
@@ -117,8 +149,8 @@ int translate_wait_enter(Tracee *ptracer)
 int translate_wait_exit(Tracee *ptracer)
 {
 	Tracee *ptracee;
-	word_t address;
 	word_t options;
+	int status;
 	pid_t pid;
 
 	assert(PTRACER.waits_in == WAITS_IN_PROOT);
@@ -154,15 +186,9 @@ int translate_wait_exit(Tracee *ptracer)
 		return 0;
 	}
 
-	/* Update the child status of ptracer's wait(2), if any.  */
-	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
-	if (address != 0) {
-		poke_int32(ptracer, address, PTRACEE.event4.ptracer.value);
-		if (errno != 0)
-			return -errno;
-
-		PTRACEE.event4.ptracer.pending = false;
-	}
+	status = update_wait_status(ptracer, ptracee);
+	if (status < 0)
+		return status;
 
 	pid = ptracee->pid;
 
@@ -312,20 +338,11 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	 * wait.  */
 	if (   (PTRACER.wait_pid == -1 || PTRACER.wait_pid == ptracee->pid)
 	    && EXPECTED_WAIT_CLONE(PTRACER.wait_options, ptracee)) {
-		word_t address;
 		bool restarted;
+		int status;
 
-		/* Update pid & wait status of the ptracer's
-		 * wait(2).  */
-		poke_reg(ptracer, SYSARG_RESULT, ptracee->pid);
-		address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
-		if (address != 0) {
-			poke_int32(ptracer, address, PTRACEE.event4.ptracer.value);
-			if (errno != 0)
-				poke_reg(ptracer, SYSARG_RESULT, (word_t) -errno);
-
-			PTRACEE.event4.ptracer.pending = false;
-		}
+		status = update_wait_status(ptracer, ptracee);
+		poke_reg(ptracer, SYSARG_RESULT, (word_t) status);
 
 		/* Write ptracer's register cache back.  */
 		(void) push_regs(ptracer);
@@ -340,4 +357,145 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	}
 
 	return keep_stopped;
+}
+
+struct direct_ptracee {
+	pid_t pid;
+	bool has_exited;
+	LIST_ENTRY(direct_ptracee) link;
+};
+
+LIST_HEAD(direct_ptracees, direct_ptracee);
+
+/**
+ * Add @ptracee_pid to @ptracer's list of direct ptracees.  This
+ * function returns -errno if an error occured, otherwise 0.
+ */
+int add_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
+{
+	struct direct_ptracee *direct_ptracee;
+
+	if (is_direct_ptracee(ptracer, ptracee_pid))
+		notice(ptracer, WARNING, INTERNAL,
+			"%s: pid %d is already declared as direct ptracee.",
+			__FUNCTION__, ptracee_pid);
+
+	if (PTRACER.direct_ptracees == NULL) {
+		PTRACER.direct_ptracees = talloc_zero(ptracer, struct direct_ptracees);
+		if (PTRACER.direct_ptracees == NULL)
+			return -ENOMEM;
+	}
+
+	direct_ptracee = talloc_zero(PTRACER.direct_ptracees, struct direct_ptracee);
+	if (direct_ptracee == NULL)
+		return -ENOMEM;
+
+	direct_ptracee->pid = ptracee_pid;
+
+	LIST_INSERT_HEAD(PTRACER.direct_ptracees, direct_ptracee, link);
+
+	return 0;
+}
+
+/**
+ * Return the entry from @ptracer's list of direct ptracees for the
+ * given @ptracee_pid, or NULL if it does not exist.
+ */
+static struct direct_ptracee *get_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
+{
+	struct direct_ptracee *direct_ptracee;
+
+	if (PTRACER.direct_ptracees == NULL)
+		return NULL;
+
+	LIST_FOREACH(direct_ptracee, PTRACER.direct_ptracees, link) {
+		if (direct_ptracee->pid == ptracee_pid)
+			return direct_ptracee;
+	}
+
+	return NULL;
+}
+
+/**
+ * Check whether @ptracee_pid belongs to @ptracer's list of direct
+ * ptracees.
+ */
+bool is_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
+{
+	struct direct_ptracee *direct_ptracee;
+
+	direct_ptracee = get_direct_ptracee(ptracer, ptracee_pid);
+	if (direct_ptracee == NULL)
+		return false;
+
+	if (direct_ptracee->has_exited)
+		notice(ptracer, WARNING, INTERNAL,
+			"%s: direct ptracee %d is expected to not be already exited.",
+			__FUNCTION__, ptracee_pid);
+
+	return true;
+}
+
+/**
+ * Declare @ptracee_pid -- from @ptracer's list of direct ptracees --
+ * has exited.
+ */
+void set_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
+{
+	struct direct_ptracee *direct_ptracee;
+
+	direct_ptracee = get_direct_ptracee(ptracer, ptracee_pid);
+	if (direct_ptracee == NULL) {
+		notice(ptracer, WARNING, INTERNAL,
+			"%s: pid %d is expected to be declared as direct ptracee.",
+			__FUNCTION__, ptracee_pid);
+		return;
+	}
+
+	if (direct_ptracee->has_exited)
+		notice(ptracer, WARNING, INTERNAL,
+			"%s: direct ptracee %d is expected to not be already exited.",
+			__FUNCTION__, ptracee_pid);
+
+	direct_ptracee->has_exited = true;
+}
+
+/**
+ * Check whether @ptracee_pid belongs to @ptracer's list of direct
+ * ptracees and is declared as exited.
+ */
+bool is_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
+{
+	struct direct_ptracee *direct_ptracee;
+
+	direct_ptracee = get_direct_ptracee(ptracer, ptracee_pid);
+	if (direct_ptracee == NULL)
+		return false;
+
+	if (!direct_ptracee->has_exited)
+		return false;
+
+	return true;
+}
+
+/**
+ * Remove @ptracee_pid from @ptracer's list of direct ptracees.
+ */
+void remove_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
+{
+	struct direct_ptracee *direct_ptracee;
+
+	direct_ptracee = get_direct_ptracee(ptracer, ptracee_pid);
+	if (direct_ptracee == NULL) {
+		notice(ptracer, WARNING, INTERNAL,
+			"%s: pid %d is expected to be declared as direct ptracee.",
+			__FUNCTION__, ptracee_pid);
+		return;
+	}
+
+	LIST_REMOVE(direct_ptracee, link);
+
+	/* No more direct ptracees?  */
+	if (LIST_EMPTY(PTRACER.direct_ptracees))
+		TALLOC_FREE(PTRACER.direct_ptracees);
 }

@@ -96,7 +96,10 @@ void chain_next_syscall(Tracee *tracee)
 	if (STAILQ_EMPTY(tracee->chain.syscalls)) {
 		TALLOC_FREE(tracee->chain.syscalls);
 
-		poke_reg(tracee, SYSARG_RESULT, tracee->chain.final_result);
+		if (tracee->chain.force_final_result)
+			poke_reg(tracee, SYSARG_RESULT, tracee->chain.final_result);
+
+		tracee->chain.force_final_result = false;
 		tracee->chain.final_result = 0;
 
 		return;
@@ -123,4 +126,31 @@ void chain_next_syscall(Tracee *tracee)
 	/* Move the instruction pointer back to the original trap.  */
 	instr_pointer = peek_reg(tracee, ORIGINAL, INSTR_POINTER);
 	poke_reg(tracee, INSTR_POINTER, instr_pointer - SYSTRAP_SIZE);
+}
+
+/**
+ * Force the last result of the @tracee's current syscall chain to be
+ * @forced_result.
+ */
+void force_chain_final_result(Tracee *tracee, word_t forced_result)
+{
+	tracee->chain.force_final_result = true;
+	tracee->chain.final_result = forced_result;
+}
+
+/**
+ * Restart the original syscall of the given @tracee.  The result of
+ * the current syscall will be overwritten.  This function returns the
+ * same status as register_chained_syscall().
+ */
+int restart_original_syscall(Tracee *tracee)
+{
+	return register_chained_syscall(tracee,
+					get_sysnum(tracee, ORIGINAL),
+					peek_reg(tracee, ORIGINAL, SYSARG_1),
+					peek_reg(tracee, ORIGINAL, SYSARG_2),
+					peek_reg(tracee, ORIGINAL, SYSARG_3),
+					peek_reg(tracee, ORIGINAL, SYSARG_4),
+					peek_reg(tracee, ORIGINAL, SYSARG_5),
+					peek_reg(tracee, ORIGINAL, SYSARG_6));
 }

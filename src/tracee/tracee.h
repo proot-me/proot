@@ -42,6 +42,7 @@ typedef enum {
 
 struct bindings;
 struct extensions;
+struct direct_ptracees;
 struct chained_syscalls;
 
 /* Information related to a file-system name-space.  */
@@ -93,6 +94,8 @@ typedef struct tracee {
 	struct {
 		size_t nb_ptracees;
 		LIST_HEAD(zombies, tracee) zombies;
+
+		struct direct_ptracees *direct_ptracees;
 
 		pid_t wait_pid;
 		word_t wait_options;
@@ -170,6 +173,7 @@ typedef struct tracee {
 	 * syscall.  */
 	struct {
 		struct chained_syscalls *syscalls;
+		bool force_final_result;
 		word_t final_result;
 	} chain;
 
