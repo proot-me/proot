@@ -126,7 +126,7 @@ int translate_syscall_enter(Tracee *tracee)
 		/* Something went wrong, restore ptracee's loading
 		 * state.  */
 		if (status < 0)
-			tracee->as_ptracee.is_loaded = true;
+			tracee->as_ptracee.is_load_pending = false;
 
 		break;
 

@@ -254,12 +254,14 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			 * interpreter has loaded the program in
 			 * memory, that is, until the first PR_close
 			 * has completed.  */
-			if (IS_IN_SYSEXIT2(ptracee, (PTRACEE.is_loaded ? PR_execve : PR_close))
+			if (IS_IN_SYSEXIT2(ptracee, (PTRACEE.is_load_pending
+									? PR_close
+									: PR_execve))
 			    && (PTRACEE.options & PTRACE_O_TRACEEXEC) == 0
 			    && fetch_regs(ptracee) >= 0
 			    && (int) peek_reg(ptracee, CURRENT, SYSARG_RESULT) >= 0) {
 				kill(ptracee->pid, SIGTRAP);
-				PTRACEE.is_loaded = true;
+				PTRACEE.is_load_pending = false;
 			}
 
 			if (PTRACEE.ignore_syscall)

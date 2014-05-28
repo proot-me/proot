@@ -109,7 +109,7 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 	 * the case under PRoot since it replaces the executed
 	 * programs with a loader (the ELF interpreter for now).  */
 	if (callback == extract_elf_interp)
-		tracee->as_ptracee.is_loaded = (status == 0);
+		tracee->as_ptracee.is_load_pending = (status != 0);
 
 	/* No interpreter was found, in this case we execute the
 	 * translation of u_path (t_interp) directly. */

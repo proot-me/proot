@@ -122,7 +122,7 @@ typedef struct tracee {
 		bool ignore_syscall;
 		word_t options;
 		bool is_zombie;
-		bool is_loaded;
+		bool is_load_pending;
 	} as_ptracee;
 
 	/* Current status:
