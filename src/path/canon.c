@@ -28,6 +28,7 @@
 #include <unistd.h>    /* access(2), lstat(2), */
 #include <string.h>    /* string(3), */
 #include <assert.h>    /* assert(3), */
+#include <stdio.h>     /* sscanf(3), */
 
 #include "path/canon.h"
 #include "path/path.h"
@@ -195,7 +196,7 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 			case DONT_CANONICALIZE:
 				/* If and only very final, this symlink
 				 * shouldn't be dereferenced nor canonicalized.  */
-				if (finality == FINAL_NORMAL && recursion_level == 0) {
+				if (finality == FINAL_NORMAL) {
 					strcpy(guest_path, scratch_path);
 					return 0;
 				}
@@ -238,8 +239,9 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		if (status < 0)
 			return status;
 
-		/* Here, 'guest_path' shouldn't be a symlink anymore.  */
-		assert(status != 1);
+		/* Here, 'guest_path' shouldn't be a symlink anymore,
+		 * unless it is a named file descriptor.  */
+		assert(status != 1 || sscanf(guest_path, "/proc/%*d/fd/%d", &status) == 1);
 	}
 
 	/* At the exit stage of the first level of recursion,

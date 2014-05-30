@@ -101,18 +101,6 @@ Fixes
 
 * Replace tracee->reconf.paths with tracee->reconf.env + getenv2()
 
-* Fix ``proot  fuser -uv .``::
-
-      Cannot stat file /proc/29916/fd/99: No such file or directory
-
-      $ ls -l /proc/29916/fd/99
-      lrwx------ 1 cedric users 64 Sep 12 14:13 /proc/29916/fd/99 -> socket:[214998506]
-
-      strace  fuser -uv .
-      ...
-      stat("/proc/29916/fd/99", {st_mode=S_IFSOCK|0777, st_size=0, ...}) = 0
-      ...
-
 * Fix ``mkdir foo; cd foo; rmdir ../foo; readlink /proc/self/cwd``.
 
 * Fix remaining bugs in sub-reconfiguration support::
