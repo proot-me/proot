@@ -32,6 +32,7 @@ static const char *recommended_su_bindings[] = {
 	"/etc/host.conf",
 	"/etc/hosts",
 	"/etc/nsswitch.conf",
+	"/etc/resolv.conf",
 	"/dev/",
 	"/sys/",
 	"/proc/",

@@ -213,6 +213,7 @@ The following options are aliases for handy sets of options.
 
     * /etc/host.conf
     * /etc/hosts
+    * /etc/nsswitch.conf
     * /etc/resolv.conf
     * /dev/
     * /sys/
