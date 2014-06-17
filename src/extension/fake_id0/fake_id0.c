@@ -30,6 +30,7 @@
 #include <linux/audit.h> /* AUDIT_ARCH_*,  */
 #include <string.h>      /* memcpy(3), */
 #include <stdlib.h>      /* strtol(3), */
+#include <linux/auxvec.h>/* AT_,  */
 
 #include "extension/extension.h"
 #include "syscall/syscall.h"
@@ -38,6 +39,7 @@
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
+#include "execve/auxv.h"
 #include "path/binding.h"
 #include "arch.h"
 
@@ -65,6 +67,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_chown,		FILTER_SYSEXIT },
 	{ PR_chown32,		FILTER_SYSEXIT },
 	{ PR_chroot,		FILTER_SYSEXIT },
+	{ PR_execve,		FILTER_SYSEXIT },
 	{ PR_fchmod,		FILTER_SYSEXIT },
 	{ PR_fchmodat,		FILTER_SYSEXIT },
 	{ PR_fchown,		FILTER_SYSEXIT },
@@ -678,6 +681,45 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 		/* Force success.  */
 		poke_reg(tracee, SYSARG_RESULT, 0);
+		return 0;
+	}
+
+	case PR_execve: {
+		ElfAuxVector *vectors;
+		ElfAuxVector *vector;
+		word_t vectors_address;
+
+		/* Override only if it succeed.  */
+		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+		if ((int) result < 0)
+			return 0;
+
+		vectors_address = get_elf_aux_vectors_address(tracee);
+		if (vectors_address == 0)
+			return 0;
+
+		vectors = fetch_elf_aux_vectors(tracee, vectors_address);
+		if (vectors == NULL)
+			return 0;
+
+		vector = find_elf_aux_vector(vectors, AT_UID);
+		if (vector != NULL)
+			vector->value = config->ruid;
+
+		vector = find_elf_aux_vector(vectors, AT_EUID);
+		if (vector != NULL)
+			vector->value = config->euid;
+
+		vector = find_elf_aux_vector(vectors, AT_GID);
+		if (vector != NULL)
+			vector->value = config->rgid;
+
+		vector = find_elf_aux_vector(vectors, AT_EGID);
+		if (vector != NULL)
+			vector->value = config->egid;
+
+		push_elf_aux_vectors(tracee, vectors, vectors_address);
+
 		return 0;
 	}
 
