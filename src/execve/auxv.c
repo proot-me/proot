@@ -143,11 +143,14 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 	vectors[0].type  = AT_NULL;
 	vectors[0].value = 0;
 
-	do {
+	while (1) {
 		vector.type = peek_word(tracee, address);
 		if (errno != 0)
 			return NULL;
 		address += sizeof_word(tracee);
+
+		if (vector.type == AT_NULL)
+			break; /* Already added.  */
 
 		vector.value = peek_word(tracee, address);
 		if (errno != 0)
@@ -157,7 +160,7 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 		status = add_elf_aux_vector(&vectors, vector.type, vector.value);
 		if (status < 0)
 			return NULL;
-	} while (vector.type != AT_NULL);
+	}
 
 	return vectors;
 }
