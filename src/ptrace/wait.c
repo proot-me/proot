@@ -62,13 +62,17 @@ static const char *stringify_event(int event)
 		case SIGTRAP | PTRACE_EVENT_FORK  << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_FORK";
 		case SIGTRAP | PTRACE_EVENT_VFORK_DONE  << 8:
-			return "stopped: SIGTRAP: PTRACE_EVENT_FORK_DONE";
+			return "stopped: SIGTRAP: PTRACE_EVENT_VFORK_DONE";
 		case SIGTRAP | PTRACE_EVENT_CLONE << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_CLONE";
 		case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_EXEC";
 		case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_EXIT";
+		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_SECCOMP2";
+		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8:
+			return "stopped: SIGTRAP: PTRACE_EVENT_SECCOMP";
 		case SIGSTOP:
 			return "stopped: SIGSTOP";
 		default:
@@ -302,6 +306,12 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 
 			/* Never reached.  */
 			assert(0);
+
+		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
+		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8:
+			/* These events are not supported [yet?] under
+			 * ptrace emulation.  */
+			return false;
 
 		default:
 			PTRACEE.tracing_started = true;

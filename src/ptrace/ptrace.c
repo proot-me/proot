@@ -126,6 +126,12 @@ int translate_ptrace_exit(Tracee *tracee)
 			}
 		}
 
+		/* Disable seccomp acceleration for this tracee and
+		 * all its children since we can't assume what are the
+		 * syscalls its tracer is interested with.  */
+		if (tracee->seccomp == ENABLED)
+			tracee->seccomp = DISABLING;
+
 		return 0;
 	}
 
