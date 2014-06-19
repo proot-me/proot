@@ -94,7 +94,8 @@ Documentation Update
 
 1. update the release number in "doc/proot-manual.txt"
 
-2. regenerate the documentation: `make -C doc`
+2. regenerate the documentation: `make -C doc; cp doc/proot.1
+   doc/proot/man.1`
 
 3. regenerate the command-line interface: `cp doc/*.h
    src/cli/; $EDITOR src/cli/{proot,care}.h`
