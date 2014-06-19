@@ -8,8 +8,12 @@ mkdir -p ${ROOTFS}/${TMP}
 A=$(mcookie)
 B=$(mcookie)
 
-ln -s /bin/true   -r ${ROOTFS}/${TMP}/${A}
-ln -s ${TMP}/${A} -r ${ROOTFS}/${TMP}/${B}
+! ln -s /bin/true   -r ${ROOTFS}/${TMP}/${A}
+! ln -s ${TMP}/${A} -r ${ROOTFS}/${TMP}/${B}
+
+if [ ! -e ${ROOTFS}/${TMP}/${A}/true ]; then
+    exit 125;
+fi
 
 env PATH=${TMP} ${PROOT} -r ${ROOTFS} ${B}
 
