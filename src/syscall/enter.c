@@ -139,11 +139,9 @@ int translate_syscall_enter(Tracee *tracee)
 		status = translate_wait_enter(tracee);
 		break;
 
-#if !defined(ARCH_X86)
 	case PR_brk:
 		status = translate_brk_enter(tracee);
 		break;
-#endif
 
 	case PR_getcwd:
 		set_sysnum(tracee, PR_void);

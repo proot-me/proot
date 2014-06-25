@@ -74,11 +74,9 @@ void translate_syscall_exit(Tracee *tracee)
 	syscall_number = get_sysnum(tracee, ORIGINAL);
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	switch (syscall_number) {
-#if !defined(ARCH_X86)
 	case PR_brk:
 		translate_brk_exit(tracee);
 		goto end;
-#endif
 
 	case PR_getcwd: {
 		char path[PATH_MAX];
