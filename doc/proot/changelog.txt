@@ -1,3 +1,15 @@
+Release v4.0.0
+==============
+
+Highlights
+----------
+
++ Previously, it was not possible to execute GDB, strace, or any other
+  program based on "ptrace" under PRoot since this latter is also
+  based on this syscall and the Linux kernel allows only one ptracer
+  per process.
+
+
 Release v3.2.2
 ==============
 

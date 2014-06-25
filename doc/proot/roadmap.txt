@@ -5,38 +5,17 @@
 PRoot v4.0: ptrace emulation
 ============================
 
-Highlight
----------
-
-Currently, it's not possible to execute GDB, strace, or any other
-program based on "ptrace" under PRoot since this latter is also based
-on this syscall and the Linux kernel allows only one ptracer per
-process.  The solution is to emulate this syscall in PRoot.
-
 Ptrace emulation remaining items
 --------------------------------
-
-* Make GDB detect loaded libraries (AT_BASE in /proc/<pid>/aux)
-
-* Make test-092c5e26 pass under ptrace emulation (/proc/<pid>/aux ?)
-
-* Make ptrace emulation work under seccomp.
 
 * Test on ARM.
 
 * Add support for PTRACE_GETFPXREGS on x86.
 
-* What is the older version of GDB supported? 6.6?
-
-
 Other remaining items
 ---------------------
 
-* Start a login shell (``env -i sh -l``) instead of ``/bin/sh``.
-
 * Mention "container" in the documentation.
-
-* Use PTRACE_O_EXITKILL if possible.
 
 * Add new hidden option "PROOT_MIN_HEAP_SIZE".
 
@@ -139,6 +118,10 @@ Fixes
 
 Features
 --------
+
+* Start a login shell (``env -i sh -l``) instead of ``/bin/sh``.
+
+* Use PTRACE_O_EXITKILL if possible.
 
 * Do not seccomp-trace any syscalls when there are no bindings.  This
   should improve performance of ATOS extensions a alot.
