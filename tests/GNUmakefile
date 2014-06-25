@@ -67,9 +67,7 @@ check-test-c5a7a0f0.c: test-c5a7a0f0
 	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
 check-test-a3e68988.c: test-a3e68988
-#	@which strace >/dev/null 2>&1 || rm $<
-#	$(call check_c,$<,$(PROOT) strace -e trace=none ./$<)
-	@which gdb >/dev/null 2>&1 || rm $<
+	@which gdb >/dev/null 2>&1 || rm -f $<
 	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
 
 check_c = $(Q)if [ -e $< ]; then			\

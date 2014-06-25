@@ -3,12 +3,14 @@ if [ -z `which mcookie` ] || [ -z `which mkdir` ]  || [ -z `which ln` ] || [ -z 
 fi
 
 TMP=/tmp/$(mcookie)
+TMP2=/tmp/$(mcookie)
 mkdir ${TMP}
 ln -s /proc/self/fd ${TMP}/fd
 ln -s ${TMP}/fd/0 ${TMP}/stdin
 
 ${PROOT} \ls ${TMP}/stdin | grep ^${TMP}/stdin$
 
-${PROOT} cat ${TMP}/stdin <<< OK | grep ^OK$
+echo OK > ${TMP2}
+${PROOT} cat ${TMP}/stdin < ${TMP2} | grep ^OK$
 
-rm -fr ${TMP}
+rm -fr ${TMP} ${TMP2}

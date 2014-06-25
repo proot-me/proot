@@ -492,7 +492,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			return -errno;
 
 		/* Sanity check.  */
-		assert(__builtin_types_compatible_p(typeof(local_iovec.iov_len), word_t));
+		assert(sizeof(local_iovec.iov_len) == sizeof(word_t));
 
 		local_iovec.iov_len  = remote_iovec_len;
 		local_iovec.iov_base = talloc_zero_size(ptracer->ctx, remote_iovec_len);
