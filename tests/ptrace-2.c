@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		if (sid == 0) {
-			pids = realloc(pids, i + 1 + 1);
+			pids = realloc(pids, (i + 1 + 1) * sizeof(pid_t));
 			if (pids == NULL) {
 				perror("realloc()");
 				exit(EXIT_FAILURE);
