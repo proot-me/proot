@@ -47,6 +47,10 @@
 #include <asm/ldt.h>    /* struct user_desc, */
 #endif
 
+#if defined(ARCH_ARM_EABI)
+#define user_fpregs_struct user_fpregs
+#endif
+
 static const char *stringify_ptrace(enum __ptrace_request request)
 {
 #define CASE_STR(a) case a: return #a; break;
@@ -62,7 +66,7 @@ static const char *stringify_ptrace(enum __ptrace_request request)
 	CASE_STR(PTRACE_SETREGSET)	CASE_STR(PTRACE_SEIZE)		CASE_STR(PTRACE_INTERRUPT)
 	CASE_STR(PTRACE_LISTEN)		CASE_STR(PTRACE_SET_SYSCALL)
 	CASE_STR(PTRACE_GET_THREAD_AREA)	CASE_STR(PTRACE_SET_THREAD_AREA)
-	CASE_STR(PTRACE_SINGLEBLOCK)
+	CASE_STR(PTRACE_GETVFPREGS)	CASE_STR(PTRACE_SINGLEBLOCK)
 	default: return "PTRACE_???"; }
 }
 
@@ -429,7 +433,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			uint32_t fpregs32[USER32_NB_FPREGS];
 
 			memcpy(fpregs32, buffer.fpregs32, sizeof(fpregs32));
-			convert_user_regs_struct(true, (uint64_t *) &buffer.fpregs, fpregs32);
+			convert_user_fpregs_struct(true, (uint64_t *) &buffer.fpregs, fpregs32);
 #else
 			static bool warned = false;
 			if (!warned)
@@ -553,6 +557,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		return 0;  /* Don't restart the ptracee.  */
 	}
 
+	case PTRACE_GETVFPREGS:
 	case PTRACE_GETFPXREGS: {
 		static bool warned = false;
 		if (!warned)

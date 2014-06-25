@@ -135,6 +135,9 @@
 #    ifndef PTRACE_SET_THREAD_AREA
 #        define PTRACE_SET_THREAD_AREA	26
 #    endif
+#    ifndef PTRACE_GETVFPREGS
+#        define PTRACE_GETVFPREGS	27
+#    endif
 #    ifndef PTRACE_SINGLEBLOCK
 #        define PTRACE_SINGLEBLOCK	33
 #    endif

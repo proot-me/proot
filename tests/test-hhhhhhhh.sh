@@ -1,4 +1,4 @@
-if [ ! -x  ${ROOTFS}/bin/true ] || [ -z `which mcookie` ] || [ -z `which true` ] || [ -z `which mkdir` ] || [ -z `which ln` ] || [ -z `which rm` ]; then
+if [ ! -x  ${ROOTFS}/bin/true ] || [ -h /bin/true ] || [ -h /bin ] || [ -z `which mcookie` ] || [ -z `which true` ] || [ -z `which mkdir` ] || [ -z `which ln` ] || [ -z `which rm` ]; then
     exit 125;
 fi
 
@@ -11,7 +11,7 @@ B=$(mcookie)
 ! ln -s /bin/true   -r ${ROOTFS}/${TMP}/${A}
 ! ln -s ${TMP}/${A} -r ${ROOTFS}/${TMP}/${B}
 
-if [ ! -e ${ROOTFS}/${TMP}/${A}/true ]; then
+if [ ! -e ${ROOTFS}/${TMP}/${A} ]; then
     exit 125;
 fi
 

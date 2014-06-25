@@ -3,7 +3,7 @@ if [ -z `which mcookie` ] || [ -z `which rm` ] || [ -z `which ln` ] || [ -z `whi
 fi
 
 ! realpath -e /proc/self/exe
-if [ $? != 0 ]; then
+if [ $? != 1 ]; then
     exit 125;
 fi
 
