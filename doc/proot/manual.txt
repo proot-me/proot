@@ -6,8 +6,8 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2014-01-09
-:Version: 3.2.2
+:Date: 2014-06-25
+:Version: 4.0.0
 :Manual section: 1
 
 
@@ -160,8 +160,8 @@ the sources for further details.
     ``/``, ...  Note that this option is quite limited compared to
     ``fakeroot``.
 
--i uid:gid, --change-id=uid:gid
-    Make current user and group appear as *uid* and *gid*.
+-i string, --change-id=string
+    Make current user and group appear as *string* "uid:gid".
 
     This option makes the current user and group appear as *uid* and
     *gid*.  Likewise, files actually owned by the current user and
@@ -503,27 +503,19 @@ Rootfs
 ------
 
 Here follows a couple of URLs where some rootfs archives can be freely
-downloaded.  Note that the errors reported by ``tar`` when extracting
-these archives can be safely ignored.  Obviously these files are not
-required when PRoot is used as a ``mount --bind`` equivalent only.
+downloaded.  Note that ``mknod`` errors reported by ``tar`` when
+extracting these archives can be safely ignored since special files
+are typically bound (see ``-R`` option for details).
 
-* Slackware, Arch, Fedora for ARM:
+* http://download.openvz.org/template/precreated/
 
-  * ftp://ftp.armedslack.org/slackwarearm/slackwarearm-devtools/minirootfs/roots/
-  * http://archlinuxarm.org/developers/downloads
-  * http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/
+* https://images.linuxcontainers.org/images/
 
-* CentOS, Debian, Fedora, Scientific, Suse, Ubuntu, ALT, Arch, CERN,
-  Gentoo, OpenSuse, Openwall, Slackware, SLES, and etc. for x86 and
-  x86_64 CPUs:
+* http://distfiles.gentoo.org/releases/
 
-  * http://download.openvz.org/template/precreated/
-  * http://cdimage.ubuntu.com/ubuntu-core/releases/
-  * https://images.linuxcontainers.org/images/
+* http://cdimage.ubuntu.com/ubuntu-core/releases/
 
-* Gentoo for a lot of architectures:
-
-  * http://distfiles.gentoo.org/releases/
+* http://archlinuxarm.org/developers/downloads
 
 Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution::

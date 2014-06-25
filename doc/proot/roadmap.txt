@@ -2,24 +2,6 @@
  Roadmap
 =========
 
-PRoot v4.0: ptrace emulation
-============================
-
-Ptrace emulation remaining items
---------------------------------
-
-* Test on ARM.
-
-* Add support for PTRACE_GETFPXREGS on x86.
-
-Other remaining items
----------------------
-
-* Mention "container" in the documentation.
-
-* Add new hidden option "PROOT_MIN_HEAP_SIZE".
-
-
 PRoot v4.1: custom loader
 =========================
 
@@ -76,7 +58,15 @@ Not yet scheduled
 Fixes
 -----
 
-* Fix support for "(gdb) catch fork".
+* Mention "container" in the documentation.
+
+* Fix ptrace emulation support on ARM.
+
+* Fix support for GDB v/fork & execve catchpoints.
+
+* Add support for unimplemented ptrace requests.
+
+* Add new hidden option "PROOT_MIN_HEAP_SIZE".
 
 * Replace tracee->reconf.paths with tracee->reconf.env + getenv2()
 

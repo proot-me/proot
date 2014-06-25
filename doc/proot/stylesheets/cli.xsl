@@ -20,6 +20,7 @@
 </xsl:text>
 
     <xsl:apply-templates select="//option_string[.='-R']" />
+    <xsl:apply-templates select="//option_string[.='-S']" />
 
     <xsl:apply-templates select="//option_group" mode="handlers" />
     <xsl:text>

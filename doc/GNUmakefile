@@ -1,7 +1,7 @@
-OUTPUTS = proot.1 proot.h proot.spec proot/index.html care.h care/index.html
+OUTPUTS = proot/man.1 proot.h proot.spec proot/index.html care.h care/index.html
 all: $(OUTPUTS)
 
-%.1: %/manual.txt
+%/man.1: %/manual.txt
 	rst2man $< $@
 
 %.xml: %.txt

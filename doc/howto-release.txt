@@ -92,7 +92,7 @@ Documentation Update
 
 0. update "doc/changelog.txt"
 
-1. update the release number in "doc/proot-manual.txt"
+1. update the release number in "doc/proot/manual.txt"
 
 2. regenerate the documentation: `make -C doc; cp doc/proot.1
    doc/proot/man.1`

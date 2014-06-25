@@ -3,8 +3,10 @@
 #ifndef PROOT_CLI_H
 #define PROOT_CLI_H
 
+#include "cli/cli.h"
+
 #ifndef VERSION
-#define VERSION "3.2.2"
+#define VERSION "4.0.0"
 #endif
 
 static const char *recommended_bindings[] = {
@@ -50,7 +52,6 @@ static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_k(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_0(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, char *value);
@@ -145,7 +146,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_v,
 	  .description = "Set the level of debug information to *value*.",
-	  .detail = "\tThe higher the integer value is, the more detailled debug\n\
+	  .detail = "\tThe higher the integer value is, the more detailed debug\n\
 \tinformation is printed to the standard error stream.  A negative\n\
 \tvalue makes PRoot quiet except on fatal errors.",
 	},
@@ -200,11 +201,11 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	},
 	{ .class = "Extension options",
 	  .arguments = {
-		{ .name = "-i", .separator = ' ', .value = "uid:gid" },
-		{ .name = "--change-id", .separator = '=', .value = "uid:gid" },
+		{ .name = "-i", .separator = ' ', .value = "string" },
+		{ .name = "--change-id", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_i,
-	  .description = "Make current user and group appear as *uid* and *gid*.",
+	  .description = "Make current user and group appear as *string* \"uid:gid\".",
 	  .detail = "\tThis option makes the current user and group appear as uid and\n\
 \tgid.  Likewise, files actually owned by the current user and\n\
 \tgroup appear as if they were owned by uid and gid instead.\n\

@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH PROOT 1 "2014-01-09" "3.2.2" ""
+.TH PROOT 1 "2014-06-25" "4.0.0" ""
 .SH NAME
 PRoot \- chroot, mount --bind, and binfmt_misc without privilege/setup
 .
@@ -166,11 +166,9 @@ identity, and by faking the success of some operations like
 changing the ownership of files, changing the root directory to
 \fB/\fP, ...  Note that this option is quite limited compared to
 \fBfakeroot\fP\&.
-.UNINDENT
-.INDENT 0.0
 .TP
-.B \-i uid:gid, \-\-change\-id=uid:gid
-Make current user and group appear as \fIuid\fP and \fIgid\fP\&.
+.BI \-i \ string\fP,\fB \ \-\-change\-id\fB= string
+Make current user and group appear as \fIstring\fP "uid:gid".
 .sp
 This option makes the current user and group appear as \fIuid\fP and
 \fIgid\fP\&.  Likewise, files actually owned by the current user and
@@ -661,38 +659,20 @@ other architectures: on demand.
 .SS Rootfs
 .sp
 Here follows a couple of URLs where some rootfs archives can be freely
-downloaded.  Note that the errors reported by \fBtar\fP when extracting
-these archives can be safely ignored.  Obviously these files are not
-required when PRoot is used as a \fBmount \-\-bind\fP equivalent only.
+downloaded.  Note that \fBmknod\fP errors reported by \fBtar\fP when
+extracting these archives can be safely ignored since special files
+are typically bound (see \fB\-R\fP option for details).
 .INDENT 0.0
-.IP \(bu 2
-Slackware, Arch, Fedora for ARM:
-.INDENT 2.0
-.IP \(bu 2
-\fI\%ftp://ftp.armedslack.org/slackwarearm/slackwarearm\-devtools/minirootfs/roots/\fP
-.IP \(bu 2
-\fI\%http://archlinuxarm.org/developers/downloads\fP
-.IP \(bu 2
-\fI\%http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/\fP
-.UNINDENT
-.IP \(bu 2
-CentOS, Debian, Fedora, Scientific, Suse, Ubuntu, ALT, Arch, CERN,
-Gentoo, OpenSuse, Openwall, Slackware, SLES, and etc. for x86 and
-x86_64 CPUs:
-.INDENT 2.0
 .IP \(bu 2
 \fI\%http://download.openvz.org/template/precreated/\fP
 .IP \(bu 2
-\fI\%http://cdimage.ubuntu.com/ubuntu\-core/releases/\fP
-.IP \(bu 2
 \fI\%https://images.linuxcontainers.org/images/\fP
-.UNINDENT
-.IP \(bu 2
-Gentoo for a lot of architectures:
-.INDENT 2.0
 .IP \(bu 2
 \fI\%http://distfiles.gentoo.org/releases/\fP
-.UNINDENT
+.IP \(bu 2
+\fI\%http://cdimage.ubuntu.com/ubuntu\-core/releases/\fP
+.IP \(bu 2
+\fI\%http://archlinuxarm.org/developers/downloads\fP
 .UNINDENT
 .sp
 Technically such rootfs archive can be created by running the
