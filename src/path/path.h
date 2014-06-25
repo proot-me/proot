@@ -84,7 +84,7 @@ extern bool belongs_to_guestfs(const Tracee *tracee, const char *path);
 
 extern int join_paths(int number_paths, char result[PATH_MAX], ...);
 extern Finality next_component(char component[NAME_MAX], const char **cursor);
-extern char *pop_component(char *path);
+extern void pop_component(char *path);
 extern int list_open_fd(const Tracee *tracee);
 
 extern Comparison compare_paths(const char *path1, const char *path2);
