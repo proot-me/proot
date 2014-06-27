@@ -412,6 +412,12 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 		if (status < 0)
 			return status;
 
+		/* Named file descriptors may reference special
+		 * objects like pipes, sockets, inodes, ...  Such
+		 * objects do not belong to the file-system.  */
+		if (result[0] != '/')
+			return -ENOTDIR;
+
 		/* Remove the leading "root" part of the base
 		 * (required!). */
 		status = detranslate_path(tracee, result, NULL);

@@ -70,6 +70,9 @@ check-test-a3e68988.c: test-a3e68988
 	@which gdb >/dev/null 2>&1 || rm -f $<
 	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
 
+check-test-fdf487a0.c: test-fdf487a0
+	$(call check_c,$<,echo test | $(PROOT) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -142,6 +145,9 @@ test-c5a7a0f0: test-c5a7a0f0.c
 	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
 
 test-a3e68988: test-a3e68988.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-fdf487a0: test-fdf487a0.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
 ######################################################################
