@@ -171,10 +171,15 @@ int translate_ptrace_exit(Tracee *tracee)
 	ptracer = tracee;
 	ptracee = get_stopped_ptracee(ptracer, pid, false, __WALL);
 	if (ptracee == NULL) {
+		static bool warned = false;
+
 		/* Ensure we didn't get there only because inheritance
 		 * mechanism has missed this one.  */
 		ptracee = get_tracee(tracee, pid, false);
-		assert(ptracee == NULL || ptracee->exe != NULL);
+		if (ptracee != NULL && ptracee->exe == NULL && !warned) {
+			warned = true;
+			notice(ptracer, WARNING, INTERNAL, "ptrace request to an unexpected ptracee");
+		}
 
 		return -ESRCH;
 	}
@@ -537,7 +542,7 @@ int translate_ptrace_exit(Tracee *tracee)
 			return -errno;
 
 		/* Sanity check.  */
-		assert(__builtin_types_compatible_p(typeof(local_iovec.iov_len), word_t));
+		assert(sizeof(local_iovec.iov_len) == sizeof(word_t));
 
 		local_iovec.iov_len  = remote_iovec_len;
 		local_iovec.iov_base = talloc_zero_size(ptracer->ctx, remote_iovec_len);
