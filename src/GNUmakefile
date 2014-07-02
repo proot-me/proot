@@ -16,7 +16,7 @@ CARE_LDFLAGS = -larchive
 OBJECTS += \
 	cli/cli.o		\
 	cli/proot.o		\
-	cli/notice.o		\
+	cli/note.o		\
 	execve/enter.o		\
 	execve/exit.o		\
 	execve/shebang.o	\

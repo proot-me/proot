@@ -37,7 +37,7 @@
 #include "path/canon.h"
 #include "path/proc.h"
 #include "extension/extension.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "build.h"
 
 #include "compat.h"
@@ -132,12 +132,12 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], const cha
 	status = realpath2(tracee, host_path, command, true);
 	if (status == 0 && stat(host_path, &statr) == 0) {
 		if (is_explicit && !S_ISREG(statr.st_mode)) {
-			notice(tracee, ERROR, USER, "'%s' is not a regular file", command);
+			note(tracee, ERROR, USER, "'%s' is not a regular file", command);
 			return -EACCES;
 		}
 
 		if (is_explicit && (statr.st_mode & S_IXUSR) == 0) {
-			notice(tracee, ERROR, USER, "'%s' is not executable", command);
+			note(tracee, ERROR, USER, "'%s' is not executable", command);
 			return -EACCES;
 		}
 
@@ -203,13 +203,13 @@ not_found:
 	if (status < 0)
 		strcpy(path, "<unknown>");
 
-	notice(tracee, ERROR, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
+	note(tracee, ERROR, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
 		command, get_root(tracee), path, paths);
 
 	/* Check if the command was found without any $PATH look-up
 	 * but it didn't contain "/".  */
 	if (found && !is_explicit)
-		notice(tracee, ERROR, USER,
+		note(tracee, ERROR, USER,
 			"to execute a local program, use the './' prefix, for example: ./%s", command);
 
 	return -1;

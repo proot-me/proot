@@ -40,7 +40,6 @@
 #include "execve/auxv.h"
 #include "path/binding.h"
 #include "path/temp.h"
-#include "cli/notice.h"
 
 
 /**

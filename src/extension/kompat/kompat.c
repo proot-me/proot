@@ -42,7 +42,7 @@
 #include "tracee/abi.h"
 #include "tracee/mem.h"
 #include "execve/auxv.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "arch.h"
 
 #include "attribute.h"
@@ -344,7 +344,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 
 		if (!warned) {
 			warned = true;
-			notice(tracee, WARNING, USER,
+			note(tracee, WARNING, USER,
 				"kompat: this kernel doesn't support private futexes "
 				"and PRoot can't emulate them.  Expect some troubles...");
 		}

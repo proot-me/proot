@@ -35,7 +35,7 @@
 #include <talloc.h>     /* talloc_*, */
 
 #include "tracee/event.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "path/path.h"
 #include "path/binding.h"
 #include "syscall/syscall.h"
@@ -65,7 +65,7 @@ int launch_process(Tracee *tracee, char *const argv[])
 	pid = fork();
 	switch(pid) {
 	case -1:
-		notice(tracee, ERROR, SYSTEM, "fork()");
+		note(tracee, ERROR, SYSTEM, "fork()");
 		return -errno;
 
 	case 0: /* child */
@@ -73,7 +73,7 @@ int launch_process(Tracee *tracee, char *const argv[])
 		 * requested program. */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		if (status < 0) {
-			notice(tracee, ERROR, SYSTEM, "ptrace(TRACEME)");
+			note(tracee, ERROR, SYSTEM, "ptrace(TRACEME)");
 			return -errno;
 		}
 
@@ -110,7 +110,7 @@ int launch_process(Tracee *tracee, char *const argv[])
  * signal.  */
 static void kill_all_tracees2(int signum, siginfo_t *siginfo UNUSED, void *ucontext UNUSED)
 {
-	notice(NULL, WARNING, INTERNAL, "signal %d received from process %d",
+	note(NULL, WARNING, INTERNAL, "signal %d received from process %d",
 		signum, siginfo->si_pid);
 	kill_all_tracees();
 
@@ -229,7 +229,7 @@ static void check_architecture(Tracee *tracee)
 	if (!IS_CLASS64(elf_header) || sizeof(word_t) == sizeof(uint64_t))
 		return;
 
-	notice(tracee, ERROR, USER,
+	note(tracee, ERROR, USER,
 		"'%s' is a 64-bit program whereas this version of "
 		"%s handles 32-bit programs only", path, tracee->tool_name);
 
@@ -240,7 +240,7 @@ static void check_architecture(Tracee *tracee)
 	if (strcmp(utsname.machine, "x86_64") != 0)
 		return;
 
-	notice(tracee, INFO, USER,
+	note(tracee, INFO, USER,
 		"use a 64-bit version of %s instead, it supports both 32 and 64-bit programs",
 		tracee->tool_name);
 }
@@ -258,7 +258,7 @@ int event_loop()
 	/* Kill all tracees when exiting.  */
 	status = atexit(kill_all_tracees);
 	if (status != 0)
-		notice(NULL, WARNING, INTERNAL, "atexit() failed");
+		note(NULL, WARNING, INTERNAL, "atexit() failed");
 
 	/* All signals are blocked when the signal handler is called.
 	 * SIGINFO is used to know which process has signaled us and
@@ -267,7 +267,7 @@ int event_loop()
 	signal_action.sa_flags = SA_SIGINFO | SA_RESTART;
 	status = sigfillset(&signal_action.sa_mask);
 	if (status < 0)
-		notice(NULL, WARNING, SYSTEM, "sigfillset()");
+		note(NULL, WARNING, SYSTEM, "sigfillset()");
 
 	/* Handle all signals.  */
 	for (signum = 0; signum < SIGRTMAX; signum++) {
@@ -309,7 +309,7 @@ int event_loop()
 
 		status = sigaction(signum, &signal_action, NULL);
 		if (status < 0 && errno != EINVAL)
-			notice(NULL, WARNING, SYSTEM, "sigaction(%d)", signum);
+			note(NULL, WARNING, SYSTEM, "sigaction(%d)", signum);
 	}
 
 	while (1) {
@@ -322,7 +322,7 @@ int event_loop()
 		pid = waitpid(-1, &tracee_status, __WALL);
 		if (pid < 0) {
 			if (errno != ECHILD) {
-				notice(NULL, ERROR, SYSTEM, "waitpid()");
+				note(NULL, ERROR, SYSTEM, "waitpid()");
 				return EXIT_FAILURE;
 			}
 			break;
@@ -431,7 +431,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
 						default_ptrace_options);
 				if (status < 0) {
-					notice(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
+					note(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
 					exit(EXIT_FAILURE);
 				}
 			}

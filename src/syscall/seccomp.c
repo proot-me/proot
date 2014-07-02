@@ -44,7 +44,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "extension/extension.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #include "compat.h"
 #include "attribute.h"

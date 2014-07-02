@@ -34,8 +34,8 @@
 #include "tracee/mem.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
-#include "cli/notice.h"
 #include "arch.h"
+
 
 /**
  * Add the given vector [@type, @value] to @vectors.  This function

@@ -34,7 +34,7 @@
 #include <limits.h>        /* INT_MAX, */
 
 #include "cli/cli.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "extension/care/extract.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
@@ -122,17 +122,17 @@ void print_version(const Cli *cli)
 
 static void print_execve_help(const Tracee *tracee, const char *argv0, int status)
 {
-	notice(tracee, ERROR, SYSTEM, "execve(\"%s\")", argv0);
+	note(tracee, ERROR, SYSTEM, "execve(\"%s\")", argv0);
 
 	/* Ubuntu kernel bug?  */
 	if (status == -EPERM && getenv("PROOT_NO_SECCOMP") == NULL) {
-		notice(tracee, INFO, USER,
+		note(tracee, INFO, USER,
 "It seems your kernel contains this bug: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1202161\n"
 "To workaround it, set the env. variable PROOT_NO_SECCOMP to 1.");
 		return;
 	}
 
-	notice(tracee, INFO, USER, "possible causes:\n"
+	note(tracee, INFO, USER, "possible causes:\n"
 "  * <program> is a script but its interpreter (eg. /bin/sh) was not found;\n"
 "  * <program> is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
 "  * <program> is a foreign binary but no <qemu> was specified;\n"
@@ -142,10 +142,9 @@ static void print_execve_help(const Tracee *tracee, const char *argv0, int statu
 static void print_error_separator(const Tracee *tracee, const Argument *argument)
 {
 	if (argument->separator == '\0')
-		notice(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
+		note(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
 	else
-		notice(tracee, ERROR, USER,
-			"option '%s' and its value must be separated by '%c'.",
+		note(tracee, ERROR, USER, "option '%s' and its value must be separated by '%c'.",
 			argument->name, argument->separator);
 }
 
@@ -175,7 +174,7 @@ static void print_argv(const Tracee *tracee, const char *prompt, char *const arg
 
 #undef APPEND
 
-	notice(tracee, INFO, USER, "%s", string);
+	note(tracee, INFO, USER, "%s", string);
 }
 
 static void print_config(Tracee *tracee, char *const argv[])
@@ -186,16 +185,16 @@ static void print_config(Tracee *tracee, char *const argv[])
 		return;
 
 	if (tracee->qemu)
-		notice(tracee, INFO, USER, "host rootfs = %s", HOST_ROOTFS);
+		note(tracee, INFO, USER, "host rootfs = %s", HOST_ROOTFS);
 
 	if (tracee->glue)
-		notice(tracee, INFO, USER, "glue rootfs = %s", tracee->glue);
+		note(tracee, INFO, USER, "glue rootfs = %s", tracee->glue);
 
-	notice(tracee, INFO, USER, "exe = %s", tracee->exe);
+	note(tracee, INFO, USER, "exe = %s", tracee->exe);
 	print_argv(tracee, "argv", argv);
 	print_argv(tracee, "qemu", tracee->qemu);
-	notice(tracee, INFO, USER, "initial cwd = %s", tracee->fs->cwd);
-	notice(tracee, INFO, USER, "verbose level = %d", tracee->verbose);
+	note(tracee, INFO, USER, "initial cwd = %s", tracee->fs->cwd);
+	note(tracee, INFO, USER, "verbose level = %d", tracee->verbose);
 
 	notify_extensions(tracee, PRINT_CONFIG, 0, 0);
 }
@@ -214,7 +213,7 @@ static int initialize_cwd(Tracee *tracee)
 	if (tracee->fs->cwd[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, path);
 		if (status < 0) {
-			notice(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+			note(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
 			return -1;
 		}
 	}
@@ -226,7 +225,7 @@ static int initialize_cwd(Tracee *tracee)
 	 * directory.  */
 	status = join_paths(3, path2, path, tracee->fs->cwd, ".");
 	if (status < 0) {
-		notice(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+		note(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
 		return -1;
 	}
 
@@ -235,9 +234,9 @@ static int initialize_cwd(Tracee *tracee)
 
 	status = canonicalize(tracee, path2, true, path, 0);
 	if (status < 0) {
-		notice(tracee, WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
+		note(tracee, WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
 			path2, strerror(-status));
-		notice(tracee, INFO, USER, "default working directory is now \"/\"");
+		note(tracee, INFO, USER, "default working directory is now \"/\"");
 		strcpy(path, "/");
 	}
 	chop_finality(path);
@@ -388,12 +387,12 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 			}
 		}
 
-		notice(tracee, ERROR, USER, "unknown option '%s'.", arg);
+		note(tracee, ERROR, USER, "unknown option '%s'.", arg);
 		return -1;
 
 	known_option:
 		if (handler != NULL && i == argc - 1) {
-			notice(tracee, ERROR, USER, "missing value for option '%s'.", arg);
+			note(tracee, ERROR, USER, "missing value for option '%s'.", arg);
 			return -1;
 		}
 	}
@@ -503,7 +502,7 @@ int parse_integer_option(const Tracee *tracee, int *variable, const char *value,
 	errno = 0;
 	*variable = strtol(value, &end_ptr, 10);
 	if (errno != 0 || end_ptr == value) {
-		notice(tracee, ERROR, USER, "option `%s` expects an integer value.", option);
+		note(tracee, ERROR, USER, "option `%s` expects an integer value.", option);
 		return -1;
 	}
 

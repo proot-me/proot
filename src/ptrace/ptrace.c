@@ -38,7 +38,7 @@
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "tracee/event.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "arch.h"
 
 #include "compat.h"
@@ -126,7 +126,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (PTRACER.waits_in == WAITS_IN_KERNEL) {
 			status = kill(ptracer->pid, SIGSTOP);
 			if (status < 0)
-				notice(tracee, WARNING, INTERNAL,
+				note(tracee, WARNING, INTERNAL,
 					"can't wake ptracer %d", ptracer->pid);
 			else {
 				ptracer->sigstop = SIGSTOP_IGNORED;
@@ -182,7 +182,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		ptracee = get_tracee(tracee, pid, false);
 		if (ptracee != NULL && ptracee->exe == NULL && !warned) {
 			warned = true;
-			notice(ptracer, WARNING, INTERNAL, "ptrace request to an unexpected ptracee");
+			note(ptracer, WARNING, INTERNAL, "ptrace request to an unexpected ptracee");
 		}
 
 		return -ESRCH;
@@ -404,7 +404,7 @@ int translate_ptrace_exit(Tracee *tracee)
 #else
 			static bool warned = false;
 			if (!warned)
-				notice(ptracer, WARNING, INTERNAL,
+				note(ptracer, WARNING, INTERNAL,
 					"ptrace 32-bit request '%s' not supported on 64-bit yet",
 					stringify_ptrace(request));
 			warned = true;
@@ -446,7 +446,7 @@ int translate_ptrace_exit(Tracee *tracee)
 #else
 			static bool warned = false;
 			if (!warned)
-				notice(ptracer, WARNING, INTERNAL,
+				note(ptracer, WARNING, INTERNAL,
 					"ptrace 32-bit request '%s' not supported on 64-bit yet",
 					stringify_ptrace(request));
 			warned = true;
@@ -570,14 +570,14 @@ int translate_ptrace_exit(Tracee *tracee)
 	case PTRACE_GETFPXREGS: {
 		static bool warned = false;
 		if (!warned)
-			notice(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
+			note(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
 				stringify_ptrace(request));
 		warned = true;
 		return -ENOTSUP;
 	}
 
 	default:
-		notice(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
+		note(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
 			stringify_ptrace(request));
 		return -ENOTSUP;
 	}

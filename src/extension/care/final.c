@@ -36,7 +36,7 @@
 #include "execve/ldso.h"
 #include "path/path.h"
 #include "path/temp.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 /**
  * Find in @care->volatile_envars the given @envar (format
@@ -82,20 +82,20 @@ static int archive_close_file(const Care *care, FILE *file, const char *name)
 
 	status = fstat(fd, &statl);
 	if (status < 0) {
-		notice(NULL, ERROR, SYSTEM, "can't get '%s' status", name);
+		note(NULL, ERROR, SYSTEM, "can't get '%s' status", name);
 		goto end;
 	}
 
 	location = talloc_asprintf(care, "%s/%s", care->prefix, name);
 	if (location == NULL) {
-		notice(NULL, ERROR, INTERNAL, "can't allocate location for '%s'", name);
+		note(NULL, ERROR, INTERNAL, "can't allocate location for '%s'", name);
 		status = -1;
 		goto end;
 	}
 
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
-		notice(NULL, ERROR, INTERNAL, "can't readlink(/proc/%d/fd/%d)", getpid(), fd);
+		note(NULL, ERROR, INTERNAL, "can't readlink(/proc/%d/fd/%d)", getpid(), fd);
 		goto end;
 	}
 
@@ -138,7 +138,7 @@ static const char *escape_quote(TALLOC_CTX *context, const char *input)
 #define N(format, ...)							\
 	do {								\
 		if (fprintf(file, format "\n", ##__VA_ARGS__) < 0) {	\
-			notice(NULL, ERROR, INTERNAL, "can't write file"); \
+			note(NULL, ERROR, INTERNAL, "can't write file"); \
 			(void) fclose(file);				\
 			return -1;					\
 		}							\
@@ -161,13 +161,13 @@ static int archive_re_execute_sh(Care *care)
 
 	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
-		notice(NULL, ERROR, INTERNAL, "can't create temporary file for 're-execute.sh'");
+		note(NULL, ERROR, INTERNAL, "can't create temporary file for 're-execute.sh'");
 		return -1;
 	}
 
 	status = fchmod(fileno(file), 0755);
 	if (status < 0)
-		notice(NULL, WARNING, SYSTEM, "can't make 're-execute.sh' executable");
+		note(NULL, WARNING, SYSTEM, "can't make 're-execute.sh' executable");
 
 	N("#! /bin/sh");
 	N("");
@@ -239,7 +239,7 @@ static int archive_re_execute_sh(Care *care)
 
 	status = uname(&utsname);
 	if (status < 0) {
-		notice(NULL, WARNING, SYSTEM, "can't get kernel release");
+		note(NULL, WARNING, SYSTEM, "can't get kernel release");
 		C("-k 3.11.0");
 	}
 	else
@@ -285,7 +285,7 @@ static int archive_concealed_accesses_txt(const Care *care)
 
 	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
-		notice(NULL, WARNING, INTERNAL,
+		note(NULL, WARNING, INTERNAL,
 			"can't create temporary file for 'concealed-accesses.txt'");
 		return -1;
 	}
@@ -307,7 +307,7 @@ static int archive_readme_txt(const Care *care)
 
 	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
-		notice(NULL, WARNING, INTERNAL, "can't create temporary file for 'README.txt'");
+		note(NULL, WARNING, INTERNAL, "can't create temporary file for 'README.txt'");
 		return -1;
 	}
 
@@ -371,20 +371,20 @@ static int archive_myself(const Care *care)
 		errno = ENAMETOOLONG;
 	}
 	if (status < 0) {
-		notice(NULL, ERROR, SYSTEM, "can't readlink '/proc/self/exe'");
+		note(NULL, ERROR, SYSTEM, "can't readlink '/proc/self/exe'");
 		return status;
 	}
 	path[status] = '\0';
 
 	status = lstat(path, &statl);
 	if (status < 0) {
-		notice(NULL, ERROR, INTERNAL, "can't lstat '%s'", path);
+		note(NULL, ERROR, INTERNAL, "can't lstat '%s'", path);
 		return status;
 	}
 
 	location = talloc_asprintf(care, "%s/proot", care->prefix);
 	if (location == NULL) {
-		notice(NULL, ERROR, INTERNAL, "can't allocate location for 'proot'");
+		note(NULL, ERROR, INTERNAL, "can't allocate location for 'proot'");
 		return -1;
 	}
 
@@ -403,24 +403,23 @@ int finalize_care(Care *care)
 	/* Generate & archive the "re-execute.sh" script. */
 	status = archive_re_execute_sh(care);
 	if (status < 0)
-		notice(NULL, WARNING, INTERNAL, "can't archive 're-execute.sh'");
+		note(NULL, WARNING, INTERNAL, "can't archive 're-execute.sh'");
 
 	/* Generate & archive the "concealed-accesses.txt" file. */
 	status = archive_concealed_accesses_txt(care);
 	if (status < 0)
-		notice(NULL, WARNING, INTERNAL, "can't archive 'concealed-accesses.txt'");
+		note(NULL, WARNING, INTERNAL, "can't archive 'concealed-accesses.txt'");
 
 	/* Generate & archive the "README.txt" file. */
 	status = archive_readme_txt(care);
 	if (status < 0)
-		notice(NULL, WARNING, INTERNAL, "can't archive 'README.txt'");
+		note(NULL, WARNING, INTERNAL, "can't archive 'README.txt'");
 
 #if defined(CARE_BINARY_IS_PORTABLE)
 	/* Archive "care" as "proot", these are the same binary. */
 	status = archive_myself(care);
 	if (status < 0)
-		notice(NULL, WARNING, INTERNAL, "can't archive 'proot'");
-#endif
+		note(NULL, WARNING, INTERNAL, "can't archive 'proot'");
 
 	finalize_archive(care->archive);
 
@@ -438,7 +437,7 @@ int finalize_care(Care *care)
 
 		status = write(care->archive->fd, &info, sizeof(info));
 		if (status != sizeof(info))
-			notice(NULL, WARNING, SYSTEM, "can't write extracting information");
+			note(NULL, WARNING, SYSTEM, "can't write extracting information");
 
 		(void) close(care->archive->fd);
 		care->archive->fd = -1;
@@ -453,14 +452,14 @@ int finalize_care(Care *care)
 	else
 		extractor = NULL;
 
-	notice(NULL, INFO, USER,
+	note(NULL, INFO, USER,
 		"----------------------------------------------------------------------");
-	notice(NULL, INFO, USER, "Hints:");
-	notice(NULL, INFO, USER,
+	note(NULL, INFO, USER, "Hints:");
+	note(NULL, INFO, USER,
 		"  - search for \"conceal\" in `care -h` if the execution didn't go as expected.");
 
 	if (extractor != NULL)
-		notice(NULL, INFO, USER, "  - run %s to extract the output archive correctly.", extractor);
+		note(NULL, INFO, USER, "  - run %s to extract the output archive correctly.", extractor);
 
 	return 0;
 }

@@ -30,7 +30,7 @@
 #include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "syscall/sysnum.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #include "compat.h"
 
@@ -93,7 +93,7 @@ word_t translate_brk_enter(Tracee *tracee)
 		 * execve(2).  */
 		if (new_brk_address != 0) {
 			if (tracee->verbose > 0)
-				notice(tracee, WARNING, INTERNAL,
+				note(tracee, WARNING, INTERNAL,
 					"process %d is doing suspicious brk()",	tracee->pid);
 			return 0;
 		}

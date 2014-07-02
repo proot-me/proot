@@ -26,7 +26,7 @@
 #include <unistd.h>    /* write(2), */
 
 #include "cli/cli.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "extension/extension.h"
 #include "path/binding.h"
 #include "attribute.h"
@@ -55,7 +55,7 @@ static int handle_option_b(Tracee *tracee, const Cli *cli UNUSED, const char *va
 
 	host = talloc_strdup(tracee->ctx, value);
 	if (host == NULL) {
-		notice(tracee, ERROR, INTERNAL, "can't allocate memory");
+		note(tracee, ERROR, INTERNAL, "can't allocate memory");
 		return -1;
 	}
 
@@ -158,7 +158,7 @@ static int handle_option_k(Tracee *tracee, const Cli *cli UNUSED, const char *va
 
 	status = initialize_extension(tracee, kompat_callback, value);
 	if (status < 0)
-		notice(tracee, WARNING, INTERNAL, "option \"-k %s\" discarded", value);
+		note(tracee, WARNING, INTERNAL, "option \"-k %s\" discarded", value);
 
 	return 0;
 }

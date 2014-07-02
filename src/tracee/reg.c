@@ -40,7 +40,7 @@
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "compat.h"
 
 /**
@@ -205,7 +205,7 @@ void print_current_regs(Tracee *tracee, int verbose_level, const char *message)
 	if (tracee->verbose < verbose_level)
 		return;
 
-	notice(tracee, INFO, INTERNAL,
+	note(tracee, INFO, INTERNAL,
 		"pid %d: %s: %s(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx, %d]",
 		tracee->pid, message,
 		stringify_sysnum(get_sysnum(tracee, CURRENT)),
@@ -309,7 +309,7 @@ int push_regs(Tracee *tracee)
 		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
 			status = ptrace(PTRACE_SET_SYSCALL, tracee->pid, 0, current_sysnum);
 			if (status < 0)
-				notice(tracee, WARNING, SYSTEM, "can't set the syscall number");
+				note(tracee, WARNING, SYSTEM, "can't set the syscall number");
 		}
 #    endif
 

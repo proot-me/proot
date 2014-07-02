@@ -39,7 +39,6 @@
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
-#include "cli/notice.h"
 
 
 #define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)

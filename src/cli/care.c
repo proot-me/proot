@@ -31,7 +31,7 @@
 #include <errno.h>     /* errno(3), */
 
 #include "cli/cli.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "path/binding.h"
 #include "path/temp.h"
 #include "extension/extension.h"
@@ -170,7 +170,7 @@ static Binding *new_concealing_binding(Tracee *tracee, const char *path, bool mu
 	status = stat(path, &statl);
 	if (status < 0) {
 		if (must_exist)
-			notice(tracee, WARNING, SYSTEM, "can't conceal %s", path);
+			note(tracee, WARNING, SYSTEM, "can't conceal %s", path);
 		return NULL;
 	}
 
@@ -179,7 +179,7 @@ static Binding *new_concealing_binding(Tracee *tracee, const char *path, bool mu
 	else
 		temp = create_temp_file(NULL, tracee->tool_name);
 	if (temp == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't conceal %s", path);
+		note(tracee, WARNING, INTERNAL, "can't conceal %s", path);
 		return NULL;
 	}
 
@@ -206,7 +206,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	size_t i;
 
 	if (cursor >= argc) {
-		notice(tracee, ERROR, USER, "no command specified");
+		note(tracee, ERROR, USER, "no command specified");
 		return -1;
 	}
 	options->command = &argv[cursor];
@@ -260,7 +260,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 		/* Sanity check.  Note: it is assumed $HOME and $PWD
 		 * are canonicalized.  */
 		if (home != NULL && pwd != NULL && strcmp(home, pwd) == 0)
-			notice(tracee, WARNING, USER,
+			note(tracee, WARNING, USER,
 				"$HOME is implicitely revealed since it is the same as $PWD, "
 				"change your current working directory to be sure "
 				"your personal data will be not archivable.");
@@ -323,7 +323,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	/* Initialize @tracee->fs->cwd with a path already canonicalized
 	 * as required by care.c:handle_initialization().  */
 	if (getcwd(path, PATH_MAX) == NULL) {
-		notice(tracee, ERROR, SYSTEM, "can't get current working directory");
+		note(tracee, ERROR, SYSTEM, "can't get current working directory");
 		return -1;
 	}
 
@@ -351,7 +351,7 @@ static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 
 	status = initialize_extension(tracee, care_callback, (void *) options);
 	if (status < 0) {
-		notice(tracee, WARNING, INTERNAL, "can't initialize the care extension");
+		note(tracee, WARNING, INTERNAL, "can't initialize the care extension");
 		return -1;
 	}
 

@@ -28,7 +28,7 @@
 #include <stddef.h>
 
 #include "ptrace/user.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #if defined(ARCH_X86_64)
 
@@ -138,7 +138,7 @@ word_t convert_user_offset(word_t offset)
 	else
 		area_name = "<unknown>";
 
-	notice(NULL, WARNING, INTERNAL, "ptrace user area '%s' not supported yet", area_name);
+	note(NULL, WARNING, INTERNAL, "ptrace user area '%s' not supported yet", area_name);
 	return (word_t) -1;  /* Unknown offset.  */
 }
 

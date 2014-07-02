@@ -26,7 +26,7 @@
 #include <stdio.h>  /* vfprintf(3), */
 #include <limits.h> /* INT_MAX, */
 
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "tracee/tracee.h"
 
 int global_verbose_level;
@@ -36,7 +36,7 @@ const char *global_tool_name;
  * Print @message to the standard error stream according to its
  * @severity and @origin.
  */
-void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...)
+void note(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...)
 {
 	const char *tool_name;
 	va_list extra_params;

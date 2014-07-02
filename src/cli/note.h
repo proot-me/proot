@@ -20,8 +20,8 @@
  * 02110-1301 USA.
  */
 
-#ifndef NOTICE_H
-#define NOTICE_H
+#ifndef NOTE_H
+#define NOTE_H
 
 #include "tracee/tracee.h"
 #include "attribute.h"
@@ -43,12 +43,12 @@ typedef enum {
 
 #define VERBOSE(tracee, level, message, args...) do {			\
 		if (tracee == NULL || tracee->verbose >= (level))	\
-			notice(tracee, INFO, INTERNAL, (message), ## args); \
+			note(tracee, INFO, INTERNAL, (message), ## args); \
 	} while (0)
 
-extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(printf, 4, 5);
+extern void note(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(printf, 4, 5);
 
 extern int global_verbose_level;
 extern const char *global_tool_name;
 
-#endif /* NOTICE_H */
+#endif /* NOTE_H */

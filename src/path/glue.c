@@ -33,7 +33,7 @@
 #include "path/binding.h"
 #include "path/path.h"
 #include "path/temp.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #include "compat.h"
 
@@ -49,13 +49,13 @@ static int remove_placeholder(char *path)
 
 	status = lstat(path, &statl);
 	if (status) {
-		notice(NULL, WARNING, SYSTEM, "can't stat placeholder '%s'", path);
+		note(NULL, WARNING, SYSTEM, "can't stat placeholder '%s'", path);
 		return 0; /* Not fatal.  */
 	}
 
 	if (!S_ISDIR(statl.st_mode)) {
 		if (statl.st_size != 0) {
-			notice(NULL, WARNING, USER, "placeholder '%s' is not empty", path);
+			note(NULL, WARNING, USER, "placeholder '%s' is not empty", path);
 			return 0; /* Not fatal.  */
 		}
 		status = unlink(path);
@@ -63,7 +63,7 @@ static int remove_placeholder(char *path)
 	else
 		status = rmdir(path);
 	if (status) {
-		notice(NULL, WARNING, SYSTEM, "can't remove placeholder '%s'", path);
+		note(NULL, WARNING, SYSTEM, "can't remove placeholder '%s'", path);
 		return 0; /* Not fatal.  */
 	}
 
@@ -126,7 +126,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	if (tracee->glue == NULL) {
 		tracee->glue = create_temp_directory(NULL, tracee->tool_name);
 		if (tracee->glue == NULL) {
-			notice(tracee, ERROR, INTERNAL, "can't create glue rootfs");
+			note(tracee, ERROR, INTERNAL, "can't create glue rootfs");
 			return 0;
 		}
 		talloc_set_name_const(tracee->glue, "$glue");
@@ -173,7 +173,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* mkdir/mknod are supposed to always succeed in
 	 * tracee->glue.  */
 	if (belongs_to_gluefs) {
-		notice(tracee, WARNING, SYSTEM, "mkdir/mknod");
+		note(tracee, WARNING, SYSTEM, "mkdir/mknod");
 		return 0;
 	}
 
@@ -181,7 +181,7 @@ create_binding:
 	/* Sanity checks.  */
 	if (   strnlen(tracee->glue, PATH_MAX) >= PATH_MAX
 	    || strnlen(guest_path, PATH_MAX) >= PATH_MAX) {
-		notice(tracee, WARNING, INTERNAL, "installing the binding: guest path too long");
+		note(tracee, WARNING, INTERNAL, "installing the binding: guest path too long");
 		return 0;
 	}
 

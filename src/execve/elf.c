@@ -32,7 +32,7 @@
 
 #include "execve/elf.h"
 #include "tracee/tracee.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "arch.h"
 
 #include "compat.h"
@@ -117,12 +117,12 @@ int iterate_program_headers(const Tracee *tracee, int fd, const ElfHeader *elf_h
 	 */
 
 	if (elf_phnum >= 0xffff) {
-		notice(tracee, WARNING, INTERNAL, "%d: big PH tables are not yet supported.", fd);
+		note(tracee, WARNING, INTERNAL, "%d: big PH tables are not yet supported.", fd);
 		return -ENOTSUP;
 	}
 
 	if (!KNOWN_PHENTSIZE(*elf_header, elf_phentsize)) {
-		notice(tracee, WARNING, INTERNAL, "%d: unsupported size of program header.", fd);
+		note(tracee, WARNING, INTERNAL, "%d: unsupported size of program header.", fd);
 		return -ENOTSUP;
 	}
 

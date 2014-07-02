@@ -26,7 +26,7 @@
 #include <strings.h>    /* bzero(3), */
 
 #include "extension/extension.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "build.h"
 
 #include "compat.h"
@@ -88,7 +88,7 @@ int initialize_extension(Tracee *tracee, extension_callback_t callback, const ch
 
 	extension = new_extension(tracee, callback);
 	if (extension == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't create a new extension");
+		note(tracee, WARNING, INTERNAL, "can't create a new extension");
 		return -1;
 	}
 
@@ -131,7 +131,7 @@ void inherit_extensions(Tracee *child, Tracee *parent, word_t clone_flags)
 		/* Inheritable...  */
 		child_extension = new_extension(child, parent_extension->callback);
 		if (child_extension == NULL) {
-			notice(parent, WARNING, INTERNAL,
+			note(parent, WARNING, INTERNAL,
 				"can't create a new extension for pid %d", child->pid);
 			continue;
 		}

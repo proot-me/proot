@@ -42,7 +42,7 @@
 #include "path/canon.h"
 #include "path/path.h"
 #include "path/binding.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 /* Make uthash use talloc.  */
 #undef  uthash_malloc
@@ -97,7 +97,7 @@ static void generate_output_name(const Tracee *tracee, Care *care)
 	flat_time = time(NULL);
 	splitted_time = localtime(&flat_time);
 	if (splitted_time == NULL) {
-		notice(tracee, ERROR, INTERNAL,
+		note(tracee, ERROR, INTERNAL,
 			"can't generate a valid output name from the current time, "
 			"please specify an ouput name explicitly");
 		return;
@@ -114,7 +114,7 @@ static void generate_output_name(const Tracee *tracee, Care *care)
 #endif
 		);
 	if (care->output == NULL) {
-		notice(tracee, ERROR, INTERNAL,
+		note(tracee, ERROR, INTERNAL,
 			"can't generate a valid output name from the current time, "
 			"please specify an ouput name explicitly");
 		return;
@@ -149,14 +149,14 @@ static int generate_care(Extension *extension, const Options *options)
 
 	care->command = talloc_zero_array(care, char *, i + 1);
 	if (care->command == NULL) {
-		notice(tracee, ERROR, INTERNAL, "can't allocate care command");
+		note(tracee, ERROR, INTERNAL, "can't allocate care command");
 		return -ENOMEM;
 	}
 
 	for (i = 0; options->command[i] != NULL; i++) {
 		care->command[i] = talloc_strdup(care, options->command[i]);
 		if (care->command[i] == NULL) {
-			notice(tracee, ERROR, INTERNAL, "can't allocate care command[i]");
+			note(tracee, ERROR, INTERNAL, "can't allocate care command[i]");
 			return -ENOMEM;
 		}
 	}
@@ -168,13 +168,13 @@ static int generate_care(Extension *extension, const Options *options)
 	else
 		generate_output_name(tracee, care);
 	if (care->output == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't get output name");
+		note(tracee, WARNING, INTERNAL, "can't get output name");
 		return -1;
 	}
 
 	care->initial_cwd = talloc_strdup(care, tracee->fs->cwd);
 	if (care->initial_cwd == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't allocate cwd");
+		note(tracee, WARNING, INTERNAL, "can't allocate cwd");
 		return -1;
 	}
 
@@ -190,7 +190,7 @@ static int generate_care(Extension *extension, const Options *options)
 
 	care->prefix = talloc_strndup(care, cursor, strlen(cursor) - suffix_length);
 	if (care->prefix == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't allocate archive prefix");
+		note(tracee, WARNING, INTERNAL, "can't allocate archive prefix");
 		return -1;
 	}
 
@@ -219,7 +219,7 @@ static int generate_care(Extension *extension, const Options *options)
 					: talloc_asprintf(tracee->ctx, "'%s' (%s)",
 							(const char *) item->load, name);
 
-				notice(tracee, WARNING, USER,
+				note(tracee, WARNING, USER,
 					"path %s was declared volatile but it leads to '/', "
 					"as a consequence it will *not* be considered volatile.",
 					string);
@@ -334,13 +334,13 @@ static void handle_host_path(Extension *extension, const char *path)
 
 	entry = talloc_zero(care, Entry);
 	if (entry == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't allocate entry for '%s'", path);
+		note(tracee, WARNING, INTERNAL, "can't allocate entry for '%s'", path);
 		return;
 	}
 
 	entry->path = talloc_strdup(entry, path);
 	if (entry->path == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't allocate name for '%s'", path);
+		note(tracee, WARNING, INTERNAL, "can't allocate name for '%s'", path);
 		return;
 	}
 
@@ -366,12 +366,12 @@ static void handle_host_path(Extension *extension, const char *path)
 			if (item != NULL)
 				VERBOSE(tracee, 0, "volatile path: %s", path);
 			else
-				notice(tracee, WARNING, USER,
+				note(tracee, WARNING, USER,
 					"can't declare '%s' (fifo or socket) as volatile", path);
 			return;
 		}
 		else
-			notice(tracee, WARNING, USER,
+			note(tracee, WARNING, USER,
 				"'%1$s' might be explicitely declared volatile (-p %1$s)", path);
 	}
 
@@ -404,7 +404,7 @@ static void handle_host_path(Extension *extension, const char *path)
 	}
 
 	if (care->max_size >= 0 && statl.st_size > care->max_size) {
-		notice(tracee, WARNING, USER,
+		note(tracee, WARNING, USER,
 			"file '%s' is archived with a null size since it is bigger than %"
 			PRIi64 "MB, you can specify an alternate limit with the option -m.",
 			path, care->max_size / 1024 / 1024);
@@ -509,13 +509,13 @@ static void handle_getdents(Tracee *tracee, bool is_new_getdents)
 			size = new_dirent.size;
 		}
 		if (status < 0) {
-			notice(tracee, WARNING, INTERNAL, "can't read dentry");
+			note(tracee, WARNING, INTERNAL, "can't read dentry");
 			break;
 		}
 
 		status = read_string(tracee, component, address + name_offset, PATH_MAX);
 		if (status < 0 || status >= PATH_MAX) {
-			notice(tracee, WARNING, INTERNAL, "can't read dentry" );
+			note(tracee, WARNING, INTERNAL, "can't read dentry" );
 			goto next;
 		}
 
@@ -527,7 +527,7 @@ static void handle_getdents(Tracee *tracee, bool is_new_getdents)
 	}
 
 	if (offset != result)
-		notice(tracee, WARNING, INTERNAL, "dentry table out of sync.");
+		note(tracee, WARNING, INTERNAL, "dentry table out of sync.");
 }
 
 /* List of syscalls handled by this extensions.  */

@@ -8,7 +8,7 @@
 #include <stdio.h>      /* P_tmpdir, */
 #include <talloc.h>     /* talloc(3), */
 
-#include "cli/notice.h"
+#include "cli/note.h"
 
 /**
  * Remove recursively the content of the current working directory.
@@ -32,11 +32,11 @@ static int clean_temp_cwd()
 	 * "/tmp".  */
 	status = readlink("/proc/self/cwd", prefix, length_tmpdir);
 	if (status < 0) {
-		notice(NULL, WARNING, SYSTEM, "can't readlink '/proc/self/cwd'");
+		note(NULL, WARNING, SYSTEM, "can't readlink '/proc/self/cwd'");
 		return ++nb_errors;
 	}
 	if (strncmp(prefix, P_tmpdir, length_tmpdir) != 0) {
-		notice(NULL, ERROR, INTERNAL,
+		note(NULL, ERROR, INTERNAL,
 			"trying to remove a directory outside of '%s', "
 			"please report this error.\n", P_tmpdir);
 		return ++nb_errors;
@@ -44,7 +44,7 @@ static int clean_temp_cwd()
 
 	dir = opendir(".");
 	if (dir == NULL) {
-		notice(NULL, WARNING, SYSTEM, "can't open '.'");
+		note(NULL, WARNING, SYSTEM, "can't open '.'");
 		return ++nb_errors;
 	}
 
@@ -62,7 +62,7 @@ static int clean_temp_cwd()
 
 		status = chmod(entry->d_name, 0700);
 		if (status < 0) {
-			notice(NULL, WARNING, SYSTEM, "cant chmod '%s'", entry->d_name);
+			note(NULL, WARNING, SYSTEM, "cant chmod '%s'", entry->d_name);
 			nb_errors++;
 			continue;
 		}
@@ -70,7 +70,7 @@ static int clean_temp_cwd()
 		if (entry->d_type == DT_DIR) {
 			status = chdir(entry->d_name);
 			if (status < 0) {
-				notice(NULL, WARNING, SYSTEM, "can't chdir '%s'", entry->d_name);
+				note(NULL, WARNING, SYSTEM, "can't chdir '%s'", entry->d_name);
 				nb_errors++;
 				continue;
 			}
@@ -85,7 +85,7 @@ static int clean_temp_cwd()
 
 			status = chdir("..");
 			if (status < 0) {
-				notice(NULL, ERROR, SYSTEM, "can't chdir to '..'");
+				note(NULL, ERROR, SYSTEM, "can't chdir to '..'");
 				nb_errors = -1;
 				goto end;
 			}
@@ -96,13 +96,13 @@ static int clean_temp_cwd()
 			status = unlink(entry->d_name);
 		}
 		if (status < 0) {
-			notice(NULL, WARNING, SYSTEM, "can't remove '%s'", entry->d_name);
+			note(NULL, WARNING, SYSTEM, "can't remove '%s'", entry->d_name);
 			nb_errors++;
 			continue;
 		}
 	}
 	if (errno != 0) {
-		notice(NULL, WARNING, SYSTEM, "can't readdir '.'");
+		note(NULL, WARNING, SYSTEM, "can't readdir '.'");
 		nb_errors++;
 	}
 
@@ -126,14 +126,14 @@ static int remove_temp_directory2(const char *path)
 
 	status = chmod(path, 0700);
 	if (status < 0) {
-		notice(NULL, ERROR, SYSTEM, "can't chmod '%s'", path);
+		note(NULL, ERROR, SYSTEM, "can't chmod '%s'", path);
 		result = -1;
 		goto end;
 	}
 
 	status = chdir(path);
 	if (status < 0) {
-		notice(NULL, ERROR, SYSTEM, "can't chdir to '%s'", path);
+		note(NULL, ERROR, SYSTEM, "can't chdir to '%s'", path);
 		result = -1;
 		goto end;
 	}
@@ -144,14 +144,14 @@ static int remove_temp_directory2(const char *path)
 	/* Try to remove path even if something went wrong.  */
 	status = chdir("..");
 	if (status < 0) {
-		notice(NULL, ERROR, SYSTEM, "can't chdir to '..'");
+		note(NULL, ERROR, SYSTEM, "can't chdir to '..'");
 		result = -1;
 		goto end;
 	}
 
 	status = rmdir(path);
 	if (status < 0) {
-		notice(NULL, ERROR, SYSTEM, "cant remove '%s'", path);
+		note(NULL, ERROR, SYSTEM, "cant remove '%s'", path);
 		result = -1;
 		goto end;
 	}
@@ -161,7 +161,7 @@ end:
 		status = chdir(cwd);
 		if (status < 0) {
 			result = -1;
-			notice(NULL, ERROR, SYSTEM, "can't chdir to '%s'", cwd);
+			note(NULL, ERROR, SYSTEM, "can't chdir to '%s'", cwd);
 		}
 		free(cwd);
 	}
@@ -191,7 +191,7 @@ static int remove_temp_file(char *path)
 
 	status = unlink(path);
 	if (status < 0)
-		notice(NULL, ERROR, SYSTEM, "can't remove '%s'", path);
+		note(NULL, ERROR, SYSTEM, "can't remove '%s'", path);
 
 	return 0;
 }
@@ -210,7 +210,7 @@ char *create_temp_name(const Tracee *tracee, const char *prefix)
 	if (tracee == NULL) {
 		context = talloc_autofree_context();
 		if (context == NULL) {
-			notice(tracee, ERROR, INTERNAL, "can't allocate memory");
+			note(tracee, ERROR, INTERNAL, "can't allocate memory");
 			return NULL;
 		}
 	}
@@ -219,7 +219,7 @@ char *create_temp_name(const Tracee *tracee, const char *prefix)
 
 	name = talloc_asprintf(context, "%s/%s-%d-XXXXXX", P_tmpdir, prefix, getpid());
 	if (name == NULL) {
-		notice(tracee, ERROR, INTERNAL, "can't allocate memory");
+		note(tracee, ERROR, INTERNAL, "can't allocate memory");
 		return NULL;
 	}
 
@@ -243,7 +243,7 @@ const char *create_temp_directory(const Tracee *tracee, const char *prefix)
 
 	name = mkdtemp(name);
 	if (name == NULL) {
-		notice(tracee, ERROR, SYSTEM, "can't create temporary directory");
+		note(tracee, ERROR, SYSTEM, "can't create temporary directory");
 		return NULL;
 	}
 
@@ -269,7 +269,7 @@ const char *create_temp_file(const Tracee *tracee, const char *prefix)
 
 	fd = mkstemp(name);
 	if (fd < 0) {
-		notice(tracee, ERROR, SYSTEM, "can't create temporary file");
+		note(tracee, ERROR, SYSTEM, "can't create temporary file");
 		return NULL;
 	}
 	close(fd);
@@ -308,6 +308,6 @@ FILE* open_temp_file(const Tracee *tracee, const char *prefix)
 error:
 	if (fd >= 0)
 		close(fd);
-	notice(tracee, ERROR, SYSTEM, "can't create temporary file");
+	note(tracee, ERROR, SYSTEM, "can't create temporary file");
 	return NULL;
 }

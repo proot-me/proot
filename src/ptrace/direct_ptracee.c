@@ -27,7 +27,7 @@
 
 #include "ptrace/direct_ptracee.h"
 #include "ptrace/ptrace.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 struct direct_ptracee {
 	pid_t pid;
@@ -46,7 +46,7 @@ int add_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
 	struct direct_ptracee *direct_ptracee;
 
 	if (is_direct_ptracee(ptracer, ptracee_pid))
-		notice(ptracer, WARNING, INTERNAL,
+		note(ptracer, WARNING, INTERNAL,
 			"%s: pid %d is already declared as direct ptracee.",
 			__FUNCTION__, ptracee_pid);
 
@@ -99,7 +99,7 @@ bool is_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
 		return false;
 
 	if (direct_ptracee->has_exited)
-		notice(ptracer, WARNING, INTERNAL,
+		note(ptracer, WARNING, INTERNAL,
 			"%s: direct ptracee %d is expected to not be already exited.",
 			__FUNCTION__, ptracee_pid);
 
@@ -116,14 +116,14 @@ void set_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
 
 	direct_ptracee = get_direct_ptracee(ptracer, ptracee_pid);
 	if (direct_ptracee == NULL) {
-		notice(ptracer, WARNING, INTERNAL,
+		note(ptracer, WARNING, INTERNAL,
 			"%s: pid %d is expected to be declared as direct ptracee.",
 			__FUNCTION__, ptracee_pid);
 		return;
 	}
 
 	if (direct_ptracee->has_exited)
-		notice(ptracer, WARNING, INTERNAL,
+		note(ptracer, WARNING, INTERNAL,
 			"%s: direct ptracee %d is expected to not be already exited.",
 			__FUNCTION__, ptracee_pid);
 
@@ -157,7 +157,7 @@ void remove_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid)
 
 	direct_ptracee = get_direct_ptracee(ptracer, ptracee_pid);
 	if (direct_ptracee == NULL) {
-		notice(ptracer, WARNING, INTERNAL,
+		note(ptracer, WARNING, INTERNAL,
 			"%s: pid %d is expected to be declared as direct ptracee.",
 			__FUNCTION__, ptracee_pid);
 		return;

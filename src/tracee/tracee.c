@@ -40,7 +40,7 @@
 #include "ptrace/ptrace.h"
 #include "ptrace/wait.h"
 #include "extension/extension.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #include "compat.h"
 
@@ -372,13 +372,13 @@ int new_child(Tracee *parent, word_t clone_flags)
 	/* Get the pid of the parent's new child.  */
 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);
 	if (status < 0 || pid == 0) {
-		notice(parent, WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
+		note(parent, WARNING, SYSTEM, "ptrace(GETEVENTMSG)");
 		return status;
 	}
 
 	child = get_tracee(parent, (pid_t) pid, true);
 	if (child == NULL) {
-		notice(parent, WARNING, SYSTEM, "running out of memory");
+		note(parent, WARNING, SYSTEM, "running out of memory");
 		return -ENOMEM;
 	}
 
