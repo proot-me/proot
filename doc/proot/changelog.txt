@@ -4,10 +4,123 @@ Release v4.0.0
 Highlights
 ----------
 
-+ Previously, it was not possible to execute GDB, strace, or any other
-  program based on "ptrace" under PRoot since this latter is also
-  based on this syscall and the Linux kernel allows only one ptracer
-  per process.
++ It is now possible to use GDB, Strace, or any other program based on
+  "ptrace" under PRoot.  This was not the case previously because it
+  is not possible to stack ptracers on Linux, so an emulation layer
+  was developed in order to bypass this limitation.  This has required
+  a lot of changes in PRoot, hence the major number version bumping.
+  It was mostly tested on x86_64, and partially tested on x86 and ARM.
+  This ptrace emulation support is still experimental, and there are a
+  couple of known issues, but feel free to report unexpected behaviors
+  if you need a fix.
+
++ A new command-line option is available: "-S".  It is similar to the
+  "-R" option expect it enables the "-0" option and binds only a
+  minimal set of paths that are known to not be updated by package
+  installations, to avoid unexpected changes on host files.  This
+  option is useful to safely create and install packages into the
+  guest rootfs.  For example:
+
+      $ proot -S ubuntu-14.04-rootfs/ apt-get install samba
+
+  or:
+
+      $ proot -S ubuntu-14.04-rootfs/
+      # apt-get install samba
+
+  If "-0 -R" is used instead of "-S", the same command fails since it
+  tries to update "/etc/group", which is bound to the host system and
+  is not writable (assuming PRoot is ran without privileges):
+
+      $ proot -0 -R ubuntu-14.04-rootfs/
+      # apt-get install samba
+      [...]
+      Adding group `sambashare' (GID 105) ...
+      Permission denied
+
++ The fake_id0 extension can now fake any user and group identifiers.
+  That means, when "-0" is specified, PRoot-ed processes can change
+  their real, effective and saved identifiers, with respect to the
+  rules described in setuid, setfsuid, setreuid, setresuid, and
+  setfsuid manuals.  Also, the new command-line option "-i" was added
+  to change explicitly the identifiers to the specified values.  This
+  option will be used by CARE to re-execute with the same initial
+  identifiers, but it could also be useful to threaten your teammates
+  ;).  Note that the "-0" option is actually the same as "-i 0:0".
+
++ The old command-line interface is not supported anymore.  That means
+  it is now impossible to specify the path to the guest rootfs without
+  using -r or -R.  Also, -Q and -B options are definitively gone,
+  instead the -R option must be specified, respectively with and
+  without -q.  See PRoot v3.1 release notes for details.
+
+Fixes
+-----
+
++ getcwd(2) and chdir(2) now return the correct error code when,
+  respectively, the current directory does not exist anymore and the
+  target directory doesn't have the "search" permission.
+
++ Named file descriptors (ie. links in /proc/<pid>/fd/*) are not
+  dereferenced anymore since they may point to special objects like
+  pipes, sockets, inodes, ...  Such objects do not exist on the
+  file-system name-space, so dereferencing them used to cause
+  unexpected errors.
+
++ Extensions now see every component of canonicalized paths.  An
+  optimization in the canonicalization loop used to skip the first
+  part of a path if it was known to be already canonicalized, sadly
+  this short-cut may confuse some extensions, like -0.
+
++ Temporary files and directories created by PRoot for its own purpose
+  are now automatically deleted when PRoot exits.
+
+
+Miscellaneous
+-------------
+
++ PRoot does not rely on GCC C extensions anymore, like nested
+  functions.  That means its stack does not have to be executable
+  (this is required for hardened Linux systems), and it can now be
+  compiled with Clang.
+
++ The ASLR (Address Space Layout Randomization) is not disabled
+  anymore, and the heap is now emulated on all architectures.
+
+
+Internal changes
+----------------
+
+This section is dedicated to developers.
+
++ PRoot now remembers the parent of all tracees, it is similar to a
+  traced process tree.  This was required for the ptrace emulation
+  support, but this could be useful to some extensions.
+
++ It is now possible to restart a tracee with any ptrace restart mode:
+  single-step, single-block, ...
+
++ Functions {peek,poke}_mem were replaced with functions
+  {peek,poke}_{,u}int{8,16,32,64}.  These new functions performs type
+  conversion and fetch only the necessary amount of data in target
+  tracee's memory to avoid invalid accesses.
+
++ There is a new interface to handle ELF auxiliary vectors.  See
+  ptrace emulation, kompat and fake_id0 extensions for usage examples.
+
++ There is a new interface to create temporary files and directories
+  that are automatically deleted on exit.  See CARE extension, glue
+  and auxv support for usage examples.
+
++ When built with GCC function instrumentation support, PRoot prints
+  the currently called function on standard error stream (stderr).
+
+Thanks
+------
+
+Thanks go to Stephen McCamant, Oren Tirosh, Jérôme Audu, and Carlos
+Hernan Prada Rojas for their bug reports and tests; and to Rémi
+Duraffort for his contributions.
 
 
 Release v3.2.2
