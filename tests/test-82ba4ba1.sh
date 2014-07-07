@@ -2,6 +2,10 @@ if [ ! -x /bin/true ] [ -z `which id` ] || [ -z `which grep` ] || [ -z `which en
     exit 125;
 fi
 
+if [ `id -u` -eq 0 ]; then
+    exit 125;
+fi
+
 ${PROOT} -i 123:456 id -u | grep ^123$
 ${PROOT} -i 123:456 id -g | grep ^456$
 
