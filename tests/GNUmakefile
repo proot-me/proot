@@ -73,6 +73,9 @@ check-test-a3e68988.c: test-a3e68988
 check-test-fdf487a0.c: test-fdf487a0
 	$(call check_c,$<,echo test | $(PROOT) ./$<)
 
+check-test-iiiiiiii.c: test-iiiiiiii
+	$(call check_c,$<,echo test | env PROOT_DONT_POLLUTE_ROOTFS=1 $(PROOT) -b /bin:/this_shall_not_exist_outside_proot ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -148,6 +151,9 @@ test-a3e68988: test-a3e68988.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
 test-fdf487a0: test-fdf487a0.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-iiiiiiii: test-iiiiiiii.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
 ######################################################################
