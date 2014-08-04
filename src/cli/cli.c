@@ -25,7 +25,7 @@
 #include <linux/limits.h>  /* ARG_MAX, PATH_MAX, */
 #include <string.h>        /* str*(3), basename(3),  */
 #include <talloc.h>        /* talloc*,  */
-#include <stdlib.h>        /* exit(3), EXIT_*, strtol(3), getenv(3), */
+#include <stdlib.h>        /* exit(3), EXIT_*, strtol(3), {g,s}etenv(3), */
 #include <assert.h>        /* assert(3),  */
 #include <sys/types.h>     /* getpid(2),  */
 #include <unistd.h>        /* getpid(2),  */
@@ -248,6 +248,9 @@ static int initialize_cwd(Tracee *tracee)
 	if (tracee->fs->cwd == NULL)
 		return -1;
 	talloc_set_name_const(tracee->fs->cwd, "$cwd");
+
+	/* Keep this special environment variable consistent.  */
+	setenv("PWD", path, 1);
 
 	return 0;
 }
