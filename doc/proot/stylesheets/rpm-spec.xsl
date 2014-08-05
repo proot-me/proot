@@ -36,14 +36,14 @@ make -C src
 
 %install
 make -C src install PREFIX=%{buildroot}/%{prefix}
-install -D doc/proot.1 %{buildroot}/%{_mandir}/man1/proot.1
+install -D doc/proot/man.1 %{buildroot}/%{_mandir}/man1/proot.1
 
 %check
+env LD_SHOW_AUXV=1 true
+cat /proc/cpuinfo
 ./src/proot -V
 ./src/proot -v 1 true
 make -C tests
-./src/proot -V
-./src/proot -v 1 true
 
 %clean
 rm -rf %{buildroot}

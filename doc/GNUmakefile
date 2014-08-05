@@ -1,4 +1,4 @@
-OUTPUTS = proot/man.1 proot.h proot.spec proot/index.html care.h care/index.html
+OUTPUTS = proot/man.1 proot.h proot/rpm-spec proot/index.html care.h care/index.html
 all: $(OUTPUTS)
 
 %/man.1: %/manual.txt
@@ -17,7 +17,7 @@ all: $(OUTPUTS)
 %.h: %/stylesheets/cli.xsl %/manual-quoted.xml
 	xsltproc --output $@ $^
 
-%.spec:  %/stylesheets/rpm-spec.xsl %/manual.xml
+%/rpm-spec:  %/stylesheets/rpm-spec.xsl %/manual.xml
 	xsltproc --output $@ $^
 	echo "* $(shell date +'%a %b %d %Y') Cédric VINCENT <cedric.vincent@st.com>" >> $@
 	cat $*/changelog.txt >> $@
