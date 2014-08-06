@@ -64,7 +64,7 @@ rm -rf %{buildroot}
 Release v4.0.1
 ==============
 
-+ Fix a couple of portability issues in the testsuite.  Thanks to Rémy
++ Fix a couple of portability issues in the testsuite.  Thanks to Rémi
   Duraffort for all the tests he made on his instance of Linaro LAVA.
 
 + Set $PWD to the value specified by the -w option, otherwise Bash pwd
