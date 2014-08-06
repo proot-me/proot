@@ -155,6 +155,13 @@ typedef struct tracee {
 	 * allocations.  */
 	TALLOC_CTX *ctx;
 
+	/* Context used to collect all dynamic memory allocations that
+	 * should be released once this tracee is freed.  */
+	TALLOC_CTX *life_context;
+
+	/* Note: I could rename "ctx" in "event_span" and
+	 * "life_context" in "life_span".  */
+
 	/* Specify the type of the final component during the
 	 * initialization of a binding.  This variable is first
 	 * defined in bind_path() then used in build_glue().  */

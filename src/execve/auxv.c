@@ -196,24 +196,6 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
  **********************************************************************/
 
 /**
- * Remove @binding from all the lists it belongs to.
- *
- * Note: this is a Talloc destructor.
- */
-static int remove_binding_from_all_lists2(Binding *binding)
-{
-	Tracee *tracee;
-
-	tracee = talloc_parent(binding);
-	if (tracee == NULL)
-		return 0;  /* Not fatal.  */
-
-	remove_binding_from_all_lists(tracee, binding);
-
-	return 0;
-}
-
-/**
  * Fill @path with the content of @vectors, formatted according to
  * @ptracee's current ABI.
  */
@@ -314,9 +296,18 @@ int fix_elf_aux_vectors(const Tracee *ptracee)
 	if (vectors == NULL)
 		return -1;
 
+	/* Path to these ELF auxiliary vectors.  */
 	guest_path = talloc_asprintf(ptracee->ctx, "/proc/%d/auxv", ptracee->pid);
 	if (guest_path == NULL)
 		return -1;
+
+	/* Remove binding to this path, if any.  It contains ELF
+	 * auxiliary vectors of the previous execve(2).  */
+	binding = get_binding(ptracee, GUEST, guest_path);
+	if (binding != NULL && compare_paths(binding->guest.path, guest_path) == PATHS_ARE_EQUAL) {
+		remove_binding_from_all_lists(ptracee, binding);
+		TALLOC_FREE(binding);
+	}
 
 	host_path = create_temp_file(ptracee, "auxv");
 	if (host_path == NULL)
@@ -326,16 +317,13 @@ int fix_elf_aux_vectors(const Tracee *ptracee)
 	if (status < 0)
 		return -1;
 
-	/* This new binding will be removed once ptracee is
-	 * destroyed.  */
-	binding = insort_binding3(ptracee, ptracee, host_path, guest_path);
+	/* Note: this binding will be removed once ptracee gets freed.  */
+	binding = insort_binding3(ptracee, ptracee->life_context, host_path, guest_path);
 	if (binding == NULL)
 		return -1;
 
-	talloc_set_destructor(binding, remove_binding_from_all_lists2);
-
 	/* This temporary file (host_path) will be removed once the
-	 * binding is destroyed.  */
+	 * binding is freed.  */
 	talloc_reparent(ptracee->ctx, binding, host_path);
 
 	return 0;

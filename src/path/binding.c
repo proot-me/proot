@@ -117,9 +117,9 @@ static void print_bindings(const Tracee *tracee)
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-static const Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
+Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 {
-	const Binding *binding;
+	Binding *binding;
 	size_t path_length = strlen(path);
 
 	/* Sanity checks.  */

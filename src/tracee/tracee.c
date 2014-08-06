@@ -34,6 +34,7 @@
 
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
+#include "path/binding.h"
 #include "syscall/sysnum.h"
 #include "tracee/event.h"
 #include "ptrace/ptrace.h"
@@ -63,6 +64,24 @@ static int remove_zombie(Tracee *zombie)
 }
 
 /**
+ * Perform some specific treatments against @pointer according to its
+ * type, before it gets unlinked from @tracee_->life_context.
+ */
+static void clean_life_span_object(const void *pointer, int depth UNUSED,
+				int max_depth UNUSED, int is_ref UNUSED, void *tracee_)
+{
+	Binding *binding;
+	Tracee *tracee;
+
+	tracee = talloc_get_type_abort(tracee_, Tracee);
+
+	/* So far, only bindings need a special treatment.  */
+	binding = talloc_get_type(pointer, Binding);
+	if (binding != NULL)
+		remove_binding_from_all_lists(tracee, binding);
+}
+
+/**
  * Remove @tracee from the list of tracees and update all of its
  * children & ptracees, and its ptracer.  Note: this is a talloc
  * destructor.
@@ -75,6 +94,10 @@ static int remove_tracee(Tracee *tracee)
 	int event;
 
 	LIST_REMOVE(tracee, link);
+
+	/* Clean objects that are linked to this tracee's life
+	 * span.  */
+	talloc_report_depth_cb(tracee->life_context, 0, 100, clean_life_span_object, tracee);
 
 	/* This could be optimize by using a dedicated list of
 	 * children and ptracees.  */
@@ -206,6 +229,8 @@ static Tracee *new_tracee(pid_t pid)
 
 	tracee->pid = pid;
 	LIST_INSERT_HEAD(&tracees, tracee, link);
+
+	tracee->life_context = talloc_new(tracee);
 
 	return tracee;
 }
