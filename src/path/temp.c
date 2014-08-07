@@ -202,7 +202,7 @@ static int remove_temp_file(char *path)
  * auto-freed if @tracee is NULL, or attached to @tracee->ctx.  This
  * function returns NULL if an error occurred.
  */
-static char *create_temp_name(const Tracee *tracee, const char *prefix)
+char *create_temp_name(const Tracee *tracee, const char *prefix)
 {
 	TALLOC_CTX *context;
 	char *name;

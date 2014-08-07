@@ -27,6 +27,7 @@
 
 #include "tracee/tracee.h"
 
+extern char *create_temp_name(const Tracee *tracee, const char *prefix);
 extern const char *create_temp_directory(const Tracee *tracee, const char *prefix);
 extern const char *create_temp_file(const Tracee *tracee, const char *prefix);
 extern FILE* open_temp_file(const Tracee *tracee, const char *prefix);

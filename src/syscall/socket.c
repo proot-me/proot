@@ -32,6 +32,8 @@
 #include "syscall/socket.h"
 #include "tracee/tracee.h"
 #include "tracee/mem.h"
+#include "path/binding.h"
+#include "path/temp.h"
 #include "path/path.h"
 #include "arch.h"
 
@@ -92,25 +94,57 @@ static int read_sockaddr_un(Tracee *tracee, struct sockaddr_un *sockaddr, word_t
 int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 {
 	struct sockaddr_un sockaddr;
-	char path2[PATH_MAX];
-	char path[PATH_MAX];
+	char user_path[PATH_MAX];
+	char host_path[PATH_MAX];
 	int status;
 
 	if (*address == 0)
 		return 0;
 
-	status = read_sockaddr_un(tracee, &sockaddr, sizeof(sockaddr), path2, *address, size);
+	status = read_sockaddr_un(tracee, &sockaddr, sizeof(sockaddr), user_path, *address, size);
 	if (status <= 0)
 		return status;
 
-	status = translate_path(tracee, path, AT_FDCWD, path2, true);
+	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
 	if (status < 0)
 		return status;
 
 	/* Be careful: sun_path doesn't have to be null-terminated.  */
-	if (strlen(path) > sizeof_path)
-		return -EINVAL;
-	strncpy(sockaddr.sun_path, path, sizeof_path);
+	if (strlen(host_path) > sizeof_path) {
+		char *shorter_host_path;
+		Binding *binding;
+
+		/* The translated path is too long to fit the sun_path
+		 * array, so let's bind it to a shorter path.  */
+		shorter_host_path = create_temp_name(tracee, "proot");
+		if (shorter_host_path == NULL || strlen(shorter_host_path) > sizeof_path)
+			return -EINVAL;
+
+		(void) mktemp(shorter_host_path);
+
+		if (strlen(shorter_host_path) > sizeof_path)
+			return -EINVAL;
+
+		/* Ensure the guest path of this new binding is
+		 * canonicalized, as it is always assumed.  */
+		strcpy(user_path, host_path);
+		status = detranslate_path(tracee, user_path, NULL);
+		if (status < 0)
+			return -EINVAL;
+
+		/* Bing the guest path to a shorter host path.  */
+		binding = insort_binding3(tracee, tracee->ctx, shorter_host_path, user_path);
+		if (binding == NULL)
+			return -EINVAL;
+
+		/* This temporary file (shorter_host_path) will be removed once the
+		 * binding is destroyed.  */
+		talloc_reparent(tracee->ctx, binding, shorter_host_path);
+
+		/* Let's use this shorter path now.  */
+		strcpy(host_path, shorter_host_path);
+	}
+	strncpy(sockaddr.sun_path, host_path, sizeof_path);
 
 	/* Push the updated sockaddr to a newly allocated space.  */
 	*address = alloc_mem(tracee, sizeof(sockaddr));
