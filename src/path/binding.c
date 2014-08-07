@@ -389,7 +389,7 @@ static void insort_binding2(const Tracee *tracee, Binding *binding)
 
 /**
  * Create and insert a new binding (@host_path:@guest_path) into the
- * list of @ptracee's bindings.  The Talloc parent of this new binding
+ * list of @tracee's bindings.  The Talloc parent of this new binding
  * is @context.  This function returns NULL if an error occurred,
  * otherwise a pointer to the newly created binding.
  */
@@ -524,9 +524,8 @@ error:
 
 /**
  * Canonicalize the guest part of the given @binding, insert it into
- * @tracee->fs->bindings.guest and @tracee->fs->bindings.host, then
- * remove it from @tracee->fs->bindings.pending.  This function
- * returns -1 if an error occured, 0 otherwise.
+ * @tracee->fs->bindings.guest and @tracee->fs->bindings.host.  This
+ * function returns -1 if an error occured, 0 otherwise.
  */
 static void initialize_binding(Tracee *tracee, Binding *binding)
 {
@@ -544,7 +543,7 @@ static void initialize_binding(Tracee *tracee, Binding *binding)
 		length = strlen(path);
 		assert(length > 0);
 
-		/* Do the user explicitly tell not to dereference
+		/* Does the user explicitly tell not to dereference
 		 * guest path?  */
 		dereference = (path[length - 1] != '!');
 		if (!dereference)
