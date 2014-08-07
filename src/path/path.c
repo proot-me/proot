@@ -219,17 +219,21 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 	/* Is the command available without any $PATH look-up?  */
 	status = realpath2(tracee, host_path, command, true);
 	if (status == 0 && stat(host_path, &statr) == 0) {
-		if (!S_ISREG(statr.st_mode)) {
+		if (is_explicit && !S_ISREG(statr.st_mode)) {
 			notice(tracee, ERROR, USER, "'%s' is not a regular file", command);
 			return -EACCES;
 		}
 
-		if ((statr.st_mode & S_IXUSR) == 0) {
+		if (is_explicit && (statr.st_mode & S_IXUSR) == 0) {
 			notice(tracee, ERROR, USER, "'%s' is not executable", command);
 			return -EACCES;
 		}
 
 		found = true;
+
+		/* Don't dereference the final component to preserve
+		 * argv0 in case it is a symlink to script.  */
+		(void) realpath2(tracee, host_path, command, false);
 	}
 	else
 		found = false;
@@ -274,8 +278,12 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 		if (status == 0
 		    && stat(host_path, &statr) == 0
 		    && S_ISREG(statr.st_mode)
-		    && (statr.st_mode & S_IXUSR) != 0)
-				return 0;
+		    && (statr.st_mode & S_IXUSR) != 0) {
+			/* Don't dereference the final component to preserve
+			 * argv0 in case it is a symlink to script.  */
+			(void) realpath2(tracee, host_path, path, false);
+			return 0;
+		}
 	} while (*(cursor - 1) != '\0');
 
 not_found:
