@@ -92,7 +92,7 @@ int launch_process(Tracee *tracee)
 		 * guest rootfs.  Note: Valgrind can't handle execve(2) on
 		 * "foreign" binaries (ENOEXEC) but can handle execvp(3) on such
 		 * binaries.  */
-		execv(tracee->exe, tracee->cmdline);
+		execvp(tracee->exe, tracee->cmdline);
 		return -errno;
 
 	default: /* parent */
