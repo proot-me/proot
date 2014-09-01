@@ -250,7 +250,7 @@ void translate_syscall_exit(Tracee *tracee)
 		}
 		else {
 			old_reg = SYSARG_2;
-			new_reg = SYSARG_3;
+			new_reg = SYSARG_4;
 		}
 
 		/* Get the old path, then convert it to the same
