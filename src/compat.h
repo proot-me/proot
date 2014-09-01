@@ -51,6 +51,24 @@
 #    ifndef WIFCONTINUED
 #        define WIFCONTINUED(status)	((status) == 0xffff)
 #    endif
+#    ifndef PTRACE_GETREGS
+#        define PTRACE_GETREGS		12
+#    endif
+#    ifndef PTRACE_SETREGS
+#        define PTRACE_SETREGS		13
+#    endif
+#    ifndef PTRACE_GETFPREGS
+#        define PTRACE_GETFPREGS	14
+#    endif
+#    ifndef PTRACE_SETFPREGS
+#        define PTRACE_SETFPREGS	15
+#    endif
+#    ifndef PTRACE_GETFPXREGS
+#        define PTRACE_GETFPXREGS	18
+#    endif
+#    ifndef PTRACE_SETFPXREGS
+#        define PTRACE_SETFPXREGS	19
+#    endif
 #    ifndef PTRACE_SETOPTIONS
 #        define PTRACE_SETOPTIONS	0x4200
 #    endif

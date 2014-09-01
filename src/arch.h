@@ -102,7 +102,8 @@ typedef unsigned long word_t;
 
     #define SYSTRAP_SIZE 4
 
-    #define user_regs_struct user_pt_regs
+    #define SECCOMP_ARCHS { }
+
     #define HOST_ELF_MACHINE {183, 0};
     #define RED_ZONE_SIZE 0
     #define OFFSETOF_STAT_UID_32 0
@@ -130,6 +131,8 @@ typedef unsigned long word_t;
     #define SYSNUMS_ABI1    sysnums_sh4
 
     #define SYSTRAP_SIZE 2
+
+    #define SECCOMP_ARCHS { }
 
     #define user_regs_struct pt_regs
     #define HOST_ELF_MACHINE {42, 0};

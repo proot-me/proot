@@ -51,6 +51,10 @@
 #define user_fpregs_struct user_fpregs
 #endif
 
+#if defined(ARCH_ARM64)
+#define user_fpregs_struct user_fpsimd_struct
+#endif
+
 static const char *stringify_ptrace(enum __ptrace_request request)
 {
 #define CASE_STR(a) case a: return #a; break;
