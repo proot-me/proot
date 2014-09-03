@@ -1,4 +1,4 @@
-%define version v4.0.1
+%define version v4.0.2
 
 Summary   : chroot, mount --bind, and binfmt_misc without privilege/setup
 Version   : %{version}
@@ -60,7 +60,31 @@ rm -rf %{buildroot}
 %doc doc/*
 
 %changelog
-* Tue Aug 05 2014 Cédric VINCENT <cedric.vincent@st.com>
+* Wed Sep 03 2014 Cédric VINCENT <cedric.vincent@st.com>
+Release v4.0.2
+==============
+
++ Fix how the very first program is launched by PRoot.  Previously,
+  argv[0] was not preserved when the very first program was launched
+  through a symbolic link.  This old behavior used to bug programs
+  like Busybox and python-exec.  Thanks to "hhm", Ivailo "fluxer"
+  Monev, and Joakim Tjernlund for the bug reports.
+
++ Fix renameat(2) sysexit support.  There was a bug in PRoot that was
+  exposed by the Aarch64 (a.k.a arm64) port only but that might affect
+  other architectures.
+
++ Fix build for AArch64.  Thanks to Rémi Duraffort for the patches and
+  for the Debian/arm64 testing platform.
+
++ Fix support for "long" socket paths.  These can only be 108 bytes
+  long; this limit might be easily reached with PRoot since the path
+  to the rootfs is always prepended.  The solution was to
+  automatically bind this long path to a shorter path.  This bug was
+  exposed by LibreOffice and Yocto's pseudo.  Thanks to Christophe
+  Guillon for the bug report.
+
+
 Release v4.0.1
 ==============
 
