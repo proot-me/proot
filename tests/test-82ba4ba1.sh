@@ -1,4 +1,4 @@
-if [ ! -x /bin/true ] [ -z `which id` ] || [ -z `which grep` ] || [ -z `which env` ] || [ -z `which chown` ] || [ -z `which chroot` ]  || [ ! /bin/true ] ; then
+if [ ! -x /bin/true ] || [ -z `which id` ] || [ -z `which grep` ] || [ -z `which env` ] || [ -z `which chown` ] || [ -z `which chroot` ]  || [ ! /bin/true ] ; then
     exit 125;
 fi
 
@@ -17,10 +17,16 @@ ${PROOT} -i 123:456 env LD_SHOW_AUXV=1 /bin/true | grep '^AT_EGID:[[:space:]]*45
 ! ${PROOT} -i 123:456 chown root.root /root
 [ $? -eq 0 ]
 
+! chroot / /bin/true
+EXPECTED=$?
+
 ! ${PROOT} -i 123:456 chroot / /bin/true
-[ $? -eq 0 ]
+[ $? -eq ${EXPECTED} ]
 
 ! ${PROOT} -i 123:456 chroot /tmp/.. /bin/true
+[ $? -eq ${EXPECTED} ]
+
+! ${PROOT} -i 123:456 chroot /tmp /bin/true
 [ $? -eq 0 ]
 
 ${PROOT} -0 id -u | grep ^0$
