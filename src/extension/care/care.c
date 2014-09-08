@@ -102,10 +102,16 @@ static void generate_output_name(const Tracee *tracee, Care *care)
 		return;
 	}
 
-	care->output = talloc_asprintf(care, "care-%02d%02d%02d%02d%02d%02d.bin",
+	care->output = talloc_asprintf(care, "care-%02d%02d%02d%02d%02d%02d.%s",
 					splitted_time->tm_year - 100, splitted_time->tm_mon + 1,
 					splitted_time->tm_mday, splitted_time->tm_hour,
-					splitted_time->tm_min, splitted_time->tm_sec);
+					splitted_time->tm_min, splitted_time->tm_sec,
+#if defined(CARE_BINARY_IS_PORTABLE)
+					"bin"
+#else
+					"raw"
+#endif
+		);
 	if (care->output == NULL) {
 		notice(tracee, ERROR, INTERNAL,
 			"can't generate a valid output name from the current time, "

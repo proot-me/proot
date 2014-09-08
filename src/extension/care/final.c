@@ -181,6 +181,22 @@ static int archive_re_execute_sh(Care *care)
 		C("'%s'", care->command[i]);
 	N("");
 
+	N("PROOT=\"${PROOT-$(dirname $0)/proot}\"");
+	N("");
+
+	N("if [ ! -e ${PROOT} ]; then");
+	N("    PROOT=$(which proot)");
+	N("fi");
+	N("");
+
+	N("if [ -z ${PROOT} ]; then");
+	N("    echo '**********************************************************************'");
+	N("    echo '\"proot\" command not found, please get it from http://proot.me'");
+	N("    echo '**********************************************************************'");
+	N("    exit 1");
+	N("fi");
+	N("");
+
 	N("if [ x$PROOT_NO_SECCOMP != x ]; then");
 	N("    PROOT_NO_SECCOMP=\"PROOT_NO_SECCOMP=$PROOT_NO_SECCOMP\"");
 	N("fi");
@@ -334,6 +350,10 @@ static int archive_readme_txt(const Care *care)
 #undef N
 #undef C
 
+#if !defined(CARE_BINARY_IS_PORTABLE)
+static int archive_myself(const Care *care) UNUSED;
+#endif
+
 /**
  * Archive the content pointed to by "/proc/self/exe" in
  * "@care->archive:@care->prefix/proot".  Note: this function is
@@ -396,14 +416,16 @@ int finalize_care(Care *care)
 	if (status < 0)
 		notice(NULL, WARNING, INTERNAL, "can't archive 'README.txt'");
 
+#if defined(CARE_BINARY_IS_PORTABLE)
 	/* Archive "care" as "proot", these are the same binary. */
 	status = archive_myself(care);
 	if (status < 0)
 		notice(NULL, WARNING, INTERNAL, "can't archive 'proot'");
+#endif
 
 	finalize_archive(care->archive);
 
-	/* Append self-extract information if needed.  */
+	/* Append self/raw extracting information if needed.  */
 	if (care->archive->fd >= 0 && care->archive->offset > 0) {
 		AutoExtractInfo info;
 		off_t position;
@@ -417,12 +439,15 @@ int finalize_care(Care *care)
 
 		status = write(care->archive->fd, &info, sizeof(info));
 		if (status != sizeof(info))
-			notice(NULL, WARNING, SYSTEM, "can't write self-extract information");
+			notice(NULL, WARNING, SYSTEM, "can't write extracting information");
 
 		(void) close(care->archive->fd);
 		care->archive->fd = -1;
 
-		extractor = talloc_asprintf(care, "`./%1$s` or `care -x %1$s`", care->output);
+		if (care->archive->offset == strlen("RAW"))
+			extractor = talloc_asprintf(care, "`care -x %s`", care->output);
+		else
+			extractor = talloc_asprintf(care, "`./%1$s` or `care -x %1$s`", care->output);
 	}
 	else if (care->output[strlen(care->output) - 1] != '/')
 		extractor = talloc_asprintf(care, "`care -x %s`", care->output);
@@ -436,7 +461,7 @@ int finalize_care(Care *care)
 		"  - search for \"conceal\" in `care -h` if the execution didn't go as expected.");
 
 	if (extractor != NULL)
-		notice(NULL, INFO, USER, "  - run %s to extract the output archive.", extractor);
+		notice(NULL, INFO, USER, "  - run %s to extract the output archive correctly.", extractor);
 
 	return 0;
 }

@@ -42,7 +42,7 @@ typedef struct {
 	int (*add_filter)(struct archive *);
 	int hardlink_resolver_strategy;
 	const char *options;
-	bool self_extracting;
+	enum { NOT_SPECIAL = 0, SELF_EXTRACTING, RAW } special;
 } Format;
 
 /**
@@ -63,10 +63,11 @@ static bool slurp_suffix(const char *string, const char **cursor, const char *su
 
 /**
  * Detect the expected format for the given @string.  This function
- * always updates the @format structure and @suffix_length with the
- * number of characters that describes the parsed format.
+ * returns -1 if an error occurred, otherwise it returns 0 and updates
+ * the @format structure and @suffix_length with the number of
+ * characters that describes the parsed format.
  */
-static void parse_suffix(const Tracee* tracee, Format *format,
+static int parse_suffix(const Tracee* tracee, Format *format,
 			const char *string, size_t *suffix_length)
 {
 	const char *cursor;
@@ -85,10 +86,22 @@ static void parse_suffix(const Tracee* tracee, Format *format,
 	if (found)
 		goto end;
 
+	found = slurp_suffix(string, &cursor, ".raw");
+	if (found) {
+		format->special = SELF_EXTRACTING;
+		goto parse_filter;
+	}
+
 	found = slurp_suffix(string, &cursor, ".bin");
 	if (found) {
-		format->self_extracting = true;
+#if defined(CARE_BINARY_IS_PORTABLE)
+		format->special = SELF_EXTRACTING;
 		goto parse_filter;
+#else
+		notice(tracee, ERROR, USER, "This version of CARE was built "
+					    "without self-extracting (.bin) support");
+		return -1;
+#endif
 	}
 
 	no_wrapper_found = true;
@@ -154,11 +167,18 @@ sanity_checks:
 		format->options	  = "lzop:compression-level=1";
 		format->set_format = archive_write_set_format_gnutar;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
-		format->self_extracting = true;
 
+#if defined(CARE_BINARY_IS_PORTABLE)
+		format->special = SELF_EXTRACTING;
 		if (no_wrapper_found)
 			notice(tracee, WARNING, USER,
 				"unknown suffix, assuming self-extracting format.");
+#else
+		format->special = RAW;
+		if (no_wrapper_found)
+			notice(tracee, WARNING, USER,
+				"unknown suffix, assuming raw format.");
+#endif
 
 		no_wrapper_found = false;
 		no_filter_found  = false;
@@ -175,6 +195,7 @@ sanity_checks:
 
 end:
 	*suffix_length = strlen(cursor);
+	return 0;
 }
 
 /**
@@ -251,7 +272,9 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 
 	assert(output != NULL);
 
-	parse_suffix(tracee, &format, output, suffix_length);
+	status = parse_suffix(tracee, &format, output, suffix_length);
+	if (status < 0)
+		return NULL;
 
 	archive = talloc_zero(context, Archive);
 	if (archive == NULL) {
@@ -337,7 +360,8 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		}
 	}
 
-	if (format.self_extracting) {
+	switch (format.special) {
+	case SELF_EXTRACTING:
 		archive->fd = copy_self_exe(tracee, output);
 		if (archive->fd < 0)
 			return NULL;
@@ -346,9 +370,32 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		archive->offset = lseek(archive->fd, 0, SEEK_CUR);
 
 		status = archive_write_open_fd(archive->handle, archive->fd);
-	}
-	else
+		break;
+
+	case RAW:
+		archive->fd = open(output, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP);
+		if (archive->fd < 0) {
+			notice(tracee, ERROR, SYSTEM, "can't open/create '%s'", output);
+			return NULL;
+		}
+
+		status = write(archive->fd, "RAW", strlen("RAW"));
+		if (status != strlen("RAW")) {
+			notice(tracee, ERROR, SYSTEM, "can't write '%s'", output);
+			(void) close(archive->fd);
+			return NULL;
+		}
+
+		/* Remember where the "RAW" string ends.  */
+		archive->offset = lseek(archive->fd, 0, SEEK_CUR);
+
+		status = archive_write_open_fd(archive->handle, archive->fd);
+		break;
+
+	default:
 		status = archive_write_open_filename(archive->handle, output);
+		break;
+	}
 	if (status != ARCHIVE_OK) {
 		notice(tracee, ERROR, INTERNAL, "can't open archive '%s': %s",
 			output, archive_error_string(archive->handle));

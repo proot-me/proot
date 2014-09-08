@@ -60,15 +60,6 @@ CARE_OBJECTS = 				\
 all: proot
 
 ######################################################################
-# Sanity checks
-
-ifneq (,$(findstring care,$(MAKECMDGOALS)))
-ifneq ($(CARE_BUILD_ENV),ok)
-$(error care is supposed to be built with: http://build.reproducible.io)
-endif
-endif
-
-######################################################################
 # Beautified output
 
 quiet_GEN = @echo "  GEN	$@"; $(GEN)

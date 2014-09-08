@@ -111,6 +111,15 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 	size_t size;
 
 	print_version(cli);
+
+	printf("suitable for self-extracting archives (.bin): %s\n",
+#if defined(CARE_BINARY_IS_PORTABLE)
+		"yes"
+#else
+		"no"
+#endif
+	);
+
 	printf("\n%s\n", cli->colophon);
 	fflush(stdout);
 

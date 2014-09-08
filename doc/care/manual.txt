@@ -25,7 +25,7 @@ CARE monitors the execution of the specified command to create an
 in the same context.  That way, the command will be reproducible
 everywhere, even on Linux systems that are supposed to be not
 compatible with the original Linux system.  CARE is typically useful
-to get reliable bug reports, demonstrations, academic experiences,
+to get reliable bug reports, demonstrations, `artifact evaluation`_,
 tutorials, portable applications, minimal rootfs, file-system
 coverage, ...
 
@@ -44,6 +44,8 @@ executions by changing content of the saved file-system, or by
 replaying different external events.
 
 .. _umockdev: https://github.com/martinpitt/umockdev/
+
+.. _artifact evaluation: http://www.artifact-eval.org/
 
 Privacy
 -------
@@ -88,12 +90,14 @@ interface.
     ?.bin      see ``Self-extracting format`` section
     ?.?.bin    see ``Self-extracting format`` section
     .bin       see ``Self-extracting format`` section
+    .raw       recommended archive format, use `care -x` to extract
     =========  ========================================================
 
     where "?" means the suffix must be combined with another one.  For
     examples: ".tar.lzo", ".cpio.gz", ".tar.bin", ".cpio.lzo.bin", ...
     If this option is not specified, the default output path is
-    ``care-<DATE>.bin``.
+    ``care-<DATE>.bin`` or ``care-<DATE>.raw``, depending on whether
+    CARE was built with self-extracting format support or not.
 
 -c path, --concealed-path=path
     Make *path* content appear empty during the original execution.
@@ -429,11 +433,10 @@ example::
 Downloads
 =========
 
-CARE is heavily based on PRoot_, that's why they are hosted in the same
-repository: http://github.proot.me.  Since CARE is supposed to work on
-any Linux systems, it is highly recommended to build it with its
-dedicated build environment: http://build.reproducible.io, or to use
-following binaries:
+CARE is heavily based on PRoot_, that's why they are both hosted in
+the same repository: http://github.proot.me.  Since CARE is supposed
+to work on any Linux systems, it is recommended to use following
+highly compatible static binaries:
 
 * for x86_64: http://static.reproducible.io/care-x86_64
 

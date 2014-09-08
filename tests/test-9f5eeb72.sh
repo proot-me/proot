@@ -25,6 +25,7 @@ chmod -rwx x
 
 for BUNCH in \
     "FORMAT=/              EXTRACT=''" \
+    "FORMAT=.raw           EXTRACT='${CARE} -x'" \
     "FORMAT=.cpio          EXTRACT='${CARE} -x'" \
     "FORMAT=.cpio.gz       EXTRACT='${CARE} -x'" \
     "FORMAT=.cpio.lzo      EXTRACT='${CARE} -x'" \
@@ -48,6 +49,10 @@ for BUNCH in \
 do
     eval $BUNCH
     CWD=${PWD}
+
+    if echo ${FORMAT} | grep '.bin' && ${CARE} -V | grep '(.bin): no'; then
+	continue
+    fi
 
     # Check: permissions, unordered archive, UTF-8, hard-links
     ${CARE} -o test${FORMAT} cat a/b ł d a/c

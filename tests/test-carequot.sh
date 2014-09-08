@@ -10,9 +10,9 @@ unset PROOT
 TMP=/tmp/$(mcookie)
 
 env 'COMP_WORDBREAKS= 	
-"'\''><;|&(:' ${CARE} -o ${TMP}.bin true
+"'\''><;|&(:' ${CARE} -o ${TMP}.raw true
 
-cd /tmp; ${CARE} -x ${TMP}.bin
+cd /tmp; ${CARE} -x ${TMP}.raw
 ${TMP}/re-execute.sh
 
-rm -fr ${TMP}.bin ${TMP}
+rm -fr ${TMP}.raw ${TMP}
