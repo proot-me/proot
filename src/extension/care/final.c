@@ -105,6 +105,35 @@ end:
 	return status;
 }
 
+/**
+ * Return a copy -- attached to @context -- of @input with all '
+ * (single quote) characters escaped.
+ */
+static const char *escape_quote(TALLOC_CTX *context, const char *input)
+{
+	char *output;
+	size_t length;
+	size_t i;
+
+	output = talloc_strdup(context, "");
+	if (output == NULL)
+		return NULL;
+
+	length = strlen(input);
+	for (i = 0; i < length; i++) {
+		char buffer[2] = { input[i], '\0' };
+
+		if (buffer[0] == '\'')
+			output = talloc_strdup_append_buffer(output, "'\\''");
+		else
+			output = talloc_strdup_append_buffer(output, buffer);
+		if (output == NULL)
+			return NULL;
+	}
+
+	return output;
+}
+
 /* Helpers for archive_* functions.  */
 #define N(format, ...)							\
 	do {								\
@@ -122,7 +151,7 @@ end:
  * This function returns < 0 if an error occured, 0 otherwise.  Note:
  * this function is called in @care's destructor.
  */
-static int archive_re_execute_sh(const Care *care)
+static int archive_re_execute_sh(Care *care)
 {
 	struct utsname utsname;
 	const Item *item;
@@ -168,8 +197,10 @@ static int archive_re_execute_sh(const Care *care)
 		volatile_envar = find_volatile_envar(care, environ[i]);
 		if (volatile_envar != NULL)
 			C("'%1$s'=\"$%1$s\" ", volatile_envar);
-		else
-			C("'%s' ", environ[i]);
+		else {
+			const char *string = escape_quote(care, environ[i]);
+			C("'%s' ", string ?: environ[i]);
+		}
 	}
 
 	C("\"${PROOT-$(dirname $0)/proot}\"");
