@@ -121,9 +121,9 @@ LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 OBJIFY = $($(quiet)GEN)									\
 	objcopy										\
 		--input binary								\
-		--output `objdump -f cli/cli.o |					\
+		--output `env LANG=C objdump -f cli/cli.o |				\
 			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
-		--binary-architecture `objdump -f cli/cli.o |				\
+		--binary-architecture `env LANG=C objdump -f cli/cli.o |		\
 				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
 		$< $@
 
