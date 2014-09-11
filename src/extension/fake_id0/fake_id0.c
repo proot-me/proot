@@ -96,6 +96,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_lstat,		FILTER_SYSEXIT },
 	{ PR_lstat64,		FILTER_SYSEXIT },
 	{ PR_mknod,		FILTER_SYSEXIT },
+	{ PR_mknodat,		FILTER_SYSEXIT },
 	{ PR_newfstatat,	FILTER_SYSEXIT },
 	{ PR_oldlstat,		FILTER_SYSEXIT },
 	{ PR_oldstat,		FILTER_SYSEXIT },
@@ -576,6 +577,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	case PR_setgroups:
 	case PR_setgroups32:
 	case PR_mknod:
+	case PR_mknodat:
 	case PR_capset:
 	case PR_setxattr:
 	case PR_lsetxattr:
