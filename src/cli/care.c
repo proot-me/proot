@@ -355,12 +355,6 @@ static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 		return -1;
 	}
 
-	status = initialize_extension(tracee, kompat_callback, NULL);
-	if (status < 0) {
-		notice(tracee, WARNING, INTERNAL, "can't initialize the kompat extension");
-		return -1;
-	}
-
 	return cursor;
 }
 

@@ -203,7 +203,6 @@ static int archive_re_execute_sh(Care *care)
 	N("");
 
 	C("env --ignore-environment");
-	C("PROOT_FORCE_KOMPAT=1");
 	C("PROOT_IGNORE_MISSING_BINDINGS=1");
 	C("$PROOT_NO_SECCOMP");
 
