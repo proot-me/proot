@@ -85,10 +85,16 @@ static bool needs_kompat(const Config *config, int expected_release)
 static bool modify_syscall(Tracee *tracee, const Config *config, const Modif *modif)
 {
 	size_t i, j;
+	word_t syscall;
 
 	assert(config != NULL);
 
 	if (!needs_kompat(config, modif->expected_release))
+		return false;
+
+	/* Check if this syscall is supported on this architecture.  */
+	syscall = detranslate_sysnum(get_abi(tracee), modif->new_sysarg_num);
+	if (syscall == SYSCALL_AVOIDER)
 		return false;
 
 	set_sysnum(tracee, modif->new_sysarg_num);
