@@ -56,6 +56,11 @@ int launch_process(Tracee *tracee)
 	long status;
 	pid_t pid;
 
+	/* Warn about open file descriptors. They won't be
+	 * translated until they are closed. */
+	if (tracee->verbose > 0)
+		list_open_fd(tracee);
+
 	pid = fork();
 	switch(pid) {
 	case -1:
@@ -70,11 +75,6 @@ int launch_process(Tracee *tracee)
 			notice(tracee, ERROR, SYSTEM, "ptrace(TRACEME)");
 			return -errno;
 		}
-
-		/* Warn about open file descriptors. They won't be
-		 * translated until they are closed. */
-		if (tracee->verbose > 0)
-			list_open_fd(tracee);
 
 		/* Synchronize with the tracer's event loop.  Without
 		 * this trick the tracer only sees the "return" from

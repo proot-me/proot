@@ -37,7 +37,6 @@
 #include <string.h>        /* memcpy(3), */
 #include <stddef.h>        /* offsetof(3), */
 #include <stdint.h>        /* uint*_t, UINT*_MAX, */
-#include <talloc.h>        /* talloc_*, */
 #include <assert.h>        /* assert(3), */
 
 #include "syscall/seccomp.h"

@@ -43,6 +43,17 @@ static word_t heap_offset = 0;
 
 #define PREALLOCATED_HEAP_SIZE (16 * 1024 * 1024)
 
+/**
+ * Emulate the brk(2) syscall with mmap(2) and/or mremap(2); this is
+ * required to ensure a minimal heap size [1].  This function always
+ * returns 0.
+ *
+ * [1] With some versions of the Linux kernel and some versions of the
+ *     GNU ELF interpreter (ld.so), the heap can't grow at all because
+ *     the kernel has put a memory mapping right after the heap.  This
+ *     issue can be reproduced when using a Ubuntu 12.04 x86_64 rootfs
+ *     on RHEL 5 x86_64.
+ */
 word_t translate_brk_enter(Tracee *tracee)
 {
 	word_t new_brk_address;
@@ -68,9 +79,22 @@ word_t translate_brk_enter(Tracee *tracee)
 	if (tracee->heap->base == 0) {
 		Sysnum sysnum;
 
-		if (new_brk_address != 0)
-			notice(tracee, WARNING, INTERNAL,
-				"process %d is doing suspicious brk()",	tracee->pid);
+		/* From PRoot's point-of-view this is the first time
+		 * this tracee calls brk(2), although an address was
+		 * specified.  This is not supposed to happen the
+		 * first time.  It is likely because this tracee is
+		 * the very first child of PRoot but the first
+		 * execve(2) didn't happen yet (so this is not its
+		 * first call to brk(2)).  For instance, the
+		 * installation of seccomp filters is made after this
+		 * very first process is traced, and might call
+		 * malloc(3) before the first execve(2).  */
+		if (new_brk_address != 0) {
+			if (tracee->verbose > 0)
+				notice(tracee, WARNING, INTERNAL,
+					"process %d is doing suspicious brk()",	tracee->pid);
+			return 0;
+		}
 
 		/* I don't understand yet why mmap(2) fails (EFAULT)
 		 * on architectures that also have mmap2(2).  Maybe
@@ -131,6 +155,9 @@ word_t translate_brk_enter(Tracee *tracee)
 	return 0;
 }
 
+/**
+ * c.f. function above.
+ */
 void translate_brk_exit(Tracee *tracee)
 {
 	word_t result;
@@ -177,6 +204,9 @@ void translate_brk_exit(Tracee *tracee)
 		tracee->heap->size = peek_reg(tracee, MODIFIED, SYSARG_3) - heap_offset;
 
 		poke_reg(tracee, SYSARG_RESULT, tracee->heap->base + tracee->heap->size);
+		break;
+
+	case PR_brk:
 		break;
 
 	default:
