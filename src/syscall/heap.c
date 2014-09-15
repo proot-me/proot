@@ -167,7 +167,7 @@ void translate_brk_exit(Tracee *tracee)
 	int tracee_errno;
 
 	if (tracee->heap->disabled)
-		return 0;
+		return;
 
 	assert(heap_offset > 0);
 
