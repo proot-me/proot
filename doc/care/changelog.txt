@@ -1,3 +1,28 @@
+CARE v2.2
+=========
+
++ Special characters in environment variables are now correctly quoted
+  in the generated "re-execute.sh" script.  For instance, the value of
+  "COMP_WORDBREAKS" environment variable on Ubuntu used to make CARE
+  generate broken "re-execute.sh" scripts.
+
++ It is now possible to deliver CARE as a dynamically linked binary.
+  In this case, the self-extracting format is not supported since one
+  can't assume the re-execution environment contains all the
+  pre-requisites (libtalloc, libarchive, proot).  Thus, CARE and PRoot
+  should be deployed independently on the re-execution environment.
+
++ Syscall are now emulated only if it is really needed.
+
+This release is based on PRoot v4.0.3, so it contains all the
+following generic fixes too:
+
+  https://github.com/cedric-vincent/PRoot/releases/tag/v4.0.0
+  https://github.com/cedric-vincent/PRoot/releases/tag/v4.0.1
+  https://github.com/cedric-vincent/PRoot/releases/tag/v4.0.2
+  https://github.com/cedric-vincent/PRoot/releases/tag/v4.0.3
+
+
 CARE v2.1
 =========
 
