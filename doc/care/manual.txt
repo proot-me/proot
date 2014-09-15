@@ -6,8 +6,8 @@
 Comprehensive Archiver for Reproducible Execution
 -------------------------------------------------
 
-:Date: 2014-01-24
-:Version: 2.1
+:Date: 2014-09-15
+:Version: 2.2
 :Manual section: 1
 
 

@@ -1,4 +1,4 @@
-%define version v4.0.2
+%define version v4.0.3
 
 Summary   : chroot, mount --bind, and binfmt_misc without privilege/setup
 Version   : %{version}
@@ -60,7 +60,25 @@ rm -rf %{buildroot}
 %doc doc/*
 
 %changelog
-* Mon Sep 08 2014 Cédric VINCENT <cedric.vincent@st.com>
+* Mon Sep 15 2014 Cédric VINCENT <cedric.vincent@st.com>
+Release v4.0.3
+==============
+
++ Heap emulation is disabled when a "suspicious" call to brk(2) is
+  actually legit, as it might be the case when launching the very
+  first program.
+
++ The "-0" and "-S" options ("root" identity emulation) now fake
+  success of mknodat(2), as it was the case for mknod(2) previously.
+  This missing feature was revealed by the AArch64 port.
+
++ The "-k" option (kernel compatibility emulation) now works on
+  Linux/AArch64.
+
+Thanks to Rémi Duraffort for the bug reports and for his LAVA testing
+platform!
+
+
 Release v4.0.2
 ==============
 
