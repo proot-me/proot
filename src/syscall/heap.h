@@ -34,7 +34,7 @@ extern void translate_brk_exit(Tracee *tracee);
  */
 static inline bool belongs_to_heap_prealloc(const Tracee *tracee, word_t address)
 {
-	return (tracee->heap != NULL
+	return (tracee->heap != NULL && !tracee->heap->disabled
 		&& address >= tracee->heap->base + tracee->heap->size
 		&& address < tracee->heap->base + tracee->heap->prealloc_size);
 }

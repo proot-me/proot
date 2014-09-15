@@ -60,6 +60,9 @@ word_t translate_brk_enter(Tracee *tracee)
 	size_t old_heap_size;
 	size_t new_heap_size;
 
+	if (tracee->heap->disabled)
+		return 0;
+
 	if (heap_offset == 0) {
 		heap_offset = sysconf(_SC_PAGE_SIZE);
 		if ((int) heap_offset <= 0)
@@ -79,16 +82,15 @@ word_t translate_brk_enter(Tracee *tracee)
 	if (tracee->heap->base == 0) {
 		Sysnum sysnum;
 
-		/* From PRoot's point-of-view this is the first time
-		 * this tracee calls brk(2), although an address was
-		 * specified.  This is not supposed to happen the
-		 * first time.  It is likely because this tracee is
-		 * the very first child of PRoot but the first
-		 * execve(2) didn't happen yet (so this is not its
-		 * first call to brk(2)).  For instance, the
-		 * installation of seccomp filters is made after this
-		 * very first process is traced, and might call
-		 * malloc(3) before the first execve(2).  */
+		/* From PRoot's point-of-view this is the first time this
+		 * tracee calls brk(2), although an address was specified.
+		 * This is not supposed to happen the first time.  It is
+		 * likely because this tracee is the very first child of PRoot
+		 * but the first execve(2) didn't happen yet (so this is not
+		 * its first call to brk(2)).  For instance, the installation
+		 * of seccomp filters is made after this very first process is
+		 * traced, and might call malloc(3) before the first
+		 * execve(2).  */
 		if (new_brk_address != 0) {
 			if (tracee->verbose > 0)
 				notice(tracee, WARNING, INTERNAL,
@@ -164,6 +166,9 @@ void translate_brk_exit(Tracee *tracee)
 	word_t sysnum;
 	int tracee_errno;
 
+	if (tracee->heap->disabled)
+		return 0;
+
 	assert(heap_offset > 0);
 
 	sysnum = get_sysnum(tracee, MODIFIED);
@@ -207,6 +212,10 @@ void translate_brk_exit(Tracee *tracee)
 		break;
 
 	case PR_brk:
+		/* Is it confirmed that this suspicious call to brk(2)
+		 * is actually legit?  */
+		if (result == peek_reg(tracee, ORIGINAL, SYSARG_1))
+			tracee->heap->disabled = true;
 		break;
 
 	default:
