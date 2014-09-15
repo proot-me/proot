@@ -31,6 +31,7 @@
 #include <talloc.h>       /* talloc*, */
 #include <uthash.h>       /* ut*, UT*, HASH*, */
 #include <sys/queue.h>    /* STAILQ_*, */
+#include <inttypes.h>     /* PRI*, */
 
 #include "extension/care/care.h"
 #include "extension/care/final.h"
