@@ -26,5 +26,27 @@
 #include "tracee/tracee.h"
 
 extern int translate_execve(Tracee *tracee);
+extern int translate_execve_enter(Tracee *tracee);
+
+typedef struct mapping {
+	struct {
+		word_t base;
+		word_t size;
+	} file;
+
+	struct {
+		word_t base;
+		word_t size;
+	} mem;
+
+	word_t flags;
+} Mapping;
+
+typedef struct load_map {
+	char *path;
+	Mapping *mappings;
+
+	struct load_map *interp;
+} LoadMap;
 
 #endif /* EXECVE_H */

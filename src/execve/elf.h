@@ -94,6 +94,11 @@ typedef union {
 	ProgramHeader64 class64;
 } ProgramHeader;
 
+/* Segment flags:  */
+#define PF_X 1
+#define PF_W 2
+#define PF_R 4
+
 typedef enum {
 	PT_LOAD    = 1,
 	PT_DYNAMIC = 2,

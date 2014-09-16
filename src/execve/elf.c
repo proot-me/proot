@@ -58,8 +58,10 @@ int open_elf(const char *t_path, ElfHeader *elf_header)
 
 	/* Check if it is an ELF file.  */
 	status = read(fd, elf_header, sizeof(ElfHeader));
-	if (status < 0)
+	if (status < 0) {
+		status = -errno;
 		goto end;
+	}
 	if ((size_t) status < sizeof(ElfHeader)
 	    || ELF_IDENT(*elf_header, 0) != 0x7f
 	    || ELF_IDENT(*elf_header, 1) != 'E'

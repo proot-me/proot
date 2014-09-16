@@ -121,6 +121,8 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_execve:
+		(void) translate_execve_enter(tracee);
+
 		status = translate_execve(tracee);
 
 		/* Something went wrong, restore ptracee's loading
