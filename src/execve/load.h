@@ -23,6 +23,8 @@
 #ifndef LOAD_H
 #define LOAD_H
 
+#include <stdbool.h>
+
 #include "arch.h"
 
 typedef struct mapping {
@@ -42,6 +44,7 @@ typedef struct mapping {
 typedef struct load_map {
 	char *path;
 	Mapping *mappings;
+	bool position_independent;
 
 	struct load_map *interp;
 } LoadMap;

@@ -94,6 +94,12 @@ typedef union {
 	ProgramHeader64 class64;
 } ProgramHeader;
 
+/* Object type:  */
+#define ET_REL          1
+#define ET_EXEC         2
+#define ET_DYN          3
+#define ET_CORE         4
+
 /* Segment flags:  */
 #define PF_X 1
 #define PF_W 2

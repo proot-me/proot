@@ -122,6 +122,8 @@ static int extract_load_map(Tracee *tracee, LoadMap *load)
 	if (fd < 0)
 		return fd;
 
+	load->position_independent = (ELF_FIELD(elf_header, type) == ET_DYN);
+
 	/* Get class-specific fields. */
 	elf_phnum     = ELF_FIELD(elf_header, phnum);
 	elf_phentsize = ELF_FIELD(elf_header, phentsize);
@@ -253,6 +255,8 @@ int translate_execve_enter(Tracee *tracee)
 		return -ENOMEM;
 
 	tracee->load->path = talloc_strdup(tracee->load, host_path);
+	if (tracee->load->path == NULL)
+		return -ENOMEM;
 
 	status = extract_load_map(tracee, tracee->load);
 	if (status < 0)
