@@ -20,13 +20,30 @@
  * 02110-1301 USA.
  */
 
-#ifndef EXECVE_H
-#define EXECVE_H
+#ifndef LOAD_H
+#define LOAD_H
 
-#include "tracee/tracee.h"
+#include "arch.h"
 
-extern int translate_execve(Tracee *tracee);
-extern int translate_execve_enter(Tracee *tracee);
-extern int translate_execve_exit(Tracee *tracee);
+typedef struct mapping {
+	struct {
+		word_t base;
+		word_t size;
+	} file;
 
-#endif /* EXECVE_H */
+	struct {
+		word_t base;
+		word_t size;
+	} mem;
+
+	word_t flags;
+} Mapping;
+
+typedef struct load_map {
+	char *path;
+	Mapping *mappings;
+
+	struct load_map *interp;
+} LoadMap;
+
+#endif /* LOAD_H */

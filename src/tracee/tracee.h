@@ -41,6 +41,7 @@ typedef enum {
 } RegVersion;
 
 struct bindings;
+struct load_map;
 struct extensions;
 struct direct_ptracees;
 struct chained_syscalls;
@@ -185,6 +186,11 @@ typedef struct tracee {
 		word_t final_result;
 	} chain;
 
+	/* Load map generated during execve sysenter and used during
+	 * execve sysexit.  */
+	struct load_map *load;
+
+
 	/**********************************************************************
 	 * Private but inherited resources                                    *
 	 **********************************************************************/
@@ -208,6 +214,7 @@ typedef struct tracee {
 
 	/* Virtual heap, emulated with a regular memory mapping.  */
 	Heap *heap;
+
 
 	/**********************************************************************
 	 * Shared resources until the tracee makes a call to execve().        *

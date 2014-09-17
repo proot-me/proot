@@ -19,6 +19,7 @@ OBJECTS += \
 	cli/notice.o		\
 	execve/execve.o		\
 	execve/enter.o		\
+	execve/exit.o		\
 	execve/interp.o		\
 	execve/elf.o		\
 	execve/ldso.o		\

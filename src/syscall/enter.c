@@ -25,7 +25,7 @@
 #include <sys/un.h>      /* struct sockaddr_un, */
 #include <linux/net.h>   /* SYS_*, */
 #include <fcntl.h>       /* AT_FDCWD, */
-#include <limits.h>     /* PATH_MAX, */
+#include <limits.h>      /* PATH_MAX, */
 
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"

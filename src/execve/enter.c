@@ -25,10 +25,11 @@
 #include <unistd.h>     /* access(2), lstat(2), close(2), read(2), */
 #include <errno.h>      /* E*, */
 #include <fcntl.h>      /* open(2), */
-#include <sys/mman.h>   /* PROT_*, */
 #include <assert.h>     /* assert(3), */
+#include <talloc.h>     /* talloc*, */
 
 #include "execve/execve.h"
+#include "execve/load.h"
 #include "execve/elf.h"
 #include "path/path.h"
 #include "tracee/tracee.h"
@@ -94,14 +95,14 @@ static int extract_shebang(Tracee *tracee, char host_path[PATH_MAX],
 }
 
 /**
- * Extract the load map of @object->path.  This function returns
+ * Extract the load map of @load->path.  This function returns
  * -errno if an error occured, otherwise it returns 0.  On success,
- * both @object->mappings and @object->interp are filled according to
- * the content of @object->path.
+ * both @load->mappings and @load->interp are filled according to
+ * the content of @load->path.
  *
  * TODO: factorize with find_program_header()
  */
-static int extract_load_map(const Tracee *tracee, LoadMap *object)
+static int extract_load_map(Tracee *tracee, LoadMap *load)
 {
 	ElfHeader elf_header;
 	ProgramHeader program_header;
@@ -114,10 +115,10 @@ static int extract_load_map(const Tracee *tracee, LoadMap *object)
 	int fd;
 	int i;
 
-	assert(object != NULL);
-	assert(object->path != NULL);
+	assert(load != NULL);
+	assert(load->path != NULL);
 
-	fd = open_elf(object->path, &elf_header);
+	fd = open_elf(load->path, &elf_header);
 	if (fd < 0)
 		return fd;
 
@@ -161,51 +162,59 @@ static int extract_load_map(const Tracee *tracee, LoadMap *object)
 		case PT_LOAD: {
 			size_t index;
 
-			if (object->mappings == NULL) {
-				object->mappings = talloc_array(object, Mapping, 1);
+			if (load->mappings == NULL) {
+				load->mappings = talloc_array(load, Mapping, 1);
 				index = 0;
 			}
 			else {
-				index = talloc_array_length(object->mappings);
-				object->mappings = talloc_realloc(object, object->mappings,
+				index = talloc_array_length(load->mappings);
+				load->mappings = talloc_realloc(load, load->mappings,
 								Mapping, index + 1);
 			}
-			if (object->mappings == NULL)
+			if (load->mappings == NULL)
 				return -ENOMEM;
 
-			object->mappings[index].file.base = P(offset);
-			object->mappings[index].file.size = P(filesz);
-			object->mappings[index].mem.base  = P(vaddr);
-			object->mappings[index].mem.size  = P(memsz);
-			object->mappings[index].flags = (0
-							| (P(flags) & PF_R ? PROT_READ  : 0)
-							| (P(flags) & PF_W ? PROT_WRITE : 0)
-							| (P(flags) & PF_X ? PROT_EXEC  : 0));
+			load->mappings[index].file.base = P(offset);
+			load->mappings[index].file.size = P(filesz);
+			load->mappings[index].mem.base  = P(vaddr);
+			load->mappings[index].mem.size  = P(memsz);
+			load->mappings[index].flags     = P(flags);
 			break;
 		}
 
 		case PT_INTERP: {
+			char *user_path;
+			char host_path[PATH_MAX];
+
 			/* Only one PT_INTERP segment is allowed.  */
-			if (object->interp != NULL)
+			if (load->interp != NULL)
 				return -EINVAL;
 
-			object->interp = talloc_zero(object, LoadMap);
-			if (object->interp == NULL)
+			load->interp = talloc_zero(load, LoadMap);
+			if (load->interp == NULL)
 				return -ENOMEM;
 
-			object->interp->path = talloc_size(object, P(filesz) + 1);
-			if (object->interp->path == NULL)
+			user_path = talloc_size(tracee->ctx, P(filesz) + 1);
+			if (user_path == NULL)
 				return -ENOMEM;
 
 			/* Remember pread(2) doesn't change the
 			 * current position in the file.  */
-			status = pread(fd, object->interp->path, P(filesz), P(offset));
+			status = pread(fd, user_path, P(filesz), P(offset));
 			if ((size_t) status != P(filesz)) /* Unexpected size.  */
 				status = -EACCES;
 			if (status < 0)
 				return status;
 
-			object->interp->path[P(filesz)] = '\0';
+			user_path[P(filesz)] = '\0';
+
+			status = translate_n_check(tracee, host_path, user_path);
+			if (status < 0)
+				return status;
+
+			load->interp->path = talloc_strdup(load->interp, host_path);
+			if (load->interp->path == NULL)
+				return -ENOMEM;
 
 			break;
 		}
@@ -221,29 +230,6 @@ static int extract_load_map(const Tracee *tracee, LoadMap *object)
 }
 
 /**
- * Print to stderr the load map of @object.
- */
-static void print_load_map(const LoadMap *object)
-{
-	size_t length;
-	size_t i;
-
-	length = talloc_array_length(object);
-
-	for (i = 0; i <= length; i++) {
-		fprintf(stderr, "%016lx-%016lx %c%c%cp %016lx 00:00 0 %s\n",
-			object->mappings[i].mem.base,
-			object->mappings[i].mem.base + object->mappings[i].mem.size,
-			object->mappings[i].flags & PROT_READ  ? 'r' : '-',
-			object->mappings[i].flags & PROT_WRITE ? 'w' : '-',
-			object->mappings[i].flags & PROT_EXEC  ? 'x' : '-',
-			object->mappings[i].file.base, object->path);
-	}
-
-	if (object->interp != NULL)
-		print_load_map(object->interp);
-}
-/**
  * Extract all the information that will be required by
  * translate_execve_exit().  This function returns -errno if an error
  * occured, otherwise 0.
@@ -252,7 +238,6 @@ int translate_execve_enter(Tracee *tracee)
 {
 	char user_path[PATH_MAX];
 	char host_path[PATH_MAX];
-	LoadMap *object;
 	int status;
 
 	status = get_sysarg_path(tracee, user_path, SYSARG_1);
@@ -263,28 +248,26 @@ int translate_execve_enter(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	/*tracee->*/object = talloc_zero(tracee, LoadMap);
-	if (object == NULL)
+	tracee->load = talloc_zero(tracee, LoadMap);
+	if (tracee->load == NULL)
 		return -ENOMEM;
 
-	object->path = talloc_strdup(object, host_path);
+	tracee->load->path = talloc_strdup(tracee->load, host_path);
 
-	status = extract_load_map(tracee, object);
+	status = extract_load_map(tracee, tracee->load);
 	if (status < 0)
 		return status;
 
-	if (object->interp != NULL) {
-		status = extract_load_map(tracee, object->interp);
+	if (tracee->load->interp != NULL) {
+		status = extract_load_map(tracee, tracee->load->interp);
 		if (status < 0)
 			return status;
 
 		/* An ELF interpreter is supposed to be
 		 * standalone.  */
-		if (object->interp->interp != NULL)
+		if (tracee->load->interp->interp != NULL)
 			return -EINVAL;
 	}
-
-	print_load_map(object);
 
 	return 0;
 }
