@@ -425,9 +425,17 @@ void translate_syscall_exit(Tracee *tracee)
 	}
 #endif
 
+#if EXECVE2
 	case PR_execve:
-		(void) translate_execve_exit(tracee);
+		status = translate_execve_exit(tracee);
+		goto end;
 
+	case PR_rt_sigreturn:
+	case PR_sigreturn:
+		tracee->restore_original_regs = false;
+		goto end;
+#else
+	case PR_execve:
 		if ((int) syscall_result >= 0) {
 			/* New processes have no heap.  */
 			bzero(tracee->heap, sizeof(Heap));
@@ -436,6 +444,7 @@ void translate_syscall_exit(Tracee *tracee)
 			tracee->restore_original_regs = false;
 		}
 		goto end;
+#endif
 
 	case PR_ptrace:
 		status = translate_ptrace_exit(tracee);

@@ -190,6 +190,17 @@ typedef struct tracee {
 	 * execve sysexit.  */
 	struct load_map *load;
 
+	struct {
+		enum {
+			LOADING_STEP_NONE = 0,
+			LOADING_STEP_OPEN,
+			LOADING_STEP_MMAP,
+			LOADING_STEP_CLOSE
+		} step;
+		struct load_map *map;
+		size_t index;
+	} loading;
+
 
 	/**********************************************************************
 	 * Private but inherited resources                                    *

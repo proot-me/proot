@@ -126,7 +126,12 @@ void translate_syscall(Tracee *tracee)
 			save_current_regs(tracee, MODIFIED);
 		}
 		else {
-			status = notify_extensions(tracee, SYSCALL_CHAINED_ENTER, 0, 0);
+			if (tracee->loading.step != 0) {
+				translate_load_enter(tracee);
+				status = 0;
+			}
+			else
+				status = notify_extensions(tracee, SYSCALL_CHAINED_ENTER, 0, 0);
 			tracee->restart_how = PTRACE_SYSCALL;
 		}
 
@@ -161,8 +166,12 @@ void translate_syscall(Tracee *tracee)
 		 * chained by PRoot.  */
 		if (tracee->chain.syscalls == NULL)
 			translate_syscall_exit(tracee);
-		else
-			(void) notify_extensions(tracee, SYSCALL_CHAINED_EXIT, 0, 0);
+		else {
+			if (tracee->loading.step != 0)
+				translate_load_exit(tracee);
+			else
+				(void) notify_extensions(tracee, SYSCALL_CHAINED_EXIT, 0, 0);
+		}
 
 		/* Reset the tracee's status. */
 		tracee->status = 0;

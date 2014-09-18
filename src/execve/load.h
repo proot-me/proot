@@ -25,20 +25,16 @@
 
 #include <stdbool.h>
 
+#include "tracee/tracee.h"
 #include "arch.h"
 
 typedef struct mapping {
-	struct {
-		word_t base;
-		word_t size;
-	} file;
-
-	struct {
-		word_t base;
-		word_t size;
-	} mem;
-
+	word_t addr;
+	word_t length;
+	word_t prot;
 	word_t flags;
+	word_t fd;
+	word_t offset;
 } Mapping;
 
 typedef struct load_map {
@@ -48,5 +44,8 @@ typedef struct load_map {
 
 	struct load_map *interp;
 } LoadMap;
+
+extern void translate_load_enter(Tracee *tracee);
+extern void translate_load_exit(Tracee *tracee);
 
 #endif /* LOAD_H */
