@@ -41,6 +41,7 @@ typedef struct load_map {
 	char *path;
 	Mapping *mappings;
 	bool position_independent;
+	word_t entry_point;
 
 	struct load_map *interp;
 } LoadMap;

@@ -107,7 +107,8 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadMap *load,
 			const ElfHeader *elf_header, const ProgramHeader *program_header)
 {
 	size_t index;
-
+	word_t start_address;
+	word_t end_address;
 	static word_t page_size = 0;
 	static word_t page_mask = 0;
 
@@ -128,12 +129,15 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadMap *load,
 	if (load->mappings == NULL)
 		return -ENOMEM;
 
+	start_address = P(vaddr) & page_mask;
+	end_address   = (P(vaddr) + P(filesz) + page_size) & page_mask;
+
 	load->mappings[index].fd     = -1; /* Unknown yet.  */
-	load->mappings[index].offset =  P(offset) & page_mask;
-	load->mappings[index].addr   =  P(vaddr)  & page_mask;
-	load->mappings[index].length = (P(filesz) + page_size) & page_mask;
+	load->mappings[index].offset = P(offset) & page_mask;
+	load->mappings[index].addr   = start_address;
+	load->mappings[index].length = end_address - start_address;
 	load->mappings[index].flags  = MAP_PRIVATE;
-	load->mappings[index].prot   =  ((P(flags) & PF_R ? PROT_READ  : 0)
+	load->mappings[index].prot   =  ( (P(flags) & PF_R ? PROT_READ  : 0)
 					| (P(flags) & PF_W ? PROT_WRITE : 0)
 					| (P(flags) & PF_X ? PROT_EXEC  : 0));
 
@@ -141,7 +145,11 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadMap *load,
 	 * file size p_filesz, the "extra" bytes are defined to hold
 	 * the value 0 and to follow the segment's initialized area."
 	 * -- man 7 elf.  */
-	if (P(memsz) > P(filesz)) {
+	start_address = end_address;
+	end_address   = (P(vaddr) + P(memsz) + page_size) & page_mask;
+
+	/* Are there extra bytes?  */
+	if (end_address > start_address) {
 		index++;
 		load->mappings = talloc_realloc(load, load->mappings, Mapping, index + 1);
 		if (load->mappings == NULL)
@@ -149,8 +157,8 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadMap *load,
 
 		load->mappings[index].fd     = -1;  /* Anonymous.  */
 		load->mappings[index].offset =  0;
-		load->mappings[index].addr   = (P(vaddr) + P(memsz) + page_size) & page_mask;
-		load->mappings[index].length = (P(memsz) - P(filesz) + page_size) & page_mask;
+		load->mappings[index].addr   = start_address;
+		load->mappings[index].length = end_address - start_address;
 		load->mappings[index].flags  = MAP_PRIVATE | MAP_ANONYMOUS;
 		load->mappings[index].prot   = load->mappings[index - 1].prot;
 	}
@@ -234,6 +242,7 @@ static int extract_load_map(Tracee *tracee, LoadMap *load)
 		return fd;
 
 	load->position_independent = (ELF_FIELD(elf_header, type) == ET_DYN);
+	load->entry_point = ELF_FIELD(elf_header, entry);
 
 	/* Get class-specific fields. */
 	elf_phnum     = ELF_FIELD(elf_header, phnum);

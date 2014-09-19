@@ -133,11 +133,12 @@ void translate_load_exit(Tracee *tracee)
 
 		size = talloc_array_length(tracee->loading.map->mappings);
 
-		/* Now the base address is known, then adjust mappings
-		 * according to.  */
+		/* Now the base address is known, then adjust
+		 * addresses according to.  */
 		if (tracee->loading.index == 0 && tracee->loading.map->position_independent) {
 			for (i = 0; i < size; i++)
 				tracee->loading.map->mappings[i].addr += result;
+			tracee->loading.map->entry_point += result;
 		}
 
 		tracee->loading.index++;
@@ -156,6 +157,7 @@ void translate_load_exit(Tracee *tracee)
 		/* Is this the end of the loading process?  */
 		if (tracee->loading.map->interp == NULL) {
 			tracee->loading.step = 0;
+			poke_reg(tracee, INSTR_POINTER, tracee->loading.map->entry_point);
 			return;
 		}
 

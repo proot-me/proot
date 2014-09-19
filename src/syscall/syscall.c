@@ -27,6 +27,7 @@
 
 #include "syscall/syscall.h"
 #include "syscall/chain.h"
+#include "execve/load.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
