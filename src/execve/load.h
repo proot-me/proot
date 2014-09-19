@@ -26,6 +26,7 @@
 #include <stdbool.h>
 
 #include "tracee/tracee.h"
+#include "execve/elf.h"
 #include "arch.h"
 
 typedef struct mapping {
@@ -37,14 +38,13 @@ typedef struct mapping {
 	word_t offset;
 } Mapping;
 
-typedef struct load_map {
+typedef struct load_info {
 	char *path;
 	Mapping *mappings;
-	bool position_independent;
-	word_t entry_point;
+	ElfHeader elf_header;
 
-	struct load_map *interp;
-} LoadMap;
+	struct load_info *interp;
+} LoadInfo;
 
 extern void translate_load_enter(Tracee *tracee);
 extern void translate_load_exit(Tracee *tracee);

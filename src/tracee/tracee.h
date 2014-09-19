@@ -41,7 +41,7 @@ typedef enum {
 } RegVersion;
 
 struct bindings;
-struct load_map;
+struct load_info;
 struct extensions;
 struct direct_ptracees;
 struct chained_syscalls;
@@ -186,9 +186,9 @@ typedef struct tracee {
 		word_t final_result;
 	} chain;
 
-	/* Load map generated during execve sysenter and used during
+	/* Load info generated during execve sysenter and used during
 	 * execve sysexit.  */
-	struct load_map *load;
+	struct load_info *load_info;
 
 	struct {
 		enum {
@@ -197,7 +197,7 @@ typedef struct tracee {
 			LOADING_STEP_MMAP,
 			LOADING_STEP_CLOSE
 		} step;
-		struct load_map *map;
+		struct load_info *info;
 		size_t index;
 	} loading;
 

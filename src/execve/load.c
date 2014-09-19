@@ -49,10 +49,10 @@ void translate_load_enter(Tracee *tracee)
 	switch (tracee->loading.step) {
 	case LOADING_STEP_OPEN:
 		set_sysnum(tracee, PR_open);
-		status = set_sysarg_path(tracee, tracee->loading.map->path, SYSARG_1);
+		status = set_sysarg_path(tracee, tracee->loading.info->path, SYSARG_1);
 		if (status < 0) {
 			notice(tracee, WARNING, INTERNAL, "can't open '%s': %s",
-				       tracee->loading.map->path, strerror(-status));
+				       tracee->loading.info->path, strerror(-status));
 			goto error;
 		}
 		break;
@@ -61,17 +61,17 @@ void translate_load_enter(Tracee *tracee)
 		i = tracee->loading.index;
 
 		set_sysnum(tracee, PR_mmap);
-		poke_reg(tracee, SYSARG_1, tracee->loading.map->mappings[i].addr);
-		poke_reg(tracee, SYSARG_2, tracee->loading.map->mappings[i].length);
-		poke_reg(tracee, SYSARG_3, tracee->loading.map->mappings[i].prot);
-		poke_reg(tracee, SYSARG_4, tracee->loading.map->mappings[i].flags);
-		poke_reg(tracee, SYSARG_5, tracee->loading.map->mappings[i].fd);
-		poke_reg(tracee, SYSARG_6, tracee->loading.map->mappings[i].offset);
+		poke_reg(tracee, SYSARG_1, tracee->loading.info->mappings[i].addr);
+		poke_reg(tracee, SYSARG_2, tracee->loading.info->mappings[i].length);
+		poke_reg(tracee, SYSARG_3, tracee->loading.info->mappings[i].prot);
+		poke_reg(tracee, SYSARG_4, tracee->loading.info->mappings[i].flags);
+		poke_reg(tracee, SYSARG_5, tracee->loading.info->mappings[i].fd);
+		poke_reg(tracee, SYSARG_6, tracee->loading.info->mappings[i].offset);
 		break;
 
 	case LOADING_STEP_CLOSE:
 		set_sysnum(tracee, PR_close);
-		poke_reg(tracee, SYSARG_1, tracee->loading.map->mappings[0].fd);
+		poke_reg(tracee, SYSARG_1, tracee->loading.info->mappings[0].fd);
 		break;
 
 	default:
@@ -101,16 +101,16 @@ void translate_load_exit(Tracee *tracee)
 	case LOADING_STEP_OPEN:
 		if (signed_result < 0) {
 			notice(tracee, WARNING, INTERNAL, "can't open '%s': %s",
-				       tracee->loading.map->path, strerror(-signed_result));
+				       tracee->loading.info->path, strerror(-signed_result));
 			goto error;
 		}
 
 		/* Now the file descriptor is known, then adjust
 		 * mappings according to.  */
-		size = talloc_array_length(tracee->loading.map->mappings);
+		size = talloc_array_length(tracee->loading.info->mappings);
 		for (i = 0; i < size; i++) {
-			if ((tracee->loading.map->mappings[i].flags & MAP_ANONYMOUS) == 0)
-				tracee->loading.map->mappings[i].fd = signed_result;
+			if ((tracee->loading.info->mappings[i].flags & MAP_ANONYMOUS) == 0)
+				tracee->loading.info->mappings[i].fd = signed_result;
 		}
 
 		tracee->loading.step  = LOADING_STEP_MMAP;
@@ -120,25 +120,25 @@ void translate_load_exit(Tracee *tracee)
 	case LOADING_STEP_MMAP: {
 		if (signed_result < 0 && signed_result > -4096) {
 			notice(tracee, WARNING, INTERNAL, "can't map '%s': %s",
-				       tracee->loading.map->path, strerror(-signed_result));
+				       tracee->loading.info->path, strerror(-signed_result));
 			goto error;
 		}
 
-		if (   tracee->loading.map->mappings[tracee->loading.index].addr != 0
-		    && tracee->loading.map->mappings[tracee->loading.index].addr != result) {
+		if (   tracee->loading.info->mappings[tracee->loading.index].addr != 0
+		    && tracee->loading.info->mappings[tracee->loading.index].addr != result) {
 			notice(tracee, WARNING, INTERNAL, "can't map '%s' to the specified address",
-				       tracee->loading.map->path);
+				       tracee->loading.info->path);
 			goto error;
 		}
 
-		size = talloc_array_length(tracee->loading.map->mappings);
+		size = talloc_array_length(tracee->loading.info->mappings);
 
 		/* Now the base address is known, then adjust
 		 * addresses according to.  */
-		if (tracee->loading.index == 0 && tracee->loading.map->position_independent) {
+		if (   IS_POSITION_INDENPENDANT(tracee->loading.info->elf_header)
+		    && tracee->loading.index == 0) {
 			for (i = 0; i < size; i++)
-				tracee->loading.map->mappings[i].addr += result;
-			tracee->loading.map->entry_point += result;
+				tracee->loading.info->mappings[i].addr += result;
 		}
 
 		tracee->loading.index++;
@@ -150,19 +150,27 @@ void translate_load_exit(Tracee *tracee)
 	case LOADING_STEP_CLOSE:
 		if (signed_result < 0) {
 			notice(tracee, WARNING, INTERNAL, "can't close '%s': %s",
-				       tracee->loading.map->path, strerror(-signed_result));
+				       tracee->loading.info->path, strerror(-signed_result));
 			goto error;
 		}
 
 		/* Is this the end of the loading process?  */
-		if (tracee->loading.map->interp == NULL) {
+		if (tracee->loading.info->interp == NULL) {
+			word_t entry_point = ELF_FIELD(tracee->loading.info->elf_header, entry);
+
+			/* Adjust the entry point if it is a PIE.  */
+			if (IS_POSITION_INDENPENDANT(tracee->loading.info->elf_header))
+				entry_point += tracee->loading.info->mappings[0].addr;
+
+			/* Make the process jump to the entry point.  */
+			poke_reg(tracee, INSTR_POINTER, entry_point);
 			tracee->loading.step = 0;
-			poke_reg(tracee, INSTR_POINTER, tracee->loading.map->entry_point);
+
 			return;
 		}
 
 		tracee->loading.step = LOADING_STEP_OPEN;
-		tracee->loading.map  = tracee->load->interp;
+		tracee->loading.info = tracee->load_info->interp;
 		break;
 
 	default:

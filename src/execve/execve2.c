@@ -29,6 +29,10 @@
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* PROT_*, */
 
+/* WIP.  */
+#include <linux/auxvec.h>
+#include "execve/auxv.h"
+
 #include "execve/execve.h"
 #include "execve/load.h"
 #include "execve/elf.h"
@@ -99,11 +103,11 @@ static int extract_shebang(Tracee *tracee, char host_path[PATH_MAX],
 #define P(a) PROGRAM_FIELD(*elf_header, *program_header, a)
 
 /**
- * Add @program_header (type PT_LOAD) to @load->mappings.  This
+ * Add @program_header (type PT_LOAD) to @load_info->mappings.  This
  * function returns -errno if an error occured, otherwise it returns
  * 0.
  */
-static int add_mapping(const Tracee *tracee UNUSED, LoadMap *load,
+static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 			const ElfHeader *elf_header, const ProgramHeader *program_header)
 {
 	size_t index;
@@ -120,24 +124,24 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadMap *load,
 	}
 
 
-	if (load->mappings == NULL)
+	if (load_info->mappings == NULL)
 		index = 0;
 	else
-		index = talloc_array_length(load->mappings);
+		index = talloc_array_length(load_info->mappings);
 
-	load->mappings = talloc_realloc(load, load->mappings, Mapping, index + 1);
-	if (load->mappings == NULL)
+	load_info->mappings = talloc_realloc(load_info, load_info->mappings, Mapping, index + 1);
+	if (load_info->mappings == NULL)
 		return -ENOMEM;
 
 	start_address = P(vaddr) & page_mask;
 	end_address   = (P(vaddr) + P(filesz) + page_size) & page_mask;
 
-	load->mappings[index].fd     = -1; /* Unknown yet.  */
-	load->mappings[index].offset = P(offset) & page_mask;
-	load->mappings[index].addr   = start_address;
-	load->mappings[index].length = end_address - start_address;
-	load->mappings[index].flags  = MAP_PRIVATE;
-	load->mappings[index].prot   =  ( (P(flags) & PF_R ? PROT_READ  : 0)
+	load_info->mappings[index].fd     = -1; /* Unknown yet.  */
+	load_info->mappings[index].offset = P(offset) & page_mask;
+	load_info->mappings[index].addr   = start_address;
+	load_info->mappings[index].length = end_address - start_address;
+	load_info->mappings[index].flags  = MAP_PRIVATE;
+	load_info->mappings[index].prot   =  ( (P(flags) & PF_R ? PROT_READ  : 0)
 					| (P(flags) & PF_W ? PROT_WRITE : 0)
 					| (P(flags) & PF_X ? PROT_EXEC  : 0));
 
@@ -151,27 +155,27 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadMap *load,
 	/* Are there extra bytes?  */
 	if (end_address > start_address) {
 		index++;
-		load->mappings = talloc_realloc(load, load->mappings, Mapping, index + 1);
-		if (load->mappings == NULL)
+		load_info->mappings = talloc_realloc(load_info, load_info->mappings, Mapping, index + 1);
+		if (load_info->mappings == NULL)
 			return -ENOMEM;
 
-		load->mappings[index].fd     = -1;  /* Anonymous.  */
-		load->mappings[index].offset =  0;
-		load->mappings[index].addr   = start_address;
-		load->mappings[index].length = end_address - start_address;
-		load->mappings[index].flags  = MAP_PRIVATE | MAP_ANONYMOUS;
-		load->mappings[index].prot   = load->mappings[index - 1].prot;
+		load_info->mappings[index].fd     = -1;  /* Anonymous.  */
+		load_info->mappings[index].offset =  0;
+		load_info->mappings[index].addr   = start_address;
+		load_info->mappings[index].length = end_address - start_address;
+		load_info->mappings[index].flags  = MAP_PRIVATE | MAP_ANONYMOUS;
+		load_info->mappings[index].prot   = load_info->mappings[index - 1].prot;
 	}
 
 	return 0;
 }
 
 /**
- * Add @program_header (type PT_INTERP) to @load->interp.  This
+ * Add @program_header (type PT_INTERP) to @load_info->interp.  This
  * function returns -errno if an error occured, otherwise it returns
  * 0.
  */
-static int add_interp(Tracee *tracee, int fd, LoadMap *load,
+static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 		const ElfHeader *elf_header, const ProgramHeader *program_header)
 {
 	char host_path[PATH_MAX];
@@ -179,11 +183,11 @@ static int add_interp(Tracee *tracee, int fd, LoadMap *load,
 	int status;
 
 	/* Only one PT_INTERP segment is allowed.  */
-	if (load->interp != NULL)
+	if (load_info->interp != NULL)
 		return -EINVAL;
 
-	load->interp = talloc_zero(load, LoadMap);
-	if (load->interp == NULL)
+	load_info->interp = talloc_zero(load_info, LoadInfo);
+	if (load_info->interp == NULL)
 		return -ENOMEM;
 
 	user_path = talloc_size(tracee->ctx, P(filesz) + 1);
@@ -204,8 +208,8 @@ static int add_interp(Tracee *tracee, int fd, LoadMap *load,
 	if (status < 0)
 		return status;
 
-	load->interp->path = talloc_strdup(load->interp, host_path);
-	if (load->interp->path == NULL)
+	load_info->interp->path = talloc_strdup(load_info->interp, host_path);
+	if (load_info->interp->path == NULL)
 		return -ENOMEM;
 
 	return 0;
@@ -214,14 +218,12 @@ static int add_interp(Tracee *tracee, int fd, LoadMap *load,
 #undef P
 
 /**
- * Extract the load map of @load->path.  This function returns
- * -errno if an error occured, otherwise it returns 0.  On success,
- * both @load->mappings and @load->interp are filled according to
- * the content of @load->path.
+ * Extract the load info from @load->path.  This function returns
+ * -errno if an error occured, otherwise it returns 0.
  *
  * TODO: factorize with find_program_header()
  */
-static int extract_load_map(Tracee *tracee, LoadMap *load)
+static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 {
 	ElfHeader elf_header;
 	ProgramHeader program_header;
@@ -234,15 +236,14 @@ static int extract_load_map(Tracee *tracee, LoadMap *load)
 	int fd;
 	int i;
 
-	assert(load != NULL);
-	assert(load->path != NULL);
+	assert(load_info != NULL);
+	assert(load_info->path != NULL);
 
-	fd = open_elf(load->path, &elf_header);
+	fd = open_elf(load_info->path, &elf_header);
 	if (fd < 0)
 		return fd;
 
-	load->position_independent = (ELF_FIELD(elf_header, type) == ET_DYN);
-	load->entry_point = ELF_FIELD(elf_header, entry);
+	load_info->elf_header = elf_header;
 
 	/* Get class-specific fields. */
 	elf_phnum     = ELF_FIELD(elf_header, phnum);
@@ -280,13 +281,13 @@ static int extract_load_map(Tracee *tracee, LoadMap *load)
 
 		switch (PROGRAM_FIELD(elf_header, program_header, type)) {
 		case PT_LOAD:
-			status = add_mapping(tracee, load, &elf_header, &program_header);
+			status = add_mapping(tracee, load_info, &elf_header, &program_header);
 			if (status < 0)
 				return status;
 			break;
 
 		case PT_INTERP:
-			status = add_interp(tracee, fd, load, &elf_header, &program_header);
+			status = add_interp(tracee, fd, load_info, &elf_header, &program_header);
 			if (status < 0)
 				return status;
 			break;
@@ -318,8 +319,8 @@ int translate_execve_enter(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	tracee->load = talloc_zero(tracee, LoadMap);
-	if (tracee->load == NULL)
+	tracee->load_info = talloc_zero(tracee, LoadInfo);
+	if (tracee->load_info == NULL)
 		return -ENOMEM;
 
 	/* WIP.  */
@@ -327,22 +328,22 @@ int translate_execve_enter(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	tracee->load->path = talloc_strdup(tracee->load, host_path);
-	if (tracee->load->path == NULL)
+	tracee->load_info->path = talloc_strdup(tracee->load_info, host_path);
+	if (tracee->load_info->path == NULL)
 		return -ENOMEM;
 
-	status = extract_load_map(tracee, tracee->load);
+	status = extract_load_info(tracee, tracee->load_info);
 	if (status < 0)
 		return status;
 
-	if (tracee->load->interp != NULL) {
-		status = extract_load_map(tracee, tracee->load->interp);
+	if (tracee->load_info->interp != NULL) {
+		status = extract_load_info(tracee, tracee->load_info->interp);
 		if (status < 0)
 			return status;
 
 		/* An ELF interpreter is supposed to be
 		 * standalone.  */
-		if (tracee->load->interp->interp != NULL)
+		if (tracee->load_info->interp->interp != NULL)
 			return -EINVAL;
 	}
 
@@ -363,7 +364,10 @@ int translate_execve_exit(Tracee *tracee)
 	if ((int) syscall_result < 0)
 		return 0;
 
-	tracee->restore_original_regs = false;
+	/* Once the loading process is done, registers must be
+	 * restored in the same state as they are at the beginning of
+	 * execve sysexit.  */
+	save_current_regs(tracee, ORIGINAL);
 
 	/* Compute the address of the syscall trap instruction (the
 	 * current execve trap does not exist anymore since tracee's
@@ -387,7 +391,25 @@ int translate_execve_exit(Tracee *tracee)
 
 	/* Initial state for the loading process.  */
 	tracee->loading.step = LOADING_STEP_OPEN;
-	tracee->loading.map  = tracee->load;
+	tracee->loading.info = tracee->load_info;
+
+	/* WIP.  */
+	{
+		word_t address = get_elf_aux_vectors_address(tracee);
+		ElfAuxVector *vectors = fetch_elf_aux_vectors(tracee, address);
+		ElfAuxVector *vector;
+
+		vector = find_elf_aux_vector(vectors, AT_PHDR);
+		vector->value = 0x400040; /* TODO: phoff + base  */
+
+		vector = find_elf_aux_vector(vectors, AT_PHENT);
+		vector->value = ELF_FIELD(tracee->loading.info->elf_header, phentsize);
+
+		vector = find_elf_aux_vector(vectors, AT_PHNUM);
+		vector->value = ELF_FIELD(tracee->loading.info->elf_header, phnum);
+
+		push_elf_aux_vectors(tracee, vectors, address);
+	}
 
 	return 0;
 }

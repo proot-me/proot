@@ -160,6 +160,8 @@ typedef enum {
 	(   (IS_CLASS32(header) && (size) == sizeof(ProgramHeader32)) \
 	 || (IS_CLASS64(header) && (size) == sizeof(ProgramHeader64)))
 
+#define IS_POSITION_INDENPENDANT(elf_header)	\
+	(ELF_FIELD((elf_header), type) == ET_DYN)
 
 #include "tracee/tracee.h"
 
