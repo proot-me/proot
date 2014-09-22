@@ -31,7 +31,7 @@
 #include "execve/interp.h"
 #include "execve/elf.h"
 #include "execve/ldso.h"
-#include "tracee/array.h"
+#include "execve/aoxp.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
 #include "cli/notice.h"
@@ -77,7 +77,7 @@ static int translate_n_check(Tracee *tracee, char t_path[PATH_MAX], const char *
  * @t_interp and @u_interp (respectively translated and untranslated).
  */
 static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_MAX],
-			char u_interp[PATH_MAX], Array *argv, extract_interp_t callback,
+			char u_interp[PATH_MAX], ArrayOfXPointers *argv, extract_interp_t callback,
 			bool ignore_interpreter)
 {
 	char argument[ARG_MAX];
@@ -149,20 +149,20 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 	/* Note: argv[0] is not substituted if it is the NULL
 	 * terminator (argv->length == 1).  */
 	if (argument[0] != '\0') {
-		status = resize_array(argv, 0, 2 + (argv->length == 1));
+		status = resize_array_of_xpointers(argv, 0, 2 + (argv->length == 1));
 		if (status < 0)
 			return status;
 
-		status = write_items(argv, 0, 3, u_interp, argument, u_path);
+		status = write_xpointees(argv, 0, 3, u_interp, argument, u_path);
 		if (status < 0)
 			return status;
 	}
 	else {
-		status = resize_array(argv, 0, 1 + (argv->length == 1));
+		status = resize_array_of_xpointers(argv, 0, 1 + (argv->length == 1));
 		if (status < 0)
 			return status;
 
-		status = write_items(argv, 0, 2, u_interp, u_path);
+		status = write_xpointees(argv, 0, 2, u_interp, u_path);
 		if (status < 0)
 			return status;
 	}
@@ -178,7 +178,7 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
  * -errno if an error occured, 0 if the binary isn't PRoot, and 1 if @tracee was
  * reconfigured correctly.
  */
-static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
+static int handle_sub_reconf(Tracee *tracee, ArrayOfXPointers *argv, const char *host_path)
 {
 	static char *self_exe = NULL;
 	static int no_subreconf = -1;
@@ -217,7 +217,7 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 		return -ENOMEM;
 
 	for (i = 0; i < argv->length; i++) {
-		status = read_item_string(argv, i, &argv_pod[i]);
+		status = read_xpointee_as_string(argv, i, &argv_pod[i]);
 		if (status < 0)
 			return status;
 	}
@@ -250,15 +250,15 @@ static int handle_sub_reconf(Tracee *tracee, Array *argv, const char *host_path)
 	}
 
 	/* Write the actual command back to the tracee's memory.  */
-	status = resize_array(argv, argv->length - 1, i + 1 - argv->length);
+	status = resize_array_of_xpointers(argv, argv->length - 1, i + 1 - argv->length);
 	if (status < 0)
 		return status;
 
 	for (i = 0; dummy->cmdline[i] != NULL; i++)
-		write_item_string(argv, i, dummy->cmdline[i]);
-	write_item_string(argv, i, NULL);
+		write_xpointee_as_string(argv, i, dummy->cmdline[i]);
+	write_xpointee_as_string(argv, i, NULL);
 
-	status = push_array(argv, SYSARG_2);
+	status = push_array_of_xpointers(argv, SYSARG_2);
 	if (status < 0)
 		return status;
 
@@ -334,8 +334,8 @@ int translate_execve(Tracee *tracee)
 	char t_interp[PATH_MAX];
 	char u_interp[PATH_MAX];
 
-	Array *envp = NULL;
-	Array *argv = NULL;
+	ArrayOfXPointers *envp = NULL;
+	ArrayOfXPointers *argv = NULL;
 	char *argv0 = NULL;
 
 	char **new_cmdline;
@@ -351,12 +351,12 @@ int translate_execve(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	status = fetch_array(tracee, &argv, SYSARG_2, 0);
+	status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
 	if (status < 0)
 		return status;
 
 	if (tracee->qemu != NULL) {
-		status = read_item_string(argv, 0, &argv0);
+		status = read_xpointee_as_string(argv, 0, &argv0);
 		if (status < 0)
 			return status;
 
@@ -365,13 +365,13 @@ int translate_execve(Tracee *tracee)
 		if (argv0 != NULL)
 			argv0 = talloc_strdup(tracee->ctx, argv0);
 
-		status = fetch_array(tracee, &envp, SYSARG_3, 0);
+		status = fetch_array_of_xpointers(tracee, &envp, SYSARG_3, 0);
 		if (status < 0)
 			return status;
 
 		/* Environment variables should be compared with the
 		 * "name" part in the "name=value" string format.  */
-		envp->compare_item = (compare_item_t)compare_item_env;
+		envp->compare_xpointee = (compare_xpointee_t)compare_xpointee_env;
 	}
 
 	status = expand_interp(tracee, u_path, t_interp, u_interp, argv,
@@ -407,7 +407,7 @@ int translate_execve(Tracee *tracee)
 
 	for (i = 0; i < argv->length; i++) {
 		char *ptr;
-		status = read_item_string(argv, i, &ptr);
+		status = read_xpointee_as_string(argv, i, &ptr);
 		if (status < 0)
 			return status;
 		/* It's safe to reference these strings since they are never
@@ -422,7 +422,7 @@ int translate_execve(Tracee *tracee)
 		/* Prepend the QEMU command to the initial argv[] if
 		 * it's a "foreign" binary.  */
 		if (!is_host_elf(tracee, t_interp)) {
-			status = resize_array(argv, 0, 3);
+			status = resize_array_of_xpointers(argv, 0, 3);
 			if (status < 0)
 				return status;
 
@@ -430,7 +430,7 @@ int translate_execve(Tracee *tracee)
 			 *     execve("/bin/true", { "true", NULL }, ...)
 			 * becomes:
 			 *     { "/usr/bin/qemu", "-0", "true", "/bin/true"}  */
-			status = write_items(argv, 0, 4, tracee->qemu[0], "-0",
+			status = write_xpointees(argv, 0, 4, tracee->qemu[0], "-0",
 					!is_script && argv0 != NULL ? argv0 : u_interp, u_interp);
 			if (status < 0)
 				return status;
@@ -443,12 +443,12 @@ int translate_execve(Tracee *tracee)
 			 * add them to the modified argv[].  */
 			for (i = 1; tracee->qemu[i] != NULL; i++)
 				;
-			status = resize_array(argv, 1, i - 1);
+			status = resize_array_of_xpointers(argv, 1, i - 1);
 			if (status < 0)
 				return status;
 
 			for (i--; i > 0; i--) {
-				status = write_item(argv, i, tracee->qemu[i]);
+				status = write_xpointee(argv, i, tracee->qemu[i]);
 				if (status < 0)
 					return status;
 			}
@@ -485,9 +485,9 @@ int translate_execve(Tracee *tracee)
 		 * in the *main* program.  To disable the RPATH
 		 * mechanism globally, we have to list all objects
 		 * here (NYI).  Errors are not fatal here.  */
-		status = resize_array(argv, 1, 2);
+		status = resize_array_of_xpointers(argv, 1, 2);
 		if (status >= 0) {
-			status = write_items(argv, 1, 2, "--inhibit-rpath", "''");
+			status = write_xpointees(argv, 1, 2, "--inhibit-rpath", "''");
 			if (status < 0)
 				return status;
 		}
@@ -499,11 +499,11 @@ int translate_execve(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	status = push_array(argv, SYSARG_2);
+	status = push_array_of_xpointers(argv, SYSARG_2);
 	if (status < 0)
 		return status;
 
-	status = push_array(envp, SYSARG_3);
+	status = push_array_of_xpointers(envp, SYSARG_3);
 	if (status < 0)
 		return status;
 

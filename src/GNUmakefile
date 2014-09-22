@@ -24,6 +24,7 @@ OBJECTS += \
 	execve/elf.o		\
 	execve/ldso.o		\
 	execve/auxv.o		\
+	execve/aoxp.o		\
 	path/binding.o		\
 	path/glue.o		\
 	path/canon.o		\
@@ -39,7 +40,6 @@ OBJECTS += \
 	syscall/socket.o	\
 	syscall/heap.o		\
 	tracee/tracee.o		\
-	tracee/array.o		\
 	tracee/mem.o		\
 	tracee/reg.o		\
 	tracee/event.o		\

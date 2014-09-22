@@ -31,8 +31,8 @@
 #include "execve/ldso.h"
 #include "execve/execve.h"
 #include "execve/elf.h"
+#include "execve/aoxp.h"
 #include "tracee/tracee.h"
-#include "tracee/array.h"
 #include "cli/notice.h"
 
 /**
@@ -51,17 +51,17 @@ bool is_env_name(const char *variable, const char *name)
 /**
  * This function returns 1 or 0 depending on the equivalence of the
  * @reference environment variable and the one pointed to by the entry
- * in @array at the given @index, otherwise it returns -errno when an
+ * in @envp at the given @index, otherwise it returns -errno when an
  * error occured.
  */
-int compare_item_env(Array *array, size_t index, const char *reference)
+int compare_xpointee_env(ArrayOfXPointers *envp, size_t index, const char *reference)
 {
 	char *value;
 	int status;
 
-	assert(index < array->length);
+	assert(index < envp->length);
 
-	status = read_item_string(array, index, &value);
+	status = read_xpointee_as_string(envp, index, &value);
 	if (status < 0)
 		return status;
 
@@ -98,7 +98,7 @@ int compare_item_env(Array *array, size_t index, const char *reference)
  *
  * This funtion returns -errno if an error occured, otherwise 0.
  */
-int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
+int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPointers *argv,
 		const char *define, const char *undefine)
 {
 	bool has_seen_library_path = false;
@@ -109,7 +109,7 @@ int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 		bool is_known = false;
 		char *env;
 
-		status = read_item_string(envp, i, &env);
+		status = read_xpointee_as_string(envp, i, &env);
 		if (status < 0)
 			return status;
 
@@ -130,13 +130,13 @@ int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 		if (is_env_name(env, name)) {				\
 			check |= true;					\
 			/* Errors are not fatal here.  */		\
-			status = resize_array(argv, 1, 2);		\
+			status = resize_array_of_xpointers(argv, 1, 2);	\
 			if (status >= 0) {				\
-				status = write_items(argv, 1, 2, define, env); \
+				status = write_xpointees(argv, 1, 2, define, env); \
 				if (status < 0)				\
 					return status;			\
 			}						\
-			write_item(envp, i, "");			\
+			write_xpointee(envp, i, "");			\
 			continue;					\
 		}							\
 
@@ -166,9 +166,9 @@ int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 
 	if (!has_seen_library_path) {
 		/* Errors are not fatal here.  */
-		status = resize_array(argv, 1, 2);
+		status = resize_array_of_xpointers(argv, 1, 2);
 		if (status >= 0) {
-			status = write_items(argv, 1, 2, undefine, "LD_LIBRARY_PATH");
+			status = write_xpointees(argv, 1, 2, undefine, "LD_LIBRARY_PATH");
 			if (status < 0)
 				return status;
 		}
@@ -237,7 +237,7 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
  * This function returns -errno if an error occured, 1 if
  * RPATH/RUNPATH entries were found, 0 otherwise.
  */
-int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Array *envp)
+int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], ArrayOfXPointers *envp)
 {
 	static char *initial_ldso_paths = NULL;
 	ElfHeader elf_header;
@@ -310,7 +310,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	if (status < 0)
 		return 0; /* Not fatal.  */
 
-	status = find_item(envp, "LD_LIBRARY_PATH");
+	status = find_xpointee(envp, "LD_LIBRARY_PATH");
 	if (status < 0)
 		return 0; /* Not fatal.  */
 	index = (size_t) status;
@@ -320,7 +320,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		 * LD_LIBRARY_PATH was not found.  */
 
 		index = (envp->length > 0 ? envp->length - 1 : 0);
-		status = resize_array(envp, index, 1);
+		status = resize_array_of_xpointers(envp, index, 1);
 		if (status < 0)
 			return 0; /* Not fatal.  */
 	}
@@ -331,7 +331,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		char *env;
 
 		/* Errors are not fatal here.  */
-		status = read_item_string(envp, index, &env);
+		status = read_xpointee_as_string(envp, index, &env);
 		if (status >= 0)
 			tracee->guest_ldso_paths = talloc_strdup(tracee, env);
 	}
@@ -346,7 +346,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	memmove(host_ldso_paths + length1, host_ldso_paths, length2 + 1);
 	memcpy(host_ldso_paths, "LD_LIBRARY_PATH=" , length1);
 
-	write_item(envp, index, host_ldso_paths);
+	write_xpointee(envp, index, host_ldso_paths);
 
 	/* The guest LD_LIBRARY_PATH will be restored only if the host
 	 * program didn't change it explicitly, so remember its
