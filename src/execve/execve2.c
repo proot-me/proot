@@ -28,6 +28,7 @@
 #include <assert.h>     /* assert(3), */
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* PROT_*, */
+#include <strings.h>    /* bzero(3), */
 
 /* WIP.  */
 #include <linux/auxvec.h>
@@ -363,6 +364,9 @@ int translate_execve_exit(Tracee *tracee)
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	if ((int) syscall_result < 0)
 		return 0;
+
+	/* New processes have no heap.  */
+	bzero(tracee->heap, sizeof(Heap));
 
 	/* Once the loading process is done, registers must be
 	 * restored in the same state as they are at the beginning of
