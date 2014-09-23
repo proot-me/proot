@@ -22,7 +22,7 @@
 
 #include <unistd.h>     /* sysconf(3), _SC*, */
 #include <talloc.h>     /* talloc*, */
-#include <sys/mman.h>   /* PROT_*, */
+#include <sys/mman.h>   /* MAP_*, */
 #include <assert.h>     /* assert(3), */
 #include <sys/types.h>  /* kill(2), */
 #include <signal.h>     /* kill(2), */

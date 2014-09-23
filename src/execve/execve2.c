@@ -141,6 +141,11 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 					| (P(flags) & PF_W ? PROT_WRITE : 0)
 					| (P(flags) & PF_X ? PROT_EXEC  : 0));
 
+	/* Be sure the segment will be mapped to the specified address
+	 * if it is not a PIE or if the base is known.  */
+	if (start_address != 0 || index != 0)
+		load_info->mappings[index].flags |= MAP_FIXED;
+
 	/* "If the segment's memory size p_memsz is larger than the
 	 * file size p_filesz, the "extra" bytes are defined to hold
 	 * the value 0 and to follow the segment's initialized area."
@@ -159,7 +164,7 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 		load_info->mappings[index].offset =  0;
 		load_info->mappings[index].addr   = start_address;
 		load_info->mappings[index].length = end_address - start_address;
-		load_info->mappings[index].flags  = MAP_PRIVATE | MAP_ANONYMOUS;
+		load_info->mappings[index].flags  = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
 		load_info->mappings[index].prot   = load_info->mappings[index - 1].prot;
 	}
 
