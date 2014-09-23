@@ -190,6 +190,7 @@ typedef struct tracee {
 	 * execve sysexit.  */
 	struct load_info *load_info;
 
+	/* Current state of the loading process.  */
 	struct {
 		enum {
 			LOADING_STEP_NONE = 0,
@@ -197,6 +198,7 @@ typedef struct tracee {
 			LOADING_STEP_MMAP,
 			LOADING_STEP_CLOSE
 		} step;
+
 		struct load_info *info;
 		size_t index;
 	} loading;

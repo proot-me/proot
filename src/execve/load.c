@@ -27,13 +27,16 @@
 #include <sys/types.h>  /* kill(2), */
 #include <signal.h>     /* kill(2), */
 #include <string.h>     /* strerror(3), */
+#include <linux/auxvec.h> /* AT_*, */
 
 #include "execve/load.h"
+#include "execve/auxv.h"
 #include "execve/elf.h"
 #include "syscall/sysnum.h"
 #include "syscall/syscall.h"
 #include "syscall/chain.h"
 #include "tracee/reg.h"
+#include "tracee/mem.h"
 #include "cli/notice.h"
 
 /**
@@ -51,7 +54,7 @@ void translate_load_enter(Tracee *tracee)
 		set_sysnum(tracee, PR_open);
 		status = set_sysarg_path(tracee, tracee->loading.info->path, SYSARG_1);
 		if (status < 0) {
-			notice(tracee, WARNING, INTERNAL, "can't open '%s': %s",
+			notice(tracee, ERROR, INTERNAL, "can't open '%s': %s",
 				       tracee->loading.info->path, strerror(-status));
 			goto error;
 		}
@@ -81,8 +84,119 @@ void translate_load_enter(Tracee *tracee)
 	return;
 
 error:
-	notice(tracee, INFO, USER, "can't load '%s' (killing %d)", tracee->exe, tracee->pid);
+	notice(tracee, ERROR, USER, "can't load '%s' (killing pid %d)", tracee->exe, tracee->pid);
 	kill(tracee->pid, SIGKILL);
+}
+
+/**
+ * Adjust ELF auxiliary vectors for @tracee once it is fully loaded.
+ */
+static void adjust_elf_aux_vectors(Tracee *tracee)
+{
+	word_t stack_pointer;
+	word_t envp_address;
+	word_t auxv_address;
+	word_t argv_address;
+	word_t argv_length;
+
+	ElfAuxVector *auxv;
+	ElfAuxVector *vector;
+	word_t data;
+	int status;
+
+	/* Right after execve, the stack layout is as follow:
+	 *
+	 *   +-----------------------+
+	 *   | auxv: value = 0       |
+	 *   +-----------------------+
+	 *   | auxv: type  = AT_NULL |
+	 *   +-----------------------+
+	 *   | ...                   |
+	 *   +-----------------------+
+	 *   | auxv: value = ???     |
+	 *   +-----------------------+
+	 *   | auxv: type  = AT_???  |
+	 *   +-----------------------+ <- auxv address
+	 *   | envp[j]: NULL         |
+	 *   +-----------------------+
+	 *   | ...                   |
+	 *   +-----------------------+
+	 *   | envp[0]: ???          |
+	 *   +-----------------------+ <- envp address
+	 *   | argv[argc]: NULL      |
+	 *   +-----------------------+
+	 *   | ...                   |
+	 *   +-----------------------+
+	 *   | argv[0]: ???          |
+	 *   +-----------------------+ <- argc address
+	 *   | argc                  |
+	 *   +-----------------------+ <- stack pointer
+	 */
+	stack_pointer = peek_reg(tracee, ORIGINAL, STACK_POINTER);
+	argv_length   = peek_word(tracee, stack_pointer) + 1;
+	argv_address  = stack_pointer + sizeof_word(tracee);
+	envp_address  = argv_address + argv_length * sizeof_word(tracee);
+	auxv_address  = envp_address;
+	do {
+		/* Sadly it is not possible to compute auxv_address
+		 * without reading tracee's memory.  */
+		data = peek_word(tracee, auxv_address);
+		if (errno != 0) {
+			notice(tracee, WARNING, INTERNAL, "can't find ELF auxiliary vectors");
+			return;
+		}
+		auxv_address += sizeof_word(tracee);
+	} while (data != 0);
+
+	auxv = fetch_elf_aux_vectors(tracee, auxv_address);
+	if (auxv == NULL) {
+		notice(tracee, WARNING, INTERNAL, "can't read ELF auxiliary vectors");
+		return;
+	}
+
+	for (vector = auxv; vector->type != AT_NULL; vector++) {
+		switch (vector->type) {
+		case AT_PHDR:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, phoff)
+				+ tracee->load_info->mappings[0].addr;
+			break;
+
+		case AT_PHENT:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, phentsize);
+			break;
+
+		case AT_PHNUM:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, phnum);
+			break;
+
+		case AT_BASE:
+			if (tracee->load_info->interp != NULL)
+				vector->value = tracee->load_info->interp->mappings[0].addr;
+			break;
+
+		case AT_ENTRY:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, entry);
+
+			if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header))
+				vector->value += tracee->load_info->mappings[0].addr;
+			break;
+
+		case AT_EXECFN:
+			vector->value = peek_word(tracee, argv_address);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	/* TODO: notify extensions */
+
+	status = push_elf_aux_vectors(tracee, auxv, auxv_address);
+	if (status < 0) {
+		notice(tracee, WARNING, INTERNAL, "can't update ELF auxiliary vectors");
+		return;
+	}
 }
 
 /**
@@ -100,7 +214,7 @@ void translate_load_exit(Tracee *tracee)
 	switch (tracee->loading.step) {
 	case LOADING_STEP_OPEN:
 		if (signed_result < 0) {
-			notice(tracee, WARNING, INTERNAL, "can't open '%s': %s",
+			notice(tracee, ERROR, INTERNAL, "can't open '%s': %s",
 				       tracee->loading.info->path, strerror(-signed_result));
 			goto error;
 		}
@@ -119,14 +233,14 @@ void translate_load_exit(Tracee *tracee)
 
 	case LOADING_STEP_MMAP: {
 		if (signed_result < 0 && signed_result > -4096) {
-			notice(tracee, WARNING, INTERNAL, "can't map '%s': %s",
+			notice(tracee, ERROR, INTERNAL, "can't map '%s': %s",
 				       tracee->loading.info->path, strerror(-signed_result));
 			goto error;
 		}
 
 		if (   tracee->loading.info->mappings[tracee->loading.index].addr != 0
 		    && tracee->loading.info->mappings[tracee->loading.index].addr != result) {
-			notice(tracee, WARNING, INTERNAL, "can't map '%s' to the specified address",
+			notice(tracee, ERROR, INTERNAL, "can't map '%s' to the specified address",
 				       tracee->loading.info->path);
 			goto error;
 		}
@@ -149,7 +263,7 @@ void translate_load_exit(Tracee *tracee)
 
 	case LOADING_STEP_CLOSE:
 		if (signed_result < 0) {
-			notice(tracee, WARNING, INTERNAL, "can't close '%s': %s",
+			notice(tracee, ERROR, INTERNAL, "can't close '%s': %s",
 				       tracee->loading.info->path, strerror(-signed_result));
 			goto error;
 		}
@@ -164,8 +278,10 @@ void translate_load_exit(Tracee *tracee)
 
 			/* Make the process jump to the entry point.  */
 			poke_reg(tracee, INSTR_POINTER, entry_point);
-			tracee->loading.step = 0;
 
+			adjust_elf_aux_vectors(tracee);
+
+			tracee->loading.step = 0;
 			return;
 		}
 
@@ -180,13 +296,13 @@ void translate_load_exit(Tracee *tracee)
 	/* Chain the next dummy syscall.  */
 	status = register_chained_syscall(tracee, PR_execve, 0, 0, 0, 0, 0, 0);
 	if (status < 0) {
-		notice(tracee, WARNING, INTERNAL, "can't chain dummy syscall");
+		notice(tracee, ERROR, INTERNAL, "can't chain dummy syscall");
 		goto error;
 	}
 
 	return;
 
 error:
-	notice(tracee, INFO, USER, "can't load '%s' (killing %d)", tracee->exe, tracee->pid);
+	notice(tracee, ERROR, USER, "can't load '%s' (killing pid %d)", tracee->exe, tracee->pid);
 	kill(tracee->pid, SIGKILL);
 }

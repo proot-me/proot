@@ -30,10 +30,6 @@
 #include <sys/mman.h>   /* PROT_*, */
 #include <strings.h>    /* bzero(3), */
 
-/* WIP.  */
-#include <linux/auxvec.h>
-#include "execve/auxv.h"
-
 #include "execve/execve.h"
 #include "execve/load.h"
 #include "execve/elf.h"
@@ -396,24 +392,6 @@ int translate_execve_exit(Tracee *tracee)
 	/* Initial state for the loading process.  */
 	tracee->loading.step = LOADING_STEP_OPEN;
 	tracee->loading.info = tracee->load_info;
-
-	/* WIP.  */
-	{
-		word_t address = get_elf_aux_vectors_address(tracee);
-		ElfAuxVector *vectors = fetch_elf_aux_vectors(tracee, address);
-		ElfAuxVector *vector;
-
-		vector = find_elf_aux_vector(vectors, AT_PHDR);
-		vector->value = 0x400040; /* TODO: phoff + base  */
-
-		vector = find_elf_aux_vector(vectors, AT_PHENT);
-		vector->value = ELF_FIELD(tracee->loading.info->elf_header, phentsize);
-
-		vector = find_elf_aux_vector(vectors, AT_PHNUM);
-		vector->value = ELF_FIELD(tracee->loading.info->elf_header, phnum);
-
-		push_elf_aux_vectors(tracee, vectors, address);
-	}
 
 	return 0;
 }

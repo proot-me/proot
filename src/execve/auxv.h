@@ -26,7 +26,7 @@
 #include "tracee/tracee.h"
 #include "arch.h"
 
-typedef struct {
+typedef struct elf_aux_vector {
 	word_t type;
 	word_t value;
 } ElfAuxVector;
