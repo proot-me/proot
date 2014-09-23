@@ -20,11 +20,10 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>  /* lstat(2), lseek(2), open(2), */
-#include <sys/stat.h>   /* lstat(2), lseek(2), open(2), */
+#include <sys/types.h>  /* lstat(2), lseek(2), */
+#include <sys/stat.h>   /* lstat(2), lseek(2), */
 #include <unistd.h>     /* access(2), lstat(2), close(2), read(2), */
 #include <errno.h>      /* E*, */
-#include <fcntl.h>      /* open(2), */
 #include <assert.h>     /* assert(3), */
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* PROT_*, */
@@ -229,8 +228,8 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 	uint16_t elf_phentsize;
 	uint16_t elf_phnum;
 
+	int fd = 1;
 	int status;
-	int fd;
 	int i;
 
 	assert(load_info != NULL);
@@ -253,13 +252,15 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 	 */
 
 	if (elf_phnum >= 0xffff) {
-		notice(tracee, WARNING, INTERNAL, "%d: big PH tables are not yet supported.", fd);
-		return -ENOTSUP;
+		notice(tracee, WARNING, INTERNAL, "big PH tables are not yet supported.");
+		status = -ENOTSUP;
+		goto end;
 	}
 
 	if (!KNOWN_PHENTSIZE(elf_header, elf_phentsize)) {
-		notice(tracee, WARNING, INTERNAL, "%d: unsupported size of program header.", fd);
-		return -ENOTSUP;
+		notice(tracee, WARNING, INTERNAL, "unsupported size of program header.");
+		status = -ENOTSUP;
+		goto end;
 	}
 
 	/*
@@ -268,25 +269,29 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 	 */
 
 	status = (int) lseek(fd, elf_phoff, SEEK_SET);
-	if (status < 0)
-		return -errno;
+	if (status < 0) {
+		status = -errno;
+		goto end;
+	}
 
 	for (i = 0; i < elf_phnum; i++) {
 		status = read(fd, &program_header, elf_phentsize);
-		if (status != elf_phentsize)
-			return (status < 0 ? -errno : -ENOTSUP);
+		if (status != elf_phentsize) {
+			status = (status < 0 ? -errno : -ENOTSUP);
+			goto end;
+		}
 
 		switch (PROGRAM_FIELD(elf_header, program_header, type)) {
 		case PT_LOAD:
 			status = add_mapping(tracee, load_info, &elf_header, &program_header);
 			if (status < 0)
-				return status;
+				goto end;
 			break;
 
 		case PT_INTERP:
 			status = add_interp(tracee, fd, load_info, &elf_header, &program_header);
 			if (status < 0)
-				return status;
+				goto end;
 			break;
 
 		default:
@@ -294,7 +299,12 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 		}
 	}
 
-	return 0;
+	status = 0;
+end:
+	if (fd >= 0)
+		close(fd);
+
+	return status;
 }
 
 /**
