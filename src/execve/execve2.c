@@ -111,6 +111,7 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 			load_info->mappings[index].offset =  0;
 			load_info->mappings[index].addr   = start_address;
 			load_info->mappings[index].length = end_address - start_address;
+			load_info->mappings[index].clear_length = 0;
 			load_info->mappings[index].flags  = MAP_PRIVATE| MAP_ANONYMOUS| MAP_FIXED;
 			load_info->mappings[index].prot   = load_info->mappings[index - 1].prot;
 		}
