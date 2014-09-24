@@ -243,15 +243,15 @@ void translate_load_exit(Tracee *tracee)
 			goto error;
 		}
 
-		if (   current_mapping->addr != 0
-		    && current_mapping->addr != result) {
+		if (   current_mapping->addr != result
+		    && (current_mapping->flags & MAP_FIXED) != 0) {
 			notice(tracee, ERROR, INTERNAL, "can't map '%s' to the specified address",
 				       tracee->loading.info->path);
 			goto error;
 		}
 
 		if (current_mapping->clear_length > 0) {
-			word_t address = current_mapping->addr
+			word_t address = result
 					+ current_mapping->length
 					- current_mapping->clear_length;
 			status = clear_mem(tracee, address, current_mapping->clear_length);

@@ -96,7 +96,7 @@ static int extract_shebang(Tracee *tracee, char host_path[PATH_MAX],
 	return 0;
 }
 
-#define P(a) PROGRAM_FIELD(*elf_header, *program_header, a)
+#define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)
 
 /**
  * Add @program_header (type PT_LOAD) to @load_info->mappings.  This
@@ -104,7 +104,7 @@ static int extract_shebang(Tracee *tracee, char host_path[PATH_MAX],
  * 0.
  */
 static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
-			const ElfHeader *elf_header, const ProgramHeader *program_header)
+		const ProgramHeader *program_header)
 {
 	size_t index;
 	word_t start_address;
@@ -142,8 +142,8 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 					| (P(flags) & PF_X ? PROT_EXEC  : 0));
 
 	/* Be sure the segment will be mapped to the specified address
-	 * if it is not a PIE or if the base is known.  */
-	if (start_address != 0 || index != 0)
+	 * if it is not a PIE.  */
+	if (!IS_POSITION_INDENPENDANT(load_info->elf_header))
 		load_info->mappings[index].flags |= MAP_FIXED;
 
 	/* "If the segment's memory size p_memsz is larger than the
@@ -184,7 +184,7 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
  * 0.
  */
 static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
-		const ElfHeader *elf_header, const ProgramHeader *program_header)
+		const ProgramHeader *program_header)
 {
 	char host_path[PATH_MAX];
 	char *user_path;
@@ -233,7 +233,6 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
  */
 static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 {
-	ElfHeader elf_header;
 	ProgramHeader program_header;
 
 	uint64_t elf_phoff;
@@ -247,16 +246,25 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 	assert(load_info != NULL);
 	assert(load_info->path != NULL);
 
-	fd = open_elf(load_info->path, &elf_header);
+	fd = open_elf(load_info->path, &load_info->elf_header);
 	if (fd < 0)
 		return fd;
 
-	load_info->elf_header = elf_header;
+	/* Sanity check.  */
+	switch (ELF_FIELD(load_info->elf_header, type)) {
+	case ET_EXEC:
+	case ET_DYN:
+		break;
+
+	default:
+		status = -EINVAL;
+		goto end;
+	}
 
 	/* Get class-specific fields. */
-	elf_phnum     = ELF_FIELD(elf_header, phnum);
-	elf_phentsize = ELF_FIELD(elf_header, phentsize);
-	elf_phoff     = ELF_FIELD(elf_header, phoff);
+	elf_phnum     = ELF_FIELD(load_info->elf_header, phnum);
+	elf_phentsize = ELF_FIELD(load_info->elf_header, phentsize);
+	elf_phoff     = ELF_FIELD(load_info->elf_header, phoff);
 
 	/*
 	 * Some sanity checks regarding the current
@@ -269,7 +277,7 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 		goto end;
 	}
 
-	if (!KNOWN_PHENTSIZE(elf_header, elf_phentsize)) {
+	if (!KNOWN_PHENTSIZE(load_info->elf_header, elf_phentsize)) {
 		notice(tracee, WARNING, INTERNAL, "unsupported size of program header.");
 		status = -ENOTSUP;
 		goto end;
@@ -293,15 +301,15 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 			goto end;
 		}
 
-		switch (PROGRAM_FIELD(elf_header, program_header, type)) {
+		switch (PROGRAM_FIELD(load_info->elf_header, program_header, type)) {
 		case PT_LOAD:
-			status = add_mapping(tracee, load_info, &elf_header, &program_header);
+			status = add_mapping(tracee, load_info, &program_header);
 			if (status < 0)
 				goto end;
 			break;
 
 		case PT_INTERP:
-			status = add_interp(tracee, fd, load_info, &elf_header, &program_header);
+			status = add_interp(tracee, fd, load_info, &program_header);
 			if (status < 0)
 				goto end;
 			break;

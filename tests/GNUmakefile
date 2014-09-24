@@ -76,6 +76,9 @@ check-test-fdf487a0.c: test-fdf487a0
 check-test-iiiiiiii.c: test-iiiiiiii
 	$(call check_c,$<,echo test | env PROOT_DONT_POLLUTE_ROOTFS=1 $(PROOT) -b /bin:/this_shall_not_exist_outside_proot ./$<)
 
+check-test-9c07fad8.c: test-9c07fad8
+	$(call check_c,$<,$(PROOT) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -155,6 +158,9 @@ test-fdf487a0: test-fdf487a0.c
 
 test-iiiiiiii: test-iiiiiiii.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-9c07fad8: test-9c07fad8.c
+	$(Q)$(CC) -fPIE -pie $< -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output
