@@ -232,17 +232,29 @@ void translate_load_exit(Tracee *tracee)
 		break;
 
 	case LOADING_STEP_MMAP: {
-		if (signed_result < 0 && signed_result > -4096) {
+		Mapping *current_mapping;
+
+		current_mapping = &tracee->loading.info->mappings[tracee->loading.index];
+
+		if (   signed_result < 0
+		    && signed_result > -4096) {
 			notice(tracee, ERROR, INTERNAL, "can't map '%s': %s",
 				       tracee->loading.info->path, strerror(-signed_result));
 			goto error;
 		}
 
-		if (   tracee->loading.info->mappings[tracee->loading.index].addr != 0
-		    && tracee->loading.info->mappings[tracee->loading.index].addr != result) {
+		if (   current_mapping->addr != 0
+		    && current_mapping->addr != result) {
 			notice(tracee, ERROR, INTERNAL, "can't map '%s' to the specified address",
 				       tracee->loading.info->path);
 			goto error;
+		}
+
+		if (current_mapping->clear_length > 0) {
+			word_t address = current_mapping->addr
+					+ current_mapping->length
+					- current_mapping->clear_length;
+			status = clear_mem(tracee, address, current_mapping->clear_length);
 		}
 
 		size = talloc_array_length(tracee->loading.info->mappings);

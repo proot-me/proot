@@ -150,23 +150,30 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 	 * file size p_filesz, the "extra" bytes are defined to hold
 	 * the value 0 and to follow the segment's initialized area."
 	 * -- man 7 elf.  */
-	start_address = end_address;
-	end_address   = (P(vaddr) + P(memsz) + page_size) & page_mask;
+	if (P(memsz) > P(filesz)) {
+		/* How many extra bytes in the current page?  */
+		load_info->mappings[index].clear_length = end_address - P(vaddr) - P(filesz);
 
-	/* Are there extra bytes?  */
-	if (end_address > start_address) {
-		index++;
-		load_info->mappings = talloc_realloc(load_info, load_info->mappings, Mapping, index + 1);
-		if (load_info->mappings == NULL)
-			return -ENOMEM;
+		/* Create new pages for the remaining extra bytes.  */
+		start_address = end_address;
+		end_address   = (P(vaddr) + P(memsz) + page_size) & page_mask;
+		if (end_address > start_address) {
+			index++;
+			load_info->mappings = talloc_realloc(load_info, load_info->mappings,
+							Mapping, index + 1);
+			if (load_info->mappings == NULL)
+				return -ENOMEM;
 
-		load_info->mappings[index].fd     = -1;  /* Anonymous.  */
-		load_info->mappings[index].offset =  0;
-		load_info->mappings[index].addr   = start_address;
-		load_info->mappings[index].length = end_address - start_address;
-		load_info->mappings[index].flags  = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
-		load_info->mappings[index].prot   = load_info->mappings[index - 1].prot;
+			load_info->mappings[index].fd     = -1;  /* Anonymous.  */
+			load_info->mappings[index].offset =  0;
+			load_info->mappings[index].addr   = start_address;
+			load_info->mappings[index].length = end_address - start_address;
+			load_info->mappings[index].flags  = MAP_PRIVATE| MAP_ANONYMOUS| MAP_FIXED;
+			load_info->mappings[index].prot   = load_info->mappings[index - 1].prot;
+		}
 	}
+	else
+		load_info->mappings[index].clear_length = 0;
 
 	return 0;
 }

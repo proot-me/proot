@@ -32,6 +32,7 @@
 typedef struct mapping {
 	word_t addr;
 	word_t length;
+	word_t clear_length;
 	word_t prot;
 	word_t flags;
 	word_t fd;
