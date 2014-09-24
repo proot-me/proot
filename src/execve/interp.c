@@ -34,9 +34,9 @@
 #include "compat.h"
 
 /**
- * Extract the shebang of @t_path in @u_interp and @arg_max. This
- * function returns -errno if an error occured, 1 if a shebang was
- * found and extracted, otherwise 0.
+ * Extract into @user_path and @argument the shebang from @host_path.
+ * This function returns -errno if an error occured, 1 if a shebang
+ * was found and extracted, otherwise 0.
  *
  * Extract from "man 2 execve":
  *
@@ -44,8 +44,8 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-int extract_script_interp(const Tracee *tracee UNUSED, const char *t_path,
-			char u_interp[PATH_MAX], char argument[ARG_MAX])
+int extract_script_interp(const Tracee *tracee UNUSED, const char *host_path,
+			char user_path[PATH_MAX], char argument[ARG_MAX])
 {
 	char tmp;
 
@@ -56,11 +56,11 @@ int extract_script_interp(const Tracee *tracee UNUSED, const char *t_path,
 	argument[0] = '\0';
 
 	/* Inspect the executable.  */
-	fd = open(t_path, O_RDONLY);
+	fd = open(host_path, O_RDONLY);
 	if (fd < 0)
 		return -errno;
 
-	status = read(fd, u_interp, 2 * sizeof(char));
+	status = read(fd, user_path, 2 * sizeof(char));
 	if (status < 0) {
 		status = -errno;
 		goto end;
@@ -71,7 +71,7 @@ int extract_script_interp(const Tracee *tracee UNUSED, const char *t_path,
 	}
 
 	/* Check if it really is a script text. */
-	if (u_interp[0] != '#' || u_interp[1] != '!') {
+	if (user_path[0] != '#' || user_path[1] != '!') {
 		status = 0;
 		goto end;
 	}
@@ -96,24 +96,24 @@ int extract_script_interp(const Tracee *tracee UNUSED, const char *t_path,
 		case '\t':
 			/* Remove spaces in between the interpreter
 			 * and the hypothetical argument. */
-			u_interp[i] = '\0';
+			user_path[i] = '\0';
 			break;
 
 		case '\n':
 		case '\r':
 			/* There is no argument. */
-			u_interp[i] = '\0';
+			user_path[i] = '\0';
 			argument[0] = '\0';
 			status = 1;
 			goto end;
 
 		default:
 			/* There is an argument if the previous
-			 * character in u_interp[] is '\0'. */
-			if (i > 1 && u_interp[i - 1] == '\0')
+			 * character in user_path[] is '\0'. */
+			if (i > 1 && user_path[i - 1] == '\0')
 				goto argument;
 			else
-				u_interp[i] = tmp;
+				user_path[i] = tmp;
 			break;
 		}
 
@@ -123,7 +123,7 @@ int extract_script_interp(const Tracee *tracee UNUSED, const char *t_path,
 			goto end;
 		}
 		if ((size_t) status < sizeof(char)) { /* EOF */
-			u_interp[i] = '\0';
+			user_path[i] = '\0';
 			argument[0] = '\0';
 			status = 1;
 			goto end;
@@ -179,12 +179,12 @@ end:
 }
 
 /**
- * Extract the ELF interpreter of @path in @u_interp. This function
+ * Extract the ELF interpreter of @host_path in @user_path. This function
  * returns -errno if an error occured, 1 if a ELF interpreter was
  * found and extracted, otherwise 0.
  */
-int extract_elf_interp(const Tracee *tracee, const char *t_path,
-		       char u_interp[PATH_MAX], char argument[ARG_MAX])
+int extract_elf_interp(const Tracee *tracee, const char *host_path,
+		       char user_path[PATH_MAX], char argument[ARG_MAX])
 {
 	ElfHeader elf_header;
 	ProgramHeader program_header;
@@ -196,10 +196,10 @@ int extract_elf_interp(const Tracee *tracee, const char *t_path,
 	uint64_t segment_offset;
 	uint64_t segment_size;
 
-	u_interp[0] = '\0';
+	user_path[0] = '\0';
 	argument[0] = '\0';
 
-	fd = open_elf(t_path, &elf_header);
+	fd = open_elf(host_path, &elf_header);
 	if (fd < 0)
 		return fd;
 
@@ -218,7 +218,7 @@ int extract_elf_interp(const Tracee *tracee, const char *t_path,
 	 * "${HOST_ROOTFS}/lib/ld-linux.so.2" to avoid conflict with
 	 * the guest "/lib/ld-linux.so.2".  */
 	if (tracee->qemu != NULL) {
-		strcpy(u_interp, HOST_ROOTFS);
+		strcpy(user_path, HOST_ROOTFS);
 		extra_size = strlen(HOST_ROOTFS);
 	}
 	else
@@ -229,14 +229,14 @@ int extract_elf_interp(const Tracee *tracee, const char *t_path,
 		goto end;
 	}
 
-	status = pread(fd, u_interp + extra_size, segment_size, segment_offset);
+	status = pread(fd, user_path + extra_size, segment_size, segment_offset);
 	if (status < 0)
 		goto end;
 	if ((size_t) status != segment_size) { /* Unexpected size.  */
 		status = -EACCES;
 		goto end;
 	}
-	u_interp[segment_size + extra_size] = '\0';
+	user_path[segment_size + extra_size] = '\0';
 
 end:
 	close(fd);
@@ -246,7 +246,7 @@ end:
 		return status;
 
 	/* Is there an INTERP entry? */
-	if (u_interp[0] == '\0')
+	if (user_path[0] == '\0')
 		return 0;
 	else
 		return 1;

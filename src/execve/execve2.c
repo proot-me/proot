@@ -28,8 +28,12 @@
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* PROT_*, */
 #include <strings.h>    /* bzero(3), */
+#include <linux/limits.h> /* ARG_MAX */
+#include <sys/param.h>  /* MAXSYMLINKS, */
 
 #include "execve/execve.h"
+#include "execve/interp.h"
+#include "execve/aoxp.h"
 #include "execve/load.h"
 #include "execve/elf.h"
 #include "path/path.h"
@@ -68,30 +72,90 @@ static int translate_n_check(Tracee *tracee, char host_path[PATH_MAX], const cha
 }
 
 /**
- * Extract the shebang of @user_path.  This function returns -errno if
- * an error occured, otherwise it returns 0.  On success, @host_path
- * points to the initial program or to its script interpreter if any,
- * and @args contains the script interpreter arguments.
- *
- * TODO:
- *
- * - translate @user_path -> @host_path
- *
- * - extract the shebang from @host_path -> @user_path, if any
- *
- * - extract the shebang arguments -> @args, if any
- *
- * - translate the new @user_path -> @host_path
- *
+ * Expand shebang of @user_path.  This function returns -errno if an
+ * error occurred, otherwise 0.  On success, @host_path points to the
+ * program to execute, and @tracee's argv[] (pointed to by SYSARG_2)
+ * is correctly updated.
  */
-static int extract_shebang(Tracee *tracee, char host_path[PATH_MAX],
-			const char user_path[PATH_MAX], char **args UNUSED)
+static int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
 {
+	ArrayOfXPointers *argv = NULL;
+	bool argv_has_changed = false;
+	char argument[ARG_MAX];
 	int status;
+	size_t i;
 
-	status = translate_n_check(tracee, host_path, user_path);
-	if (status < 0)
-		return status;
+	/* "The interpreter must be a valid pathname for an executable
+	 * which is not itself a script." -- man 2 execve
+	 *
+	 * As of this writing (3.10.17) this true only for the ELF
+	 * interpreter; ie. a script can use a script as
+	 * interpreter.  */
+	for (i = 0; i < MAXSYMLINKS; i++) {
+		/* Translate this path (user -> host), then check it is executable.  */
+		status = translate_n_check(tracee, host_path, user_path);
+		if (status < 0)
+			return status;
+
+		/* Extract into user_path and argument the shebang from host_path.  */
+		status = extract_script_interp(tracee, host_path, user_path, argument);
+		if (status < 0)
+			return status;
+
+		/* No more shebang.  */
+		if (status == 0)
+			break;
+
+		/* Fetch argv[] only on demand.  */
+		if (argv == NULL) {
+			status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
+			if (status < 0)
+				return status;
+		}
+
+		/* Translate new path (user -> host), then check it is executable.  */
+		status = translate_n_check(tracee, host_path, user_path);
+		if (status < 0)
+			return status;
+
+		/* "If the filename argument of execve() specifies an
+		 * interpreter script, then interpreter will be
+		 * invoked with the following arguments:
+		 *
+		 *   interpreter [optional-arg] filename arg...
+		 *
+		 * where arg...  is the series of words pointed to by
+		 * the argv argument of execve()." -- man 2 execve
+		 *
+		 * See commit 8c8fbe85 about "argv->length == 1".  */
+		if (argument[0] != '\0') {
+			status = resize_array_of_xpointers(argv, 0, 2 + (argv->length == 1));
+			if (status < 0)
+				return status;
+
+			status = write_xpointees(argv, 0, 2, user_path, argument);
+			if (status < 0)
+				return status;
+		}
+		else {
+			status = resize_array_of_xpointers(argv, 0, 1 + (argv->length == 1));
+			if (status < 0)
+				return status;
+
+			status = write_xpointees(argv, 0, 1, user_path);
+			if (status < 0)
+				return status;
+		}
+
+		argv_has_changed = true;
+	}
+
+	/* Push argv[] only on demand.  */
+	if (argv_has_changed) {
+		status = push_array_of_xpointers(argv, SYSARG_2);
+		if (status < 0)
+			return status;
+	}
 
 	return 0;
 }
@@ -342,18 +406,18 @@ int translate_execve_enter(Tracee *tracee)
 	if (status < 0)
 		return status;
 
-	status = extract_shebang(tracee, host_path, user_path, NULL);
+	status = expand_shebang(tracee, host_path, user_path);
+	if (status < 0)
+		return status;
+
+	/* WIP.  */
+	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/stub-x86_64", SYSARG_1);
 	if (status < 0)
 		return status;
 
 	tracee->load_info = talloc_zero(tracee, LoadInfo);
 	if (tracee->load_info == NULL)
 		return -ENOMEM;
-
-	/* WIP.  */
-	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/stub-x86_64", SYSARG_1);
-	if (status < 0)
-		return status;
 
 	tracee->load_info->path = talloc_strdup(tracee->load_info, host_path);
 	if (tracee->load_info->path == NULL)
@@ -372,6 +436,16 @@ int translate_execve_enter(Tracee *tracee)
 		 * standalone.  */
 		if (tracee->load_info->interp->interp != NULL)
 			return -EINVAL;
+	}
+
+	/* Remember the value for "/proc/self/exe".  It points to a
+	 * canonicalized guest path, hence detranslate_path() instead
+	 * of using user_path directly.  */
+	status = detranslate_path(tracee, host_path, NULL);
+	if (status >= 0) {
+		tracee->exe = talloc_strdup(tracee, host_path);
+		if (tracee->exe != NULL)
+			talloc_set_name_const(tracee->exe, "$exe");
 	}
 
 	return 0;
