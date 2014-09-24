@@ -20,6 +20,7 @@ OBJECTS += \
 	execve/execve.o		\
 	execve/execve2.o	\
 	execve/load.o		\
+	execve/shebang.o	\
 	execve/interp.o		\
 	execve/elf.o		\
 	execve/ldso.o		\

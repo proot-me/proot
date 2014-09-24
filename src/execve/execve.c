@@ -42,28 +42,28 @@
 #include "compat.h"
 
 /**
- * Translate @u_path into @t_path and check if this latter exists, is
+ * Translate @user_path into @host_path and check if this latter exists, is
  * executable and is a regular file.  This function returns -errno if
  * an error occured, 0 otherwise.
  */
-static int translate_n_check(Tracee *tracee, char t_path[PATH_MAX], const char *u_path)
+int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const char *user_path)
 {
 	struct stat statl;
 	int status;
 
-	status = translate_path(tracee, t_path, AT_FDCWD, u_path, true);
+	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
 	if (status < 0)
 		return status;
 
-	status = access(t_path, F_OK);
+	status = access(host_path, F_OK);
 	if (status < 0)
 		return -ENOENT;
 
-	status = access(t_path, X_OK);
+	status = access(host_path, X_OK);
 	if (status < 0)
 		return -EACCES;
 
-	status = lstat(t_path, &statl);
+	status = lstat(host_path, &statl);
 	if (status < 0)
 		return -EPERM;
 
@@ -87,7 +87,7 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 
 	int status;
 
-	status = translate_n_check(tracee, t_interp, u_path);
+	status = translate_and_check_exec(tracee, t_interp, u_path);
 	if (status < 0)
 		return status;
 
@@ -118,7 +118,7 @@ static int expand_interp(Tracee *tracee, const char *u_path, char t_interp[PATH_
 		return 0;
 	}
 
-	status = translate_n_check(tracee, t_interp, u_interp);
+	status = translate_and_check_exec(tracee, t_interp, u_interp);
 	if (status < 0)
 		return status;
 
@@ -375,7 +375,7 @@ int translate_execve(Tracee *tracee)
 	}
 
 	status = expand_interp(tracee, u_path, t_interp, u_interp, argv,
-			       extract_script_interp, false);
+			       extract_shebang, false);
 	if (status < 0)
 		/* The Linux kernel actually returns -EACCES when
 		 * trying to execute a directory.  */

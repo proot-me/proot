@@ -20,20 +20,14 @@
  * 02110-1301 USA.
  */
 
-#ifndef INTERP_H
-#define INTERP_H
+#ifndef SHEBANG_H
+#define SHEBANG_H
 
-#include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
+#include <linux/limits.h>  /* PATH_MAX, ARG_MAX, */
 
 #include "tracee/tracee.h"
 
-typedef int (* extract_interp_t)(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
+extern int extract_shebang(const Tracee *tracee, const char *host_path, char user_path[PATH_MAX], char argument[ARG_MAX]);
+extern int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX]);
 
-extern int extract_shebang(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
-
-extern int extract_elf_interp(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
-
-#endif /* INTERP_H */
+#endif /* SHEBANG_H */

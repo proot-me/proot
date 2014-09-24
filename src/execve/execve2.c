@@ -28,12 +28,9 @@
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* PROT_*, */
 #include <strings.h>    /* bzero(3), */
-#include <linux/limits.h> /* ARG_MAX */
-#include <sys/param.h>  /* MAXSYMLINKS, */
 
 #include "execve/execve.h"
-#include "execve/interp.h"
-#include "execve/aoxp.h"
+#include "execve/shebang.h"
 #include "execve/load.h"
 #include "execve/elf.h"
 #include "path/path.h"
@@ -41,124 +38,6 @@
 #include "syscall/chain.h"
 #include "syscall/syscall.h"
 #include "cli/notice.h"
-
-/**
- * Translate @user_path into @host_path and check if this latter
- * exists, is executable and is a regular file.  This function returns
- * -errno if an error occured, 0 otherwise.
- */
-static int translate_n_check(Tracee *tracee, char host_path[PATH_MAX], const char *user_path)
-{
-	struct stat statl;
-	int status;
-
-	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
-	if (status < 0)
-		return status;
-
-	status = access(host_path, F_OK);
-	if (status < 0)
-		return -ENOENT;
-
-	status = access(host_path, X_OK);
-	if (status < 0)
-		return -EACCES;
-
-	status = lstat(host_path, &statl);
-	if (status < 0)
-		return -EPERM;
-
-	return 0;
-}
-
-/**
- * Expand shebang of @user_path.  This function returns -errno if an
- * error occurred, otherwise 0.  On success, @host_path points to the
- * program to execute, and @tracee's argv[] (pointed to by SYSARG_2)
- * is correctly updated.
- */
-static int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
-{
-	ArrayOfXPointers *argv = NULL;
-	bool argv_has_changed = false;
-	char argument[ARG_MAX];
-	int status;
-	size_t i;
-
-	/* "The interpreter must be a valid pathname for an executable
-	 * which is not itself a script." -- man 2 execve
-	 *
-	 * As of this writing (3.10.17) this true only for the ELF
-	 * interpreter; ie. a script can use a script as
-	 * interpreter.  */
-	for (i = 0; i < MAXSYMLINKS; i++) {
-		/* Translate this path (user -> host), then check it is executable.  */
-		status = translate_n_check(tracee, host_path, user_path);
-		if (status < 0)
-			return status;
-
-		/* Extract into user_path and argument the shebang from host_path.  */
-		status = extract_script_interp(tracee, host_path, user_path, argument);
-		if (status < 0)
-			return status;
-
-		/* No more shebang.  */
-		if (status == 0)
-			break;
-
-		/* Fetch argv[] only on demand.  */
-		if (argv == NULL) {
-			status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
-			if (status < 0)
-				return status;
-		}
-
-		/* Translate new path (user -> host), then check it is executable.  */
-		status = translate_n_check(tracee, host_path, user_path);
-		if (status < 0)
-			return status;
-
-		/* "If the filename argument of execve() specifies an
-		 * interpreter script, then interpreter will be
-		 * invoked with the following arguments:
-		 *
-		 *   interpreter [optional-arg] filename arg...
-		 *
-		 * where arg...  is the series of words pointed to by
-		 * the argv argument of execve()." -- man 2 execve
-		 *
-		 * See commit 8c8fbe85 about "argv->length == 1".  */
-		if (argument[0] != '\0') {
-			status = resize_array_of_xpointers(argv, 0, 2 + (argv->length == 1));
-			if (status < 0)
-				return status;
-
-			status = write_xpointees(argv, 0, 2, user_path, argument);
-			if (status < 0)
-				return status;
-		}
-		else {
-			status = resize_array_of_xpointers(argv, 0, 1 + (argv->length == 1));
-			if (status < 0)
-				return status;
-
-			status = write_xpointees(argv, 0, 1, user_path);
-			if (status < 0)
-				return status;
-		}
-
-		argv_has_changed = true;
-	}
-
-	/* Push argv[] only on demand.  */
-	if (argv_has_changed) {
-		status = push_array_of_xpointers(argv, SYSARG_2);
-		if (status < 0)
-			return status;
-	}
-
-	return 0;
-}
 
 #define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)
 
@@ -276,7 +155,7 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 
 	user_path[P(filesz)] = '\0';
 
-	status = translate_n_check(tracee, host_path, user_path);
+	status = translate_and_check_exec(tracee, host_path, user_path);
 	if (status < 0)
 		return status;
 
