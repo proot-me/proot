@@ -31,6 +31,7 @@
 
 #include "execve/execve.h"
 #include "execve/shebang.h"
+#include "execve/auxv.h"
 #include "execve/load.h"
 #include "execve/elf.h"
 #include "path/path.h"
@@ -38,6 +39,7 @@
 #include "syscall/chain.h"
 #include "syscall/syscall.h"
 #include "cli/notice.h"
+
 
 #define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)
 
@@ -383,6 +385,10 @@ int translate_execve_exit(Tracee *tracee)
 
 	/* New processes have no heap.  */
 	bzero(tracee->heap, sizeof(Heap));
+
+	/* Adjust ELF auxiliary vectors before saving current
+	 * registers since the stack pointer migth be changed.  */
+	adjust_elf_aux_vectors(tracee);
 
 	/* Once the loading process is done, registers must be
 	 * restored in the same state as they are at the beginning of

@@ -67,7 +67,9 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_chown,		FILTER_SYSEXIT },
 	{ PR_chown32,		FILTER_SYSEXIT },
 	{ PR_chroot,		FILTER_SYSEXIT },
+#ifndef EXECVE2
 	{ PR_execve,		FILTER_SYSEXIT },
+#endif
 	{ PR_fchmod,		FILTER_SYSEXIT },
 	{ PR_fchmodat,		FILTER_SYSEXIT },
 	{ PR_fchown,		FILTER_SYSEXIT },
@@ -686,6 +688,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		return 0;
 	}
 
+#ifndef EXECVE2
 	case PR_execve: {
 		ElfAuxVector *vectors;
 		ElfAuxVector *vector;
@@ -724,6 +727,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 		return 0;
 	}
+#endif
 
 	default:
 		return 0;
@@ -738,6 +742,39 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 #undef EQUALS_ANY_ID
 #undef SETRESXID
 #undef SETFSXID
+
+/**
+ * Adjust AT_*ID ELF auxiliary vectors.
+ */
+static int adjust_elf_auxv(Tracee *tracee UNUSED, Config *config, ElfAuxVector **auxv)
+{
+	ElfAuxVector *vector;
+
+	for (vector = *auxv; vector->type != AT_NULL; vector++) {
+		switch (vector->type) {
+		case AT_UID:
+			vector->value = config->ruid;
+			break;
+
+		case AT_EUID:
+			vector->value = config->euid;
+			break;
+
+		case AT_GID:
+			vector->value = config->rgid;
+			break;
+
+		case AT_EGID:
+			vector->value = config->egid;
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
 
 /**
  * Handler for this @extension.  It is triggered each time an @event
@@ -835,6 +872,14 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		Config *config = talloc_get_type_abort(extension->config, Config);
 
 		return handle_sysexit_end(tracee, config);
+	}
+
+	case ADJUST_ELF_AUX_VECTORS: {
+		Tracee *tracee = TRACEE(extension);
+		Config *config = talloc_get_type_abort(extension->config, Config);
+		ElfAuxVector **auxv = (ElfAuxVector **)data1;
+
+		return adjust_elf_auxv(tracee, config, auxv);
 	}
 
 	default:

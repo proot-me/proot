@@ -109,6 +109,11 @@ typedef enum {
 	 * syscall.  */
 	SYSCALL_CHAINED_EXIT,
 
+	/* Right after a successful execve, ELF auxiliary vectors can
+	 * be changed and/or added. "(ElfAuxVector **) data1" points
+	 * to the current ELF auxiliary vectors.  */
+	ADJUST_ELF_AUX_VECTORS,
+
 	/* Initialize the extension: "(const char *) data1" is its
 	 * argument that was passed to the command-line interface.  If
 	 * the extension returns < 0, then PRoot removed it.  */

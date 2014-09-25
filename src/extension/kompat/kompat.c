@@ -571,6 +571,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 	}
 }
 
+#ifndef EXECVE2
 /**
  * Adjust some ELF auxiliary vectors to improve the compatibility.
  * This function assumes the "argv, envp, auxv" stuff is pointed to by
@@ -656,6 +657,56 @@ end:
 	push_elf_aux_vectors(tracee, vectors, vectors_address);
 	return;
 }
+#else
+/**
+ * Adjust some ELF auxiliary vectors to improve the kernel
+ * compatibility.
+ */
+static int adjust_elf_auxv(Tracee *tracee, Config *config, ElfAuxVector **auxv)
+{
+	word_t valid_address = 0;
+	ElfAuxVector *vector;
+	int status;
+
+	for (vector = *auxv; vector->type != AT_NULL; vector++) {
+		switch (vector->type) {
+		/* Discard AT_SYSINFO* vectors: they can be used to
+		 * get the OS release number from memory instead of
+		 * from the uname syscall, and only this latter is
+		 * currently hooked by PRoot.  */
+		case AT_SYSINFO_EHDR:
+		case AT_SYSINFO:
+			vector->type  = AT_IGNORE;
+			vector->value = 0;
+			break;
+
+		case AT_PHDR:
+		case AT_ENTRY:
+		case AT_PLATFORM:
+			valid_address = valid_address ?: vector->value;
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	/* Add the AT_RANDOM vector only if needed.  */
+	if (!needs_kompat(config, KERNEL_VERSION(2,6,29)))
+		return 0;
+
+	if (valid_address == 0) {
+		notice(tracee, WARNING, INTERNAL, "can't find a valid address for AT_RANDOM");
+		return 0;
+	}
+
+	status = add_elf_aux_vector(auxv, AT_RANDOM, valid_address);
+	if (status < 0)
+		return status;
+
+	return 0;
+}
+#endif
 
 /**
  * Append to the @tracee's current syscall enough calls to fcntl(@fd)
@@ -699,9 +750,11 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		return 0;
 
 	switch (sysnum) {
+#ifndef EXECVE2
 	case PR_execve:
 		adjust_elf_auxv(tracee, config);
 		return 0;
+#endif
 
 	case PR_uname: {
 		struct utsname utsname;
@@ -835,7 +888,9 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_epoll_create1,	FILTER_SYSEXIT },
 	{ PR_epoll_pwait, 	0 },
 	{ PR_eventfd2, 		FILTER_SYSEXIT },
+#ifndef EXECVE2
 	{ PR_execve, 		FILTER_SYSEXIT },
+#endif
 	{ PR_faccessat, 	0 },
 	{ PR_fchmodat, 		0 },
 	{ PR_fchownat, 		0 },
@@ -921,6 +976,16 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 
 		return handle_sysexit_end(tracee, config);
 	}
+
+#ifdef EXECVE2
+	case ADJUST_ELF_AUX_VECTORS: {
+		Tracee *tracee = TRACEE(extension);
+		Config *config = talloc_get_type_abort(extension->config, Config);
+		ElfAuxVector **auxv = (ElfAuxVector **)data1;
+
+		return adjust_elf_auxv(tracee, config, auxv);
+	}
+#endif
 
 	default:
 		return 0;

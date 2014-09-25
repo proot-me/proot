@@ -29,12 +29,16 @@
 #include <fcntl.h>         /* open(2), */
 
 #include "execve/auxv.h"
+#include "execve/elf.h"
+#include "execve/load.h"
+#include "extension/extension.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
 #include "tracee/mem.h"
 #include "path/binding.h"
 #include "path/temp.h"
 #include "tracee/abi.h"
+#include "cli/notice.h"
 #include "arch.h"
 
 /**
@@ -74,6 +78,9 @@ int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value)
  * Find in @vectors the first occurrence of the vector @type.  This
  * function returns the found vector or NULL.
  */
+#ifdef EXECVE2
+static
+#endif
 ElfAuxVector *find_elf_aux_vector(ElfAuxVector *vectors, word_t type)
 {
 	int i;
@@ -90,6 +97,9 @@ ElfAuxVector *find_elf_aux_vector(ElfAuxVector *vectors, word_t type)
  * Get the address of the the ELF auxiliary vectors table for the
  * given @tracee.  This function returns 0 if an error occurred.
  */
+#ifdef EXECVE2
+static
+#endif
 word_t get_elf_aux_vectors_address(const Tracee *tracee)
 {
 	word_t address;
@@ -130,6 +140,9 @@ word_t get_elf_aux_vectors_address(const Tracee *tracee)
  * independent form (the Talloc parent of this pointer is
  * @tracee->ctx).
  */
+#ifdef EXECVE2
+static
+#endif
 ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 {
 	ElfAuxVector *vectors = NULL;
@@ -170,6 +183,9 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
  * memory.  This function returns -errno if an error occurred,
  * otherwise 0.
  */
+#ifdef EXECVE2
+static
+#endif
 int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t address)
 {
 	size_t i;
@@ -187,6 +203,153 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
 	}
 
 	return 0;
+}
+
+/**
+ * Adjust ELF auxiliary vectors for @tracee.
+ */
+void adjust_elf_aux_vectors(Tracee *tracee)
+{
+	word_t stack_pointer;
+	word_t envp_address;
+	word_t auxv_address;
+	word_t argv_address;
+	word_t argv_length;
+
+	size_t old_length;
+	size_t new_length;
+
+	ElfAuxVector *auxv;
+	ElfAuxVector *vector;
+	word_t data;
+	int status;
+
+	/* Sanity check: this works only in execve sysexit.  */
+	assert(IS_IN_SYSEXIT2(tracee, PR_execve));
+
+	/* Right after execve, the stack layout is as follow:
+	 *
+	 *   +-----------------------+
+	 *   | auxv: value = 0       |
+	 *   +-----------------------+
+	 *   | auxv: type  = AT_NULL |
+	 *   +-----------------------+
+	 *   | ...                   |
+	 *   +-----------------------+
+	 *   | auxv: value = ???     |
+	 *   +-----------------------+
+	 *   | auxv: type  = AT_???  |
+	 *   +-----------------------+ <- auxv address
+	 *   | envp[j]: NULL         |
+	 *   +-----------------------+
+	 *   | ...                   |
+	 *   +-----------------------+
+	 *   | envp[0]: ???          |
+	 *   +-----------------------+ <- envp address
+	 *   | argv[argc]: NULL      |
+	 *   +-----------------------+
+	 *   | ...                   |
+	 *   +-----------------------+
+	 *   | argv[0]: ???          |
+	 *   +-----------------------+ <- argc address
+	 *   | argc                  |
+	 *   +-----------------------+ <- stack pointer
+	 */
+	stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
+	argv_length   = peek_word(tracee, stack_pointer) + 1;
+	argv_address  = stack_pointer + sizeof_word(tracee);
+	envp_address  = argv_address + argv_length * sizeof_word(tracee);
+	auxv_address  = envp_address;
+	do {
+		/* Sadly it is not possible to compute auxv_address
+		 * without reading tracee's memory.  */
+		data = peek_word(tracee, auxv_address);
+		if (errno != 0) {
+			notice(tracee, WARNING, INTERNAL, "can't find ELF auxiliary vectors");
+			return;
+		}
+		auxv_address += sizeof_word(tracee);
+	} while (data != 0);
+
+	auxv = fetch_elf_aux_vectors(tracee, auxv_address);
+	if (auxv == NULL) {
+		notice(tracee, WARNING, INTERNAL, "can't read ELF auxiliary vectors");
+		return;
+	}
+
+	for (vector = auxv; vector->type != AT_NULL; vector++) {
+		switch (vector->type) {
+		case AT_PHDR:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, phoff)
+				+ tracee->load_info->mappings[0].addr;
+			break;
+
+		case AT_PHENT:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, phentsize);
+			break;
+
+		case AT_PHNUM:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, phnum);
+			break;
+
+		case AT_BASE:
+			if (tracee->load_info->interp != NULL)
+				vector->value = tracee->load_info->interp->mappings[0].addr;
+			break;
+
+		case AT_ENTRY:
+			vector->value = ELF_FIELD(tracee->load_info->elf_header, entry);
+			break;
+
+		case AT_EXECFN:
+			vector->value = peek_word(tracee, argv_address);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	/* Allow extensions to modify/add ELF auxiliary vectors.  */
+	old_length = talloc_array_length(auxv);
+	(void) notify_extensions(tracee, ADJUST_ELF_AUX_VECTORS, (intptr_t) &auxv, 0);
+	new_length = talloc_array_length(auxv);
+
+	if (new_length > old_length) {
+		size_t size;
+		void *argv_envp;
+		size_t nb_new_vectors;
+
+		nb_new_vectors = new_length - old_length;
+
+		size = auxv_address - stack_pointer;
+		argv_envp = talloc_size(tracee->ctx, size);
+		if (argv_envp == NULL)
+			goto end;
+
+		status = read_data(tracee, argv_envp, stack_pointer, size);
+		if (status < 0)
+			goto end;
+
+		stack_pointer -= nb_new_vectors * 2 * sizeof_word(tracee);
+
+		status = write_data(tracee, stack_pointer, argv_envp, size);
+		if (status < 0)
+			goto end;
+
+		/* The content of argv[] and env[] is now copied to its new
+		 * location; the stack pointer can be safely updated.  */
+		poke_reg(tracee, STACK_POINTER, stack_pointer);
+
+		auxv_address -= nb_new_vectors * 2 * sizeof_word(tracee);
+	}
+
+end:
+	status = push_elf_aux_vectors(tracee, auxv, auxv_address);
+	if (status < 0) {
+		notice(tracee, WARNING, INTERNAL, "can't update ELF auxiliary vectors");
+		return;
+	}
 }
 
 /**********************************************************************
