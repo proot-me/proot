@@ -288,7 +288,9 @@ int translate_execve_enter(Tracee *tracee)
 
 	status = expand_shebang(tracee, host_path, user_path);
 	if (status < 0)
-		return status;
+		/* The Linux kernel actually returns -EACCES when
+		 * trying to execute a directory.  */
+		return status == -EISDIR ? -EACCES : status;
 
 	/* WIP.  */
 	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/stub-x86_64", SYSARG_1);
