@@ -27,8 +27,10 @@
 #include <sys/types.h>  /* kill(2), */
 #include <signal.h>     /* kill(2), */
 #include <string.h>     /* strerror(3), */
+#include <strings.h>    /* bzero(3), */
 
 #include "execve/load.h"
+#include "execve/auxv.h"
 #include "execve/elf.h"
 #include "syscall/sysnum.h"
 #include "syscall/syscall.h"
@@ -36,6 +38,59 @@
 #include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "cli/notice.h"
+
+/**
+ * Start the loading of @tracee.  This function returns -errno if an
+ * error occured, otherwise 0.
+ */
+int translate_execve_exit(Tracee *tracee)
+{
+	word_t instr_pointer;
+	word_t syscall_result;
+	int status;
+
+	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+	if ((int) syscall_result < 0)
+		return 0;
+
+	/* New processes have no heap.  */
+	bzero(tracee->heap, sizeof(Heap));
+
+	/* Adjust ELF auxiliary vectors before saving current
+	 * registers since the stack pointer migth be changed.  */
+	adjust_elf_aux_vectors(tracee);
+
+	/* Once the loading process is done, registers must be
+	 * restored in the same state as they are at the beginning of
+	 * execve sysexit.  */
+	save_current_regs(tracee, ORIGINAL);
+
+	/* Compute the address of the syscall trap instruction (the
+	 * current execve trap does not exist anymore since tracee's
+	 * memory was recreated).  The code of the exec-stub on x86_64
+	 * is as follow:
+	 *
+	 * 0000000000400078 <_start>:
+	 *   400078:       48 c7 c7 b6 00 00 00    mov    $0xb6,%rdi
+	 *   40007f:       48 c7 c0 3c 00 00 00    mov    $0x3c,%rax
+	 *   400086:       0f 05                   syscall
+	 */
+	instr_pointer = peek_reg(tracee, CURRENT, INSTR_POINTER);
+	poke_reg(tracee, INSTR_POINTER, instr_pointer + 16);
+
+	/* The loading is performed hijacking dummy syscalls
+	 * (PR_execve here, but this could be any syscalls that have
+	 * the FILTER_SYSEXIT seccomp flag).  */
+	status = register_chained_syscall(tracee, PR_execve, 0, 0, 0, 0, 0, 0);
+	if (status < 0)
+		return status;
+
+	/* Initial state for the loading process.  */
+	tracee->loading.step = LOADING_STEP_OPEN;
+	tracee->loading.info = tracee->load_info;
+
+	return 0;
+}
 
 /**
  * Convert the dummy syscall into a useful one according to the

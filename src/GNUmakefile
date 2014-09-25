@@ -18,8 +18,8 @@ OBJECTS += \
 	cli/proot.o		\
 	cli/notice.o		\
 	execve/execve.o		\
-	execve/execve2.o	\
-	execve/load.o		\
+	execve/enter.o		\
+	execve/exit.o		\
 	execve/shebang.o	\
 	execve/interp.o		\
 	execve/elf.o		\
