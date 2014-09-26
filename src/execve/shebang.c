@@ -190,22 +190,36 @@ end:
 int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
 {
 	ArrayOfXPointers *argv = NULL;
-	bool argv_has_changed = false;
 	char argument[ARG_MAX];
 	int status;
 	size_t i;
 
 	/* "The interpreter must be a valid pathname for an executable
-	 * which is not itself a script." -- man 2 execve
+	 *  which is not itself a script [1].  If the filename
+	 *  argument of execve() specifies an interpreter script, then
+	 *  interpreter will be invoked with the following arguments:
 	 *
-	 * As of this writing (3.10.17) this true only for the ELF
-	 * interpreter; ie. a script can use a script as
-	 * interpreter.  */
+	 *    interpreter [optional-arg] filename arg...
+	 *
+	 * where arg...  is the series of words pointed to by the argv
+	 * argument of execve()." -- man 2 execve
+	 *
+	 * [1]: as of this writing (3.10.17) this true only for the
+	 *      ELF interpreter; ie. a script can use a script as
+	 *      interpreter.
+	 */
 	for (i = 0; i < MAXSYMLINKS; i++) {
+		char *old_user_path;
+
 		/* Translate this path (user -> host), then check it is executable.  */
 		status = translate_and_check_exec(tracee, host_path, user_path);
 		if (status < 0)
 			return status;
+
+		/* Remember the initial user path.  */
+		old_user_path = talloc_strdup(tracee->ctx, user_path);
+		if (old_user_path == NULL)
+			return -ENOMEM;
 
 		/* Extract into user_path and argument the shebang from host_path.  */
 		status = extract_shebang(tracee, host_path, user_path, argument);
@@ -216,6 +230,11 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 		if (status == 0)
 			break;
 
+		/* Translate new path (user -> host), then check it is executable.  */
+		status = translate_and_check_exec(tracee, host_path, user_path);
+		if (status < 0)
+			return status;
+
 		/* Fetch argv[] only on demand.  */
 		if (argv == NULL) {
 			status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
@@ -223,19 +242,14 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 				return status;
 		}
 
-		/* Translate new path (user -> host), then check it is executable.  */
-		status = translate_and_check_exec(tracee, host_path, user_path);
-		if (status < 0)
-			return status;
-
-		/* "If the filename argument of execve() specifies an
-		 * interpreter script, then interpreter will be
-		 * invoked with the following arguments:
+		/* Assuming the shebang of "script" is "#!/bin/sh -x",
+		 * a call to:
 		 *
-		 *   interpreter [optional-arg] filename arg...
+		 *     execve("./script", { "script.sh", NULL }, ...)
 		 *
-		 * where arg...  is the series of words pointed to by
-		 * the argv argument of execve()." -- man 2 execve
+		 * becomes:
+		 *
+		 *     execve("/bin/sh", { "/bin/sh", "-x", "./script", NULL }, ...)
 		 *
 		 * See commit 8c8fbe85 about "argv->length == 1".  */
 		if (argument[0] != '\0') {
@@ -243,7 +257,7 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 			if (status < 0)
 				return status;
 
-			status = write_xpointees(argv, 0, 2, user_path, argument);
+			status = write_xpointees(argv, 0, 3, user_path, argument, old_user_path);
 			if (status < 0)
 				return status;
 		}
@@ -252,16 +266,14 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 			if (status < 0)
 				return status;
 
-			status = write_xpointees(argv, 0, 1, user_path);
+			status = write_xpointees(argv, 0, 2, user_path, old_user_path);
 			if (status < 0)
 				return status;
 		}
-
-		argv_has_changed = true;
 	}
 
 	/* Push argv[] only on demand.  */
-	if (argv_has_changed) {
+	if (argv != NULL) {
 		status = push_array_of_xpointers(argv, SYSARG_2);
 		if (status < 0)
 			return status;
