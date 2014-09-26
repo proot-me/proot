@@ -25,6 +25,9 @@ static const char *recommended_bindings[] = {
 	"/sys/",
 	"/proc/",
 	"/tmp/",
+	"/run/",
+	"/var/run/dbus/system_bus_socket",
+/*	"/var/tmp/kdecache-$LOGNAME", */
 	"$HOME",
 	"*path*",
 	NULL,
@@ -39,6 +42,7 @@ static const char *recommended_su_bindings[] = {
 	"/sys/",
 	"/proc/",
 	"/tmp/",
+	"/run/shm",
 	"$HOME",
 	"*path*",
 	NULL,

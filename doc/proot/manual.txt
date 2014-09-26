@@ -200,6 +200,8 @@ The following options are aliases for handy sets of options.
     * /sys/
     * /proc/
     * /tmp/
+    * /run/
+    * /var/run/dbus/system_bus_socket
     * $HOME
     * *path*
 
@@ -219,6 +221,7 @@ The following options are aliases for handy sets of options.
     * /sys/
     * /proc/
     * /tmp/
+    * /run/shm
     * $HOME
     * *path*
 
