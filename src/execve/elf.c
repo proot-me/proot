@@ -161,9 +161,9 @@ int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_heade
 }
 
 /**
- * Check if @t_path is an ELF file for the host architecture.
+ * Check if @host_path is an ELF file for the host architecture.
  */
-bool is_host_elf(const Tracee *tracee, const char *t_path)
+bool is_host_elf(const Tracee *tracee, const char *host_path)
 {
 	int host_elf_machine[] = HOST_ELF_MACHINE;
 	static int force_foreign = -1;
@@ -178,7 +178,7 @@ bool is_host_elf(const Tracee *tracee, const char *t_path)
 	if (force_foreign > 0 || !tracee->qemu)
 		return false;
 
-	fd = open_elf(t_path, &elf_header);
+	fd = open_elf(host_path, &elf_header);
 	if (fd < 0)
 		return false;
 	close(fd);
@@ -186,7 +186,7 @@ bool is_host_elf(const Tracee *tracee, const char *t_path)
 	elf_machine = ELF_FIELD(elf_header, machine);
 	for (i = 0; host_elf_machine[i] != 0; i++) {
 		if (host_elf_machine[i] == elf_machine) {
-			VERBOSE(tracee, 1, "'%s' is a host ELF", t_path);
+			VERBOSE(tracee, 1, "'%s' is a host ELF", host_path);
 			return true;
 		}
 	}

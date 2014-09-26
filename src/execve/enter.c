@@ -27,10 +27,14 @@
 #include <assert.h>     /* assert(3), */
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* PROT_*, */
+#include <string.h>     /* strlen(3), strcpy(3), */
+#include <assert.h>     /* assert(3), */
 
 #include "execve/execve.h"
 #include "execve/shebang.h"
+#include "execve/aoxp.h"
 #include "execve/load.h"
+#include "execve/ldso.h"
 #include "execve/elf.h"
 #include "path/path.h"
 #include "tracee/tracee.h"
@@ -149,6 +153,12 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 		return status;
 
 	user_path[P(filesz)] = '\0';
+
+	if (tracee->qemu != NULL && user_path[0] == '/') {
+		user_path = talloc_asprintf(tracee->ctx, "%s%s", HOST_ROOTFS, user_path);
+		if (user_path == NULL)
+			return -ENOMEM;
+	}
 
 	status = translate_and_check_exec(tracee, host_path, user_path);
 	if (status < 0)
@@ -303,6 +313,103 @@ static void compute_load_addresses(Tracee *tracee)
 }
 
 /**
+ * Expand in argv[] and envp[] the runner for @user_path, if needed.
+ * This function returns -errno if an error occurred, otherwise 0.  On
+ * success, @host_path points to the program to execute, and both
+ * @tracee's argv[] (pointed to by SYSARG_2) @tracee's envp[] (pointed
+ * to by SYSARG_3) are correctly updated.
+ */
+int expand_runner(Tracee* tracee, char host_path[PATH_MAX], const char *user_path)
+{
+	ArrayOfXPointers *envp;
+	char *argv0;
+	int status;
+
+	/* Execution of host programs when QEMU is in use relies on
+	 * LD_ environment variables.  */
+	status = fetch_array_of_xpointers(tracee, &envp, SYSARG_3, 0);
+	if (status < 0)
+		return status;
+
+	/* Environment variables should be compared with the "name"
+	 * part of the "name=value" string format.  */
+	envp->compare_xpointee = (compare_xpointee_t) compare_xpointee_env;
+
+	/* No need to adjust argv[] if it's a host binary (a.k.a
+	 * mixed-mode).  */
+	if (!is_host_elf(tracee, host_path)) {
+		ArrayOfXPointers *argv;
+		size_t nb_qemu_args;
+		size_t i;
+
+		status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
+		if (status < 0)
+			return status;
+
+		status = read_xpointee_as_string(argv, 0, &argv0);
+		if (status < 0)
+			return status;
+
+		/* Assuming PRoot was invoked this way:
+		 *
+		 *     proot -q 'qemu-arm -cpu cortex-a9' ...
+		 *
+		 * a call to:
+		 *
+		 *     execve("/bin/true", { "true", NULL }, ...)
+		 *
+		 * becomes:
+		 *
+		 *     execve("/usr/bin/qemu",
+		 *           { "qemu", "-cpu", "cortex-a9", "-0", "true", "/bin/true", NULL }, ...)
+		 */
+
+		nb_qemu_args = talloc_array_length(tracee->qemu) - 1;
+		status = resize_array_of_xpointers(argv, 1, nb_qemu_args + 2);
+		if (status < 0)
+			return status;
+
+		for (i = 0; i < nb_qemu_args; i++) {
+			status = write_xpointee(argv, i, tracee->qemu[i]);
+			if (status < 0)
+				return status;
+		}
+
+		status = write_xpointees(argv, i, 3, "-0", argv0, user_path);
+		if (status < 0)
+			return status;
+
+		/* Ensure LD_ features should not be applied to QEMU
+		 * iteself.  */
+		status = ldso_env_passthru(tracee, envp, argv, "-E", "-U", i);
+		if (status < 0)
+			return status;
+
+		status = push_array_of_xpointers(argv, SYSARG_2);
+		if (status < 0)
+			return status;
+
+		/* Launch the runner in lieu of the initial
+		 * program. */
+		assert(strlen(tracee->qemu[0]) < PATH_MAX);
+		strcpy(host_path, tracee->qemu[0]);
+	}
+
+	/* Provide information to the host dynamic linker to find host
+	 * libraries (remember the guest root file-system contains
+	 * libraries for the guest architecture only).  */
+	status = rebuild_host_ldso_paths(tracee, host_path, envp);
+	if (status < 0)
+		return status;
+
+	status = push_array_of_xpointers(envp, SYSARG_3);
+	if (status < 0)
+		return status;
+
+	return 0;
+}
+
+/**
  * Extract all the information that will be required by
  * translate_load_*().  This function returns -errno if an error
  * occured, otherwise 0.
@@ -322,6 +429,12 @@ int translate_execve_enter(Tracee *tracee)
 		/* The Linux kernel actually returns -EACCES when
 		 * trying to execute a directory.  */
 		return status == -EISDIR ? -EACCES : status;
+
+	if (tracee->qemu != NULL) {
+		status = expand_runner(tracee, host_path, user_path);
+		if (status < 0)
+			return status;
+	}
 
 	/* WIP.  */
 	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/stub-x86_64", SYSARG_1);

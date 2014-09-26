@@ -99,7 +99,7 @@ int compare_xpointee_env(ArrayOfXPointers *envp, size_t index, const char *refer
  * This funtion returns -errno if an error occured, otherwise 0.
  */
 int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPointers *argv,
-		const char *define, const char *undefine)
+		const char *define, const char *undefine, size_t offset)
 {
 	bool has_seen_library_path = false;
 	int status;
@@ -130,9 +130,9 @@ int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPoin
 		if (is_env_name(env, name)) {				\
 			check |= true;					\
 			/* Errors are not fatal here.  */		\
-			status = resize_array_of_xpointers(argv, 1, 2);	\
+			status = resize_array_of_xpointers(argv, offset, 2);	\
 			if (status >= 0) {				\
-				status = write_xpointees(argv, 1, 2, define, env); \
+				status = write_xpointees(argv, offset, 2, define, env); \
 				if (status < 0)				\
 					return status;			\
 			}						\
@@ -166,9 +166,9 @@ int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPoin
 
 	if (!has_seen_library_path) {
 		/* Errors are not fatal here.  */
-		status = resize_array_of_xpointers(argv, 1, 2);
+		status = resize_array_of_xpointers(argv, offset, 2);
 		if (status >= 0) {
-			status = write_xpointees(argv, 1, 2, undefine, "LD_LIBRARY_PATH");
+			status = write_xpointees(argv, offset, 2, undefine, "LD_LIBRARY_PATH");
 			if (status < 0)
 				return status;
 		}
@@ -232,18 +232,18 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
 }
 
 /**
- * Rebuild the variable LD_LIBRARY_PATH in @envp for @t_program
- * according to its RPATH, RUNPATH, and the initial LD_LIBRARY_PATH.
- * This function returns -errno if an error occured, 1 if
- * RPATH/RUNPATH entries were found, 0 otherwise.
+ * Rebuild the variable LD_LIBRARY_PATH in @envp for the program
+ * @host_path according to its RPATH, RUNPATH, and the initial
+ * LD_LIBRARY_PATH.  This function returns -errno if an error occured,
+ * 1 if RPATH/RUNPATH entries were found, 0 otherwise.
  */
-int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], ArrayOfXPointers *envp)
+int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], ArrayOfXPointers *envp)
 {
 	static char *initial_ldso_paths = NULL;
 	ElfHeader elf_header;
 
 	char host_ldso_paths[ARG_MAX] = "";
-	bool inhibit_rpath = false;
+	bool rpath_found = false;
 
 	char *rpaths   = NULL;
 	char *runpaths = NULL;
@@ -255,7 +255,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	int status;
 	int fd;
 
-	fd = open_elf(t_program, &elf_header);
+	fd = open_elf(host_path, &elf_header);
 	if (fd < 0)
 		return fd;
 
@@ -269,7 +269,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		status = add_host_ldso_paths(host_ldso_paths, rpaths);
 		if (status < 0)
 			return 0; /* Not fatal.  */
-		inhibit_rpath = true;
+		rpath_found = true;
 	}
 
 	/* 2. LD_LIBRARY_PATH  */
@@ -286,7 +286,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		status = add_host_ldso_paths(host_ldso_paths, runpaths);
 		if (status < 0)
 			return 0; /* Not fatal.  */
-		inhibit_rpath = true;
+		rpath_found = true;
 	}
 
 	/* 4. /etc/ld.so.cache NYI.  */
@@ -354,5 +354,5 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	if (tracee->host_ldso_paths == NULL)
 		tracee->host_ldso_paths = talloc_strdup(tracee, host_ldso_paths);
 
-	return (int) inhibit_rpath;
+	return (int) rpath_found;
 }

@@ -277,6 +277,7 @@ static int post_initialize_command(Tracee *tracee, const Cli *cli UNUSED,
 	if (tracee->qemu[0] == NULL)
 		return -1;
 
+#ifndef EXECVE2
 	/**
 	 * There's a bug when using the ELF interpreter as a loader (as PRoot
 	 * does) on PIE programs that uses constructors (typically QEMU v1.1+).
@@ -301,6 +302,8 @@ static int post_initialize_command(Tracee *tracee, const Cli *cli UNUSED,
 	 * QEMU compiled with the --disable-pie option.
 	 */
 	tracee->qemu_pie_workaround = (tracee->reconf.tracee == NULL);
+#endif
+
 	return 0;
 }
 

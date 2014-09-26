@@ -46,10 +46,11 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-/* TODO: static */
+/* TODO: EXECVE2 static */
 int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 		char user_path[PATH_MAX], char argument[ARG_MAX])
 {
+	char tmp2[2];
 	char tmp;
 
 	int status;
@@ -63,7 +64,7 @@ int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 	if (fd < 0)
 		return -errno;
 
-	status = read(fd, user_path, 2 * sizeof(char));
+	status = read(fd, tmp2, 2 * sizeof(char));
 	if (status < 0) {
 		status = -errno;
 		goto end;
@@ -74,7 +75,7 @@ int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 	}
 
 	/* Check if it really is a script text. */
-	if (user_path[0] != '#' || user_path[1] != '!') {
+	if (tmp2[0] != '#' || tmp2[1] != '!') {
 		status = 0;
 		goto end;
 	}
@@ -182,10 +183,11 @@ end:
 }
 
 /**
- * Expand shebang of @user_path.  This function returns -errno if an
- * error occurred, otherwise 0.  On success, @host_path points to the
- * program to execute, and @tracee's argv[] (pointed to by SYSARG_2)
- * is correctly updated.
+ * Expand in argv[] the shebang of @user_path, if any.  This function
+ * returns -errno if an error occurred, otherwise 0.  On success, both
+ * @host_path and @user_path point to the program to execute
+ * (respectively from host point-of-view and as-is), and @tracee's
+ * argv[] (pointed to by SYSARG_2) is correctly updated.
  */
 int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
 {
