@@ -176,9 +176,6 @@ static void adjust_elf_aux_vectors(Tracee *tracee)
 
 		case AT_ENTRY:
 			vector->value = ELF_FIELD(tracee->load_info->elf_header, entry);
-
-			if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header))
-				vector->value += tracee->load_info->mappings[0].addr;
 			break;
 
 		case AT_EXECFN:
@@ -208,7 +205,7 @@ void translate_load_exit(Tracee *tracee)
 	word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	int signed_result = (int) result;
 	int status;
-	size_t size;
+	size_t nb_mappings;
 	size_t i;
 
 	switch (tracee->loading.step) {
@@ -221,8 +218,8 @@ void translate_load_exit(Tracee *tracee)
 
 		/* Now the file descriptor is known, then adjust
 		 * mappings according to.  */
-		size = talloc_array_length(tracee->loading.info->mappings);
-		for (i = 0; i < size; i++) {
+		nb_mappings = talloc_array_length(tracee->loading.info->mappings);
+		for (i = 0; i < nb_mappings; i++) {
 			if ((tracee->loading.info->mappings[i].flags & MAP_ANONYMOUS) == 0)
 				tracee->loading.info->mappings[i].fd = signed_result;
 		}
@@ -257,18 +254,10 @@ void translate_load_exit(Tracee *tracee)
 			status = clear_mem(tracee, address, current_mapping->clear_length);
 		}
 
-		size = talloc_array_length(tracee->loading.info->mappings);
-
-		/* Now the base address is known, then adjust
-		 * addresses according to.  */
-		if (   IS_POSITION_INDENPENDANT(tracee->loading.info->elf_header)
-		    && tracee->loading.index == 0) {
-			for (i = 0; i < size; i++)
-				tracee->loading.info->mappings[i].addr += result;
-		}
-
+		nb_mappings = talloc_array_length(tracee->loading.info->mappings);
 		tracee->loading.index++;
-		if (tracee->loading.index >= size)
+
+		if (tracee->loading.index >= nb_mappings)
 			tracee->loading.step  = LOADING_STEP_CLOSE;
 		break;
 	}
@@ -283,10 +272,6 @@ void translate_load_exit(Tracee *tracee)
 		/* Is this the end of the loading process?  */
 		if (tracee->loading.info->interp == NULL) {
 			word_t entry_point = ELF_FIELD(tracee->loading.info->elf_header, entry);
-
-			/* Adjust the entry point if it is a PIE.  */
-			if (IS_POSITION_INDENPENDANT(tracee->loading.info->elf_header))
-				entry_point += tracee->loading.info->mappings[0].addr;
 
 			/* Make the process jump to the entry point.  */
 			poke_reg(tracee, INSTR_POINTER, entry_point);

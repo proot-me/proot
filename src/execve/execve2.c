@@ -79,15 +79,10 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 	load_info->mappings[index].offset = P(offset) & page_mask;
 	load_info->mappings[index].addr   = start_address;
 	load_info->mappings[index].length = end_address - start_address;
-	load_info->mappings[index].flags  = MAP_PRIVATE;
+	load_info->mappings[index].flags  = MAP_PRIVATE | MAP_FIXED;
 	load_info->mappings[index].prot   =  ( (P(flags) & PF_R ? PROT_READ  : 0)
 					| (P(flags) & PF_W ? PROT_WRITE : 0)
 					| (P(flags) & PF_X ? PROT_EXEC  : 0));
-
-	/* Be sure the segment will be mapped to the specified address
-	 * if it is not a PIE.  */
-	if (!IS_POSITION_INDENPENDANT(load_info->elf_header))
-		load_info->mappings[index].flags |= MAP_FIXED;
 
 	/* "If the segment's memory size p_memsz is larger than the
 	 * file size p_filesz, the "extra" bytes are defined to hold
@@ -112,7 +107,7 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 			load_info->mappings[index].addr   = start_address;
 			load_info->mappings[index].length = end_address - start_address;
 			load_info->mappings[index].clear_length = 0;
-			load_info->mappings[index].flags  = MAP_PRIVATE| MAP_ANONYMOUS| MAP_FIXED;
+			load_info->mappings[index].flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
 			load_info->mappings[index].prot   = load_info->mappings[index - 1].prot;
 		}
 	}
@@ -272,6 +267,43 @@ end:
 }
 
 /**
+ * Add @load_base to each adresses of @load_info.
+ */
+static void add_load_base(LoadInfo *load_info, word_t load_base)
+{
+	size_t nb_mappings;
+	size_t i;
+
+	nb_mappings = talloc_array_length(load_info->mappings);
+	for (i = 0; i < nb_mappings; i++)
+		load_info->mappings[i].addr += load_base;
+
+	if (IS_CLASS64(load_info->elf_header))
+		load_info->elf_header.class64.e_entry += load_base;
+	else
+		load_info->elf_header.class32.e_entry += load_base;
+}
+
+/**
+ * Compute the final load address for each position independant
+ * objects of @tracee.
+ *
+ * TODO: support for ASLR.
+ */
+static void compute_load_addresses(Tracee *tracee)
+{
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header))
+		add_load_base(tracee->load_info, 0x400000);
+
+	/* Nothing more to do?  */
+	if (tracee->load_info->interp == NULL)
+		return;
+
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header))
+		add_load_base(tracee->load_info->interp, 0x7ff000000000);
+}
+
+/**
  * Extract all the information that will be required by
  * translate_load_*().  This function returns -errno if an error
  * occured, otherwise 0.
@@ -319,6 +351,8 @@ int translate_execve_enter(Tracee *tracee)
 		if (tracee->load_info->interp->interp != NULL)
 			return -EINVAL;
 	}
+
+	compute_load_addresses(tracee);
 
 	/* Remember the value for "/proc/self/exe".  It points to a
 	 * canonicalized guest path, hence detranslate_path() instead
