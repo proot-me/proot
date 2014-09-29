@@ -26,10 +26,12 @@
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* MAP_*, */
 #include <assert.h>     /* assert(3), */
-#include <sys/types.h>  /* kill(2), */
+#include <sys/types.h>  /* kill(2), O_*, */
 #include <signal.h>     /* kill(2), */
 #include <string.h>     /* strerror(3), */
 #include <strings.h>    /* bzero(3), */
+#include <sys/stat.h>   /* O_*, */
+#include <fcntl.h>      /* O_*, */
 
 #include "execve/load.h"
 #include "execve/auxv.h"
@@ -108,12 +110,17 @@ void translate_load_enter(Tracee *tracee)
 	switch (tracee->loading.step) {
 	case LOADING_STEP_OPEN:
 		set_sysnum(tracee, PR_open);
+
 		status = set_sysarg_path(tracee, tracee->loading.info->path, SYSARG_1);
 		if (status < 0) {
 			notice(tracee, ERROR, INTERNAL, "can't open '%s': %s",
 				       tracee->loading.info->path, strerror(-status));
 			goto error;
 		}
+
+		poke_reg(tracee, SYSARG_2, O_RDONLY);
+		poke_reg(tracee, SYSARG_3, 0);
+
 		break;
 
 	case LOADING_STEP_MMAP:
