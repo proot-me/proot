@@ -232,6 +232,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	if (WIFSTOPPED(event)) {
 		switch ((event & 0xfff00) >> 8) {
 		case SIGTRAP | 0x80:
+#ifndef EXECVE2
 			/* Fix ELF auxiliary vectors.  So far, this is
 			 * only required to make GDB work correctly
 			 * under PRoot.  */
@@ -240,6 +241,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			    && (int) peek_reg(ptracee, CURRENT, SYSARG_RESULT) >= 0) {
 				fix_elf_aux_vectors(ptracee);
 			}
+#endif
 
 			/* If the PTRACE_O_TRACEEXEC option is *not*
 			 * in effect for the execing tracee, the

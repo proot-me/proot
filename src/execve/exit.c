@@ -20,6 +20,8 @@
  * 02110-1301 USA.
  */
 
+#ifdef EXECVE2
+
 #include <unistd.h>     /* sysconf(3), _SC*, */
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* MAP_*, */
@@ -246,3 +248,5 @@ error:
 	notice(tracee, ERROR, USER, "can't load '%s' (killing pid %d)", tracee->exe, tracee->pid);
 	kill(tracee->pid, SIGKILL);
 }
+
+#endif /* EXECVE2 */

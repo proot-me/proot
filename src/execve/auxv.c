@@ -78,9 +78,7 @@ int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value)
  * Find in @vectors the first occurrence of the vector @type.  This
  * function returns the found vector or NULL.
  */
-#ifdef EXECVE2
-static
-#endif
+#ifndef EXECVE2
 ElfAuxVector *find_elf_aux_vector(ElfAuxVector *vectors, word_t type)
 {
 	int i;
@@ -97,9 +95,6 @@ ElfAuxVector *find_elf_aux_vector(ElfAuxVector *vectors, word_t type)
  * Get the address of the the ELF auxiliary vectors table for the
  * given @tracee.  This function returns 0 if an error occurred.
  */
-#ifdef EXECVE2
-static
-#endif
 word_t get_elf_aux_vectors_address(const Tracee *tracee)
 {
 	word_t address;
@@ -132,6 +127,7 @@ word_t get_elf_aux_vectors_address(const Tracee *tracee)
 
 	return address;
 }
+#endif
 
 /**
  * Fetch ELF auxiliary vectors stored at the given @address in
@@ -205,6 +201,7 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
 	return 0;
 }
 
+#ifdef EXECVE2
 /**
  * Adjust ELF auxiliary vectors for @tracee.
  */
@@ -350,7 +347,13 @@ end:
 		notice(tracee, WARNING, INTERNAL, "can't update ELF auxiliary vectors");
 		return;
 	}
+
+	/* For performance reason, fake /proc/pid/auxv only if there's
+	 * a ptracer.  */
+	if (tracee->as_ptracee.ptracer != NULL)
+		bind_proc_pid_auxv(tracee, auxv);
 }
+#endif
 
 /**********************************************************************
  * Note: So far, the content of this file below is only required to
@@ -397,6 +400,7 @@ end:
 	return status;
 }
 
+#ifndef EXECVE2
 /**
  * Fix @tracee's ELF auxiliary vectors in place, ie. in its memory.
  * This function returns NULL if an error occurred, otherwise it
@@ -439,6 +443,7 @@ static ElfAuxVector *fix_elf_aux_vectors_in_mem(const Tracee *tracee)
 
 	return vectors;
 }
+#endif
 
 /**
  * Fix ELF auxiliary vectors for the given @ptracee.  For information,
@@ -447,6 +452,7 @@ static ElfAuxVector *fix_elf_aux_vectors_in_mem(const Tracee *tracee)
  * (AT_BASE for instance).  This function returns -1 if an error
  * occurred, otherwise 0.
  */
+#ifndef EXECVE2
 int fix_elf_aux_vectors(const Tracee *ptracee)
 {
 	const ElfAuxVector *vectors;
@@ -458,6 +464,18 @@ int fix_elf_aux_vectors(const Tracee *ptracee)
 	vectors = fix_elf_aux_vectors_in_mem(ptracee);
 	if (vectors == NULL)
 		return -1;
+#else
+/**
+ * Bind content of @vectors over /proc/{@ptracee->pid}/auxv.  This
+ * function returns -1 if an error occurred, otherwise 0.
+ */
+int bind_proc_pid_auxv(const Tracee *ptracee, ElfAuxVector *vectors)
+{
+	const char *guest_path;
+	const char *host_path;
+	Binding *binding;
+	int status;
+#endif
 
 	/* Path to these ELF auxiliary vectors.  */
 	guest_path = talloc_asprintf(ptracee->ctx, "/proc/%d/auxv", ptracee->pid);

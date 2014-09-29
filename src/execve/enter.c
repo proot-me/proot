@@ -20,6 +20,8 @@
  * 02110-1301 USA.
  */
 
+#ifdef EXECVE2
+
 #include <sys/types.h>  /* lstat(2), lseek(2), */
 #include <sys/stat.h>   /* lstat(2), lseek(2), */
 #include <unistd.h>     /* access(2), lstat(2), close(2), read(2), */
@@ -478,3 +480,5 @@ int translate_execve_enter(Tracee *tracee)
 
 	return 0;
 }
+
+#endif /* EXECVE2 */
