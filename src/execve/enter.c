@@ -478,6 +478,10 @@ int translate_execve_enter(Tracee *tracee)
 			talloc_set_name_const(tracee->exe, "$exe");
 	}
 
+	/* It's ptracer -- if any -- should not be notified about
+	 * "chained" syscalls used to load this program.  */
+	tracee->as_ptracee.mask_syscall = true;
+
 	return 0;
 }
 

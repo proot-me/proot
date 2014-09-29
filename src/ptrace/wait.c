@@ -241,7 +241,6 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			    && (int) peek_reg(ptracee, CURRENT, SYSARG_RESULT) >= 0) {
 				fix_elf_aux_vectors(ptracee);
 			}
-#endif
 
 			/* If the PTRACE_O_TRACEEXEC option is *not*
 			 * in effect for the execing tracee, the
@@ -280,6 +279,10 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 				kill(ptracee->pid, SIGTRAP);
 				PTRACEE.is_load_pending = false;
 			}
+#else
+			if (PTRACEE.mask_syscall)
+				return false;
+#endif
 
 			if (PTRACEE.ignore_syscall)
 				return false;

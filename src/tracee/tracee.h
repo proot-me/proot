@@ -122,6 +122,7 @@ typedef struct tracee {
 
 		bool tracing_started;
 		bool ignore_syscall;
+		bool mask_syscall;
 		word_t options;
 		bool is_zombie;
 		bool is_load_pending;
