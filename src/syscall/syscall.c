@@ -127,7 +127,7 @@ void translate_syscall(Tracee *tracee)
 			save_current_regs(tracee, MODIFIED);
 		}
 		else {
-#ifdef EXECVE2
+#if defined(EXECVE2) && !defined(LOADER2)
 			if (tracee->loading.step != 0) {
 				translate_load_enter(tracee);
 				status = 0;
@@ -170,7 +170,7 @@ void translate_syscall(Tracee *tracee)
 		if (tracee->chain.syscalls == NULL)
 			translate_syscall_exit(tracee);
 		else {
-#ifdef EXECVE2
+#if defined(EXECVE2) && !defined(LOADER2)
 			if (tracee->loading.step != 0)
 				translate_load_exit(tracee);
 			else

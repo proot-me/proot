@@ -425,9 +425,13 @@ void translate_syscall_exit(Tracee *tracee)
 	}
 #endif
 
-#if EXECVE2
+#ifdef EXECVE2
 	case PR_execve:
+#ifdef LOADER2
+		status = translate_execve_exit2(tracee);
+#else
 		status = translate_execve_exit(tracee);
+#endif
 		goto end;
 
 	case PR_rt_sigreturn:

@@ -166,8 +166,12 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 	if (status < 0)
 		return status;
 
-	load_info->interp->path = talloc_strdup(load_info->interp, host_path);
-	if (load_info->interp->path == NULL)
+	load_info->interp->host_path = talloc_strdup(load_info->interp, host_path);
+	if (load_info->interp->host_path == NULL)
+		return -ENOMEM;
+
+	load_info->interp->user_path = talloc_strdup(load_info->interp, user_path);
+	if (load_info->interp->user_path == NULL)
 		return -ENOMEM;
 
 	return 0;
@@ -176,7 +180,7 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 #undef P
 
 /**
- * Extract the load info from @load->path.  This function returns
+ * Extract the load info from @load->host_path.  This function returns
  * -errno if an error occured, otherwise it returns 0.
  *
  * TODO: factorize with find_program_header()
@@ -194,9 +198,9 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 	int i;
 
 	assert(load_info != NULL);
-	assert(load_info->path != NULL);
+	assert(load_info->host_path != NULL);
 
-	fd = open_elf(load_info->path, &load_info->elf_header);
+	fd = open_elf(load_info->host_path, &load_info->elf_header);
 	if (fd < 0)
 		return fd;
 
@@ -439,16 +443,27 @@ int translate_execve_enter(Tracee *tracee)
 	}
 
 	/* WIP.  */
+#ifdef LOADER2
+	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/loader-x86_64", SYSARG_1);
+#else
 	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/stub-x86_64", SYSARG_1);
+#endif
 	if (status < 0)
 		return status;
+
+	if (tracee->load_info != NULL)
+		TALLOC_FREE(tracee->load_info);
 
 	tracee->load_info = talloc_zero(tracee, LoadInfo);
 	if (tracee->load_info == NULL)
 		return -ENOMEM;
 
-	tracee->load_info->path = talloc_strdup(tracee->load_info, host_path);
-	if (tracee->load_info->path == NULL)
+	tracee->load_info->host_path = talloc_strdup(tracee->load_info, host_path);
+	if (tracee->load_info->host_path == NULL)
+		return -ENOMEM;
+
+	tracee->load_info->user_path = talloc_strdup(tracee->load_info, user_path);
+	if (tracee->load_info->user_path == NULL)
 		return -ENOMEM;
 
 	status = extract_load_info(tracee, tracee->load_info);

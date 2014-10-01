@@ -40,7 +40,8 @@ typedef struct mapping {
 } Mapping;
 
 typedef struct load_info {
-	char *path;
+	char *host_path;
+	char *user_path;
 	Mapping *mappings;
 	ElfHeader elf_header;
 

@@ -36,12 +36,290 @@
 #include "execve/load.h"
 #include "execve/auxv.h"
 #include "execve/elf.h"
+#include "loader/script.h"
 #include "syscall/sysnum.h"
 #include "syscall/syscall.h"
 #include "syscall/chain.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "cli/notice.h"
+
+#ifdef LOADER2
+
+/**
+ * Write the @value into the @script at the given @position, according
+ * to the mode (32/64-bit) of @tracee.
+ */
+static inline void write_word(const Tracee *tracee, void *script, size_t position, word_t value)
+{
+	const size_t size = sizeof_word(tracee);
+
+	switch (size) {
+	case 4: {
+		uint32_t *script_ = (uint32_t *) script;
+		script_[position] = value;
+		break;
+	}
+
+	case 8: {
+		uint64_t *script_ = (uint64_t *) script;
+		script_[position] = value;
+		break;
+	}
+
+	default:
+		assert(0);
+	}
+}
+
+/**
+ * Convert @mappings into load @script statements at the given
+ * @position.  This function returns NULL if an error occurred,
+ * otherwise a pointer to the updated load script.
+ */
+static void *transcript_mappings(const Tracee *tracee, void *script,
+				size_t position, const Mapping *mappings)
+{
+	size_t nb_mappings;
+	size_t script_size;
+	size_t i;
+
+	script_size = talloc_get_size(script);
+
+	nb_mappings = talloc_array_length(mappings);
+	for (i = 0; i < nb_mappings; i++) {
+		if ((mappings[i].flags & MAP_ANONYMOUS) != 0) {
+			script_size += LOAD_PACKET_LENGTH_MMAP_ANON * sizeof_word(tracee);
+			script = talloc_realloc_size(tracee->ctx, script, script_size);
+			if (script == NULL)
+				return NULL;
+
+			write_word(tracee, script, position++, LOAD_ACTION_MMAP_ANON);
+			write_word(tracee, script, position++, mappings[i].addr);
+			write_word(tracee, script, position++, mappings[i].length);
+			write_word(tracee, script, position++, mappings[i].prot);
+		}
+		else {
+			script_size += LOAD_PACKET_LENGTH_MMAP_FILE * sizeof_word(tracee);
+			script = talloc_realloc_size(tracee->ctx, script, script_size);
+			if (script == NULL)
+				return NULL;
+
+			write_word(tracee, script, position++, LOAD_ACTION_MMAP_FILE);
+			write_word(tracee, script, position++, mappings[i].addr);
+			write_word(tracee, script, position++, mappings[i].length);
+			write_word(tracee, script, position++, mappings[i].prot);
+			write_word(tracee, script, position++, mappings[i].offset);
+		}
+
+		if (mappings[i].clear_length != 0) {
+			word_t address;
+
+			script_size += LOAD_PACKET_LENGTH_CLEAR * sizeof_word(tracee);
+			script = talloc_realloc_size(tracee->ctx, script, script_size);
+			if (script == NULL)
+				return NULL;
+
+			address = mappings[i].addr
+				+ mappings[i].length
+				- mappings[i].clear_length;
+
+			write_word(tracee, script, position++, LOAD_ACTION_CLEAR);
+			write_word(tracee, script, position++, address);
+			write_word(tracee, script, position++, mappings[i].clear_length);
+		}
+	}
+
+	return script;
+}
+
+/**
+ * Convert @tracee->load_info into a load script, then transfer this
+ * latter into @tracee's memory.
+ */
+static int transfer_load_script(Tracee *tracee)
+{
+	word_t stack_pointer;
+	word_t entry_point;
+
+	void *tail;
+	size_t tail_size;
+	size_t string1_size;
+	size_t string2_size;
+	size_t padding_size;
+
+	word_t string1_address;
+	word_t string2_address;
+
+	void *script;
+	size_t script_size;
+
+	size_t position;
+	int status;
+
+	stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
+
+	/* Strings addresses are required to generate the load script,
+	 * for "open" actions.  Since I want to generate it in one
+	 * pass, these strings will be put right below the current
+	 * stack pointer -- the only known adresses so far -- in the
+	 * "tail" area.  */
+	string1_size = strlen(tracee->load_info->user_path) + 1;
+	string2_size = tracee->load_info->interp != NULL
+		     ? strlen(tracee->load_info->interp->user_path) + 1
+		     : 0;
+
+	/* A padding will be appended at the end of the load script
+	 * (a.k.a the "tail") to ensure this latter is aligned on a
+	 * word boundary, for sake of performance.  */
+	padding_size = (stack_pointer - string1_size - string2_size) % sizeof_word(tracee);
+
+	tail_size = string1_size + string2_size + padding_size;
+	string1_address = stack_pointer - tail_size;
+	string2_address = stack_pointer - tail_size + string1_size;
+
+	tail = talloc_size(tracee->ctx, tail_size);
+	if (tail == NULL)
+		return -ENOMEM;
+
+	memcpy(tail, tracee->load_info->user_path, string1_size);
+	if (string2_size != 0)
+		memcpy(tail + string1_size, tracee->load_info->interp->user_path, string2_size);
+
+	/* So far, the tail content is as follow:
+	 *
+	 *   +---------+ <- initial stack pointer (higher address)
+	 *   | string1 |
+	 *   +---------+
+	 *   | string2 |
+	 *   +---------+
+	 *   | padding |
+	 *   +---------+ (lower address, word aligned)
+	 */
+
+	/* Load script statement: open.  */
+	script_size = LOAD_PACKET_LENGTH_OPEN * sizeof_word(tracee);
+	script = talloc_size(tracee->ctx, script_size);
+	if (script == NULL)
+		return -ENOMEM;
+
+	position = 0;
+	write_word(tracee, script, position++, LOAD_ACTION_OPEN);
+	write_word(tracee, script, position++, string1_address);
+
+	/* Load script statements: mmap.  */
+	script = transcript_mappings(tracee, script, position, tracee->load_info->mappings);
+	if (script == NULL)
+		return -ENOMEM;
+
+	/* These value were outdated by transcript_mappings().  */
+	script_size = talloc_get_size(script);
+	position = script_size / sizeof_word(tracee);
+
+	if (tracee->load_info->interp != NULL) {
+		/* Load script statement: close, open.  */
+		script_size += LOAD_PACKET_LENGTH_CLOSE_OPEN * sizeof_word(tracee);
+		script = talloc_realloc_size(tracee->ctx, script, script_size);
+		if (script == NULL)
+			return -ENOMEM;
+
+		write_word(tracee, script, position++, LOAD_ACTION_CLOSE_OPEN);
+		write_word(tracee, script, position++, string2_address);
+
+		script = transcript_mappings(tracee, script, position,
+					tracee->load_info->interp->mappings);
+		if (script == NULL)
+			return -ENOMEM;
+
+		/* These value were outdated by transcript_mappings().  */
+		script_size = talloc_get_size(script);
+		position = script_size / sizeof_word(tracee);
+
+		entry_point = ELF_FIELD(tracee->load_info->interp->elf_header, entry);
+	}
+	else
+		entry_point = ELF_FIELD(tracee->load_info->elf_header, entry);
+
+	/* Load script statement: close, jump @entry_point.  */
+	script_size += LOAD_PACKET_LENGTH_CLOSE_BRANCH * sizeof_word(tracee);
+	script = talloc_realloc_size(tracee->ctx, script, script_size);
+	if (script == NULL)
+		return -ENOMEM;
+
+	write_word(tracee, script, position++, LOAD_ACTION_CLOSE_BRANCH);
+	write_word(tracee, script, position++, stack_pointer);
+	write_word(tracee, script, position++, entry_point);
+
+	/* Sanity checks.  */
+	assert(tail_size   == talloc_get_size(tail));
+	assert(script_size == talloc_get_size(script));
+
+	/* Concatenate the load script and the tail (strings).  */
+	script = talloc_realloc_size(tracee->ctx, script, script_size + tail_size);
+	if (script == NULL)
+		return -ENOMEM;
+
+	memcpy(script + script_size, tail, tail_size);
+	script_size += tail_size;
+
+	/* Copy everything in the tracee's memory at once.  */
+	status = write_data(tracee, stack_pointer - script_size, script, script_size);
+	if (status < 0)
+		return status;
+
+	/* Update the stack pointer and the pointer to the load
+	 * script.  */
+	poke_reg(tracee, STACK_POINTER, stack_pointer - script_size);
+	poke_reg(tracee, SYSARG_1, stack_pointer - script_size);
+
+	/* Remember we are in the sysexit stage, so be sure the
+	 * current register values will be used as at the end.  */
+	save_current_regs(tracee, ORIGINAL);
+	tracee->_regs_were_changed = true;
+
+	/* So far, the stack content is as follow:
+	 *
+	 *   +----------+ <- initial stack pointer
+	 *   |   tail   |
+	 *   +----------+
+	 *   |   load   |
+	 *   |  script  |
+	 *   +----------+ <- stack pointer, sysarg1 (word aligned)
+	 */
+
+	return 0;
+}
+
+/**
+ * Start the loading of @tracee.  This function returns -errno if an
+ * error occured, otherwise 0.
+ */
+int translate_execve_exit2(Tracee *tracee)
+{
+	word_t syscall_result;
+	int status;
+
+	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+	if ((int) syscall_result < 0)
+		return 0;
+
+	/* New processes have no heap.  */
+	bzero(tracee->heap, sizeof(Heap));
+
+	/* Adjust ELF auxiliary vectors before transfering the load
+	 * script since the stack pointer might be changed.  */
+	adjust_elf_aux_vectors(tracee);
+
+	/* Transfer the load script to the loader.  */
+	status = transfer_load_script(tracee);
+	if (status < 0)
+		return status; /* Note: it's too late to do anything
+				* useful. */
+
+	return 0;
+}
+
+#else
 
 /**
  * Start the loading of @tracee.  This function returns -errno if an
@@ -61,7 +339,7 @@ int translate_execve_exit(Tracee *tracee)
 	bzero(tracee->heap, sizeof(Heap));
 
 	/* Adjust ELF auxiliary vectors before saving current
-	 * registers since the stack pointer migth be changed.  */
+	 * registers since the stack pointer might be changed.  */
 	adjust_elf_aux_vectors(tracee);
 
 	/* Once the loading process is done, registers must be
@@ -111,10 +389,10 @@ void translate_load_enter(Tracee *tracee)
 	case LOADING_STEP_OPEN:
 		set_sysnum(tracee, PR_open);
 
-		status = set_sysarg_path(tracee, tracee->loading.info->path, SYSARG_1);
+		status = set_sysarg_path(tracee, tracee->loading.info->host_path, SYSARG_1);
 		if (status < 0) {
 			notice(tracee, ERROR, INTERNAL, "can't open '%s': %s",
-				       tracee->loading.info->path, strerror(-status));
+				       tracee->loading.info->host_path, strerror(-status));
 			goto error;
 		}
 
@@ -174,7 +452,7 @@ void translate_load_exit(Tracee *tracee)
 	case LOADING_STEP_OPEN:
 		if (signed_result < 0) {
 			notice(tracee, ERROR, INTERNAL, "can't open '%s': %s",
-				       tracee->loading.info->path, strerror(-signed_result));
+				       tracee->loading.info->host_path, strerror(-signed_result));
 			goto error;
 		}
 
@@ -198,14 +476,14 @@ void translate_load_exit(Tracee *tracee)
 		if (   signed_result < 0
 		    && signed_result > -4096) {
 			notice(tracee, ERROR, INTERNAL, "can't map '%s': %s",
-				       tracee->loading.info->path, strerror(-signed_result));
+				       tracee->loading.info->host_path, strerror(-signed_result));
 			goto error;
 		}
 
 		if (   current_mapping->addr != result
 		    && (current_mapping->flags & MAP_FIXED) != 0) {
 			notice(tracee, ERROR, INTERNAL, "can't map '%s' to the specified address",
-				       tracee->loading.info->path);
+				       tracee->loading.info->host_path);
 			goto error;
 		}
 
@@ -227,7 +505,7 @@ void translate_load_exit(Tracee *tracee)
 	case LOADING_STEP_CLOSE:
 		if (signed_result < 0) {
 			notice(tracee, ERROR, INTERNAL, "can't close '%s': %s",
-				       tracee->loading.info->path, strerror(-signed_result));
+				       tracee->loading.info->host_path, strerror(-signed_result));
 			goto error;
 		}
 
@@ -281,5 +559,7 @@ error:
 	notice(tracee, ERROR, USER, "can't load '%s' (killing pid %d)", tracee->exe, tracee->pid);
 	kill(tracee->pid, SIGKILL);
 }
+
+#endif /* LOADER2 */
 
 #endif /* EXECVE2 */

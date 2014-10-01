@@ -29,7 +29,6 @@
 #include <linux/limits.h>  /* PATH_MAX, ARG_MAX, */
 
 #include "execve/ldso.h"
-#include "execve/execve.h"
 #include "execve/elf.h"
 #include "execve/aoxp.h"
 #include "tracee/tracee.h"

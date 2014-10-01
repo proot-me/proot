@@ -30,6 +30,7 @@
 extern int translate_execve(Tracee *tracee);
 extern int translate_execve_enter(Tracee *tracee);
 extern int translate_execve_exit(Tracee *tracee);
+extern int translate_execve_exit2(Tracee *tracee);
 extern int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const char *user_path);
 
 #endif /* EXECVE_H */
