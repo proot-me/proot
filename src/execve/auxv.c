@@ -202,6 +202,7 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
 }
 
 #ifdef EXECVE2
+#ifndef LOADER2
 /**
  * Adjust ELF auxiliary vectors for @tracee.
  */
@@ -236,19 +237,19 @@ void adjust_elf_aux_vectors(Tracee *tracee)
 	 *   | auxv: value = ???     |
 	 *   +-----------------------+
 	 *   | auxv: type  = AT_???  |
-	 *   +-----------------------+ <- auxv address
+	 *   +-----------------------+ <- auxv[]
 	 *   | envp[j]: NULL         |
 	 *   +-----------------------+
 	 *   | ...                   |
 	 *   +-----------------------+
 	 *   | envp[0]: ???          |
-	 *   +-----------------------+ <- envp address
+	 *   +-----------------------+ <- envp[]
 	 *   | argv[argc]: NULL      |
 	 *   +-----------------------+
 	 *   | ...                   |
 	 *   +-----------------------+
 	 *   | argv[0]: ???          |
-	 *   +-----------------------+ <- argc address
+	 *   +-----------------------+ <- argc[]
 	 *   | argc                  |
 	 *   +-----------------------+ <- stack pointer
 	 */
@@ -353,7 +354,8 @@ end:
 	if (tracee->as_ptracee.ptracer != NULL)
 		bind_proc_pid_auxv(tracee, auxv);
 }
-#endif
+#endif /* LOADER2 */
+#endif /* EXECVE */
 
 /**********************************************************************
  * Note: So far, the content of this file below is only required to

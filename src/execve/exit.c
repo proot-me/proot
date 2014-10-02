@@ -70,7 +70,7 @@ static void *transcript_mappings(void *cursor, const Mapping *mappings)
 		statement->mmap.offset = mappings[i].offset;
 		statement->mmap.clear_length = mappings[i].clear_length;
 
-		cursor += sizeof(statement->action) + sizeof(statement->mmap);
+		cursor += LOAD_STATEMENT_SIZE(*statement, mmap);
 	}
 
 	return cursor;
@@ -144,7 +144,7 @@ static int transfer_load_script(Tracee *tracee)
 	statement->action = LOAD_ACTION_OPEN;
 	statement->open.string_address = string1_address;
 
-	cursor += sizeof(statement->action) + sizeof(statement->open);
+	cursor += LOAD_STATEMENT_SIZE(*statement, open);
 
 	/* Load script statements: mmap.  */
 	cursor = transcript_mappings(cursor, tracee->load_info->mappings);
@@ -155,7 +155,7 @@ static int transfer_load_script(Tracee *tracee)
 		statement->action = LOAD_ACTION_OPEN;
 		statement->open.string_address = string2_address;
 
-		cursor += sizeof(statement->action) + sizeof(statement->open);
+		cursor += LOAD_STATEMENT_SIZE(*statement, open);
 
 		/* Load script statements: mmap.  */
 		cursor = transcript_mappings(cursor, tracee->load_info->interp->mappings);
@@ -170,8 +170,13 @@ static int transfer_load_script(Tracee *tracee)
 	statement->action = LOAD_ACTION_START;
 	statement->start.stack_pointer = stack_pointer;
 	statement->start.entry_point   = entry_point;
+	statement->start.at_phent = ELF_FIELD(tracee->load_info->elf_header, phentsize);
+	statement->start.at_phnum = ELF_FIELD(tracee->load_info->elf_header, phnum);
+	statement->start.at_entry = ELF_FIELD(tracee->load_info->elf_header, entry);
+	statement->start.at_phdr  = ELF_FIELD(tracee->load_info->elf_header, phoff)
+				  + tracee->load_info->mappings[0].addr;
 
-	cursor += sizeof(statement->action) + sizeof(statement->start);
+	cursor += LOAD_STATEMENT_SIZE(*statement, start);
 
 	/* Sanity check.  */
 	assert((uintptr_t) cursor - (uintptr_t) buffer == script_size);
@@ -255,7 +260,7 @@ int translate_execve_exit2(Tracee *tracee)
 
 	/* Adjust ELF auxiliary vectors before transfering the load
 	 * script since the stack pointer might be changed.  */
-	adjust_elf_aux_vectors(tracee);
+	//adjust_elf_aux_vectors(tracee);
 
 	/* Transfer the load script to the loader.  */
 	status = transfer_load_script(tracee);

@@ -4,6 +4,8 @@
 #include <fcntl.h>       /* O_*, */
 #include <sys/mman.h>    /* MAP_*, */
 #include <strings.h>     /* bzero(3), */
+#include <stdbool.h>     /* bool, true, false,  */
+#include <linux/auxvec.h>  /* AT_*,  */
 
 typedef unsigned long word_t;
 
@@ -68,8 +70,11 @@ typedef unsigned long word_t;
  * footprint.  */
 void _start(void *cursor)
 {
-	word_t status;
+	bool reset_at_base = true;
+	word_t at_base = 0;
+
 	word_t fd = -1;
+	word_t status;
 
 	while(1) {
 		LoadStatement *stmt = cursor;
@@ -85,6 +90,8 @@ void _start(void *cursor)
 			SC3(fd, SYS_open, stmt->open.string_address, O_RDONLY, 0);
 			if (unlikely((int) fd < 0))
 				ERROR();
+
+			reset_at_base = true;
 
 			cursor += LOAD_STATEMENT_SIZE(*stmt, open);
 			break;
@@ -102,6 +109,11 @@ void _start(void *cursor)
 					stmt->mmap.clear_length);
 			}
 
+			if (reset_at_base) {
+				at_base = stmt->mmap.addr;
+				reset_at_base = false;
+			}
+
 			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
 			break;
 
@@ -114,13 +126,65 @@ void _start(void *cursor)
 			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
 			break;
 
-		case LOAD_ACTION_START:
+		case LOAD_ACTION_START: {
+			word_t *cursor = (word_t *) stmt->start.stack_pointer;
+			const word_t argc = cursor[0];
+			const word_t at_execfn = cursor[1];
+
 			SC1(status, SYS_close, fd);
 			if (unlikely((int) status < 0))
 				ERROR();
 
+			/* Right after execve, the stack content is as follow:
+			 *
+			 *   +------+--------+--------+--------+
+			 *   | argc | argv[] | envp[] | auxv[] |
+			 *   +------+--------+--------+--------+
+			 */
+
+			/* Skip argv[].  */
+			cursor += argc + 1;
+
+			/* Skip envp[].  */
+			do cursor++; while (cursor[0] != 0);
+			cursor++;
+
+			/* Adjust auxv[].  */
+			do {
+				switch (cursor[0]) {
+				case AT_PHDR:
+					cursor[1] = stmt->start.at_phdr;
+					break;
+
+				case AT_PHENT:
+					cursor[1] = stmt->start.at_phent;
+					break;
+
+				case AT_PHNUM:
+					cursor[1] = stmt->start.at_phnum;
+					break;
+
+				case AT_ENTRY:
+					cursor[1] = stmt->start.at_entry;
+					break;
+
+				case AT_BASE:
+					cursor[1] = at_base;
+					break;
+
+				case AT_EXECFN:
+					cursor[1] = at_execfn;
+					break;
+
+				default:
+					break;
+				}
+				cursor += 2;
+			} while (cursor[0] != AT_NULL);
+
 			BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
 			/* Fall through.  */
+		}
 
 		default:
 			ERROR(); /* Never reached.  */

@@ -32,6 +32,7 @@ struct load_statement {
 		struct {
 			word_t string_address;
 		} open;
+
 		struct {
 			word_t addr;
 			word_t length;
@@ -39,9 +40,14 @@ struct load_statement {
 			word_t offset;
 			word_t clear_length;
 		} mmap;
+
 		struct {
 			word_t stack_pointer;
 			word_t entry_point;
+			word_t at_phdr;
+			word_t at_phent;
+			word_t at_phnum;
+			word_t at_entry;
 		} start;
 	};
 } PACKED;
@@ -61,4 +67,4 @@ typedef struct load_statement LoadStatement;
 #define LOAD_ACTION_MMAP_ANON	3
 #define LOAD_ACTION_START	4
 
-#endif
+#endif /* SCRIPT */
