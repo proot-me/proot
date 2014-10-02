@@ -27,7 +27,6 @@
 
 #include "syscall/syscall.h"
 #include "syscall/chain.h"
-#include "execve/load.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -127,14 +126,7 @@ void translate_syscall(Tracee *tracee)
 			save_current_regs(tracee, MODIFIED);
 		}
 		else {
-#if defined(EXECVE2) && !defined(LOADER2)
-			if (tracee->loading.step != 0) {
-				translate_load_enter(tracee);
-				status = 0;
-			}
-			else
-#endif
-				status = notify_extensions(tracee, SYSCALL_CHAINED_ENTER, 0, 0);
+			status = notify_extensions(tracee, SYSCALL_CHAINED_ENTER, 0, 0);
 			tracee->restart_how = PTRACE_SYSCALL;
 		}
 
@@ -169,14 +161,8 @@ void translate_syscall(Tracee *tracee)
 		 * chained by PRoot.  */
 		if (tracee->chain.syscalls == NULL)
 			translate_syscall_exit(tracee);
-		else {
-#if defined(EXECVE2) && !defined(LOADER2)
-			if (tracee->loading.step != 0)
-				translate_load_exit(tracee);
-			else
-#endif
-				(void) notify_extensions(tracee, SYSCALL_CHAINED_EXIT, 0, 0);
-		}
+		else
+			(void) notify_extensions(tracee, SYSCALL_CHAINED_EXIT, 0, 0);
 
 		/* Reset the tracee's status. */
 		tracee->status = 0;

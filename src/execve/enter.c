@@ -20,8 +20,6 @@
  * 02110-1301 USA.
  */
 
-#ifdef EXECVE2
-
 #include <sys/types.h>  /* lstat(2), lseek(2), */
 #include <sys/stat.h>   /* lstat(2), lseek(2), */
 #include <unistd.h>     /* access(2), lstat(2), close(2), read(2), */
@@ -35,7 +33,6 @@
 #include "execve/execve.h"
 #include "execve/shebang.h"
 #include "execve/aoxp.h"
-#include "execve/load.h"
 #include "execve/ldso.h"
 #include "execve/elf.h"
 #include "path/path.h"
@@ -118,6 +115,35 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 	}
 	else
 		load_info->mappings[index].clear_length = 0;
+
+	return 0;
+}
+
+/**
+ * Translate @user_path into @host_path and check if this latter exists, is
+ * executable and is a regular file.  This function returns -errno if
+ * an error occured, 0 otherwise.
+ */
+int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const char *user_path)
+{
+	struct stat statl;
+	int status;
+
+	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
+	if (status < 0)
+		return status;
+
+	status = access(host_path, F_OK);
+	if (status < 0)
+		return -ENOENT;
+
+	status = access(host_path, X_OK);
+	if (status < 0)
+		return -EACCES;
+
+	status = lstat(host_path, &statl);
+	if (status < 0)
+		return -EPERM;
 
 	return 0;
 }
@@ -443,11 +469,7 @@ int translate_execve_enter(Tracee *tracee)
 	}
 
 	/* WIP.  */
-#ifdef LOADER2
 	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/loader-x86_64", SYSARG_1);
-#else
-	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/stub-x86_64", SYSARG_1);
-#endif
 	if (status < 0)
 		return status;
 
@@ -494,10 +516,8 @@ int translate_execve_enter(Tracee *tracee)
 	}
 
 	/* It's ptracer -- if any -- should not be notified about
-	 * "chained" syscalls used to load this program.  */
-	tracee->as_ptracee.mask_syscall = true;
+	 * syscalls from the loader.  */
+	tracee->as_ptracee.ignore_loader_syscalls = true;
 
 	return 0;
 }
-
-#endif /* EXECVE2 */

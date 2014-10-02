@@ -46,8 +46,7 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-/* TODO: EXECVE2 static */
-int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
+static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 		char user_path[PATH_MAX], char argument[ARG_MAX])
 {
 	char tmp2[2];

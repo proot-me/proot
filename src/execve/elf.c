@@ -96,7 +96,7 @@ end:
  * returns -errno if an error occured, 1 if the program header was
  * found, otherwise 0.
  */
-int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_header,
+static int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_header,
 			ProgramHeader *program_header, SegmentType type, uint64_t address)
 {
 	uint64_t elf_phoff;

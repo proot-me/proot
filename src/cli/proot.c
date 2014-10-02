@@ -277,33 +277,6 @@ static int post_initialize_command(Tracee *tracee, const Cli *cli UNUSED,
 	if (tracee->qemu[0] == NULL)
 		return -1;
 
-#ifndef EXECVE2
-	/**
-	 * There's a bug when using the ELF interpreter as a loader (as PRoot
-	 * does) on PIE programs that uses constructors (typically QEMU v1.1+).
-	 * In this case, constructors are called twice as you can see on the
-	 * test below:
-	 *
-	 *     $ cat test.c
-	 *     static void __attribute__((constructor)) init(void) { puts("OK"); }
-	 *     int main() { return 0; }
-	 *
-	 *     $ gcc -fPIC -pie test.c -o test
-	 *     $ ./test
-	 *     OK
-	 *
-	 *     $ /lib64/ld-linux-x86-64.so.2 ./test
-	 *     OK
-	 *     OK
-	 *
-	 * Actually, PRoot doesn't have to use the ELF interpreter as a loader
-	 * if QEMU isn't nested.  When QEMU is nested (sub reconfiguration), the
-	 * user has to use either a version of QEMU prior v1.1 or a version of
-	 * QEMU compiled with the --disable-pie option.
-	 */
-	tracee->qemu_pie_workaround = (tracee->reconf.tracee == NULL);
-#endif
-
 	return 0;
 }
 

@@ -38,6 +38,7 @@
 #include "path/path.h"
 #include "ptrace/ptrace.h"
 #include "ptrace/wait.h"
+#include "ptrace/direct_ptracee.h"
 #include "extension/extension.h"
 #include "arch.h"
 
@@ -425,30 +426,14 @@ void translate_syscall_exit(Tracee *tracee)
 	}
 #endif
 
-#ifdef EXECVE2
 	case PR_execve:
-#ifdef LOADER2
-		status = translate_execve_exit2(tracee);
-#else
 		status = translate_execve_exit(tracee);
-#endif
 		goto end;
 
 	case PR_rt_sigreturn:
 	case PR_sigreturn:
 		tracee->restore_original_regs = false;
 		goto end;
-#else
-	case PR_execve:
-		if ((int) syscall_result >= 0) {
-			/* New processes have no heap.  */
-			bzero(tracee->heap, sizeof(Heap));
-	case PR_rt_sigreturn:
-	case PR_sigreturn:
-			tracee->restore_original_regs = false;
-		}
-		goto end;
-#endif
 
 	case PR_ptrace:
 		status = translate_ptrace_exit(tracee);

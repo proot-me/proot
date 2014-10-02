@@ -53,7 +53,7 @@ struct mixed_pointer {
  * make @local_pointer points to the locally *cached* version.  This
  * function returns -errno when an error occured, otherwise 0.
  */
-int read_xpointee_object(ArrayOfXPointers *array, size_t index, void **local_pointer)
+int read_xpointee_as_object(ArrayOfXPointers *array, size_t index, void **local_pointer)
 {
 	int status;
 	int size;

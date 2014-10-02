@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2013 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,20 +20,15 @@
  * 02110-1301 USA.
  */
 
-#ifndef INTERP_H
-#define INTERP_H
-
-#include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
+#ifndef PTRACE_DIRECT_PTRACEE_H
+#define PTRACE_DIRECT_PTRACEE_H
 
 #include "tracee/tracee.h"
 
-typedef int (* extract_interp_t)(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
+extern int add_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern bool is_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern bool is_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern void remove_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern void set_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
 
-extern int extract_shebang(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
-
-extern int extract_elf_interp(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
-
-#endif /* INTERP_H */
+#endif /* PTRACE_DIRECT_PTRACEE_H */

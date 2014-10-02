@@ -27,7 +27,6 @@
 
 #include "tracee/tracee.h"
 
-extern int extract_shebang(const Tracee *tracee, const char *host_path, char user_path[PATH_MAX], char argument[ARG_MAX]);
 extern int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX]);
 
 #endif /* SHEBANG_H */

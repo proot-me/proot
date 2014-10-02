@@ -121,16 +121,7 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_execve:
-#ifdef EXECVE2
 		status = translate_execve_enter(tracee);
-#else
-		status = translate_execve(tracee);
-
-		/* Something went wrong, restore ptracee's loading
-		 * state.  */
-		if (status < 0)
-			tracee->as_ptracee.is_load_pending = false;
-#endif
 		break;
 
 	case PR_ptrace:

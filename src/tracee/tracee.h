@@ -121,11 +121,10 @@ typedef struct tracee {
 		} event4;
 
 		bool tracing_started;
-		bool ignore_syscall;
-		bool mask_syscall;
+		bool ignore_loader_syscalls;
+		bool ignore_syscalls;
 		word_t options;
 		bool is_zombie;
-		bool is_load_pending;
 	} as_ptracee;
 
 	/* Current status:
@@ -248,9 +247,6 @@ typedef struct tracee {
 	/* Runner command-line.  */
 	char **qemu;
 
-	/* Can the ELF interpreter for QEMU be safely skipped?  */
-	bool qemu_pie_workaround;
-
 	/* Path to glue between the guest rootfs and the host rootfs.  */
 	const char *glue;
 
@@ -285,7 +281,6 @@ extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
-extern int parse_config(Tracee *tracee, size_t argc, char *argv[]);
 extern void kill_all_tracees();
 
 #endif /* TRACEE_H */

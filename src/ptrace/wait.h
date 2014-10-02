@@ -29,12 +29,6 @@ extern int translate_wait_enter(Tracee *ptracer);
 extern int translate_wait_exit(Tracee *ptracer);
 extern bool handle_ptracee_event(Tracee *ptracee, int wait_status);
 
-extern int add_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
-extern bool is_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
-extern void set_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
-extern bool is_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
-extern void remove_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
-
 /* __WCLONE: Wait for "clone" children only.  If omitted then wait for
  * "non-clone" children only.  (A "clone" child is one which delivers
  * no signal, or a signal other than SIGCHLD to its parent upon

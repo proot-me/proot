@@ -300,7 +300,7 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
  * @argv[].  This function returns -1 if an error occured, otherwise
  * 0.
  */
-int parse_config(Tracee *tracee, size_t argc, char *argv[])
+static int parse_config(Tracee *tracee, size_t argc, char *argv[])
 {
 	char *const default_command[] = { "/bin/sh", NULL };
 	option_handler_t handler = NULL;

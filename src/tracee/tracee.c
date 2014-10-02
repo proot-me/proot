@@ -504,9 +504,6 @@ int new_child(Tracee *parent, word_t clone_flags)
 	child->exe = talloc_reference(child, parent->exe);
 	child->cmdline = talloc_reference(child, parent->cmdline);
 
-#ifndef EXECVE2
-	child->qemu_pie_workaround = parent->qemu_pie_workaround;
-#endif
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
 
@@ -551,9 +548,6 @@ int new_child(Tracee *parent, word_t clone_flags)
 static void reparent_config(Tracee *new_parent, Tracee *old_parent)
 {
 	new_parent->verbose = old_parent->verbose;
-#ifndef EXECVE2
-	new_parent->qemu_pie_workaround = old_parent->qemu_pie_workaround;
-#endif
 
 #define REPARENT(field) do {							\
 		talloc_reparent(old_parent, new_parent, old_parent->field);	\

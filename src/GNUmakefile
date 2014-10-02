@@ -17,11 +17,9 @@ OBJECTS += \
 	cli/cli.o		\
 	cli/proot.o		\
 	cli/notice.o		\
-	execve/execve.o		\
 	execve/enter.o		\
 	execve/exit.o		\
 	execve/shebang.o	\
-	execve/interp.o		\
 	execve/elf.o		\
 	execve/ldso.o		\
 	execve/auxv.o		\
@@ -47,6 +45,7 @@ OBJECTS += \
 	ptrace/ptrace.o		\
 	ptrace/user.o		\
 	ptrace/wait.o		\
+	ptrace/direct_ptracee.o	\
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o

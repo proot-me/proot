@@ -30,7 +30,6 @@
 
 #include "execve/auxv.h"
 #include "execve/elf.h"
-#include "execve/load.h"
 #include "extension/extension.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
@@ -75,23 +74,6 @@ int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value)
 }
 
 /**
- * Find in @vectors the first occurrence of the vector @type.  This
- * function returns the found vector or NULL.
- */
-#ifndef EXECVE2
-ElfAuxVector *find_elf_aux_vector(ElfAuxVector *vectors, word_t type)
-{
-	int i;
-
-	for (i = 0; vectors[i].type != AT_NULL; i++) {
-		if (vectors[i].type == type)
-			return &vectors[i];
-	}
-
-	return NULL;
-}
-
-/**
  * Get the address of the the ELF auxiliary vectors table for the
  * given @tracee.  This function returns 0 if an error occurred.
  */
@@ -127,7 +109,6 @@ word_t get_elf_aux_vectors_address(const Tracee *tracee)
 
 	return address;
 }
-#endif
 
 /**
  * Fetch ELF auxiliary vectors stored at the given @address in
@@ -136,9 +117,6 @@ word_t get_elf_aux_vectors_address(const Tracee *tracee)
  * independent form (the Talloc parent of this pointer is
  * @tracee->ctx).
  */
-#ifdef EXECVE2
-static
-#endif
 ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 {
 	ElfAuxVector *vectors = NULL;
@@ -179,9 +157,6 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
  * memory.  This function returns -errno if an error occurred,
  * otherwise 0.
  */
-#ifdef EXECVE2
-static
-#endif
 int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t address)
 {
 	size_t i;
@@ -200,162 +175,6 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
 
 	return 0;
 }
-
-#ifdef EXECVE2
-#ifndef LOADER2
-/**
- * Adjust ELF auxiliary vectors for @tracee.
- */
-void adjust_elf_aux_vectors(Tracee *tracee)
-{
-	word_t stack_pointer;
-	word_t envp_address;
-	word_t auxv_address;
-	word_t argv_address;
-	word_t argv_length;
-
-	size_t old_length;
-	size_t new_length;
-
-	ElfAuxVector *auxv;
-	ElfAuxVector *vector;
-	word_t data;
-	int status;
-
-	/* Sanity check: this works only in execve sysexit.  */
-	assert(IS_IN_SYSEXIT2(tracee, PR_execve));
-
-	/* Right after execve, the stack layout is as follow:
-	 *
-	 *   +-----------------------+
-	 *   | auxv: value = 0       |
-	 *   +-----------------------+
-	 *   | auxv: type  = AT_NULL |
-	 *   +-----------------------+
-	 *   | ...                   |
-	 *   +-----------------------+
-	 *   | auxv: value = ???     |
-	 *   +-----------------------+
-	 *   | auxv: type  = AT_???  |
-	 *   +-----------------------+ <- auxv[]
-	 *   | envp[j]: NULL         |
-	 *   +-----------------------+
-	 *   | ...                   |
-	 *   +-----------------------+
-	 *   | envp[0]: ???          |
-	 *   +-----------------------+ <- envp[]
-	 *   | argv[argc]: NULL      |
-	 *   +-----------------------+
-	 *   | ...                   |
-	 *   +-----------------------+
-	 *   | argv[0]: ???          |
-	 *   +-----------------------+ <- argc[]
-	 *   | argc                  |
-	 *   +-----------------------+ <- stack pointer
-	 */
-	stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
-	argv_length   = peek_word(tracee, stack_pointer) + 1;
-	argv_address  = stack_pointer + sizeof_word(tracee);
-	envp_address  = argv_address + argv_length * sizeof_word(tracee);
-	auxv_address  = envp_address;
-	do {
-		/* Sadly it is not possible to compute auxv_address
-		 * without reading tracee's memory.  */
-		data = peek_word(tracee, auxv_address);
-		if (errno != 0) {
-			notice(tracee, WARNING, INTERNAL, "can't find ELF auxiliary vectors");
-			return;
-		}
-		auxv_address += sizeof_word(tracee);
-	} while (data != 0);
-
-	auxv = fetch_elf_aux_vectors(tracee, auxv_address);
-	if (auxv == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't read ELF auxiliary vectors");
-		return;
-	}
-
-	for (vector = auxv; vector->type != AT_NULL; vector++) {
-		switch (vector->type) {
-		case AT_PHDR:
-			vector->value = ELF_FIELD(tracee->load_info->elf_header, phoff)
-				+ tracee->load_info->mappings[0].addr;
-			break;
-
-		case AT_PHENT:
-			vector->value = ELF_FIELD(tracee->load_info->elf_header, phentsize);
-			break;
-
-		case AT_PHNUM:
-			vector->value = ELF_FIELD(tracee->load_info->elf_header, phnum);
-			break;
-
-		case AT_BASE:
-			if (tracee->load_info->interp != NULL)
-				vector->value = tracee->load_info->interp->mappings[0].addr;
-			break;
-
-		case AT_ENTRY:
-			vector->value = ELF_FIELD(tracee->load_info->elf_header, entry);
-			break;
-
-		case AT_EXECFN:
-			vector->value = peek_word(tracee, argv_address);
-			break;
-
-		default:
-			break;
-		}
-	}
-
-	/* Allow extensions to modify/add ELF auxiliary vectors.  */
-	old_length = talloc_array_length(auxv);
-	(void) notify_extensions(tracee, ADJUST_ELF_AUX_VECTORS, (intptr_t) &auxv, 0);
-	new_length = talloc_array_length(auxv);
-
-	if (new_length > old_length) {
-		size_t size;
-		void *argv_envp;
-		size_t nb_new_vectors;
-
-		nb_new_vectors = new_length - old_length;
-
-		size = auxv_address - stack_pointer;
-		argv_envp = talloc_size(tracee->ctx, size);
-		if (argv_envp == NULL)
-			goto end;
-
-		status = read_data(tracee, argv_envp, stack_pointer, size);
-		if (status < 0)
-			goto end;
-
-		stack_pointer -= nb_new_vectors * 2 * sizeof_word(tracee);
-
-		status = write_data(tracee, stack_pointer, argv_envp, size);
-		if (status < 0)
-			goto end;
-
-		/* The content of argv[] and env[] is now copied to its new
-		 * location; the stack pointer can be safely updated.  */
-		poke_reg(tracee, STACK_POINTER, stack_pointer);
-
-		auxv_address -= nb_new_vectors * 2 * sizeof_word(tracee);
-	}
-
-end:
-	status = push_elf_aux_vectors(tracee, auxv, auxv_address);
-	if (status < 0) {
-		notice(tracee, WARNING, INTERNAL, "can't update ELF auxiliary vectors");
-		return;
-	}
-
-	/* For performance reason, fake /proc/pid/auxv only if there's
-	 * a ptracer.  */
-	if (tracee->as_ptracee.ptracer != NULL)
-		bind_proc_pid_auxv(tracee, auxv);
-}
-#endif /* LOADER2 */
-#endif /* EXECVE */
 
 /**********************************************************************
  * Note: So far, the content of this file below is only required to
@@ -402,71 +221,6 @@ end:
 	return status;
 }
 
-#ifndef EXECVE2
-/**
- * Fix @tracee's ELF auxiliary vectors in place, ie. in its memory.
- * This function returns NULL if an error occurred, otherwise it
- * returns a pointer to the new vectors, in an ABI independent form
- * (the Talloc parent of this pointer is @tracee->ctx).
- */
-static ElfAuxVector *fix_elf_aux_vectors_in_mem(const Tracee *tracee)
-{
-	ElfAuxVector *vector_phdr;
-	ElfAuxVector *vector_base;
-	ElfAuxVector *vectors;
-	word_t address;
-	int status;
-
-	address = get_elf_aux_vectors_address(tracee);
-	if (address == 0)
-		return NULL;
-
-	vectors = fetch_elf_aux_vectors(tracee, address);
-	if (vectors == NULL)
-		return NULL;
-
-	vector_phdr = find_elf_aux_vector(vectors, AT_PHDR);
-	if (vector_phdr == NULL)
-		return vectors;
-
-	vector_base = find_elf_aux_vector(vectors, AT_BASE);
-	if (vector_base == NULL)
-		return vectors;
-
-	/* Hum... This trick always works but this should be done more
-	 * "scientifically".  */
-	vector_base->value = vector_phdr->value & ~0xFFF;
-
-	/* TODO: AT_PHDR and AT_ENTRY.  */
-
-	status = push_elf_aux_vectors(tracee, vectors, address);
-	if (status < 0)
-		return NULL;
-
-	return vectors;
-}
-#endif
-
-/**
- * Fix ELF auxiliary vectors for the given @ptracee.  For information,
- * ELF auxiliary vectors have to be fixed because some of them are set
- * to unexpected values when the ELF interpreter is used as a loader
- * (AT_BASE for instance).  This function returns -1 if an error
- * occurred, otherwise 0.
- */
-#ifndef EXECVE2
-int fix_elf_aux_vectors(const Tracee *ptracee)
-{
-	const ElfAuxVector *vectors;
-	const char *guest_path;
-	const char *host_path;
-	Binding *binding;
-	int status;
-
-	vectors = fix_elf_aux_vectors_in_mem(ptracee);
-	if (vectors == NULL)
-		return -1;
-#else
 /**
  * Bind content of @vectors over /proc/{@ptracee->pid}/auxv.  This
  * function returns -1 if an error occurred, otherwise 0.
@@ -477,7 +231,6 @@ int bind_proc_pid_auxv(const Tracee *ptracee, ElfAuxVector *vectors)
 	const char *host_path;
 	Binding *binding;
 	int status;
-#endif
 
 	/* Path to these ELF auxiliary vectors.  */
 	guest_path = talloc_asprintf(ptracee->ctx, "/proc/%d/auxv", ptracee->pid);

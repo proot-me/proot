@@ -31,7 +31,7 @@
 
 #include "ptrace/ptrace.h"
 #include "ptrace/user.h"
-#include "ptrace/wait.h"
+#include "ptrace/direct_ptracee.h"
 #include "tracee/tracee.h"
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
@@ -196,13 +196,13 @@ int translate_ptrace_exit(Tracee *tracee)
 
 	switch (request) {
 	case PTRACE_SYSCALL:
-		PTRACEE.ignore_syscall = false;
+		PTRACEE.ignore_syscalls = false;
 		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
 	case PTRACE_CONT:
-		PTRACEE.ignore_syscall = true;
+		PTRACEE.ignore_syscalls = true;
 		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */
