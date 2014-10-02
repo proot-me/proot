@@ -23,25 +23,42 @@
 #ifndef SCRIPT
 #define SCRIPT
 
-#define LOAD_PACKET_ACTION(pointer)	(pointer)[0]
-#define LOAD_PACKET_ADDR(pointer)	(pointer)[1]
-#define LOAD_PACKET_ADDR2(pointer)	(pointer)[2]
-#define LOAD_PACKET_LENGTH(pointer)	(pointer)[2]
-#define LOAD_PACKET_PROT(pointer)	(pointer)[3]
-#define LOAD_PACKET_OFFSET(pointer)	(pointer)[4]
+#include "attribute.h"
 
-#define LOAD_ACTION_OPEN		0
-#define LOAD_ACTION_CLOSE_OPEN		1
-#define LOAD_ACTION_CLOSE_BRANCH	2
-#define LOAD_ACTION_MMAP_FILE		3
-#define LOAD_ACTION_MMAP_ANON		4
-#define LOAD_ACTION_CLEAR		5
+struct load_statement {
+	word_t action;
 
-#define LOAD_PACKET_LENGTH_OPEN		2 /* action, addr */
-#define LOAD_PACKET_LENGTH_CLOSE_OPEN	2 /* action, addr */
-#define LOAD_PACKET_LENGTH_CLOSE_BRANCH	3 /* action, addr, addr2 */
-#define LOAD_PACKET_LENGTH_MMAP_FILE	5 /* action, addr, length, prot, offset */
-#define LOAD_PACKET_LENGTH_MMAP_ANON	4 /* action, addr, length, prot, */
-#define LOAD_PACKET_LENGTH_CLEAR	3 /* action, addr, length */
+	union {
+		struct {
+			word_t string_address;
+		} open;
+		struct {
+			word_t addr;
+			word_t length;
+			word_t prot;
+			word_t offset;
+			word_t clear_length;
+		} mmap;
+		struct {
+			word_t stack_pointer;
+			word_t entry_point;
+		} start;
+	};
+} PACKED;
 
-#endif /* SCRIPT */
+typedef struct load_statement LoadStatement;
+
+#define LOAD_STATEMENT_SIZE(statement, type) \
+	(sizeof((statement).action) + sizeof((statement).type))
+
+/* Don't use enum, since sizeof(enum) doesn't have to be equal to
+ * sizeof(word_t).  Keep values in the same order as their respective
+ * actions appear in loader.c to get a change GCC produces a jump
+ * table.  */
+#define LOAD_ACTION_OPEN_NEXT	0
+#define LOAD_ACTION_OPEN	1
+#define LOAD_ACTION_MMAP_FILE	2
+#define LOAD_ACTION_MMAP_ANON	3
+#define LOAD_ACTION_START	4
+
+#endif

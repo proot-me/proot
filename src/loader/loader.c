@@ -5,6 +5,8 @@
 #include <sys/mman.h>    /* MAP_*, */
 #include <strings.h>     /* bzero(3), */
 
+typedef unsigned long word_t;
+
 #include "loader/script.h"
 
 /* TODO: set all registers to 0.  */
@@ -58,72 +60,67 @@
 		  "irm" (arg3), "irm" (arg4), "irm" (arg5), "irm" (arg6) \
 		: "cc", "rcx", "r11", "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9")
 
-typedef unsigned long word_t;
-
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
 
 /***********************************************************************/
 
 /* Note: this is optimized both for speed and for memory
  * footprint.  */
-void _start(word_t *cursor)
+void _start(void *cursor)
 {
 	word_t status;
 	word_t fd = -1;
 
 	while(1) {
-#define action LOAD_PACKET_ACTION(cursor)
-#define addr   LOAD_PACKET_ADDR(cursor)
-#define addr2  LOAD_PACKET_LENGTH(cursor)
-#define length LOAD_PACKET_LENGTH(cursor)
-#define prot   LOAD_PACKET_PROT(cursor)
-#define offset LOAD_PACKET_OFFSET(cursor)
+		LoadStatement *stmt = cursor;
 
-		switch (action) {
-		case LOAD_ACTION_CLOSE_OPEN:
+		switch (stmt->action) {
+		case LOAD_ACTION_OPEN_NEXT:
 			SC1(status, SYS_close, fd);
 			if (unlikely((int) status < 0))
 				ERROR();
 			/* Fall through.  */
+
 		case LOAD_ACTION_OPEN:
-			SC3(fd, SYS_open, addr, O_RDONLY, 0);
+			SC3(fd, SYS_open, stmt->open.string_address, O_RDONLY, 0);
 			if (unlikely((int) fd < 0))
 				ERROR();
 
-			cursor += LOAD_PACKET_LENGTH_OPEN;
+			cursor += LOAD_STATEMENT_SIZE(*stmt, open);
 			break;
 
-		case LOAD_ACTION_CLOSE_BRANCH:
+		case LOAD_ACTION_MMAP_FILE:
+			SC6(status, SYS_mmap, stmt->mmap.addr, stmt->mmap.length,
+				stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED, fd, stmt->mmap.offset);
+			if (unlikely(status != stmt->mmap.addr))
+				ERROR();
+
+			if (stmt->mmap.clear_length != 0) {
+				bzero((void *) (stmt->mmap.addr
+						+ stmt->mmap.length
+						- stmt->mmap.clear_length),
+					stmt->mmap.clear_length);
+			}
+
+			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
+			break;
+
+		case LOAD_ACTION_MMAP_ANON:
+			SC6(status, SYS_mmap, stmt->mmap.addr, stmt->mmap.length,
+				stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+			if (unlikely(status != stmt->mmap.addr))
+				ERROR();
+
+			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
+			break;
+
+		case LOAD_ACTION_START:
 			SC1(status, SYS_close, fd);
 			if (unlikely((int) status < 0))
 				ERROR();
 
-			BRANCH(addr, addr2);
-
-			ERROR(); /* Never reached.  */
-
-		case LOAD_ACTION_MMAP_FILE:
-			SC6(status, SYS_mmap, addr, length, prot,
-				MAP_PRIVATE | MAP_FIXED, fd, offset);
-			if (unlikely(status != addr))
-				ERROR();
-
-			cursor += LOAD_PACKET_LENGTH_MMAP_FILE;
-			break;
-
-		case LOAD_ACTION_MMAP_ANON:
-			SC6(status, SYS_mmap, addr, length, prot,
-				MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
-			if (unlikely(status != addr))
-				ERROR();
-
-			cursor += LOAD_PACKET_LENGTH_MMAP_ANON;
-			break;
-
-		case LOAD_ACTION_CLEAR:
-			bzero((void *) addr, length);
-			cursor += LOAD_PACKET_LENGTH_CLEAR;
-			break;
+			BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
+			/* Fall through.  */
 
 		default:
 			ERROR(); /* Never reached.  */
