@@ -310,7 +310,7 @@ static void add_load_base(LoadInfo *load_info, word_t load_base)
 static void compute_load_addresses(Tracee *tracee)
 {
 	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header))
-		add_load_base(tracee->load_info, 0x400000);
+		add_load_base(tracee->load_info, 0x555555554000);
 
 	/* Nothing more to do?  */
 	if (tracee->load_info->interp == NULL)
