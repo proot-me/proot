@@ -205,23 +205,53 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 
 #undef P
 
+struct add_load_info_data {
+	LoadInfo *load_info;
+	Tracee *tracee;
+	int fd;
+};
+
+/**
+ * This function is a program header iterator.  It invokes
+ * add_mapping() or add_interp(), according to the type of
+ * @program_header.  This function returns -errno if an error
+ * occurred, otherwise 0.
+ */
+static int add_load_info(const ElfHeader *elf_header,
+			const ProgramHeader *program_header, void *data_)
+{
+	struct add_load_info_data *data = data_;
+	int status;
+
+	switch (PROGRAM_FIELD(*elf_header, *program_header, type)) {
+	case PT_LOAD:
+		status = add_mapping(data->tracee, data->load_info, program_header);
+		if (status < 0)
+			return status;
+		break;
+
+	case PT_INTERP:
+		status = add_interp(data->tracee, data->fd, data->load_info, program_header);
+		if (status < 0)
+			return status;
+		break;
+
+	default:
+		break;
+	}
+
+	return 0;
+}
+
 /**
  * Extract the load info from @load->host_path.  This function returns
  * -errno if an error occured, otherwise it returns 0.
- *
- * TODO: factorize with find_program_header()
  */
 static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 {
-	ProgramHeader program_header;
-
-	uint64_t elf_phoff;
-	uint16_t elf_phentsize;
-	uint16_t elf_phnum;
-
-	int fd = 1;
+	struct add_load_info_data data;
+	int fd = -1;
 	int status;
-	int i;
 
 	assert(load_info != NULL);
 	assert(load_info->host_path != NULL);
@@ -241,65 +271,11 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 		goto end;
 	}
 
-	/* Get class-specific fields. */
-	elf_phnum     = ELF_FIELD(load_info->elf_header, phnum);
-	elf_phentsize = ELF_FIELD(load_info->elf_header, phentsize);
-	elf_phoff     = ELF_FIELD(load_info->elf_header, phoff);
+	data.load_info = load_info;
+	data.tracee    = tracee;
+	data.fd        = fd;
 
-	/*
-	 * Some sanity checks regarding the current
-	 * support of the ELF specification in PRoot.
-	 */
-
-	if (elf_phnum >= 0xffff) {
-		notice(tracee, WARNING, INTERNAL, "big PH tables are not yet supported.");
-		status = -ENOTSUP;
-		goto end;
-	}
-
-	if (!KNOWN_PHENTSIZE(load_info->elf_header, elf_phentsize)) {
-		notice(tracee, WARNING, INTERNAL, "unsupported size of program header.");
-		status = -ENOTSUP;
-		goto end;
-	}
-
-	/*
-	 * Search the first entry of the requested type into the
-	 * program header table.
-	 */
-
-	status = (int) lseek(fd, elf_phoff, SEEK_SET);
-	if (status < 0) {
-		status = -errno;
-		goto end;
-	}
-
-	for (i = 0; i < elf_phnum; i++) {
-		status = read(fd, &program_header, elf_phentsize);
-		if (status != elf_phentsize) {
-			status = (status < 0 ? -errno : -ENOTSUP);
-			goto end;
-		}
-
-		switch (PROGRAM_FIELD(load_info->elf_header, program_header, type)) {
-		case PT_LOAD:
-			status = add_mapping(tracee, load_info, &program_header);
-			if (status < 0)
-				goto end;
-			break;
-
-		case PT_INTERP:
-			status = add_interp(tracee, fd, load_info, &program_header);
-			if (status < 0)
-				goto end;
-			break;
-
-		default:
-			break;
-		}
-	}
-
-	status = 0;
+	status = iterate_program_headers(tracee, fd, &load_info->elf_header, add_load_info, &data);
 end:
 	if (fd >= 0)
 		close(fd);

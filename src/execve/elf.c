@@ -25,9 +25,8 @@
 #include <errno.h>  /* EACCES, ENOTSUP, */
 #include <stdint.h> /* UINT64_MAX, */
 #include <limits.h> /* PATH_MAX, */
-#include <string.h> /* strnlen(3), strcat(3), strcpy(3), */
+#include <string.h> /* str*(3), memcpy(3), */
 #include <assert.h> /* assert(3), */
-#include <string.h> /* strnlen(3), */
 #include <talloc.h> /* talloc_*, */
 #include <stdbool.h> /* bool, true, false,  */
 
@@ -90,15 +89,16 @@ end:
 }
 
 /**
- * Find in the file referenced by @fd -- which has the provided
- * @elf_header -- the first @program_header of a given @type and
- * loaded at the given @address (-1 for wherever).  This function
- * returns -errno if an error occured, 1 if the program header was
- * found, otherwise 0.
+ * Invoke @callback(..., @data) for each program headers from the
+ * specified ELF file (referenced by @fd, with the given @elf_header).
+ * This function returns -errno if an error occured, or it returns
+ * immediately the value != 0 returned by @callback, otherwise 0.
  */
-static int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_header,
-			ProgramHeader *program_header, SegmentType type, uint64_t address)
+int iterate_program_headers(const Tracee *tracee, int fd, const ElfHeader *elf_header,
+			program_headers_iterator_t callback, void *data)
 {
+	ProgramHeader program_header;
+
 	uint64_t elf_phoff;
 	uint16_t elf_phentsize;
 	uint16_t elf_phnum;
@@ -126,35 +126,18 @@ static int find_program_header(const Tracee *tracee, int fd, const ElfHeader *el
 		return -ENOTSUP;
 	}
 
-	/*
-	 * Search the first entry of the requested type into the
-	 * program header table.
-	 */
-
 	status = (int) lseek(fd, elf_phoff, SEEK_SET);
 	if (status < 0)
 		return -errno;
 
 	for (i = 0; i < elf_phnum; i++) {
-		status = read(fd, program_header, elf_phentsize);
+		status = read(fd, &program_header, elf_phentsize);
 		if (status != elf_phentsize)
 			return (status < 0 ? -errno : -ENOTSUP);
 
-		if (PROGRAM_FIELD(*elf_header, *program_header, type) == type) {
-			uint64_t start;
-			uint64_t end;
-
-			if (address == (uint64_t) -1)
-				return 1;
-
-			start = PROGRAM_FIELD(*elf_header, *program_header, vaddr);
-			end   = start + PROGRAM_FIELD(*elf_header, *program_header, memsz);
-
-			if (start < end
-			    && address >= start
-			    && address <= end)
-				return 1;
-		}
+		status = callback(elf_header, &program_header, data);
+		if (status != 0)
+			return status;
 	}
 
 	return 0;
@@ -192,169 +175,4 @@ bool is_host_elf(const Tracee *tracee, const char *host_path)
 	}
 
 	return false;
-}
-
-/**
- * Add to @xpaths the paths (':'-separated list) from the file
- * referenced by @fd at the given @offset.  This function returns
- * -errno if an error occured, otherwise 0.
- */
-static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpaths)
-{
-	char *paths = NULL;
-	char *tmp;
-
-	size_t length;
-	size_t size;
-	int status;
-
-	status = (int) lseek(fd, offset, SEEK_SET);
-	if (status < 0)
-		return -errno;
-
-	/* Read the complete list of paths.  */
-	length = 0;
-	paths = NULL;
-	do {
-		size = length + 1024;
-
-		tmp = talloc_realloc(tracee->ctx, paths, char, size);
-		if (!tmp)
-			return -ENOMEM;
-		paths = tmp;
-
-		status = read(fd, paths + length, 1024);
-		if (status < 0)
-			return status;
-
-		length += strnlen(paths + length, 1024);
-	} while (length == size);
-
-	/* Concatene this list of paths to xpaths.  */
-	if (!*xpaths) {
-		*xpaths = talloc_array(tracee->ctx, char, length + 1);
-		if (!*xpaths)
-			return -ENOMEM;
-
-		strcpy(*xpaths, paths);
-	}
-	else {
-		length += strlen(*xpaths);
-		length++; /* ":" separator */
-
-		tmp = talloc_realloc(tracee->ctx, *xpaths, char, length + 1);
-		if (!tmp)
-			return -ENOMEM;
-		*xpaths = tmp;
-
-		strcat(*xpaths, ":");
-		strcat(*xpaths, paths);
-	}
-
-	/* I don't know if DT_R*PATH entries are unique.  In
-	 * doubt I support multiple entries.  */
-	return 0;
-}
-
-/**
- * Put the RPATH and RUNPATH dynamic entries from the file referenced
- * by @fd -- which has the provided @elf_header -- in @rpaths and
- * @runpaths respectively.  This function returns -errno if an error
- * occured, otherwise 0.
- */
-int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_header,
-		char **rpaths, char **runpaths)
-{
-	ProgramHeader dynamic_segment;
-	ProgramHeader strtab_segment;
-	uint64_t strtab_address = (uint64_t) -1;
-	off_t strtab_offset;
-	int status;
-	size_t i;
-
-	uint64_t offsetof_dynamic_segment;
-	uint64_t sizeof_dynamic_segment;
-	size_t sizeof_dynamic_entry;
-
-	status = find_program_header(tracee, fd, elf_header, &dynamic_segment, PT_DYNAMIC, (uint64_t) -1);
-	if (status <= 0)
-		return status;
-
-	offsetof_dynamic_segment = PROGRAM_FIELD(*elf_header, dynamic_segment, offset);
-	sizeof_dynamic_segment   = PROGRAM_FIELD(*elf_header, dynamic_segment, filesz);
-
-	if (IS_CLASS32(*elf_header))
-		sizeof_dynamic_entry = sizeof(DynamicEntry32);
-	else
-		sizeof_dynamic_entry = sizeof(DynamicEntry64);
-
-	if (sizeof_dynamic_segment % sizeof_dynamic_entry != 0)
-		return -ENOEXEC;
-
-/**
- * Invoke @embedded_code on each dynamic entry of the given @type.
- */
-#define FOREACH_DYNAMIC_ENTRY(type, embedded_code)					\
-	for (i = 0; i < sizeof_dynamic_segment / sizeof_dynamic_entry; i++) {		\
-		DynamicEntry dynamic_entry;						\
-		uint64_t value;								\
-											\
-		/* callback() may change the file offset.  */				\
-		status = (int) lseek(fd, offsetof_dynamic_segment + i * sizeof_dynamic_entry, SEEK_SET);	\
-		if (status < 0)								\
-			return -errno;							\
-											\
-		status = read(fd, &dynamic_entry, sizeof_dynamic_entry);		\
-		if (status < 0)								\
-			return status;							\
-											\
-		if (DYNAMIC_FIELD(*elf_header, dynamic_entry, tag) != type)		\
-			continue;							\
-											\
-		value =	DYNAMIC_FIELD(*elf_header, dynamic_entry, val);			\
-											\
-		embedded_code								\
-	}
-
-	/* Get the address of the *first* string table.  The ELF
-	 * specification doesn't mention if it may have several string
-	 * table references.  */
-	FOREACH_DYNAMIC_ENTRY(DT_STRTAB, {
-		strtab_address = value;
-		break;
-	})
-
-	if (strtab_address == (uint64_t) -1)
-		return 0;
-
-	/* Search the program header that contains the given string table.  */
-	status = find_program_header(tracee, fd, elf_header, &strtab_segment,
-				PT_LOAD, strtab_address);
-	if (status < 0)
-		return status;
-
-	strtab_offset = PROGRAM_FIELD(*elf_header, strtab_segment, offset)
-		+ (strtab_address - PROGRAM_FIELD(*elf_header, strtab_segment, vaddr));
-
-	FOREACH_DYNAMIC_ENTRY(DT_RPATH,	{
-		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - value)
-			return -ENOEXEC;
-
-		status = add_xpaths(tracee, fd, strtab_offset + value, rpaths);
-		if (status < 0)
-			return status;
-	})
-
-	FOREACH_DYNAMIC_ENTRY(DT_RUNPATH, {
-		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - value)
-			return -ENOEXEC;
-
-		status = add_xpaths(tracee, fd, strtab_offset + value, runpaths);
-		if (status < 0)
-			return status;
-	})
-
-#undef FOREACH_DYNAMIC_ENTRY
-
-	return 0;
 }
