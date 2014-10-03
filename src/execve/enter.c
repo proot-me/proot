@@ -183,6 +183,16 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 
 	user_path[P(filesz)] = '\0';
 
+	/* When a QEMU command was specified:
+	 *
+	 * - if it's a foreign binary we are reading the ELF
+	 *   interpreter of QEMU instead.
+	 *
+	 * - if it's a host binary, we are reading its ELF
+	 *   interpreter.
+	 *
+	 * In both case, it lies in "/host-rootfs" from a guest
+	 * point-of-view.  */
 	if (tracee->qemu != NULL && user_path[0] == '/') {
 		user_path = talloc_asprintf(tracee->ctx, "%s%s", HOST_ROOTFS, user_path);
 		if (user_path == NULL)
@@ -324,11 +334,12 @@ static void compute_load_addresses(Tracee *tracee)
 /**
  * Expand in argv[] and envp[] the runner for @user_path, if needed.
  * This function returns -errno if an error occurred, otherwise 0.  On
- * success, @host_path points to the program to execute, and both
+ * success, both @host_path and @user_path point to the program to
+ * execute (respectively from host and guest point-of-views), and both
  * @tracee's argv[] (pointed to by SYSARG_2) @tracee's envp[] (pointed
  * to by SYSARG_3) are correctly updated.
  */
-int expand_runner(Tracee* tracee, char host_path[PATH_MAX], const char *user_path)
+static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
 {
 	ArrayOfXPointers *envp;
 	char *argv0;
@@ -400,8 +411,13 @@ int expand_runner(Tracee* tracee, char host_path[PATH_MAX], const char *user_pat
 
 		/* Launch the runner in lieu of the initial
 		 * program. */
-		assert(strlen(tracee->qemu[0]) < PATH_MAX);
+		assert(strlen(tracee->qemu[0]) + strlen(HOST_ROOTFS) < PATH_MAX);
+		assert(tracee->qemu[0][0] == '/');
+
 		strcpy(host_path, tracee->qemu[0]);
+
+		strcpy(user_path, HOST_ROOTFS);
+		strcat(user_path, host_path);
 	}
 
 	/* Provide information to the host dynamic linker to find host
