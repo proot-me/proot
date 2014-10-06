@@ -35,6 +35,5 @@ extern word_t get_elf_aux_vectors_address(const Tracee *tracee);
 extern ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address);
 extern int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value);
 extern int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t address);
-extern int bind_proc_pid_auxv(const Tracee *tracee, ElfAuxVector *vectors);
 
 #endif /* AUXV */

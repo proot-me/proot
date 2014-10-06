@@ -29,13 +29,10 @@
 #include <fcntl.h>         /* open(2), */
 
 #include "execve/auxv.h"
-#include "execve/elf.h"
-#include "extension/extension.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
 #include "tracee/mem.h"
-#include "path/binding.h"
-#include "path/temp.h"
+#include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "cli/notice.h"
 #include "arch.h"
@@ -172,95 +169,6 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
 			return -errno;
 		address += sizeof_word(tracee);
 	}
-
-	return 0;
-}
-
-/**********************************************************************
- * Note: So far, the content of this file below is only required to
- * make GDB work correctly under PRoot.  However, it deserves to be
- * used unconditionally in execve sysexit.
- **********************************************************************/
-
-/**
- * Fill @path with the content of @vectors, formatted according to
- * @ptracee's current ABI.
- */
-static int fill_file_with_auxv(const Tracee *ptracee, const char *path,
-			const ElfAuxVector *vectors)
-{
-	const ssize_t current_sizeof_word = sizeof_word(ptracee);
-	ssize_t status;
-	int fd = -1;
-	int i;
-
-	fd = open(path, O_WRONLY);
-	if (fd < 0)
-		return -1;
-
-	i = 0;
-	do {
-		status = write(fd, &vectors[i].type, current_sizeof_word);
-		if (status < current_sizeof_word) {
-			status = -1;
-			goto end;
-		}
-
-		status = write(fd, &vectors[i].value, current_sizeof_word);
-		if (status < current_sizeof_word) {
-			status = -1;
-			goto end;
-		}
-	} while (vectors[i++].type != AT_NULL);
-
-	status = 0;
-end:
-	if (fd >= 0)
-		(void) close(fd);
-
-	return status;
-}
-
-/**
- * Bind content of @vectors over /proc/{@ptracee->pid}/auxv.  This
- * function returns -1 if an error occurred, otherwise 0.
- */
-int bind_proc_pid_auxv(const Tracee *ptracee, ElfAuxVector *vectors)
-{
-	const char *guest_path;
-	const char *host_path;
-	Binding *binding;
-	int status;
-
-	/* Path to these ELF auxiliary vectors.  */
-	guest_path = talloc_asprintf(ptracee->ctx, "/proc/%d/auxv", ptracee->pid);
-	if (guest_path == NULL)
-		return -1;
-
-	/* Remove binding to this path, if any.  It contains ELF
-	 * auxiliary vectors of the previous execve(2).  */
-	binding = get_binding(ptracee, GUEST, guest_path);
-	if (binding != NULL && compare_paths(binding->guest.path, guest_path) == PATHS_ARE_EQUAL) {
-		remove_binding_from_all_lists(ptracee, binding);
-		TALLOC_FREE(binding);
-	}
-
-	host_path = create_temp_file(ptracee, "auxv");
-	if (host_path == NULL)
-		return -1;
-
-	status = fill_file_with_auxv(ptracee, host_path, vectors);
-	if (status < 0)
-		return -1;
-
-	/* Note: this binding will be removed once ptracee gets freed.  */
-	binding = insort_binding3(ptracee, ptracee->life_context, host_path, guest_path);
-	if (binding == NULL)
-		return -1;
-
-	/* This temporary file (host_path) will be removed once the
-	 * binding is freed.  */
-	talloc_reparent(ptracee->ctx, binding, host_path);
 
 	return 0;
 }
