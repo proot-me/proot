@@ -141,7 +141,7 @@ static int transfer_load_script(Tracee *tracee)
 	if (tracee->load_info->interp != NULL) {
 		/* Load script statement: open.  */
 		statement = cursor;
-		statement->action = LOAD_ACTION_OPEN;
+		statement->action = LOAD_ACTION_OPEN_NEXT;
 		statement->open.string_address = string2_address;
 
 		cursor += LOAD_STATEMENT_SIZE(*statement, open);
