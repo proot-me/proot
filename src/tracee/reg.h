@@ -37,6 +37,8 @@ typedef enum {
 	SYSARG_RESULT,
 	STACK_POINTER,
 	INSTR_POINTER,
+	RTLD_FINI,
+	STATE_FLAGS,
 } Reg;
 
 extern int fetch_regs(Tracee *tracee);

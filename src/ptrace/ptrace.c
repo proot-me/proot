@@ -122,7 +122,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		add_direct_ptracee(ptracer, ptracee->pid);
 
 		/* Detect when the ptracer has gone to wait before the
-		 * ptracee has did the ptrace(ATTACHME) request.  */
+		 * ptracee did the ptrace(ATTACHME) request.  */
 		if (PTRACER.waits_in == WAITS_IN_KERNEL) {
 			status = kill(ptracer->pid, SIGSTOP);
 			if (status < 0)

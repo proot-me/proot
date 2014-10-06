@@ -3,7 +3,7 @@
 #include <sys/syscall.h> /* SYS_*, */
 #include <fcntl.h>       /* O_*, */
 #include <sys/mman.h>    /* MAP_*, */
-#include <strings.h>     /* bzero(3), */
+#include <string.h>      /* memset(3), */
 #include <stdbool.h>     /* bool, true, false,  */
 #include <linux/auxvec.h>  /* AT_*,  */
 
@@ -88,6 +88,7 @@ typedef unsigned long word_t;
  * footprint.  */
 void _start(void *cursor)
 {
+	bool traced = false;
 	bool reset_at_base = true;
 	word_t at_base = 0;
 
@@ -121,10 +122,10 @@ void _start(void *cursor)
 				ERROR();
 
 			if (stmt->mmap.clear_length != 0) {
-				bzero((void *) (stmt->mmap.addr
+				memset((void *) (stmt->mmap.addr
 						+ stmt->mmap.length
 						- stmt->mmap.clear_length),
-					stmt->mmap.clear_length);
+					0, stmt->mmap.clear_length);
 			}
 
 			if (reset_at_base) {
@@ -144,10 +145,14 @@ void _start(void *cursor)
 			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
 			break;
 
+		case LOAD_ACTION_START_TRACED:
+			traced = true;
+			/* Fall through.  */
+
 		case LOAD_ACTION_START: {
-			word_t *cursor = (word_t *) stmt->start.stack_pointer;
-			const word_t argc = cursor[0];
-			const word_t at_execfn = cursor[1];
+			word_t *cursor2 = (word_t *) stmt->start.stack_pointer;
+			const word_t argc = cursor2[0];
+			const word_t at_execfn = cursor2[1];
 
 			SC1(status, SYS_close, fd);
 			if (unlikely((int) status < 0))
@@ -161,46 +166,51 @@ void _start(void *cursor)
 			 */
 
 			/* Skip argv[].  */
-			cursor += argc + 1;
+			cursor2 += argc + 1;
 
 			/* Skip envp[].  */
-			do cursor++; while (cursor[0] != 0);
-			cursor++;
+			do cursor2++; while (cursor2[0] != 0);
+			cursor2++;
 
 			/* Adjust auxv[].  */
 			do {
-				switch (cursor[0]) {
+				switch (cursor2[0]) {
 				case AT_PHDR:
-					cursor[1] = stmt->start.at_phdr;
+					cursor2[1] = stmt->start.at_phdr;
 					break;
 
 				case AT_PHENT:
-					cursor[1] = stmt->start.at_phent;
+					cursor2[1] = stmt->start.at_phent;
 					break;
 
 				case AT_PHNUM:
-					cursor[1] = stmt->start.at_phnum;
+					cursor2[1] = stmt->start.at_phnum;
 					break;
 
 				case AT_ENTRY:
-					cursor[1] = stmt->start.at_entry;
+					cursor2[1] = stmt->start.at_entry;
 					break;
 
 				case AT_BASE:
-					cursor[1] = at_base;
+					cursor2[1] = at_base;
 					break;
 
 				case AT_EXECFN:
-					cursor[1] = at_execfn;
+					cursor2[1] = at_execfn;
 					break;
 
 				default:
 					break;
 				}
-				cursor += 2;
-			} while (cursor[0] != AT_NULL);
+				cursor2 += 2;
+			} while (cursor2[0] != AT_NULL);
 
-			BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
+			if (unlikely(traced))
+				SC6(status, SYS_execve, -1,
+					stmt->start.stack_pointer,
+					stmt->start.entry_point, -2, -3, -4);
+			else
+				BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
 			/* Fall through.  */
 		}
 

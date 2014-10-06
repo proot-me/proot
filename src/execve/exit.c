@@ -156,7 +156,13 @@ static int transfer_load_script(Tracee *tracee)
 
 	/* Load script statement: start.  */
 	statement = cursor;
-	statement->action = LOAD_ACTION_START;
+
+	/* Start of the program slightly differs when ptraced.  */
+	if (tracee->as_ptracee.ptracer != NULL)
+		statement->action = LOAD_ACTION_START_TRACED;
+	else
+		statement->action = LOAD_ACTION_START;
+
 	statement->start.stack_pointer = stack_pointer;
 	statement->start.entry_point   = entry_point;
 	statement->start.at_phent = ELF_FIELD(tracee->load_info->elf_header, phentsize);
@@ -239,6 +245,31 @@ int translate_execve_exit(Tracee *tracee)
 {
 	word_t syscall_result;
 	int status;
+
+	if (IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee)) {
+		/* According to most ABIs, all registers have
+		 * undefined values at program startup except:
+		 *
+		 * - the stack pointer
+		 * - the instruction pointer
+		 * - the rtld_fini pointer
+		 * - the state flags
+		 */
+		poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, SYSARG_2));
+		poke_reg(tracee, INSTR_POINTER, peek_reg(tracee, ORIGINAL, SYSARG_3));
+		poke_reg(tracee, RTLD_FINI, 0);
+		poke_reg(tracee, STATE_FLAGS, 0);
+
+		/* Be sure to not confuse the ptracer with an
+		 * unexpected errno.  */
+		poke_reg(tracee, SYSARG_RESULT, 0);
+
+		/* Restore registers with their current values.  */
+		save_current_regs(tracee, ORIGINAL);
+		tracee->_regs_were_changed = true;
+
+		return 0;
+	}
 
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	if ((int) syscall_result < 0)

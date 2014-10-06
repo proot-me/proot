@@ -68,6 +68,8 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
+	[RTLD_FINI]     = USER_REGS_OFFSET(rdx),
+	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
     };
 
     static off_t reg_offset_x86[] = {
@@ -81,6 +83,8 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
+	[RTLD_FINI]     = USER_REGS_OFFSET(rdx),
+	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
     };
 
     #undef  REG
@@ -135,6 +139,8 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(eax),
 	[STACK_POINTER] = USER_REGS_OFFSET(esp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(eip),
+	[RTLD_FINI]     = USER_REGS_OFFSET(edx),
+	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
     };
 
 #elif defined(ARCH_SH4)
@@ -150,6 +156,7 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(regs[15]),
 	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
+	[RTLD_FINI]     = USER_REGS_OFFSET(r4),
     };
 
 #else

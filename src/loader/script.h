@@ -61,10 +61,11 @@ typedef struct load_statement LoadStatement;
  * sizeof(word_t).  Keep values in the same order as their respective
  * actions appear in loader.c to get a change GCC produces a jump
  * table.  */
-#define LOAD_ACTION_OPEN_NEXT	0
-#define LOAD_ACTION_OPEN	1
-#define LOAD_ACTION_MMAP_FILE	2
-#define LOAD_ACTION_MMAP_ANON	3
-#define LOAD_ACTION_START	4
+#define LOAD_ACTION_OPEN_NEXT		0
+#define LOAD_ACTION_OPEN		1
+#define LOAD_ACTION_MMAP_FILE		2
+#define LOAD_ACTION_MMAP_ANON		3
+#define LOAD_ACTION_START_TRACED	4
+#define LOAD_ACTION_START		5
 
 #endif /* SCRIPT */

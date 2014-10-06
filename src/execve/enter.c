@@ -38,6 +38,7 @@
 #include "path/path.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
+#include "syscall/sysnum.h"
 #include "cli/notice.h"
 
 
@@ -427,6 +428,16 @@ int translate_execve_enter(Tracee *tracee)
 	char user_path[PATH_MAX];
 	char host_path[PATH_MAX];
 	int status;
+
+	if (IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee)) {
+		/* Syscalls can now be reported to its ptracer.  */
+		tracee->as_ptracee.ignore_loader_syscalls = false;
+
+		/* Cancel this spurious execve, it was only used as a
+		 * notification.  */
+		set_sysnum(tracee, PR_void);
+		return 0;
+	}
 
 	status = get_sysarg_path(tracee, user_path, SYSARG_1);
 	if (status < 0)
