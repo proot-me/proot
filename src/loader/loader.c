@@ -11,12 +11,30 @@ typedef unsigned long word_t;
 
 #include "loader/script.h"
 
-/* TODO: set all registers to 0.  */
+/* According to the x86_64 ABI, all registers have undefined values at
+ * program startup except:
+ *
+ * - the instruction pointer (rip)
+ * - the stack pointer (rsp)
+ * - the rtld_fini pointer (rdx)
+ * - the system flags (rflags)
+ */
 #define BRANCH(stack_pointer, destination)			\
 	asm volatile (						\
-		"movq %0, %%rsp		\n\t"			\
-		"jmpq *%1		\n"			\
-		: : "irm" (stack_pointer), "irm" (destination) )
+		"// Restore initial stack pointer.	\n\t"	\
+		"movq %0, %%rsp				\n\t"	\
+		"                      			\n\t"	\
+		"// Clear state flags.			\n\t"	\
+		"pushq $0				\n\t"	\
+		"popfq					\n\t"	\
+		"                      			\n\t"	\
+		"// Clear rtld_fini.			\n\t"	\
+		"movq $0, %%rdx				\n\t"	\
+		"                      			\n\t"	\
+		"// Start the program.			\n\t"	\
+		"jmpq *%1				\n"	\
+		:						\
+		: "irm" (stack_pointer), "im" (destination) )
 
 #define ERROR()							\
 	asm volatile (						\
