@@ -236,9 +236,6 @@ typedef struct tracee {
 	/* Path to the executable, à la /proc/self/exe.  */
 	char *exe;
 
-	/* Initial command-line, à la /proc/self/cmdline.  */
-	char **cmdline;
-
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the (re-)configuration   *

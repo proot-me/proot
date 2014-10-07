@@ -385,7 +385,6 @@ int new_child(Tracee *parent, word_t clone_flags)
 	/* Sanity checks.  */
 	assert(child != NULL
 	    && child->exe == NULL
-	    && child->cmdline == NULL
 	    && child->fs->cwd == NULL
 	    && child->fs->bindings.pending == NULL
 	    && child->fs->bindings.guest == NULL
@@ -499,10 +498,9 @@ int new_child(Tracee *parent, word_t clone_flags)
 		child->fs->bindings.host  = talloc_reference(child->fs, parent->fs->bindings.host);
 	}
 
-	/* The path to the executable and the command-line are unshared only
-	 * once the child process does a call to execve(2).  */
+	/* The path to the executable is unshared only once the child
+	 * process does a call to execve(2).  */
 	child->exe = talloc_reference(child, parent->exe);
-	child->cmdline = talloc_reference(child, parent->cmdline);
 
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
@@ -556,7 +554,6 @@ static void reparent_config(Tracee *new_parent, Tracee *old_parent)
 
 	REPARENT(fs);
 	REPARENT(exe);
-	REPARENT(cmdline);
 	REPARENT(qemu);
 	REPARENT(glue);
 	REPARENT(extensions);

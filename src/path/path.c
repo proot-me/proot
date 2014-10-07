@@ -115,7 +115,7 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
  * (relatively to the @tracee's file-system name-space).  This
  * function always returns -1 on error, otherwise 0.
  */
-int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *const command)
+int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], const char *command)
 {
 	char path[PATH_MAX];
 	const char *cursor;

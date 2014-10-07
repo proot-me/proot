@@ -52,17 +52,17 @@ static char const *default_volatile_envars[] = {
 	NULL,
 };
 
-static int handle_option_o(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_c(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_r(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_p(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_e(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_m(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_d(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_x(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_o(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_c(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_r(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_e(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_d(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_x(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
 static int post_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);

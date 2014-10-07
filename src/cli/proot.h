@@ -44,21 +44,21 @@ static const char *recommended_su_bindings[] = {
 	NULL,
 };
 
-static int handle_option_r(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_b(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_q(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_w(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_k(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_0(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_R(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_S(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_r(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_b(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_q(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_w(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_k(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
-static int post_initialize_command(Tracee *, const Cli *, size_t, char *const *, size_t);
+static int post_initialize_exe(Tracee *, const Cli *, size_t, char *const *, size_t);
 
 static Cli proot_cli = {
 	.version  = VERSION,
@@ -74,7 +74,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 |__|  |__|__\\_____/\\_____/\\____|",
 
 	.pre_initialize_bindings = pre_initialize_bindings,
-	.post_initialize_command = post_initialize_command,
+	.post_initialize_exe = post_initialize_exe,
 
 	.options = {
 	{ .class = "Regular options",

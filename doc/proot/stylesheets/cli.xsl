@@ -177,7 +177,7 @@ static Cli proot_cli = {
   <xsl:template match="option_group" mode="handlers">
     <xsl:text>static int handle_option_</xsl:text>
     <xsl:value-of select="substring(option[1]/option_string, 2, 1)" />
-    <xsl:text>(Tracee *tracee, const Cli *cli, char *value);
+    <xsl:text>(Tracee *tracee, const Cli *cli, const char *value);
 </xsl:text>
   </xsl:template>
 

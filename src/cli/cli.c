@@ -149,7 +149,7 @@ static void print_error_separator(const Tracee *tracee, const Argument *argument
 			argument->name, argument->separator);
 }
 
-static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
+static void print_argv(const Tracee *tracee, const char *prompt, char *const argv[])
 {
 	char string[ARG_MAX] = "";
 	size_t i;
@@ -178,7 +178,7 @@ static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 	notice(tracee, INFO, USER, "%s", string);
 }
 
-static void print_config(Tracee *tracee)
+static void print_config(Tracee *tracee, char *const argv[])
 {
 	assert(tracee != NULL);
 
@@ -192,7 +192,7 @@ static void print_config(Tracee *tracee)
 		notice(tracee, INFO, USER, "glue rootfs = %s", tracee->glue);
 
 	notice(tracee, INFO, USER, "exe = %s", tracee->exe);
-	print_argv(tracee, "command", tracee->cmdline);
+	print_argv(tracee, "argv", argv);
 	print_argv(tracee, "qemu", tracee->qemu);
 	notice(tracee, INFO, USER, "initial cwd = %s", tracee->fs->cwd);
 	notice(tracee, INFO, USER, "verbose level = %d", tracee->verbose);
@@ -256,30 +256,15 @@ static int initialize_cwd(Tracee *tracee)
 }
 
 /**
- * Initialize @tracee->exe and @tracee->cmdline from @cmdline.
+ * Initialize @tracee->exe from @exe, i.e. canonicalize it from a
+ * guest point-of-view.
  */
-static int initialize_command(Tracee *tracee, char *const *cmdline)
+static int initialize_exe(Tracee *tracee, const char *exe)
 {
 	char path[PATH_MAX];
 	int status;
-	int i;
 
-	/* How many arguments?  */
-	for (i = 0; cmdline[i] != NULL; i++)
-		;
-
-	tracee->cmdline = talloc_zero_array(tracee, char *, i + 1);
-	if (tracee->cmdline == NULL) {
-		notice(tracee, ERROR, INTERNAL, "talloc_zero_array() failed");
-		return -1;
-	}
-	talloc_set_name_const(tracee->cmdline, "@cmdline");
-
-	for (i = 0; cmdline[i] != NULL; i++)
-		tracee->cmdline[i] = cmdline[i];
-
-	/* Resolve the full guest path to tracee->cmdline[0].  */
-	status = which(tracee, tracee->reconf.paths, path, tracee->cmdline[0]);
+	status = which(tracee, tracee->reconf.paths, path, exe ?: "/bin/sh");
 	if (status < 0)
 		return -1;
 
@@ -297,15 +282,15 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 
 /**
  * Configure @tracee according to the command-line arguments stored in
- * @argv[].  This function returns -1 if an error occured, otherwise
- * 0.
+ * @argv[].  This function returns the index in @argv[] of the command
+ * to launch, otherwise -1 if an error occured.
  */
-static int parse_config(Tracee *tracee, size_t argc, char *argv[])
+static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 {
-	char *const default_command[] = { "/bin/sh", NULL };
 	option_handler_t handler = NULL;
 	const Option *options;
 	const Cli *cli = NULL;
+	size_t argc_offset;
 	size_t i, j, k;
 	int status;
 
@@ -334,13 +319,13 @@ static int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	}
 
 	for (i = 1; i < argc; i++) {
-		char *arg = argv[i];
+		const char *arg = argv[i];
 
 		/* The current argument is the value of a short option.  */
 		if (handler != NULL) {
 			status = handler(tracee, cli, arg);
 			if (status < 0)
-				return status;
+				return -1;
 			handler = NULL;
 			continue;
 		}
@@ -412,6 +397,7 @@ static int parse_config(Tracee *tracee, size_t argc, char *argv[])
 			return -1;
 		}
 	}
+	argc_offset = i;
 
 #define HOOK_CONFIG(callback)						\
 	do {								\
@@ -442,26 +428,26 @@ static int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		return -1;
 
 	HOOK_CONFIG(post_initialize_cwd);
-	HOOK_CONFIG(pre_initialize_command);
+	HOOK_CONFIG(pre_initialize_exe);
 
 	/* Bindings are now installed and the current working
 	 * directory is canonicalized: resolve path to @tracee->exe
 	 * and configure @tracee->cmdline.  */
-	status = initialize_command(tracee, i < argc ? &argv[i] : default_command);
+	status = initialize_exe(tracee, argv[argc_offset]);
 	if (status < 0)
 		return -1;
 
-	HOOK_CONFIG(post_initialize_command);
+	HOOK_CONFIG(post_initialize_exe);
 #undef HOOK_CONFIG
 
-	print_config(tracee);
+	print_config(tracee, &argv[argc_offset]);
 
-	return 0;
+	return argc_offset;
 }
 
 bool exit_failure = true;
 
-int main(int argc, char *argv[])
+int main(int argc, char *const argv[])
 {
 	Tracee *tracee;
 	int status;
@@ -485,7 +471,7 @@ int main(int argc, char *argv[])
 		goto error;
 
 	/* Start the first tracee.  */
-	status = launch_process(tracee);
+	status = launch_process(tracee, &argv[status]);
 	if (status < 0) {
 		print_execve_help(tracee, tracee->exe, status);
 		goto error;

@@ -43,55 +43,55 @@
 #include "build.h"
 #include "cli/care.h"
 
-static int handle_option_o(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_o(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	options->output = value;
 	return 0;
 }
 
-static int handle_option_c(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_c(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->concealed_paths, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_r(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_r(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->revealed_paths, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_p(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_p(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->volatile_paths, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_e(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_e(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->volatile_envars, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_m(Tracee *tracee, const Cli *cli, char *value)
+static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	return parse_integer_option(tracee, &options->max_size, value, "-m");
 }
 
-static int handle_option_d(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
+static int handle_option_d(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	options->ignore_default_config = true;
 	return 0;
 }
 
-static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
+static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
 	int status;
 
@@ -106,7 +106,7 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 extern char WEAK _binary_licenses_start;
 extern char WEAK _binary_licenses_end;
 
-static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
+static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
 {
 	size_t size;
 
@@ -131,7 +131,7 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 	return -1;
 }
 
-static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *value)
+static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, const char *value)
 {
 	int status = extract_archive_from_file(value);
 	exit_failure = (status < 0);
@@ -141,7 +141,7 @@ static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *v
 extern char WEAK _binary_manual_start;
 extern char WEAK _binary_manual_end;
 
-static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *value UNUSED)
+static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, const char *value UNUSED)
 {
 	size_t size;
 
@@ -195,7 +195,7 @@ static Binding *new_concealing_binding(Tracee *tracee, const char *path, bool mu
  * that are not specifiable on the command line.
  */
 static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
-				size_t argc, char *const *argv, size_t cursor)
+				size_t argc, char *const argv[], size_t cursor)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	char path[PATH_MAX];
@@ -344,7 +344,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
  * Initialize CARE extensions.
  */
 static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
-				size_t argc UNUSED, char *const *argv UNUSED, size_t cursor)
+			       size_t argc UNUSED, char *const argv[] UNUSED, size_t cursor)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	int status;

@@ -48,11 +48,12 @@
 #include "compat.h"
 
 /**
- * Launch the first process as specified by @tracee->cmdline[].  This
- * function returns -errno if an error occurred, otherwise 0.
+ * Start @tracee->exe with the given @argv[].  This function
+ * returns -errno if an error occurred, otherwise 0.
  */
-int launch_process(Tracee *tracee)
+int launch_process(Tracee *tracee, char *const argv[])
 {
+	char *const default_argv[] = { "-", NULL };
 	long status;
 	pid_t pid;
 
@@ -92,7 +93,7 @@ int launch_process(Tracee *tracee)
 		 * guest rootfs.  Note: Valgrind can't handle execve(2) on
 		 * "foreign" binaries (ENOEXEC) but can handle execvp(3) on such
 		 * binaries.  */
-		execvp(tracee->exe, tracee->cmdline);
+		execvp(tracee->exe, argv[0] != NULL ? argv : default_argv);
 		return -errno;
 
 	default: /* parent */
