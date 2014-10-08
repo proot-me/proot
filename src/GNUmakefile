@@ -124,9 +124,9 @@ OBJIFY = $($(quiet)GEN)									\
 	objcopy										\
 		--input binary								\
 		--output `env LANG=C objdump -f cli/cli.o |				\
-			  perl -pe '/file format (.*)$$/; $$_ = $$1'`			\
+			grep 'file format' | awk '{print $$4}'`				\
 		--binary-architecture `env LANG=C objdump -f cli/cli.o |		\
-				       perl -pe '/architecture: (\w+).*/; $$_ = $$1'`	\
+				grep architecture | cut -f 1 -d , | awk '{print $$2}'`	\
 		$< $@
 
 proot: $(OBJECTS)
@@ -137,7 +137,7 @@ care: $(OBJECTS) $(CARE_OBJECTS)
 
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
-USE_BUILD_H := $(patsubst $(SRC)%,%,$(patsubst %.c,%.o,$(shell egrep -l 'include[[:space:]]+"build.h"' $(SRC)*/*.c)))
+USE_BUILD_H := $(patsubst $(SRC)%.c,%.o,$(shell egrep -sl 'include[[:space:]]+"build.h"' $(patsubst %.o,$(SRC)%.c,$(OBJECTS) $(CARE_OBJECTS))))
 $(USE_BUILD_H): build.h
 
 %.o: %.c
