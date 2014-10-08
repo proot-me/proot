@@ -595,33 +595,36 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 	if (vectors == NULL)
 		return;
 
-	/* Discard AT_SYSINFO* vectors: they can be used to get the OS
-	 * release number from memory instead of from the uname
-	 * syscall, and only this latter is currently hooked by
-	 * PRoot.  */
-	vector = find_elf_aux_vector(vectors, AT_SYSINFO_EHDR);
-	if (vector != NULL) {
-		vector->type  = AT_IGNORE;
-		vector->value = 0;
-	}
+	for (vector = vectors; vector->type != AT_NULL; vector++) {
+		switch (vector->type) {
+		/* Discard AT_SYSINFO* vectors: they can be used to
+		 * get the OS release number from memory instead of
+		 * from the uname syscall, and only this latter is
+		 * currently hooked by PRoot.  */
+		case AT_SYSINFO_EHDR:
+		case AT_SYSINFO:
+			vector->type  = AT_IGNORE;
+			vector->value = 0;
+			break;
 
-	vector = find_elf_aux_vector(vectors, AT_SYSINFO);
-	if (vector != NULL) {
-		vector->type  = AT_IGNORE;
-		vector->value = 0;
+		case AT_RANDOM:
+			/* Skip only if not in forced mode.  */
+			if (config->actual_release != 0)
+				goto end;
+			break;
+
+		default:
+			break;
+		}
 	}
 
 	/* Add the AT_RANDOM vector only if needed.  */
 	if (!needs_kompat(config, KERNEL_VERSION(2,6,29)))
 		goto end;
 
-	vector = find_elf_aux_vector(vectors, AT_RANDOM);
-	if (vector != NULL && config->actual_release != 0)
-		goto end;
-
 	status = add_elf_aux_vector(&vectors, AT_RANDOM, vectors_address);
 	if (status < 0)
-		return;
+		goto end; /* Not fatal.  */
 
 	/* Since a new vector needs to be added, the ELF auxiliary
 	 * vectors array can't be pushed in place.  As a consequence,
@@ -641,7 +644,8 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 	if (status < 0)
 		goto end;
 
-	stack_pointer -= 2 * sizeof_word(tracee);
+	stack_pointer   -= 2 * sizeof_word(tracee);
+	vectors_address -= 2 * sizeof_word(tracee);
 
 	status = write_data(tracee, stack_pointer, argv_envp, size);
 	if (status < 0)
@@ -650,8 +654,6 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 	/* The content of argv[] and env[] is now copied to its new
 	 * location; the stack pointer can be safely updated.  */
 	poke_reg(tracee, STACK_POINTER, stack_pointer);
-
-	vectors_address -= 2 * sizeof_word(tracee);
 end:
 	push_elf_aux_vectors(tracee, vectors, vectors_address);
 	return;
@@ -699,10 +701,6 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		return 0;
 
 	switch (sysnum) {
-	case PR_execve:
-		adjust_elf_auxv(tracee, config);
-		return 0;
-
 	case PR_uname: {
 		struct utsname utsname;
 		word_t address;
@@ -920,6 +918,19 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		Config *config = talloc_get_type_abort(extension->config, Config);
 
 		return handle_sysexit_end(tracee, config);
+	}
+
+	case SYSCALL_EXIT_START: {
+		Tracee *tracee = TRACEE(extension);
+		Config *config = talloc_get_type_abort(extension->config, Config);
+		word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);;
+		word_t sysnum = get_sysnum(tracee, ORIGINAL);
+
+		/* Note: this can be done only before PRoot pushes the
+		 * load script into tracee's stack.  */
+		if ((int) result >= 0 && sysnum == PR_execve)
+			adjust_elf_auxv(tracee, config);
+		return 0;
 	}
 
 	default:

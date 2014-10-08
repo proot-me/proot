@@ -25,7 +25,7 @@
 #include <sys/un.h>      /* struct sockaddr_un, */
 #include <linux/net.h>   /* SYS_*, */
 #include <fcntl.h>       /* AT_FDCWD, */
-#include <limits.h>     /* PATH_MAX, */
+#include <limits.h>      /* PATH_MAX, */
 
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
@@ -121,13 +121,7 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_execve:
-		status = translate_execve(tracee);
-
-		/* Something went wrong, restore ptracee's loading
-		 * state.  */
-		if (status < 0)
-			tracee->as_ptracee.is_load_pending = false;
-
+		status = translate_execve_enter(tracee);
 		break;
 
 	case PR_ptrace:

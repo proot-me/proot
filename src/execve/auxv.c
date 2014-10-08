@@ -32,9 +32,9 @@
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
 #include "tracee/mem.h"
-#include "path/binding.h"
-#include "path/temp.h"
+#include "tracee/reg.h"
 #include "tracee/abi.h"
+#include "cli/notice.h"
 #include "arch.h"
 
 /**
@@ -68,22 +68,6 @@ int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value)
 	(*vectors)[nb_vectors].value = 0;
 
 	return 0;
-}
-
-/**
- * Find in @vectors the first occurrence of the vector @type.  This
- * function returns the found vector or NULL.
- */
-ElfAuxVector *find_elf_aux_vector(ElfAuxVector *vectors, word_t type)
-{
-	int i;
-
-	for (i = 0; vectors[i].type != AT_NULL; i++) {
-		if (vectors[i].type == type)
-			return &vectors[i];
-	}
-
-	return NULL;
 }
 
 /**
@@ -185,146 +169,6 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
 			return -errno;
 		address += sizeof_word(tracee);
 	}
-
-	return 0;
-}
-
-/**********************************************************************
- * Note: So far, the content of this file below is only required to
- * make GDB work correctly under PRoot.  However, it deserves to be
- * used unconditionally in execve sysexit.
- **********************************************************************/
-
-/**
- * Fill @path with the content of @vectors, formatted according to
- * @ptracee's current ABI.
- */
-static int fill_file_with_auxv(const Tracee *ptracee, const char *path,
-			const ElfAuxVector *vectors)
-{
-	const ssize_t current_sizeof_word = sizeof_word(ptracee);
-	ssize_t status;
-	int fd = -1;
-	int i;
-
-	fd = open(path, O_WRONLY);
-	if (fd < 0)
-		return -1;
-
-	i = 0;
-	do {
-		status = write(fd, &vectors[i].type, current_sizeof_word);
-		if (status < current_sizeof_word) {
-			status = -1;
-			goto end;
-		}
-
-		status = write(fd, &vectors[i].value, current_sizeof_word);
-		if (status < current_sizeof_word) {
-			status = -1;
-			goto end;
-		}
-	} while (vectors[i++].type != AT_NULL);
-
-	status = 0;
-end:
-	if (fd >= 0)
-		(void) close(fd);
-
-	return status;
-}
-
-/**
- * Fix @tracee's ELF auxiliary vectors in place, ie. in its memory.
- * This function returns NULL if an error occurred, otherwise it
- * returns a pointer to the new vectors, in an ABI independent form
- * (the Talloc parent of this pointer is @tracee->ctx).
- */
-static ElfAuxVector *fix_elf_aux_vectors_in_mem(const Tracee *tracee)
-{
-	ElfAuxVector *vector_phdr;
-	ElfAuxVector *vector_base;
-	ElfAuxVector *vectors;
-	word_t address;
-	int status;
-
-	address = get_elf_aux_vectors_address(tracee);
-	if (address == 0)
-		return NULL;
-
-	vectors = fetch_elf_aux_vectors(tracee, address);
-	if (vectors == NULL)
-		return NULL;
-
-	vector_phdr = find_elf_aux_vector(vectors, AT_PHDR);
-	if (vector_phdr == NULL)
-		return vectors;
-
-	vector_base = find_elf_aux_vector(vectors, AT_BASE);
-	if (vector_base == NULL)
-		return vectors;
-
-	/* Hum... This trick always works but this should be done more
-	 * "scientifically".  */
-	vector_base->value = vector_phdr->value & ~0xFFF;
-
-	/* TODO: AT_PHDR and AT_ENTRY.  */
-
-	status = push_elf_aux_vectors(tracee, vectors, address);
-	if (status < 0)
-		return NULL;
-
-	return vectors;
-}
-
-/**
- * Fix ELF auxiliary vectors for the given @ptracee.  For information,
- * ELF auxiliary vectors have to be fixed because some of them are set
- * to unexpected values when the ELF interpreter is used as a loader
- * (AT_BASE for instance).  This function returns -1 if an error
- * occurred, otherwise 0.
- */
-int fix_elf_aux_vectors(const Tracee *ptracee)
-{
-	const ElfAuxVector *vectors;
-	const char *guest_path;
-	const char *host_path;
-	Binding *binding;
-	int status;
-
-	vectors = fix_elf_aux_vectors_in_mem(ptracee);
-	if (vectors == NULL)
-		return -1;
-
-	/* Path to these ELF auxiliary vectors.  */
-	guest_path = talloc_asprintf(ptracee->ctx, "/proc/%d/auxv", ptracee->pid);
-	if (guest_path == NULL)
-		return -1;
-
-	/* Remove binding to this path, if any.  It contains ELF
-	 * auxiliary vectors of the previous execve(2).  */
-	binding = get_binding(ptracee, GUEST, guest_path);
-	if (binding != NULL && compare_paths(binding->guest.path, guest_path) == PATHS_ARE_EQUAL) {
-		remove_binding_from_all_lists(ptracee, binding);
-		TALLOC_FREE(binding);
-	}
-
-	host_path = create_temp_file(ptracee, "auxv");
-	if (host_path == NULL)
-		return -1;
-
-	status = fill_file_with_auxv(ptracee, host_path, vectors);
-	if (status < 0)
-		return -1;
-
-	/* Note: this binding will be removed once ptracee gets freed.  */
-	binding = insort_binding3(ptracee, ptracee->life_context, host_path, guest_path);
-	if (binding == NULL)
-		return -1;
-
-	/* This temporary file (host_path) will be removed once the
-	 * binding is freed.  */
-	talloc_reparent(ptracee->ctx, binding, host_path);
 
 	return 0;
 }

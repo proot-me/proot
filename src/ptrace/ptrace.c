@@ -31,7 +31,7 @@
 
 #include "ptrace/ptrace.h"
 #include "ptrace/user.h"
-#include "ptrace/wait.h"
+#include "ptrace/direct_ptracee.h"
 #include "tracee/tracee.h"
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
@@ -122,7 +122,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		add_direct_ptracee(ptracer, ptracee->pid);
 
 		/* Detect when the ptracer has gone to wait before the
-		 * ptracee has did the ptrace(ATTACHME) request.  */
+		 * ptracee did the ptrace(ATTACHME) request.  */
 		if (PTRACER.waits_in == WAITS_IN_KERNEL) {
 			status = kill(ptracer->pid, SIGSTOP);
 			if (status < 0)
@@ -196,13 +196,13 @@ int translate_ptrace_exit(Tracee *tracee)
 
 	switch (request) {
 	case PTRACE_SYSCALL:
-		PTRACEE.ignore_syscall = false;
+		PTRACEE.ignore_syscalls = false;
 		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
 	case PTRACE_CONT:
-		PTRACEE.ignore_syscall = true;
+		PTRACEE.ignore_syscalls = true;
 		forced_signal = (int) data;
 		status = 0;
 		break;  /* Restart the ptracee.  */

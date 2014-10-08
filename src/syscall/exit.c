@@ -30,6 +30,7 @@
 #include "syscall/socket.h"
 #include "syscall/chain.h"
 #include "syscall/heap.h"
+#include "execve/execve.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
@@ -37,6 +38,7 @@
 #include "path/path.h"
 #include "ptrace/ptrace.h"
 #include "ptrace/wait.h"
+#include "ptrace/direct_ptracee.h"
 #include "extension/extension.h"
 #include "arch.h"
 
@@ -425,13 +427,12 @@ void translate_syscall_exit(Tracee *tracee)
 #endif
 
 	case PR_execve:
-		if ((int) syscall_result >= 0) {
-			/* New processes have no heap.  */
-			bzero(tracee->heap, sizeof(Heap));
+		status = translate_execve_exit(tracee);
+		goto end;
+
 	case PR_rt_sigreturn:
 	case PR_sigreturn:
-			tracee->restore_original_regs = false;
-		}
+		tracee->restore_original_regs = false;
 		goto end;
 
 	case PR_ptrace:

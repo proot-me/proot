@@ -124,7 +124,7 @@ void chain_next_syscall(Tracee *tracee)
 	poke_reg(tracee, SYSTRAP_NUM, sysnum);
 
 	/* Move the instruction pointer back to the original trap.  */
-	instr_pointer = peek_reg(tracee, ORIGINAL, INSTR_POINTER);
+	instr_pointer = peek_reg(tracee, CURRENT, INSTR_POINTER);
 	poke_reg(tracee, INSTR_POINTER, instr_pointer - SYSTRAP_SIZE);
 }
 

@@ -76,6 +76,9 @@ check-test-fdf487a0.c: test-fdf487a0
 check-test-iiiiiiii.c: test-iiiiiiii
 	$(call check_c,$<,echo test | env PROOT_DONT_POLLUTE_ROOTFS=1 $(PROOT) -b /bin:/this_shall_not_exist_outside_proot ./$<)
 
+check-test-9c07fad8.c: test-9c07fad8
+	$(call check_c,$<,$(PROOT) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -92,15 +95,21 @@ check = case "$$?" in					\
 ######################################################################
 # Build a clean rootfs
 
-setup: $(ROOTFS)/bin/true $(ROOTFS)/bin/false    \
-       $(ROOTFS)/bin/pwd  $(ROOTFS)/bin/readlink $(ROOTFS)/bin/symlink \
-       $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true $(ROOTFS)/bin/echo \
-       $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat $(ROOTFS)/tmp \
-       $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd \
+ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
+       $(ROOTFS)/bin/pwd  $(ROOTFS)/bin/readlink $(ROOTFS)/bin/symlink		 \
+       $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true $(ROOTFS)/bin/echo		 \
+       $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat		 \
+       $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd $(ROOTFS)/bin/argv \
        $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2
 
-$(ROOTFS)/tmp:
-	@mkdir $@
+ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
+
+$(ROOTFS_BIN): | $(ROOTFS_DIR)
+
+$(ROOTFS_DIR):
+	mkdir -p $@
+
+setup: $(ROOTFS_BIN)
 
 $(ROOTFS)/bin/abs-true:
 	@ln -fs /bin/true $@
@@ -110,7 +119,6 @@ $(ROOTFS)/bin/rel-true:
 
 .SECONDARY: $(patsubst %.c,$(ROOTFS)/bin/%, $(wildcard test-*.c))
 $(ROOTFS)/bin/%: %.c
-	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(Q)$(CC) -static $*.c -o $@ $(silently) || true
 
 # Special cases.
@@ -155,6 +163,9 @@ test-fdf487a0: test-fdf487a0.c
 
 test-iiiiiiii: test-iiiiiiii.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-9c07fad8: test-9c07fad8.c
+	$(Q)$(CC) -fPIE -pie $< -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

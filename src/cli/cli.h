@@ -14,7 +14,7 @@ typedef struct {
 } Argument;
 
 struct Cli;
-typedef int (*option_handler_t)(Tracee *tracee, const struct Cli *cli, char *value);
+typedef int (*option_handler_t)(Tracee *tracee, const struct Cli *cli, const char *value);
 
 typedef struct {
 	const char *class;
@@ -32,7 +32,7 @@ typedef struct {
 			}
 
 typedef int (*initialization_hook_t)(Tracee *tracee, const struct Cli *cli,
-				size_t argc, char *const *argv, size_t cursor);
+				size_t argc, char *const argv[], size_t cursor);
 typedef struct Cli {
 	const char *name;
 	const char *version;
@@ -45,8 +45,8 @@ typedef struct Cli {
 	initialization_hook_t post_initialize_bindings;
 	initialization_hook_t pre_initialize_cwd;
 	initialization_hook_t post_initialize_cwd;
-	initialization_hook_t pre_initialize_command;
-	initialization_hook_t post_initialize_command;
+	initialization_hook_t pre_initialize_exe;
+	initialization_hook_t post_initialize_exe;
 	void *private;
 
 	const Option options[];

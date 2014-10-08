@@ -20,20 +20,15 @@
  * 02110-1301 USA.
  */
 
-#ifndef AUXV
-#define AUXV
+#ifndef PTRACE_DIRECT_PTRACEE_H
+#define PTRACE_DIRECT_PTRACEE_H
 
 #include "tracee/tracee.h"
-#include "arch.h"
 
-typedef struct elf_aux_vector {
-	word_t type;
-	word_t value;
-} ElfAuxVector;
+extern int add_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern bool is_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern bool is_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern void remove_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
+extern void set_exited_direct_ptracee(Tracee *ptracer, pid_t ptracee_pid);
 
-extern word_t get_elf_aux_vectors_address(const Tracee *tracee);
-extern ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address);
-extern int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value);
-extern int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t address);
-
-#endif /* AUXV */
+#endif /* PTRACE_DIRECT_PTRACEE_H */

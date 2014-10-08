@@ -29,10 +29,9 @@
 #include <linux/limits.h>  /* PATH_MAX, ARG_MAX, */
 
 #include "execve/ldso.h"
-#include "execve/execve.h"
 #include "execve/elf.h"
+#include "execve/aoxp.h"
 #include "tracee/tracee.h"
-#include "tracee/array.h"
 #include "cli/notice.h"
 
 /**
@@ -51,17 +50,17 @@ bool is_env_name(const char *variable, const char *name)
 /**
  * This function returns 1 or 0 depending on the equivalence of the
  * @reference environment variable and the one pointed to by the entry
- * in @array at the given @index, otherwise it returns -errno when an
+ * in @envp at the given @index, otherwise it returns -errno when an
  * error occured.
  */
-int compare_item_env(Array *array, size_t index, const char *reference)
+int compare_xpointee_env(ArrayOfXPointers *envp, size_t index, const char *reference)
 {
 	char *value;
 	int status;
 
-	assert(index < array->length);
+	assert(index < envp->length);
 
-	status = read_item_string(array, index, &value);
+	status = read_xpointee_as_string(envp, index, &value);
 	if (status < 0)
 		return status;
 
@@ -98,8 +97,8 @@ int compare_item_env(Array *array, size_t index, const char *reference)
  *
  * This funtion returns -errno if an error occured, otherwise 0.
  */
-int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
-		const char *define, const char *undefine)
+int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPointers *argv,
+		const char *define, const char *undefine, size_t offset)
 {
 	bool has_seen_library_path = false;
 	int status;
@@ -109,7 +108,7 @@ int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 		bool is_known = false;
 		char *env;
 
-		status = read_item_string(envp, i, &env);
+		status = read_xpointee_as_string(envp, i, &env);
 		if (status < 0)
 			return status;
 
@@ -130,13 +129,13 @@ int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 		if (is_env_name(env, name)) {				\
 			check |= true;					\
 			/* Errors are not fatal here.  */		\
-			status = resize_array(argv, 1, 2);		\
+			status = resize_array_of_xpointers(argv, offset, 2);	\
 			if (status >= 0) {				\
-				status = write_items(argv, 1, 2, define, env); \
+				status = write_xpointees(argv, offset, 2, define, env); \
 				if (status < 0)				\
 					return status;			\
 			}						\
-			write_item(envp, i, "");			\
+			write_xpointee(envp, i, "");			\
 			continue;					\
 		}							\
 
@@ -166,9 +165,9 @@ int ldso_env_passthru(const Tracee *tracee, Array *envp, Array *argv,
 
 	if (!has_seen_library_path) {
 		/* Errors are not fatal here.  */
-		status = resize_array(argv, 1, 2);
+		status = resize_array_of_xpointers(argv, offset, 2);
 		if (status >= 0) {
-			status = write_items(argv, 1, 2, undefine, "LD_LIBRARY_PATH");
+			status = write_xpointees(argv, offset, 2, undefine, "LD_LIBRARY_PATH");
 			if (status < 0)
 				return status;
 		}
@@ -231,19 +230,231 @@ static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
 	return 0;
 }
 
+struct find_program_header_data {
+	ProgramHeader *program_header;
+	SegmentType type;
+	uint64_t address;
+};
+
 /**
- * Rebuild the variable LD_LIBRARY_PATH in @envp for @t_program
- * according to its RPATH, RUNPATH, and the initial LD_LIBRARY_PATH.
- * This function returns -errno if an error occured, 1 if
- * RPATH/RUNPATH entries were found, 0 otherwise.
+ * This function is a program header iterator.  It stops the iteration
+ * (by returning 1) once it has found a program header that matches
+ * @data.  This function returns -errno if an error occurred,
+ * otherwise 0 or 1.
  */
-int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Array *envp)
+static int find_program_header(const ElfHeader *elf_header,
+			const ProgramHeader *program_header, void *data_)
+{
+	struct find_program_header_data *data = data_;
+
+	if (PROGRAM_FIELD(*elf_header, *program_header, type) == data->type) {
+		uint64_t start;
+		uint64_t end;
+
+		memcpy(data->program_header, program_header, sizeof(ProgramHeader));
+
+		if (data->address == (uint64_t) -1)
+			return 1;
+
+		start = PROGRAM_FIELD(*elf_header, *program_header, vaddr);
+		end   = start + PROGRAM_FIELD(*elf_header, *program_header, memsz);
+
+		if (start < end
+			&& data->address >= start
+			&& data->address <= end)
+			return 1;
+	}
+
+	return 0;
+}
+
+/**
+ * Add to @xpaths the paths (':'-separated list) from the file
+ * referenced by @fd at the given @offset.  This function returns
+ * -errno if an error occured, otherwise 0.
+ */
+static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpaths)
+{
+	char *paths = NULL;
+	char *tmp;
+
+	size_t length;
+	size_t size;
+	int status;
+
+	status = (int) lseek(fd, offset, SEEK_SET);
+	if (status < 0)
+		return -errno;
+
+	/* Read the complete list of paths.  */
+	length = 0;
+	paths = NULL;
+	do {
+		size = length + 1024;
+
+		tmp = talloc_realloc(tracee->ctx, paths, char, size);
+		if (!tmp)
+			return -ENOMEM;
+		paths = tmp;
+
+		status = read(fd, paths + length, 1024);
+		if (status < 0)
+			return status;
+
+		length += strnlen(paths + length, 1024);
+	} while (length == size);
+
+	/* Concatene this list of paths to xpaths.  */
+	if (!*xpaths) {
+		*xpaths = talloc_array(tracee->ctx, char, length + 1);
+		if (!*xpaths)
+			return -ENOMEM;
+
+		strcpy(*xpaths, paths);
+	}
+	else {
+		length += strlen(*xpaths);
+		length++; /* ":" separator */
+
+		tmp = talloc_realloc(tracee->ctx, *xpaths, char, length + 1);
+		if (!tmp)
+			return -ENOMEM;
+		*xpaths = tmp;
+
+		strcat(*xpaths, ":");
+		strcat(*xpaths, paths);
+	}
+
+	/* I don't know if DT_R*PATH entries are unique.  In
+	 * doubt I support multiple entries.  */
+	return 0;
+}
+
+/**
+ * Put the RPATH and RUNPATH dynamic entries from the file referenced
+ * by @fd -- which has the provided @elf_header -- in @rpaths and
+ * @runpaths respectively.  This function returns -errno if an error
+ * occured, otherwise 0.
+ */
+static int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_header,
+		char **rpaths, char **runpaths)
+{
+	ProgramHeader dynamic_segment;
+	ProgramHeader strtab_segment;
+	struct find_program_header_data data;
+	uint64_t strtab_address = (uint64_t) -1;
+	off_t strtab_offset;
+	int status;
+	size_t i;
+
+	uint64_t offsetof_dynamic_segment;
+	uint64_t sizeof_dynamic_segment;
+	size_t sizeof_dynamic_entry;
+
+	data.program_header = &dynamic_segment;
+	data.type = PT_DYNAMIC;
+	data.address = (uint64_t) -1;
+
+	status = iterate_program_headers(tracee, fd, elf_header, find_program_header, &data);
+	if (status <= 0)
+		return status;
+
+	offsetof_dynamic_segment = PROGRAM_FIELD(*elf_header, dynamic_segment, offset);
+	sizeof_dynamic_segment   = PROGRAM_FIELD(*elf_header, dynamic_segment, filesz);
+
+	if (IS_CLASS32(*elf_header))
+		sizeof_dynamic_entry = sizeof(DynamicEntry32);
+	else
+		sizeof_dynamic_entry = sizeof(DynamicEntry64);
+
+	if (sizeof_dynamic_segment % sizeof_dynamic_entry != 0)
+		return -ENOEXEC;
+
+/**
+ * Invoke @embedded_code on each dynamic entry of the given @type.
+ */
+#define FOREACH_DYNAMIC_ENTRY(type, embedded_code)					\
+	for (i = 0; i < sizeof_dynamic_segment / sizeof_dynamic_entry; i++) {		\
+		DynamicEntry dynamic_entry;						\
+		uint64_t value;								\
+											\
+		/* embedded_code may change the file offset.  */			\
+		status = (int) lseek(fd, offsetof_dynamic_segment + i * sizeof_dynamic_entry, \
+				SEEK_SET);						\
+		if (status < 0)								\
+			return -errno;							\
+											\
+		status = read(fd, &dynamic_entry, sizeof_dynamic_entry);		\
+		if (status < 0)								\
+			return status;							\
+											\
+		if (DYNAMIC_FIELD(*elf_header, dynamic_entry, tag) != type)		\
+			continue;							\
+											\
+		value =	DYNAMIC_FIELD(*elf_header, dynamic_entry, val);			\
+											\
+		embedded_code								\
+	}
+
+	/* Get the address of the *first* string table.  The ELF
+	 * specification doesn't mention if it may have several string
+	 * table references.  */
+	FOREACH_DYNAMIC_ENTRY(DT_STRTAB, {
+		strtab_address = value;
+		break;
+	})
+
+	if (strtab_address == (uint64_t) -1)
+		return 0;
+
+	data.program_header = &strtab_segment;
+	data.type = PT_LOAD;
+	data.address = strtab_address;
+
+	/* Search the program header that contains the given string table.  */
+	status = iterate_program_headers(tracee, fd, elf_header, find_program_header, &data);
+	if (status < 0)
+		return status;
+
+	strtab_offset = PROGRAM_FIELD(*elf_header, strtab_segment, offset)
+		+ (strtab_address - PROGRAM_FIELD(*elf_header, strtab_segment, vaddr));
+
+	FOREACH_DYNAMIC_ENTRY(DT_RPATH,	{
+		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - value)
+			return -ENOEXEC;
+
+		status = add_xpaths(tracee, fd, strtab_offset + value, rpaths);
+		if (status < 0)
+			return status;
+	})
+
+	FOREACH_DYNAMIC_ENTRY(DT_RUNPATH, {
+		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - value)
+			return -ENOEXEC;
+
+		status = add_xpaths(tracee, fd, strtab_offset + value, runpaths);
+		if (status < 0)
+			return status;
+	})
+
+#undef FOREACH_DYNAMIC_ENTRY
+
+	return 0;
+}
+
+/**
+ * Rebuild the variable LD_LIBRARY_PATH in @envp for the program
+ * @host_path according to its RPATH, RUNPATH, and the initial
+ * LD_LIBRARY_PATH.  This function returns -errno if an error occured,
+ * 1 if RPATH/RUNPATH entries were found, 0 otherwise.
+ */
+int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], ArrayOfXPointers *envp)
 {
 	static char *initial_ldso_paths = NULL;
 	ElfHeader elf_header;
 
 	char host_ldso_paths[ARG_MAX] = "";
-	bool inhibit_rpath = false;
+	bool rpath_found = false;
 
 	char *rpaths   = NULL;
 	char *runpaths = NULL;
@@ -255,7 +466,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	int status;
 	int fd;
 
-	fd = open_elf(t_program, &elf_header);
+	fd = open_elf(host_path, &elf_header);
 	if (fd < 0)
 		return fd;
 
@@ -269,7 +480,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		status = add_host_ldso_paths(host_ldso_paths, rpaths);
 		if (status < 0)
 			return 0; /* Not fatal.  */
-		inhibit_rpath = true;
+		rpath_found = true;
 	}
 
 	/* 2. LD_LIBRARY_PATH  */
@@ -286,7 +497,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		status = add_host_ldso_paths(host_ldso_paths, runpaths);
 		if (status < 0)
 			return 0; /* Not fatal.  */
-		inhibit_rpath = true;
+		rpath_found = true;
 	}
 
 	/* 4. /etc/ld.so.cache NYI.  */
@@ -310,7 +521,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	if (status < 0)
 		return 0; /* Not fatal.  */
 
-	status = find_item(envp, "LD_LIBRARY_PATH");
+	status = find_xpointee(envp, "LD_LIBRARY_PATH");
 	if (status < 0)
 		return 0; /* Not fatal.  */
 	index = (size_t) status;
@@ -320,7 +531,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		 * LD_LIBRARY_PATH was not found.  */
 
 		index = (envp->length > 0 ? envp->length - 1 : 0);
-		status = resize_array(envp, index, 1);
+		status = resize_array_of_xpointers(envp, index, 1);
 		if (status < 0)
 			return 0; /* Not fatal.  */
 	}
@@ -331,7 +542,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 		char *env;
 
 		/* Errors are not fatal here.  */
-		status = read_item_string(envp, index, &env);
+		status = read_xpointee_as_string(envp, index, &env);
 		if (status >= 0)
 			tracee->guest_ldso_paths = talloc_strdup(tracee, env);
 	}
@@ -346,7 +557,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	memmove(host_ldso_paths + length1, host_ldso_paths, length2 + 1);
 	memcpy(host_ldso_paths, "LD_LIBRARY_PATH=" , length1);
 
-	write_item(envp, index, host_ldso_paths);
+	write_xpointee(envp, index, host_ldso_paths);
 
 	/* The guest LD_LIBRARY_PATH will be restored only if the host
 	 * program didn't change it explicitly, so remember its
@@ -354,5 +565,5 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char t_program[PATH_MAX], Arra
 	if (tracee->host_ldso_paths == NULL)
 		tracee->host_ldso_paths = talloc_strdup(tracee, host_ldso_paths);
 
-	return (int) inhibit_rpath;
+	return (int) rpath_found;
 }
