@@ -430,11 +430,6 @@ void translate_syscall_exit(Tracee *tracee)
 		status = translate_execve_exit(tracee);
 		goto end;
 
-	case PR_rt_sigreturn:
-	case PR_sigreturn:
-		tracee->restore_original_regs = false;
-		goto end;
-
 	case PR_ptrace:
 		status = translate_ptrace_exit(tracee);
 		break;
