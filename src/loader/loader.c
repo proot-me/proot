@@ -1,13 +1,18 @@
-/* gcc -Isrc -fPIC -nostartfiles -Wall -Wextra src/loader/loader.c -O3 -o src/loader/loader -g -static -Wl,-Ttext=0x00007f2000000000 */
+/*
+  gcc -Isrc -Wall -Wextra -O2						\
+  -fno-tree-loop-distribute-patterns -ffreestanding -fPIC  -O3		\
+  -static -nostdlib -Wl,-Ttext=0x00007f2000000000			\
+  src/loader/loader.c -o src/execve/loader-x86_64
+*/
 
 #include <sys/syscall.h> /* SYS_*, */
 #include <fcntl.h>       /* O_*, */
 #include <sys/mman.h>    /* MAP_*, */
-#include <string.h>      /* memset(3), */
 #include <stdbool.h>     /* bool, true, false,  */
 #include <linux/auxvec.h>  /* AT_*,  */
 
 typedef unsigned long word_t;
+typedef unsigned char byte_t;
 
 #include "loader/script.h"
 
@@ -19,7 +24,7 @@ typedef unsigned long word_t;
  * - the rtld_fini pointer (rdx)
  * - the system flags (rflags)
  */
-#define BRANCH(stack_pointer, destination)			\
+#define BRANCH(stack_pointer, destination) do {			\
 	asm volatile (						\
 		"// Restore initial stack pointer.	\n\t"	\
 		"movq %0, %%rsp				\n\t"	\
@@ -34,13 +39,17 @@ typedef unsigned long word_t;
 		"// Start the program.			\n\t"	\
 		"jmpq *%1				\n"	\
 		:						\
-		: "irm" (stack_pointer), "im" (destination) )
+		: "irm" (stack_pointer), "im" (destination));	\
+	__builtin_unreachable();				\
+	} while (0)
 
-#define ERROR()							\
+#define ERROR()	 do {						\
 	asm volatile (						\
 		"movq $60, %rax		\n\t"			\
 		"movq $182, %rdi	\n\t"			\
-		"syscall		\n")
+		"syscall		\n");			\
+	__builtin_unreachable ();				\
+	} while (0)
 
 #define SC1(result, number, arg1)					\
 	asm volatile (							\
@@ -84,8 +93,43 @@ typedef unsigned long word_t;
 
 /***********************************************************************/
 
-/* Note: this is optimized both for speed and for memory
- * footprint.  */
+/**
+ * Clear the memory from @start (inclusive) to @end (exclusive).
+ */
+static inline void clear(word_t start, word_t end)
+{
+	byte_t *start_misaligned;
+	byte_t *end_misaligned;
+
+	word_t *start_aligned;
+	word_t *end_aligned;
+
+	/* Compute the number of mis-aligned bytes.  */
+	word_t start_bytes = start % sizeof(word_t);
+	word_t end_bytes   = end % sizeof(word_t);
+
+	/* Compute aligned addresses.  */
+	start_aligned = (word_t *) (start_bytes ? start + sizeof(word_t) - start_bytes : start);
+	end_aligned   = (word_t *) (end - end_bytes);
+
+	/* Clear leading mis-aligned bytes.  */
+	start_misaligned = (byte_t *) start;
+	while (start_misaligned < (byte_t *) start_aligned)
+		*start_misaligned++ = 0;
+
+	/* Clear aligned bytes.  */
+	while (start_aligned < end_aligned)
+		*start_aligned++ = 0;
+
+	/* Clear trailing mis-aligned bytes.  */
+	end_misaligned = (byte_t *) end_aligned;
+	while (end_misaligned < (byte_t *) end)
+		*end_misaligned++ = 0;
+}
+
+/**
+ * Interpret the load script pointed to by @cursor.
+ */
 void _start(void *cursor)
 {
 	bool traced = false;
@@ -121,12 +165,9 @@ void _start(void *cursor)
 			if (unlikely(status != stmt->mmap.addr))
 				ERROR();
 
-			if (stmt->mmap.clear_length != 0) {
-				memset((void *) (stmt->mmap.addr
-						+ stmt->mmap.length
-						- stmt->mmap.clear_length),
-					0, stmt->mmap.clear_length);
-			}
+			if (stmt->mmap.clear_length != 0)
+				clear(stmt->mmap.addr + stmt->mmap.length - stmt->mmap.clear_length,
+					stmt->mmap.addr + stmt->mmap.length);
 
 			if (reset_at_base) {
 				at_base = stmt->mmap.addr;
@@ -211,13 +252,13 @@ void _start(void *cursor)
 					stmt->start.entry_point, -2, -3, -4);
 			else
 				BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
-			/* Fall through.  */
+			ERROR();
 		}
 
 		default:
-			ERROR(); /* Never reached.  */
+			ERROR();
 		}
 	}
 
-	ERROR(); /* Never reached.  */
+	ERROR();
 }
