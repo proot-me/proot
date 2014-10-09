@@ -38,16 +38,20 @@ typedef unsigned char byte_t;
 		"                      			\n\t"	\
 		"// Start the program.			\n\t"	\
 		"jmpq *%1				\n"	\
-		:						\
-		: "irm" (stack_pointer), "im" (destination));	\
+		: /* no output */				\
+		: "irm" (stack_pointer), "irm" (destination)	\
+		: "cc", "rsp", "rdx");				\
 	__builtin_unreachable();				\
 	} while (0)
 
 #define ERROR()	 do {						\
 	asm volatile (						\
-		"movq $60, %rax		\n\t"			\
-		"movq $182, %rdi	\n\t"			\
-		"syscall		\n");			\
+		"movq $60, %%rax	\n\t"			\
+		"movq $182, %%rdi	\n\t"			\
+		"syscall		\n"			\
+		: /* no output */				\
+		: /* no input */				\
+		: "cc", "rcx", "r11", "rax", "rdi");		\
 	__builtin_unreachable ();				\
 	} while (0)
 
