@@ -3,15 +3,21 @@
 
 # the VPATH variable must point to the actual makefile directory
 VPATH	:= $(dir $(lastword $(MAKEFILE_LIST)))
+
 GIT      = git
 RM       = rm
 INSTALL  = install
 CC       = gcc
 LD       = $(CC)
+
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -Wall -Wextra -O2
 LDFLAGS  += -ltalloc
+
 CARE_LDFLAGS = -larchive
+
+LOADER_CFLAGS  = -fPIC -ffreestanding -O3 -fno-tree-loop-distribute-patterns
+LOADER_LDFLAGS = -static -nostdlib -Wl,-Ttext=0x00007f2000000000
 
 OBJECTS += \
 	cli/cli.o		\
@@ -48,7 +54,8 @@ OBJECTS += \
 	ptrace/direct_ptracee.o	\
 	extension/extension.o	\
 	extension/kompat/kompat.o \
-	extension/fake_id0/fake_id0.o
+	extension/fake_id0/fake_id0.o \
+	loader/loader-wrapped.o
 
 CARE_OBJECTS = 				\
 	cli/care.o			\
@@ -57,6 +64,8 @@ CARE_OBJECTS = 				\
 	extension/care/final.o		\
 	extension/care/extract.o	\
 	extension/care/archive.o
+
+LOADER_OBJECTS = loader/loader.o
 
 .DEFAULT_GOAL = proot
 all: proot
@@ -135,6 +144,20 @@ proot: $(OBJECTS)
 care: $(OBJECTS) $(CARE_OBJECTS)
 	$(LINK) $(CARE_LDFLAGS)
 
+$(LOADER_OBJECTS):
+	$(COMPILE) $(LOADER_CFLAGS)
+
+loader/loader: $(LOADER_OBJECTS)
+	$($(quiet)LD) -o $@ $^ $(LOADER_LDFLAGS)
+
+.INTERMEDIATE: loader.exe
+loader.exe: $(VPATH)/loader/loader
+	$(Q)cp $< $@
+	$(Q)strip $@
+
+loader/loader-wrapped.o: loader.exe cli/cli.o
+	$(OBJIFY)
+
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
 USE_BUILD_H := $(patsubst $(SRC)%.c,%.o,$(shell egrep -sl 'include[[:space:]]+"build.h"' $(patsubst %.o,$(SRC)%.c,$(OBJECTS) $(CARE_OBJECTS))))
@@ -158,9 +181,9 @@ cli/%-licenses.o: licenses cli/cli.o
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) $(CARE_OBJECTS): $(firstword $(MAKEFILE_LIST))
+$(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS): $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
+DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(LOADER_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 -include $(DEPS)
 
 ######################################################################
@@ -171,7 +194,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install install-care uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) proot care cli/care-manual.o $(DEPS) build.h licenses
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) proot care loader/loader cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<

@@ -21,13 +21,15 @@
  */
 
 #include <sys/types.h>  /* lstat(2), lseek(2), */
-#include <sys/stat.h>   /* lstat(2), lseek(2), */
+#include <sys/stat.h>   /* lstat(2), lseek(2), fchmod(2), */
 #include <unistd.h>     /* access(2), lstat(2), close(2), read(2), */
 #include <errno.h>      /* E*, */
 #include <assert.h>     /* assert(3), */
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* PROT_*, */
 #include <string.h>     /* strlen(3), strcpy(3), */
+#include <stdlib.h>     /* getenv(3), */
+#include <stdio.h>      /* fwrite(3), */
 #include <assert.h>     /* assert(3), */
 
 #include "execve/execve.h"
@@ -36,9 +38,11 @@
 #include "execve/ldso.h"
 #include "execve/elf.h"
 #include "path/path.h"
+#include "path/temp.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
+#include "cli/note.h"
 
 
 #define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)
@@ -433,6 +437,68 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 	return 0;
 }
 
+extern unsigned char _binary_loader_exe_start;
+extern unsigned char _binary_loader_exe_size;
+
+/**
+ * Extract the built-in loader.  This function returns NULL if an
+ * error occurred, otherwise it returns the path to the extracted
+ * loader.  Note: @tracee is only used for notification purpose.
+ */
+static char *extract_loader(const Tracee *tracee)
+{
+	char path[PATH_MAX];
+	size_t status2;
+	size_t size;
+	int status;
+	int fd;
+
+	char *loader_path = NULL;
+	FILE *file = NULL;
+
+	file = open_temp_file(NULL, "proot");
+	if (file == NULL)
+		goto end;
+	fd = fileno(file);
+
+	size = (size_t) &_binary_loader_exe_size;
+	status2 = write(fd, &_binary_loader_exe_start, size);
+	if (status2 != size) {
+		note(tracee, ERROR, SYSTEM, "can't write the loader");
+		goto end;
+	}
+
+	status = fchmod(fd, S_IRUSR|S_IXUSR);
+	if (status < 0) {
+		note(tracee, ERROR, SYSTEM, "can't change loader permissions (u+rx)");
+		goto end;
+	}
+
+	status = readlink_proc_pid_fd(getpid(), fd, path);
+	if (status < 0) {
+		note(tracee, ERROR, INTERNAL, "can't retrieve loader path (/proc/self/fd/)");
+		goto end;
+	}
+
+	loader_path = talloc_strdup(talloc_autofree_context(), path);
+	if (loader_path == NULL) {
+		note(tracee, ERROR, INTERNAL, "can't allocate memory");
+		goto end;
+	}
+
+	if (tracee->verbose >= 2)
+		note(tracee, INFO, INTERNAL, "loader: %s", loader_path);
+
+end:
+	if (file != NULL) {
+		status = fclose(file);
+		if (status < 0)
+			note(tracee, WARNING, SYSTEM, "can't close loader file");
+	}
+
+	return loader_path;
+}
+
 /**
  * Extract all the information that will be required by
  * translate_load_*().  This function returns -errno if an error
@@ -440,6 +506,8 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
  */
 int translate_execve_enter(Tracee *tracee)
 {
+	static char *loader_path = NULL;
+
 	char user_path[PATH_MAX];
 	char host_path[PATH_MAX];
 	int status;
@@ -470,8 +538,13 @@ int translate_execve_enter(Tracee *tracee)
 			return status;
 	}
 
-	/* WIP.  */
-	status = set_sysarg_path(tracee, "/usr/local/cedric/git/proot/src/execve/loader-x86_64", SYSARG_1);
+	if (loader_path == NULL) {
+		loader_path = getenv("PROOT_LOADER") ?: extract_loader(tracee);
+		if (loader_path == NULL)
+			return -ENOENT;
+	}
+
+	status = set_sysarg_path(tracee, loader_path, SYSARG_1);
 	if (status < 0)
 		return status;
 

@@ -103,8 +103,8 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
-extern char WEAK _binary_licenses_start;
-extern char WEAK _binary_licenses_end;
+extern unsigned char WEAK _binary_licenses_start;
+extern unsigned char WEAK _binary_licenses_end;
 
 static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
 {
@@ -138,8 +138,8 @@ static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, const c
 	return -1;
 }
 
-extern char WEAK _binary_manual_start;
-extern char WEAK _binary_manual_end;
+extern unsigned char WEAK _binary_manual_start;
+extern unsigned char WEAK _binary_manual_end;
 
 static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, const char *value UNUSED)
 {

@@ -133,10 +133,11 @@ static void print_execve_help(const Tracee *tracee, const char *argv0, int statu
 	}
 
 	note(tracee, INFO, USER, "possible causes:\n"
-"  * <program> is a script but its interpreter (eg. /bin/sh) was not found;\n"
-"  * <program> is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
-"  * <program> is a foreign binary but no <qemu> was specified;\n"
-"  * <qemu> does not work correctly (if specified).");
+"  * the program is a script but its interpreter (eg. /bin/sh) was not found;\n"
+"  * the program is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
+"  * the program is a foreign binary but qemu was not specified;\n"
+"  * qemu does not work correctly (if specified);\n"
+"  * the loader was not found or doesn't work.");
 }
 
 static void print_error_separator(const Tracee *tracee, const Argument *argument)
