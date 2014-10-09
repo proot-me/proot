@@ -199,27 +199,19 @@ static int remove_temp_file(char *path)
 /**
  * Create a path name with the following format:
  * "/tmp/@prefix-$PID-XXXXXX".  The returned C string is either
- * auto-freed if @tracee is NULL, or attached to @tracee->ctx.  This
- * function returns NULL if an error occurred.
+ * auto-freed if @context is NULL.  This function returns NULL if an
+ * error occurred.
  */
-char *create_temp_name(const Tracee *tracee, const char *prefix)
+char *create_temp_name(TALLOC_CTX *context, const char *prefix)
 {
-	TALLOC_CTX *context;
 	char *name;
 
-	if (tracee == NULL) {
+	if (context == NULL)
 		context = talloc_autofree_context();
-		if (context == NULL) {
-			note(tracee, ERROR, INTERNAL, "can't allocate memory");
-			return NULL;
-		}
-	}
-	else
-		context = tracee->ctx;
 
 	name = talloc_asprintf(context, "%s/%s-%d-XXXXXX", P_tmpdir, prefix, getpid());
 	if (name == NULL) {
-		note(tracee, ERROR, INTERNAL, "can't allocate memory");
+		note(NULL, ERROR, INTERNAL, "can't allocate memory");
 		return NULL;
 	}
 
@@ -228,22 +220,22 @@ char *create_temp_name(const Tracee *tracee, const char *prefix)
 
 /**
  * Create a directory that will be automatically removed either on
- * PRoot termination if @tracee is NULL, or once its path name
- * (attached to @tracee->ctx) is freed.  This function returns NULL on
+ * PRoot termination if @context is NULL, or once its path name
+ * (attached to @context) is freed.  This function returns NULL on
  * error, otherwise the absolute path name to the created directory
  * (@prefix-ed).
  */
-const char *create_temp_directory(const Tracee *tracee, const char *prefix)
+const char *create_temp_directory(TALLOC_CTX *context, const char *prefix)
 {
 	char *name;
 
-	name = create_temp_name(tracee, prefix);
+	name = create_temp_name(context, prefix);
 	if (name == NULL)
 		return NULL;
 
 	name = mkdtemp(name);
 	if (name == NULL) {
-		note(tracee, ERROR, SYSTEM, "can't create temporary directory");
+		note(NULL, ERROR, SYSTEM, "can't create temporary directory");
 		return NULL;
 	}
 
@@ -254,22 +246,22 @@ const char *create_temp_directory(const Tracee *tracee, const char *prefix)
 
 /**
  * Create a file that will be automatically removed either on PRoot
- * termination if @tracee is NULL, or once its path name (attached to
- * @tracee->ctx) is freed.  This function returns NULL on error,
+ * termination if @context is NULL, or once its path name (attached to
+ * @context) is freed.  This function returns NULL on error,
  * otherwise the absolute path name to the created file (@prefix-ed).
  */
-const char *create_temp_file(const Tracee *tracee, const char *prefix)
+const char *create_temp_file(TALLOC_CTX *context, const char *prefix)
 {
 	char *name;
 	int fd;
 
-	name = create_temp_name(tracee, prefix);
+	name = create_temp_name(context, prefix);
 	if (name == NULL)
 		return NULL;
 
 	fd = mkstemp(name);
 	if (fd < 0) {
-		note(tracee, ERROR, SYSTEM, "can't create temporary file");
+		note(NULL, ERROR, SYSTEM, "can't create temporary file");
 		return NULL;
 	}
 	close(fd);
@@ -283,13 +275,13 @@ const char *create_temp_file(const Tracee *tracee, const char *prefix)
  * Like create_temp_file() but returns an open file stream to the
  * created file.  It's up to the caller to close returned stream.
  */
-FILE* open_temp_file(const Tracee *tracee, const char *prefix)
+FILE* open_temp_file(TALLOC_CTX *context, const char *prefix)
 {
 	char *name;
 	FILE *file;
 	int fd;
 
-	name = create_temp_name(tracee, prefix);
+	name = create_temp_name(context, prefix);
 	if (name == NULL)
 		return NULL;
 
@@ -308,6 +300,6 @@ FILE* open_temp_file(const Tracee *tracee, const char *prefix)
 error:
 	if (fd >= 0)
 		close(fd);
-	note(tracee, ERROR, SYSTEM, "can't create temporary file");
+	note(NULL, ERROR, SYSTEM, "can't create temporary file");
 	return NULL;
 }

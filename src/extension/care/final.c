@@ -95,7 +95,7 @@ static int archive_close_file(const Care *care, FILE *file, const char *name)
 
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
-		note(NULL, ERROR, INTERNAL, "can't readlink(/proc/%d/fd/%d)", getpid(), fd);
+		note(NULL, ERROR, INTERNAL, "can't readlink(/proc/self/fd/%d)", getpid(), fd);
 		goto end;
 	}
 

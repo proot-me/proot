@@ -116,7 +116,7 @@ static int bind_proc_pid_auxv(const Tracee *ptracee)
 		TALLOC_FREE(binding);
 	}
 
-	host_path = create_temp_file(ptracee, "auxv");
+	host_path = create_temp_file(ptracee->ctx, "auxv");
 	if (host_path == NULL)
 		return -1;
 

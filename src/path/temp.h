@@ -25,11 +25,9 @@
 
 #include <talloc.h>
 
-#include "tracee/tracee.h"
-
-extern char *create_temp_name(const Tracee *tracee, const char *prefix);
-extern const char *create_temp_directory(const Tracee *tracee, const char *prefix);
-extern const char *create_temp_file(const Tracee *tracee, const char *prefix);
-extern FILE* open_temp_file(const Tracee *tracee, const char *prefix);
+extern char *create_temp_name(TALLOC_CTX *context, const char *prefix);
+extern const char *create_temp_directory(TALLOC_CTX *context, const char *prefix);
+extern const char *create_temp_file(TALLOC_CTX *context, const char *prefix);
+extern FILE* open_temp_file(TALLOC_CTX *context, const char *prefix);
 
 #endif /* TEMP_H */
