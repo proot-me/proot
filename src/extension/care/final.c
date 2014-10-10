@@ -95,7 +95,7 @@ static int archive_close_file(const Care *care, FILE *file, const char *name)
 
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
-		note(NULL, ERROR, INTERNAL, "can't readlink(/proc/self/fd/%d)", getpid(), fd);
+		note(NULL, ERROR, INTERNAL, "can't readlink(/proc/self/fd/%d)", fd);
 		goto end;
 	}
 
@@ -420,6 +420,7 @@ int finalize_care(Care *care)
 	status = archive_myself(care);
 	if (status < 0)
 		note(NULL, WARNING, INTERNAL, "can't archive 'proot'");
+#endif
 
 	finalize_archive(care->archive);
 
