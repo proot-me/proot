@@ -20,7 +20,8 @@
  * 02110-1301 USA.
  */
 
-#include <unistd.h>       /* lstat(2), readlink(2), getpid(2), wirte(2), lseek(2), */
+#include <unistd.h>       /* lstat(2), readlink(2), getpid(2), wirte(2), lseek(2), get*id(2), */
+#include <sys/types.h>    /* get*id(2), */
 #include <sys/stat.h>     /* struct stat, fchmod(2), */
 #include <linux/limits.h> /* PATH_MAX, */
 #include <sys/utsname.h>  /* uname(2), */
@@ -245,6 +246,7 @@ static int archive_re_execute_sh(Care *care)
 	else
 		C("-k '%s' ", utsname.release);
 
+	C("-i %d:%d", getuid(), getgid());
 	C("-w '%s' ", care->initial_cwd);
 	C("-r \"$(dirname $0)/rootfs\"");
 
