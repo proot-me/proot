@@ -119,6 +119,8 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_setuid,		FILTER_SYSEXIT },
 	{ PR_setuid32,		FILTER_SYSEXIT },
 	{ PR_setxattr,		FILTER_SYSEXIT },
+	{ PR_setdomainname,	FILTER_SYSEXIT },
+	{ PR_sethostname,	FILTER_SYSEXIT },
 	{ PR_lsetxattr,		FILTER_SYSEXIT },
 	{ PR_fsetxattr,		FILTER_SYSEXIT },
 	{ PR_stat,		FILTER_SYSEXIT },
@@ -574,6 +576,8 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		POKE_MEM_ID(SYSARG_3, sgid);
 		return 0;
 
+	case PR_setdomainname:
+	case PR_sethostname:
 	case PR_setgroups:
 	case PR_setgroups32:
 	case PR_mknod:
