@@ -241,10 +241,17 @@ static int archive_re_execute_sh(Care *care)
 	status = uname(&utsname);
 	if (status < 0) {
 		note(NULL, WARNING, SYSTEM, "can't get kernel release");
-		C("-k 3.11.0");
+		C("-k 3.17.0");
 	}
-	else
-		C("-k '%s' ", utsname.release);
+	else {
+		C("-k '\\%s\\%s\\%s\\%s\\%s\\%s\\0\\' ",
+			utsname.sysname,
+			utsname.nodename,
+			utsname.release,
+			utsname.version,
+			utsname.machine,
+			utsname.domainname);
+	}
 
 	C("-i %d:%d", getuid(), getgid());
 	C("-w '%s' ", care->initial_cwd);

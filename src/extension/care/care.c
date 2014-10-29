@@ -32,6 +32,7 @@
 #include <uthash.h>       /* ut*, UT*, HASH*, */
 #include <sys/queue.h>    /* STAILQ_*, */
 #include <inttypes.h>     /* PRI*, */
+#include <linux/auxvec.h> /* AT_*, */
 
 #include "extension/care/care.h"
 #include "extension/care/final.h"
@@ -39,6 +40,7 @@
 #include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/mem.h"
+#include "execve/auxv.h"
 #include "path/canon.h"
 #include "path/path.h"
 #include "path/binding.h"
@@ -530,6 +532,37 @@ static void handle_getdents(Tracee *tracee, bool is_new_getdents)
 		note(tracee, WARNING, INTERNAL, "dentry table out of sync.");
 }
 
+/**
+ * Set AT_HWCAP to 0 to ensure no processor specific extensions will
+ * be used, for the sake of reproducibility across different CPUs.
+ * This function assumes the "argv, envp, auxv" stuff is pointed to by
+ * @tracee's stack pointer, as expected right after a successful call
+ * to execve(2).
+ */
+static int adjust_elf_auxv(Tracee *tracee)
+{
+	ElfAuxVector *vectors;
+	ElfAuxVector *vector;
+	word_t vectors_address;
+
+	vectors_address = get_elf_aux_vectors_address(tracee);
+	if (vectors_address == 0)
+		return 0;
+
+	vectors = fetch_elf_aux_vectors(tracee, vectors_address);
+	if (vectors == NULL)
+		return 0;
+
+	for (vector = vectors; vector->type != AT_NULL; vector++) {
+		if (vector->type == AT_HWCAP)
+			vector->value = 0;
+	}
+
+	push_elf_aux_vectors(tracee, vectors, vectors_address);
+
+	return 0;
+}
+
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
 	{ PR_getdents,		FILTER_SYSEXIT },
@@ -575,6 +608,16 @@ int care_callback(Extension *extension, ExtensionEvent event,
 		case PR_getdents64:
 			handle_getdents(tracee, true);
 			break;
+
+		case PR_execve: {
+			word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+
+			/* Note: this can be done only before PRoot pushes the
+			 * load script into tracee's stack.  */
+			if ((int) result >= 0)
+				adjust_elf_auxv(tracee);
+			break;
+		}
 
 		default:
 			break;
