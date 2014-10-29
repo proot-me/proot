@@ -1,4 +1,4 @@
-if [ ! -x /bin/true ] || [ -z `which id` ] || [ -z `which grep` ] || [ -z `which env` ] || [ -z `which chown` ] || [ -z `which chroot` ]  || [ ! /bin/true ] ; then
+if [ ! -x /bin/true ] || [ -z `which id` ] || [ -z `which grep` ] || [ -z `which env` ] || [ -z `which chown` ] || [ -z `which chroot` ]; then
     exit 125;
 fi
 

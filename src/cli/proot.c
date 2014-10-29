@@ -212,7 +212,7 @@ static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value UNU
 	return -1;
 }
 
-static void new_bindings(Tracee *tracee, const char *bindings[], const const char *value)
+static void new_bindings(Tracee *tracee, const char *bindings[], const char *value)
 {
 	int i;
 
