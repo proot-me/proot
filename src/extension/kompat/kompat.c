@@ -25,13 +25,14 @@
 #include <linux/version.h> /* KERNEL_VERSION, */
 #include <assert.h>        /* assert(3), */
 #include <sys/utsname.h>   /* uname(2), utsname, */
-#include <string.h>        /* strncpy(3), */
+#include <string.h>        /* str*(3), memcpy(3), */
 #include <talloc.h>        /* talloc_*, */
 #include <fcntl.h>         /* AT_*,  */
 #include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <errno.h>         /* errno,  */
 #include <linux/auxvec.h>  /* AT_,  */
 #include <linux/futex.h>   /* FUTEX_PRIVATE_FLAG */
+#include <sys/param.h>     /* MIN, */
 
 #include "extension/extension.h"
 #include "syscall/seccomp.h"
@@ -62,19 +63,20 @@ typedef struct {
 #define NONE {{0, 0, 0}}
 
 typedef struct {
-	const char *release;
-	int emulated_release;
 	int actual_release;
+	int virtual_release;
+	struct utsname utsname;
+	word_t hwcap;
 } Config;
 
 /**
  * Return whether the @expected_release is newer than
- * @config->actual_release and older than @config->emulated_release.
+ * @config->actual_release and older than @config->virtual_release.
  */
 static bool needs_kompat(const Config *config, int expected_release)
 {
 	return (expected_release > config->actual_release
-		&& expected_release <= config->emulated_release);
+		&& expected_release <= config->virtual_release);
 }
 
 /**
@@ -159,8 +161,8 @@ static void discard_fd_flags(Tracee *tracee, const Config *config,
 /**
  * Replace current @tracee's syscall with an older and compatible one
  * whenever it's required, i.e. when the syscall is supported by the
- * kernel as specified by @config->release but it isn't supported by
- * the actual kernel.
+ * kernel as specified by @config->virtual_release but it isn't
+ * supported by the actual kernel.
  */
 static int handle_sysenter_end(Tracee *tracee, Config *config)
 {
@@ -607,6 +609,11 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 			vector->value = 0;
 			break;
 
+		case AT_HWCAP:
+			if (config->hwcap != (word_t) -1)
+				vector->value = config->hwcap;
+			break;
+
 		case AT_RANDOM:
 			/* Skip only if not in forced mode.  */
 			if (config->actual_release != 0)
@@ -702,26 +709,46 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 	switch (sysnum) {
 	case PR_uname: {
-		struct utsname utsname;
 		word_t address;
-		size_t size;
 
 		address = peek_reg(tracee, ORIGINAL, SYSARG_1);
-		status = read_data(tracee, &utsname, address, sizeof(utsname));
+
+		/* The layout of struct utsname does not depend on the
+		 * architecture, it only depends on the kernel
+		 * version.  In this regards, this structure is stable
+		 * since < 2.6.0.  */
+		status = write_data(tracee, address, &config->utsname, sizeof(config->utsname));
+		if (status < 0)
+			return status;
+		return 0;
+	}
+
+	case PR_setdomainname:
+	case PR_sethostname: {
+		word_t address;
+		word_t length;
+		char *name;
+
+		name = (sysnum == PR_setdomainname
+			? config->utsname.domainname
+			: config->utsname.nodename);
+
+		length = peek_reg(tracee, ORIGINAL, SYSARG_2);
+		if (length > sizeof(config->utsname.domainname) - 1)
+			return -EINVAL;
+
+		/* Because of the test above.  */
+		assert(sizeof(config->utsname.domainname) == sizeof(config->utsname.nodename));
+
+		address = peek_reg(tracee, ORIGINAL, SYSARG_1);
+		status  = read_data(tracee, name, address, length);
 		if (status < 0)
 			return status;
 
-		assert(config->release != NULL);
-		/* Note: on x86_64, we can handle the two modes (32/64) with
-		 * the same code since struct utsname has always the same
-		 * layout.  */
-		size = sizeof(utsname.release);
-		strncpy(utsname.release, config->release, size);
-		utsname.release[size - 1] = '\0';
+		/* "name does not require a terminating null byte." --
+		 * man 2 set{domain,host}name.  */
+		name[length] = '\0';
 
-		status = write_data(tracee, address, &utsname, sizeof(utsname));
-		if (status < 0)
-			return status;
 		return 0;
 	}
 
@@ -826,6 +853,88 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	return 0;
 }
 
+/**
+ * Fill @config->utsname and @config->hwcap according to the content
+ * of @string.  This function returns -1 if there is a parsing error,
+ * otherwise 0.
+ */
+static int parse_utsname(Config *config, const char *string)
+{
+	struct utsname utsname;
+	int status;
+
+	status = uname(&utsname);
+	if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL || string == NULL)
+		config->actual_release = 0;
+	else
+		config->actual_release = parse_kernel_release(utsname.release);
+
+	/* Check whether it is the simple format (ie. release number),
+	 * or the complex one:
+	 *
+	 *     '\sysname\nodename\release\version\machine\domainname\hwcap\'
+	 *
+	 * This complex format is ugly on purpose: it ain't to be used
+	 * directly by users.  */
+	if (string[0] == '\\') {
+		const char *start;
+		const char *end;
+		char *end2;
+
+		/* Initial state of the parser.  */
+		end = string;
+
+#define PARSE(field) do {						\
+			size_t length;					\
+									\
+			start = end + 1;				\
+			end   = strchr(start, '\\');			\
+			if (end == NULL) {				\
+				note(NULL, ERROR, USER,			\
+					"can't find %s field in '%s'", #field, string);	\
+				return -1;				\
+			}						\
+									\
+			length = end - start;				\
+			length = MIN(length, sizeof(config->utsname.field) - 1); \
+			strncpy(config->utsname.field, start, length);	\
+			config->utsname.field[length] = '\0';		\
+		} while(0)
+
+		PARSE(sysname);
+		PARSE(nodename);
+		PARSE(release);
+		PARSE(version);
+		PARSE(machine);
+		PARSE(domainname);
+
+#undef PARSE
+
+		/* The hwcap field is parsed as an hexadecimal value.  */
+		errno = 0;
+		config->hwcap = strtol(end + 1, &end2, 16);
+		if (errno != 0 || end2[0] != '\\') {
+			note(NULL, ERROR, USER, "can't find hwcap field in '%s'", string);
+			return -1;
+		}
+	}
+	else {
+		size_t length;
+
+		memcpy(&config->utsname, &utsname, sizeof(config->utsname));
+
+		length = MIN(strlen(string), sizeof(config->utsname.release) - 1);
+		strncpy(config->utsname.release, string, length);
+		config->utsname.release[length] = '\0';
+
+		config->hwcap = (word_t) -1;
+	}
+
+	config->virtual_release = parse_kernel_release(config->utsname.release);
+
+	return 0;
+}
+
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
 	{ PR_accept4,		FILTER_SYSEXIT },
@@ -852,6 +961,8 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_pselect6, 		0 },
 	{ PR_readlinkat, 	0 },
 	{ PR_renameat, 		0 },
+	{ PR_setdomainname,	FILTER_SYSEXIT },
+	{ PR_sethostname,	FILTER_SYSEXIT },
 	{ PR_signalfd4, 	FILTER_SYSEXIT },
 	{ PR_socket,		FILTER_SYSEXIT },
 	{ PR_socketpair,	FILTER_SYSEXIT },
@@ -873,8 +984,6 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 
 	switch (event) {
 	case INITIALIZATION: {
-		struct utsname utsname;
-		const char *release;
 		Config *config;
 
 		extension->config = talloc_zero(extension, Config);
@@ -882,20 +991,9 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 			return -1;
 		config = extension->config;
 
-		release = (const char *) data1;
-
-		status = uname(&utsname);
-		if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL || release == NULL)
-			config->actual_release = 0;
-		else
-			config->actual_release = parse_kernel_release(utsname.release);
-
-		config->release = talloc_strdup(config, release ?: utsname.release);
-		if (config->release == NULL)
+		status = parse_utsname(config, (const char *) data1);
+		if (status < 0)
 			return -1;
-		talloc_set_name_const(config->release, "$release");
-
-		config->emulated_release = parse_kernel_release(config->release);
 
 		extension->filtered_sysnums = filtered_sysnums;
 		return 0;
