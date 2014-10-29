@@ -170,5 +170,15 @@ int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t add
 		address += sizeof_word(tracee);
 	}
 
+	poke_word(tracee, address, AT_NULL);
+	if (errno != 0)
+		return -errno;
+	address += sizeof_word(tracee);
+
+	poke_word(tracee, address, 0);
+	if (errno != 0)
+		return -errno;
+	address += sizeof_word(tracee);
+
 	return 0;
 }
