@@ -37,9 +37,9 @@ typedef unsigned char byte_t;
 		"movq $0, %%rdx				\n\t"	\
 		"                      			\n\t"	\
 		"// Start the program.			\n\t"	\
-		"jmpq *%1				\n"	\
+		"jmpq *%%rax				\n"	\
 		: /* no output */				\
-		: "irm" (stack_pointer), "irm" (destination)	\
+		: "irm" (stack_pointer), "a" (destination)	\
 		: "cc", "rsp", "rdx");				\
 	__builtin_unreachable();				\
 	} while (0)

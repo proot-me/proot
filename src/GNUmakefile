@@ -16,7 +16,7 @@ LDFLAGS  += -ltalloc
 
 CARE_LDFLAGS = -larchive
 
-LOADER_CFLAGS  = -fPIC -ffreestanding -O3 -fno-tree-loop-distribute-patterns
+LOADER_CFLAGS  = -fPIC -ffreestanding -O2
 LOADER_LDFLAGS = -static -nostdlib -Wl,-Ttext=0x00007f2000000000
 
 OBJECTS += \
