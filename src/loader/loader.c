@@ -44,54 +44,51 @@ typedef unsigned char byte_t;
 	__builtin_unreachable();				\
 	} while (0)
 
-#define ERROR()	 do {						\
-	asm volatile (						\
-		"movq $60, %%rax	\n\t"			\
-		"movq $182, %%rdi	\n\t"			\
-		"syscall		\n"			\
-		: /* no output */				\
-		: /* no input */				\
-		: "cc", "rcx", "r11", "rax", "rdi");		\
-	__builtin_unreachable ();				\
+#define PREPARE_ARGS_1(arg1_)						\
+	register word_t arg1 asm("rdi") = arg1_;			\
+
+#define PREPARE_ARGS_3(arg1_, arg2_, arg3_)				\
+	PREPARE_ARGS_1(arg1_)						\
+	register word_t arg2 asm("rsi") = arg2_;			\
+	register word_t arg3 asm("rdx") = arg3_;			\
+
+#define PREPARE_ARGS_6(arg1_, arg2_, arg3_, arg4_, arg5_, arg6_)	\
+	PREPARE_ARGS_3(arg1_, arg2_, arg3_)				\
+	register word_t arg4 asm("r10") = arg4_;			\
+	register word_t arg5 asm("r8")  = arg5_;			\
+	register word_t arg6 asm("r9")  = arg6_;
+
+#define OUTPUT_CONTRAINTS_1			\
+	"r" (arg1)
+
+#define OUTPUT_CONTRAINTS_3			\
+	OUTPUT_CONTRAINTS_1,			\
+	"r" (arg2), "r" (arg3)
+
+#define OUTPUT_CONTRAINTS_6			\
+	OUTPUT_CONTRAINTS_3,			\
+	"r" (arg4), "r" (arg5), "r" (arg6)
+
+#define SYSCALL(number_, nb_args, args...)				\
+	({								\
+		register word_t number asm("rax") = number_;		\
+		register word_t result asm("rax");			\
+		PREPARE_ARGS_##nb_args(args)				\
+		asm volatile (						\
+			"syscall		\n\t"			\
+			: "=r" (result)					\
+			: "r" (number),					\
+			  OUTPUT_CONTRAINTS_##nb_args			\
+			: "cc", "rcx", "r11");				\
+		result;							\
+	})
+
+/***********************************************************************/
+
+#define FATAL() do {						\
+		SYSCALL(SYS_exit, 1, 182);			\
+		__builtin_unreachable ();			\
 	} while (0)
-
-#define SC1(result, number, arg1)					\
-	asm volatile (							\
-		"movq %1, %%rax		\n\t"				\
-		"movq %2, %%rdi		\n\t"				\
-		"syscall		\n\t"				\
-		"movq %%rax, %0		\n"				\
-		: "=rm" (result)					\
-		: "irm" (number), "irm" (arg1)				\
-		: "cc", "rcx", "r11", "rax", "rdi")
-
-#define SC3(result, number, arg1, arg2, arg3)				\
-	asm volatile (							\
-		"movq %1, %%rax		\n\t"				\
-		"movq %2, %%rdi		\n\t"				\
-		"movq %3, %%rsi		\n\t"				\
-		"movq %4, %%rdx		\n\t"				\
-		"syscall		\n\t"				\
-		"movq %%rax, %0		\n"				\
-		: "=rm" (result)					\
-		: "irm" (number), "irm" (arg1), "irm" (arg2), "irm" (arg3) \
-		: "cc", "rcx", "r11", "rax", "rdi", "rsi", "rdx")
-
-#define SC6(result, number, arg1, arg2, arg3, arg4, arg5, arg6)		\
-	asm volatile (							\
-		"movq %1, %%rax		\n\t"				\
-		"movq %2, %%rdi		\n\t"				\
-		"movq %3, %%rsi		\n\t"				\
-		"movq %4, %%rdx		\n\t"				\
-		"movq %5, %%r10		\n\t"				\
-		"movq %6, %%r8		\n\t"				\
-		"movq %7, %%r9		\n\t"				\
-		"syscall		\n\t"				\
-		"movq %%rax, %0		\n"				\
-		: "=rm" (result)					\
-		: "irm" (number), "irm" (arg1), "irm" (arg2),		\
-		  "irm" (arg3), "irm" (arg4), "irm" (arg5), "irm" (arg6) \
-		: "cc", "rcx", "r11", "rax", "rdi", "rsi", "rdx", "r10", "r8", "r9")
 
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
 
@@ -148,15 +145,15 @@ void _start(void *cursor)
 
 		switch (stmt->action) {
 		case LOAD_ACTION_OPEN_NEXT:
-			SC1(status, SYS_close, fd);
+			status = SYSCALL(SYS_close, 1, fd);
 			if (unlikely((int) status < 0))
-				ERROR();
+				FATAL();
 			/* Fall through.  */
 
 		case LOAD_ACTION_OPEN:
-			SC3(fd, SYS_open, stmt->open.string_address, O_RDONLY, 0);
+			fd = SYSCALL(SYS_open, 3, stmt->open.string_address, O_RDONLY, 0);
 			if (unlikely((int) fd < 0))
-				ERROR();
+				FATAL();
 
 			reset_at_base = true;
 
@@ -164,10 +161,10 @@ void _start(void *cursor)
 			break;
 
 		case LOAD_ACTION_MMAP_FILE:
-			SC6(status, SYS_mmap, stmt->mmap.addr, stmt->mmap.length,
-				stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED, fd, stmt->mmap.offset);
+			status = SYSCALL(SYS_mmap, 6, stmt->mmap.addr, stmt->mmap.length,
+					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED, fd, stmt->mmap.offset);
 			if (unlikely(status != stmt->mmap.addr))
-				ERROR();
+				FATAL();
 
 			if (stmt->mmap.clear_length != 0)
 				clear(stmt->mmap.addr + stmt->mmap.length - stmt->mmap.clear_length,
@@ -182,10 +179,10 @@ void _start(void *cursor)
 			break;
 
 		case LOAD_ACTION_MMAP_ANON:
-			SC6(status, SYS_mmap, stmt->mmap.addr, stmt->mmap.length,
-				stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+			status = SYSCALL(SYS_mmap, 6, stmt->mmap.addr, stmt->mmap.length,
+					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
 			if (unlikely(status != stmt->mmap.addr))
-				ERROR();
+				FATAL();
 
 			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
 			break;
@@ -199,9 +196,9 @@ void _start(void *cursor)
 			const word_t argc = cursor2[0];
 			const word_t at_execfn = cursor2[1];
 
-			SC1(status, SYS_close, fd);
+			status = SYSCALL(SYS_close, 1, fd);
 			if (unlikely((int) status < 0))
-				ERROR();
+				FATAL();
 
 			/* Right after execve, the stack content is as follow:
 			 *
@@ -251,18 +248,18 @@ void _start(void *cursor)
 			} while (cursor2[0] != AT_NULL);
 
 			if (unlikely(traced))
-				SC6(status, SYS_execve, -1,
+				SYSCALL(SYS_execve, 6, -1,
 					stmt->start.stack_pointer,
 					stmt->start.entry_point, -2, -3, -4);
 			else
 				BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
-			ERROR();
+			FATAL();
 		}
 
 		default:
-			ERROR();
+			FATAL();
 		}
 	}
 
-	ERROR();
+	FATAL();
 }
