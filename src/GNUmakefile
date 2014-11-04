@@ -2,7 +2,8 @@
 #     make -f ${SOMEWHERE}/proot/src/GNUmakefile
 
 # the VPATH variable must point to the actual makefile directory
-VPATH	:= $(dir $(lastword $(MAKEFILE_LIST)))
+VPATH := $(dir $(lastword $(MAKEFILE_LIST)))
+SRC    = $(dir $(firstword $(MAKEFILE_LIST)))
 
 GIT      = git
 RM       = rm
@@ -16,8 +17,11 @@ LDFLAGS  += -ltalloc
 
 CARE_LDFLAGS = -larchive
 
-LOADER_CFLAGS  = -fPIC -ffreestanding -O2
-LOADER_LDFLAGS = -static -nostdlib -Wl,-Ttext=0x00007f2000000000
+LOADER_ADDRESS     := $(shell $(CC) -E -dM $(SRC)/arch.h | grep -w LOADER_ADDRESS | cut -f 3 -d ' ')
+LOADER_ARCH_CFLAGS := $(shell $(CC) -E -dM $(SRC)/arch.h | grep -w LOADER_ARCH_CFLAGS | cut -f 3 -d ' ')
+
+LOADER_CFLAGS  += -fPIC -ffreestanding $(LOADER_ARCH_CFLAGS)
+LOADER_LDFLAGS += -static -nostdlib -Wl,-Ttext=$(LOADER_ADDRESS)
 
 OBJECTS += \
 	cli/cli.o		\
@@ -65,7 +69,7 @@ CARE_OBJECTS = 				\
 	extension/care/extract.o	\
 	extension/care/archive.o
 
-LOADER_OBJECTS = loader/loader.o
+LOADER_OBJECTS = loader/loader.o loader/assembly.o
 
 .DEFAULT_GOAL = proot
 all: proot
@@ -105,10 +109,10 @@ CHECK_RESULTS  = $(foreach feature,$(CHECK_FEATURES),.check_$(feature).res)
 .SILENT .IGNORE .INTERMEDIATE: $(CHECK_OBJECTS) $(CHECK_PROGRAMS)
 
 .check_%.o: .check_%.c
-	$(COMPILE:echo=false) $(silently) || true
+	-$(COMPILE:echo=false) $(silently)
 
 .check_%: .check_%.o
-	$(LINK:echo=false) $(silently) || true
+	-$(LINK:echo=false) $(silently)
 
 .check_%.res: .check_%
 	$(Q)if [ -e $< ]; then echo "#define HAVE_$(shell echo $* | tr a-z A-Z)" > $@; else echo "" > $@; fi
@@ -125,8 +129,7 @@ build.h: $(CHECK_RESULTS)
 ######################################################################
 # Build rules
 
-SRC     = $(dir $(firstword $(MAKEFILE_LIST)))
-COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$(@:.o=.c) -o $@
+COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$< -o $@
 LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
 OBJIFY = $($(quiet)GEN)									\
@@ -144,7 +147,10 @@ proot: $(OBJECTS)
 care: $(OBJECTS) $(CARE_OBJECTS)
 	$(LINK) $(CARE_LDFLAGS)
 
-$(LOADER_OBJECTS):
+loader/loader.o: loader/loader.c
+	$(COMPILE) $(LOADER_CFLAGS)
+
+loader/assembly.o: loader/assembly.S
 	$(COMPILE) $(LOADER_CFLAGS)
 
 loader/loader: $(LOADER_OBJECTS)

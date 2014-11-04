@@ -70,6 +70,7 @@
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
 	[RTLD_FINI]     = USER_REGS_OFFSET(rdx),
 	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
+	[USERARG_1]     = USER_REGS_OFFSET(rdi),
     };
 
     static off_t reg_offset_x86[] = {
@@ -85,6 +86,7 @@
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
 	[RTLD_FINI]     = USER_REGS_OFFSET(rdx),
 	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
+	[USERARG_1]     = USER_REGS_OFFSET(rax),
     };
 
     #undef  REG
@@ -141,6 +143,7 @@
 	[INSTR_POINTER] = USER_REGS_OFFSET(eip),
 	[RTLD_FINI]     = USER_REGS_OFFSET(edx),
 	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
+	[USERARG_1]     = USER_REGS_OFFSET(eax),
     };
 
 #elif defined(ARCH_SH4)

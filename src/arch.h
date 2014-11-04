@@ -20,13 +20,13 @@
  * 02110-1301 USA.
  */
 
-#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
-#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
-
 #ifndef ARCH_H
 #define ARCH_H
 
+#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
+
 typedef unsigned long word_t;
+typedef unsigned char byte_t;
 
 #define SYSCALL_AVOIDER ((word_t) -2)
 #define SYSTRAP_NUM SYSARG_NUM
@@ -73,6 +73,11 @@ typedef unsigned long word_t;
     #define RED_ZONE_SIZE 128
     #define OFFSETOF_STAT_UID_32 24
     #define OFFSETOF_STAT_GID_32 28
+
+    #define LOADER_ADDRESS 0x00007f2000000000
+
+    #define EXEC_PIC_ADDRESS   0x555555554000
+    #define INTERP_PIC_ADDRESS 0x7ff000000000
 
 #elif defined(ARCH_ARM_EABI)
 
@@ -124,6 +129,12 @@ typedef unsigned long word_t;
     #define RED_ZONE_SIZE 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
+
+    #define LOADER_ADDRESS 0xf7000000
+    #define LOADER_ARCH_CFLAGS -mregparm=3
+
+    #define EXEC_PIC_ADDRESS   0x56555000
+    #define INTERP_PIC_ADDRESS 0xf7700000
 
 #elif defined(ARCH_SH4)
 

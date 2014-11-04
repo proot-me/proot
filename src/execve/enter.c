@@ -324,14 +324,14 @@ static void add_load_base(LoadInfo *load_info, word_t load_base)
 static void compute_load_addresses(Tracee *tracee)
 {
 	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header))
-		add_load_base(tracee->load_info, 0x555555554000);
+		add_load_base(tracee->load_info, EXEC_PIC_ADDRESS);
 
 	/* Nothing more to do?  */
 	if (tracee->load_info->interp == NULL)
 		return;
 
 	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header))
-		add_load_base(tracee->load_info->interp, 0x7ff000000000);
+		add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS);
 }
 
 /**

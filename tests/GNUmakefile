@@ -107,7 +107,7 @@ ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 $(ROOTFS_BIN): | $(ROOTFS_DIR)
 
 $(ROOTFS_DIR):
-	mkdir -p $@
+	@mkdir -p $@
 
 setup: $(ROOTFS_BIN)
 

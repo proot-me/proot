@@ -278,7 +278,7 @@ static int transfer_load_script(Tracee *tracee)
 	assert((uintptr_t) cursor - (uintptr_t) buffer == script_size);
 
 	/* Convert the load script to the expected format.  */
-	if (sizeof_word(tracee) == 4) {
+	if (is_32on64_mode(tracee)) {
 		assert(0); /* TODO.  */
 	}
 
@@ -303,7 +303,7 @@ static int transfer_load_script(Tracee *tracee)
 	/* Update the stack pointer and the pointer to the load
 	 * script.  */
 	poke_reg(tracee, STACK_POINTER, stack_pointer - buffer_size);
-	poke_reg(tracee, SYSARG_1, stack_pointer - buffer_size);
+	poke_reg(tracee, USERARG_1, stack_pointer - buffer_size);
 
 	/* Tracee's stack content is now as follow:
 	 *

@@ -23,6 +23,7 @@
 #ifndef SCRIPT
 #define SCRIPT
 
+#include "arch.h"
 #include "attribute.h"
 
 struct load_statement {

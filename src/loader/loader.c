@@ -1,9 +1,24 @@
-/*
-  gcc -Isrc -Wall -Wextra -O2						\
-  -fno-tree-loop-distribute-patterns -ffreestanding -fPIC  -O3		\
-  -static -nostdlib -Wl,-Ttext=0x00007f2000000000			\
-  src/loader/loader.c -o src/execve/loader-x86_64
-*/
+/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
+ *
+ * This file is part of PRoot.
+ *
+ * Copyright (C) 2014 STMicroelectronics
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation; either version 2 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+ * 02110-1301 USA.
+ */
 
 #include <sys/syscall.h> /* SYS_*, */
 #include <fcntl.h>       /* O_*, */
@@ -11,79 +26,25 @@
 #include <stdbool.h>     /* bool, true, false,  */
 #include <linux/auxvec.h>  /* AT_*,  */
 
-typedef unsigned long word_t;
-typedef unsigned char byte_t;
-
 #include "loader/script.h"
+#include "arch.h"
 
-/* According to the x86_64 ABI, all registers have undefined values at
- * program startup except:
- *
- * - the instruction pointer (rip)
- * - the stack pointer (rsp)
- * - the rtld_fini pointer (rdx)
- * - the system flags (rflags)
- */
-#define BRANCH(stack_pointer, destination) do {			\
-	asm volatile (						\
-		"// Restore initial stack pointer.	\n\t"	\
-		"movq %0, %%rsp				\n\t"	\
-		"                      			\n\t"	\
-		"// Clear state flags.			\n\t"	\
-		"pushq $0				\n\t"	\
-		"popfq					\n\t"	\
-		"                      			\n\t"	\
-		"// Clear rtld_fini.			\n\t"	\
-		"movq $0, %%rdx				\n\t"	\
-		"                      			\n\t"	\
-		"// Start the program.			\n\t"	\
-		"jmpq *%%rax				\n"	\
-		: /* no output */				\
-		: "irm" (stack_pointer), "a" (destination)	\
-		: "cc", "rsp", "rdx");				\
-	__builtin_unreachable();				\
-	} while (0)
+#define SYS_mmapX SYS_mmap
+#define MMAP_OFFSET_SHIT 0
 
-#define PREPARE_ARGS_1(arg1_)						\
-	register word_t arg1 asm("rdi") = arg1_;			\
+#if defined(ARCH_X86_64)
+    #include "loader/assembly-x86_64.h"
+#elif defined(ARCH_X86)
+    #include "loader/assembly-x86.h"
 
-#define PREPARE_ARGS_3(arg1_, arg2_, arg3_)				\
-	PREPARE_ARGS_1(arg1_)						\
-	register word_t arg2 asm("rsi") = arg2_;			\
-	register word_t arg3 asm("rdx") = arg3_;			\
+    #undef  SYS_mmapX
+    #define SYS_mmapX SYS_mmap2
 
-#define PREPARE_ARGS_6(arg1_, arg2_, arg3_, arg4_, arg5_, arg6_)	\
-	PREPARE_ARGS_3(arg1_, arg2_, arg3_)				\
-	register word_t arg4 asm("r10") = arg4_;			\
-	register word_t arg5 asm("r8")  = arg5_;			\
-	register word_t arg6 asm("r9")  = arg6_;
-
-#define OUTPUT_CONTRAINTS_1			\
-	"r" (arg1)
-
-#define OUTPUT_CONTRAINTS_3			\
-	OUTPUT_CONTRAINTS_1,			\
-	"r" (arg2), "r" (arg3)
-
-#define OUTPUT_CONTRAINTS_6			\
-	OUTPUT_CONTRAINTS_3,			\
-	"r" (arg4), "r" (arg5), "r" (arg6)
-
-#define SYSCALL(number_, nb_args, args...)				\
-	({								\
-		register word_t number asm("rax") = number_;		\
-		register word_t result asm("rax");			\
-		PREPARE_ARGS_##nb_args(args)				\
-		asm volatile (						\
-			"syscall		\n\t"			\
-			: "=r" (result)					\
-			: "r" (number),					\
-			  OUTPUT_CONTRAINTS_##nb_args			\
-			: "cc", "rcx", "r11");				\
-		result;							\
-	})
-
-/***********************************************************************/
+    #undef  MMAP_OFFSET_SHIT
+    #define MMAP_OFFSET_SHIT 12
+#else
+    #error "Unsupported architecture"
+#endif
 
 #define FATAL() do {						\
 		SYSCALL(SYS_exit, 1, 182);			\
@@ -91,8 +52,6 @@ typedef unsigned char byte_t;
 	} while (0)
 
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
-
-/***********************************************************************/
 
 /**
  * Clear the memory from @start (inclusive) to @end (exclusive).
@@ -161,8 +120,9 @@ void _start(void *cursor)
 			break;
 
 		case LOAD_ACTION_MMAP_FILE:
-			status = SYSCALL(SYS_mmap, 6, stmt->mmap.addr, stmt->mmap.length,
-					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED, fd, stmt->mmap.offset);
+			status = SYSCALL(SYS_mmapX, 6, stmt->mmap.addr, stmt->mmap.length,
+					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED, fd,
+					stmt->mmap.offset >> MMAP_OFFSET_SHIT);
 			if (unlikely(status != stmt->mmap.addr))
 				FATAL();
 
@@ -179,7 +139,7 @@ void _start(void *cursor)
 			break;
 
 		case LOAD_ACTION_MMAP_ANON:
-			status = SYSCALL(SYS_mmap, 6, stmt->mmap.addr, stmt->mmap.length,
+			status = SYSCALL(SYS_mmapX, 6, stmt->mmap.addr, stmt->mmap.length,
 					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
 			if (unlikely(status != stmt->mmap.addr))
 				FATAL();
