@@ -17,12 +17,6 @@ LDFLAGS  += -ltalloc
 
 CARE_LDFLAGS = -larchive
 
-LOADER_ADDRESS     := $(shell $(CC) -E -dM $(SRC)/arch.h | grep -w LOADER_ADDRESS | cut -f 3 -d ' ')
-LOADER_ARCH_CFLAGS := $(shell $(CC) -E -dM $(SRC)/arch.h | grep -w LOADER_ARCH_CFLAGS | cut -f 3 -d ' ')
-
-LOADER_CFLAGS  += -fPIC -ffreestanding $(LOADER_ARCH_CFLAGS)
-LOADER_LDFLAGS += -static -nostdlib -Wl,-Ttext=$(LOADER_ADDRESS)
-
 OBJECTS += \
 	cli/cli.o		\
 	cli/proot.o		\
@@ -61,6 +55,23 @@ OBJECTS += \
 	extension/fake_id0/fake_id0.o \
 	loader/loader-wrapped.o
 
+define define_from_arch.h
+$2$1 := $(shell $(CC) $1 -E -dM $(SRC)/arch.h | grep -w $2 | cut -f 3 -d ' ')
+endef
+
+$(eval $(call define_from_arch.h,,HAS_LOADER_32BIT))
+
+ifdef HAS_LOADER_32BIT
+  # Not all x86_64 systems support 32-bit compilation mode.
+  SUPPORT-m32 := $(shell echo '\#include <features.h>' | $(CC) -m32 -E - >/dev/null 2>&1 && echo -n yes)
+
+  ifeq ($(SUPPORT-m32),yes)
+    OBJECTS += loader/loader-m32-wrapped.o
+  else
+    $(warning "$(shell which $(CC)) doesn't support 32-bit compilation mode")
+  endif
+endif
+
 CARE_OBJECTS = 				\
 	cli/care.o			\
 	cli/care-manual.o		\
@@ -68,8 +79,6 @@ CARE_OBJECTS = 				\
 	extension/care/final.o		\
 	extension/care/extract.o	\
 	extension/care/archive.o
-
-LOADER_OBJECTS = loader/loader.o loader/assembly.o
 
 .DEFAULT_GOAL = proot
 all: proot
@@ -147,23 +156,6 @@ proot: $(OBJECTS)
 care: $(OBJECTS) $(CARE_OBJECTS)
 	$(LINK) $(CARE_LDFLAGS)
 
-loader/loader.o: loader/loader.c
-	$(COMPILE) $(LOADER_CFLAGS)
-
-loader/assembly.o: loader/assembly.S
-	$(COMPILE) $(LOADER_CFLAGS)
-
-loader/loader: $(LOADER_OBJECTS)
-	$($(quiet)LD) -o $@ $^ $(LOADER_LDFLAGS)
-
-.INTERMEDIATE: loader.exe
-loader.exe: $(VPATH)/loader/loader
-	$(Q)cp $< $@
-	$(Q)strip $@
-
-loader/loader-wrapped.o: loader.exe cli/cli.o
-	$(OBJIFY)
-
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
 USE_BUILD_H := $(patsubst $(SRC)%.c,%.o,$(shell egrep -sl 'include[[:space:]]+"build.h"' $(patsubst %.o,$(SRC)%.c,$(OBJECTS) $(CARE_OBJECTS))))
@@ -184,12 +176,45 @@ cli/%-licenses.o: licenses cli/cli.o
 	$(OBJIFY)
 
 ######################################################################
+# Build rules for the loader
+
+define build_loader
+LOADER$1_OBJECTS = loader/loader$1.o loader/assembly$1.o
+
+$(eval $(call define_from_arch.h,$1,LOADER_ARCH_CFLAGS))
+$(eval $(call define_from_arch.h,$1,LOADER_ADDRESS))
+
+LOADER_CFLAGS$1  += -fPIC -ffreestanding $(LOADER_ARCH_CFLAGS$1)
+LOADER_LDFLAGS$1 += -static -nostdlib -Wl,-Ttext=$(LOADER_ADDRESS$1)
+
+loader/loader$1.o: loader/loader.c
+	$$(COMPILE) $1 $$(LOADER_CFLAGS$1)
+
+loader/assembly$1.o: loader/assembly.S
+	$$(COMPILE) $1 $$(LOADER_CFLAGS$1)
+
+loader/loader$1: $$(LOADER$1_OBJECTS)
+	$$($$(quiet)LD) $1 -o $$@ $$^ $$(LOADER_LDFLAGS$1)
+
+.INTERMEDIATE: loader$1.exe
+loader$1.exe: $$(VPATH)/loader/loader$1
+	$$(Q)cp $$< $$@
+	$$(Q)strip $$@
+
+loader/loader$1-wrapped.o: loader$1.exe cli/cli.o
+	$$(OBJIFY)
+endef
+
+$(eval $(build_loader))
+$(eval $(call build_loader,-m32))
+
+######################################################################
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS): $(firstword $(MAKEFILE_LIST))
+$(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS): $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(LOADER_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
+DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(LOADER_OBJECTS:.o=.d) $(LOADER-m32_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 -include $(DEPS)
 
 ######################################################################
@@ -200,7 +225,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install install-care uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) proot care loader/loader cli/care-manual.o $(DEPS) build.h licenses
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<

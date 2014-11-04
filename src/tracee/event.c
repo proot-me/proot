@@ -241,8 +241,8 @@ static void check_architecture(Tracee *tracee)
 		return;
 
 	note(tracee, INFO, USER,
-		"use a 64-bit version of %s instead, it supports both 32 and 64-bit programs",
-		tracee->tool_name);
+		"Get a version that supports 32-bit binaries here: "
+		"http://proot.me/#downloads");
 }
 
 /**

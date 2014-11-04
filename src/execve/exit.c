@@ -279,7 +279,9 @@ static int transfer_load_script(Tracee *tracee)
 
 	/* Convert the load script to the expected format.  */
 	if (is_32on64_mode(tracee)) {
-		assert(0); /* TODO.  */
+		int i;
+		for (i = 0; buffer + i * sizeof(uint64_t) < cursor; i++)
+			((uint32_t *) buffer)[i] = ((uint64_t *) buffer)[i];
 	}
 
 	/* Concatenate the load script and the strings.  */

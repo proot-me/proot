@@ -68,7 +68,7 @@ int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg)
  * syscall points to this new block.  This function returns -errno if
  * an error occured, otherwise 0.
  */
-static int set_sysarg_data(Tracee *tracee, void *tracer_ptr, word_t size, Reg reg)
+static int set_sysarg_data(Tracee *tracee, const void *tracer_ptr, word_t size, Reg reg)
 {
        word_t tracee_ptr;
        int status;
@@ -94,7 +94,7 @@ static int set_sysarg_data(Tracee *tracee, void *tracer_ptr, word_t size, Reg re
  * of the current syscall points to this new block.  This function
  * returns -errno if an error occured, otherwise 0.
  */
-int set_sysarg_path(Tracee *tracee, char path[PATH_MAX], Reg reg)
+int set_sysarg_path(Tracee *tracee, const char path[PATH_MAX], Reg reg)
 {
 	return set_sysarg_data(tracee, path, strlen(path) + 1, reg);
 }

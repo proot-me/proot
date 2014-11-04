@@ -42,8 +42,8 @@
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
+#include "arch.h"
 #include "cli/note.h"
-
 
 #define P(a) PROGRAM_FIELD(load_info->elf_header, *program_header, a)
 
@@ -323,15 +323,27 @@ static void add_load_base(LoadInfo *load_info, word_t load_base)
  */
 static void compute_load_addresses(Tracee *tracee)
 {
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header))
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header)) {
+#if defined(HAS_LOADER_32BIT)
+		if (IS_CLASS32(tracee->load_info->elf_header))
+			add_load_base(tracee->load_info, EXEC_PIC_ADDRESS_32);
+		else
+#endif
 		add_load_base(tracee->load_info, EXEC_PIC_ADDRESS);
+	}
 
 	/* Nothing more to do?  */
 	if (tracee->load_info->interp == NULL)
 		return;
 
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header))
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header)) {
+#if defined(HAS_LOADER_32BIT)
+		if (IS_CLASS32(tracee->load_info->elf_header))
+			add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS_32);
+		else
+#endif
 		add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS);
+	}
 }
 
 /**
@@ -440,15 +452,19 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 extern unsigned char _binary_loader_exe_start;
 extern unsigned char _binary_loader_exe_size;
 
+extern unsigned char WEAK _binary_loader_m32_exe_start;
+extern unsigned char WEAK _binary_loader_m32_exe_size;
+
 /**
  * Extract the built-in loader.  This function returns NULL if an
  * error occurred, otherwise it returns the path to the extracted
  * loader.  Note: @tracee is only used for notification purpose.
  */
-static char *extract_loader(const Tracee *tracee)
+static char *extract_loader(const Tracee *tracee, bool want_32bit_version)
 {
 	char path[PATH_MAX];
 	size_t status2;
+	void *start;
 	size_t size;
 	int status;
 	int fd;
@@ -461,8 +477,16 @@ static char *extract_loader(const Tracee *tracee)
 		goto end;
 	fd = fileno(file);
 
-	size = (size_t) &_binary_loader_exe_size;
-	status2 = write(fd, &_binary_loader_exe_start, size);
+	if (want_32bit_version) {
+		start = (void *) &_binary_loader_m32_exe_start;
+		size  = (size_t) &_binary_loader_m32_exe_size;
+	}
+	else {
+		start = (void *) &_binary_loader_exe_start;
+		size  = (size_t) &_binary_loader_exe_size;
+	}
+
+	status2 = write(fd, start, size);
 	if (status2 != size) {
 		note(tracee, ERROR, SYSTEM, "can't write the loader");
 		goto end;
@@ -500,16 +524,47 @@ end:
 }
 
 /**
+ * Get the path to the loader for the given @tracee.  This function
+ * returns NULL if an error occurred.
+ */
+static inline const char *get_loader_path(const Tracee *tracee)
+{
+	static char *loader_path = NULL;
+
+#if defined(HAS_LOADER_32BIT)
+	static char *loader32_path = NULL;
+
+	if (IS_CLASS32(tracee->load_info->elf_header)) {
+		if ((size_t) &_binary_loader_m32_exe_size == 0) {
+			note(tracee, ERROR, USER,
+				"This version of PRoot doesn't support 32-bit binaries.");
+			note(tracee, INFO, USER,
+				"Get a version that supports 32-bit binaries here: "
+				"http://proot.me/#downloads");
+			return NULL;
+		}
+
+		loader32_path = loader32_path ?: getenv("PROOT_LOADER_32") ?: extract_loader(tracee, true);
+		return loader32_path;
+	}
+	else
+#endif
+	{
+		loader_path = loader_path ?: getenv("PROOT_LOADER") ?: extract_loader(tracee, false);
+		return loader_path;
+	}
+}
+
+/**
  * Extract all the information that will be required by
  * translate_load_*().  This function returns -errno if an error
  * occured, otherwise 0.
  */
 int translate_execve_enter(Tracee *tracee)
 {
-	static char *loader_path = NULL;
-
 	char user_path[PATH_MAX];
 	char host_path[PATH_MAX];
+	const char *loader_path;
 	int status;
 
 	if (IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee)) {
@@ -537,16 +592,6 @@ int translate_execve_enter(Tracee *tracee)
 		if (status < 0)
 			return status;
 	}
-
-	if (loader_path == NULL) {
-		loader_path = getenv("PROOT_LOADER") ?: extract_loader(tracee);
-		if (loader_path == NULL)
-			return -ENOENT;
-	}
-
-	status = set_sysarg_path(tracee, loader_path, SYSARG_1);
-	if (status < 0)
-		return status;
 
 	if (tracee->load_info != NULL)
 		TALLOC_FREE(tracee->load_info);
@@ -589,6 +634,15 @@ int translate_execve_enter(Tracee *tracee)
 		if (tracee->exe != NULL)
 			talloc_set_name_const(tracee->exe, "$exe");
 	}
+
+	/* Execute the loader instead of the program.  */
+	loader_path = get_loader_path(tracee);
+	if (loader_path == NULL)
+		return -ENOENT;
+
+	status = set_sysarg_path(tracee, loader_path, SYSARG_1);
+	if (status < 0)
+		return status;
 
 	/* Mask to its ptracer syscalls performed by the loader.  */
 	tracee->as_ptracee.ignore_loader_syscalls = true;

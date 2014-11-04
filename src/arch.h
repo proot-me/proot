@@ -75,9 +75,12 @@ typedef unsigned char byte_t;
     #define OFFSETOF_STAT_GID_32 28
 
     #define LOADER_ADDRESS 0x00007f2000000000
+    #define HAS_LOADER_32BIT true
 
     #define EXEC_PIC_ADDRESS   0x555555554000
     #define INTERP_PIC_ADDRESS 0x7ff000000000
+    #define EXEC_PIC_ADDRESS_32   0x56555000
+    #define INTERP_PIC_ADDRESS_32 0xf7700000
 
 #elif defined(ARCH_ARM_EABI)
 
