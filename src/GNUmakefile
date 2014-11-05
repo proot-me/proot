@@ -56,7 +56,7 @@ OBJECTS += \
 	loader/loader-wrapped.o
 
 define define_from_arch.h
-$2$1 := $(shell $(CC) $1 -E -dM $(SRC)/arch.h | grep -w $2 | cut -f 3 -d ' ')
+$2$1 := $(shell $(CC) $1 -E -dM -DNO_LIBC_HEADER $(SRC)/arch.h | grep -w $2 | cut -f 3 -d ' ')
 endef
 
 $(eval $(call define_from_arch.h,,HAS_LOADER_32BIT))
@@ -181,16 +181,18 @@ LOADER_CFLAGS$1  += -fPIC -ffreestanding $(LOADER_ARCH_CFLAGS$1)
 LOADER_LDFLAGS$1 += -static -nostdlib -Wl,-Ttext=$(LOADER_ADDRESS$1)
 
 loader/loader$1.o: loader/loader.c
+	@mkdir -p $$(dir $$@)
 	$$(COMPILE) $1 $$(LOADER_CFLAGS$1)
 
 loader/assembly$1.o: loader/assembly.S
+	@mkdir -p $$(dir $$@)
 	$$(COMPILE) $1 $$(LOADER_CFLAGS$1)
 
 loader/loader$1: $$(LOADER$1_OBJECTS)
 	$$($$(quiet)LD) $1 -o $$@ $$^ $$(LOADER_LDFLAGS$1)
 
 .INTERMEDIATE: loader$1.exe
-loader$1.exe: $$(VPATH)/loader/loader$1
+loader$1.exe: loader/loader$1
 	$$(Q)cp $$< $$@
 	$$(Q)strip $$@
 
