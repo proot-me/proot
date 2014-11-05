@@ -36,7 +36,7 @@
       <data key="d4"><![CDATA[https://github.com/ev3dev/brickstrap]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="85.255859375" x="8.688562970870336" y="381.6946150141736"/>
+          <y:Geometry height="30.0" width="85.255859375" x="8.689222029961527" y="406.8904477937454"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="75.255859375" x="5.0" y="6.015625">BrickStrap<y:LabelModel>
@@ -54,7 +54,7 @@
       <data key="d4"><![CDATA[https://packages.debian.org/sid/proot]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="61.443359375" x="307.9588534760082" y="-227.8273865273965"/>
+          <y:Geometry height="30.0" width="61.443359375" x="354.68058384338565" y="-194.13708511994318"/>
           <y:Fill color="#CCCCFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="51.443359375" x="5.0" y="6.015625">Debian<y:LabelModel>
@@ -72,7 +72,7 @@
       <data key="d4"><![CDATA[https://github.com/squeaky-pl/portable-pypy]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="108.83984375" x="106.52125921804804" y="351.1938506151826"/>
+          <y:Geometry height="30.0" width="108.83984375" x="107.00967476271475" y="378.1481722320285"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="98.83984375" x="5.0" y="6.015625">Portable Pypy<y:LabelModel>
@@ -90,7 +90,7 @@
       <data key="d4"><![CDATA[https://play.google.com/store/apps/details?id=champion.gnuroot]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="75.1015625" x="-379.5571952033773" y="192.44062479358067"/>
+          <y:Geometry height="30.0" width="75.1015625" x="-450.90609758795875" y="83.8047693947313"/>
           <y:Fill color="#FFCCCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="65.1015625" x="5.0" y="6.015625">GNURoot<y:LabelModel>
@@ -106,10 +106,9 @@
     </node>
     <node id="n5">
       <data key="d4"><![CDATA[https://play.google.com/store/apps/details?id=com.cuntubuntu]]></data>
-      <data key="d5"><![CDATA[has some derivative works]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="110.55078125" x="-440.71276897501764" y="91.94871374011645"/>
+          <y:Geometry height="30.0" width="110.55078125" x="-480.1559338693215" y="-25.075910500312432"/>
           <y:Fill color="#FFCCCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="100.55078125" x="5.0" y="6.015625">Debian noroot<y:LabelModel>
@@ -126,7 +125,7 @@
     <node id="n6">
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="82.408203125" x="-196.87724932964167" y="64.94292379110033"/>
+          <y:Geometry height="30.0" width="82.408203125" x="-213.7405317385705" y="14.26055813032196"/>
           <y:Fill hasColor="false" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="72.408203125" x="5.0" y="6.015625">is core for<y:LabelModel>
@@ -143,7 +142,7 @@
     <node id="n7">
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="78.681640625" x="109.39101601637455" y="77.21627222047567"/>
+          <y:Geometry height="30.0" width="78.681640625" x="103.59273131298826" y="85.97029176804374"/>
           <y:Fill hasColor="false" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="68.681640625" x="5.0" y="6.015625">is used in<y:LabelModel>
@@ -160,7 +159,7 @@
     <node id="n8">
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="99.974609375" x="30.949843863569697" y="-170.15855756103844"/>
+          <y:Geometry height="30.0" width="99.974609375" x="54.241210084416" y="-155.5753061829868"/>
           <y:Fill hasColor="false" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="89.974609375" x="5.0" y="6.015625">is shipped in<y:LabelModel>
@@ -177,7 +176,7 @@
     <node id="n9">
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="116.380859375" x="-196.97060691126094" y="-121.60704671709796"/>
+          <y:Geometry height="30.0" width="116.380859375" x="-167.6934869707976" y="-151.50670476431128"/>
           <y:Fill hasColor="false" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="106.380859375" x="5.0" y="6.015625">is presented at<y:LabelModel>
@@ -197,7 +196,7 @@
 ]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="142.47265625" x="-214.71264611977125" y="358.38257347479845"/>
+          <y:Geometry height="30.0" width="142.47265625" x="-350.5031410359237" y="305.36705075050264"/>
           <y:Fill color="#99FFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="132.47265625" x="5.0" y="6.015625">STMicroelectronics<y:LabelModel>
@@ -216,7 +215,7 @@
       <data key="d5"><![CDATA[Lightning talk]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="104.392578125" x="-170.73250193681258" y="-397.0329386812289"/>
+          <y:Geometry height="30.0" width="104.392578125" x="-93.55920604191515" y="-437.9823980958948"/>
           <y:Fill color="#FFFF99" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="94.392578125" x="5.0" y="6.015625">Fosdem 2012<y:LabelModel>
@@ -234,7 +233,7 @@
       <data key="d4"><![CDATA[http://reproducible.io]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="49.53125" x="-317.7236264884789" y="257.35199533669"/>
+          <y:Geometry height="30.0" width="49.53125" x="-411.72348342029915" y="160.7515741231802"/>
           <y:Fill color="#FFCCCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="39.53125" x="5.0" y="6.015625">CARE<y:LabelModel>
@@ -252,7 +251,7 @@
       <data key="d4"><![CDATA[http://packages.gentoo.org/package/sys-apps/proot]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="62.755859375" x="178.15746717728874" y="-355.72704245585714"/>
+          <y:Geometry height="30.0" width="62.755859375" x="243.83124041283997" y="-338.8594026621462"/>
           <y:Fill color="#CCCCFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="52.755859375" x="5.0" y="6.015625">Gentoo<y:LabelModel>
@@ -270,7 +269,7 @@
       <data key="d4"><![CDATA[https://aur.archlinux.org/packages/proot/]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="85.625" x="238.8662763817344" y="-299.00187840239516"/>
+          <y:Geometry height="30.0" width="85.625" x="295.50543185367104" y="-272.2274810090376"/>
           <y:Fill color="#CCCCFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="75.625" x="5.0" y="6.015625">Arch Linux<y:LabelModel>
@@ -288,7 +287,7 @@
       <data key="d4"><![CDATA[https://launchpad.net/ubuntu/+source/proot]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="63.69921875" x="-50.07965770342035" y="-414.58436573262406"/>
+          <y:Geometry height="30.0" width="63.69921875" x="28.591460019473068" y="-435.6802552182031"/>
           <y:Fill color="#CCCCFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="53.69921875" x="5.0" y="6.015625">Ubuntu<y:LabelModel>
@@ -306,7 +305,7 @@
       <data key="d4"><![CDATA[http://gfxmonk.net/dist/0install/proot.xml]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="64.208984375" x="31.857350958348675" y="-409.85298861903766"/>
+          <y:Geometry height="30.0" width="64.208984375" x="108.30506081770423" y="-416.13608342416507"/>
           <y:Fill color="#CCCCFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="54.208984375" x="5.0" y="6.015625">0install<y:LabelModel>
@@ -324,7 +323,7 @@
       <data key="d4"><![CDATA[https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/system/proot]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="54.740234375" x="112.3385171615582" y="-389.8086144798718"/>
+          <y:Geometry height="30.0" width="54.740234375" x="184.28565441143212" y="-383.54692285903116"/>
           <y:Fill color="#CCCCFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="44.740234375" x="5.0" y="6.015625">NixOS<y:LabelModel>
@@ -342,7 +341,7 @@
       <data key="d4"><![CDATA[https://nixos.org/wiki/How_to_install_nix_in_home_%28on_another_distribution%29]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="54.740234375" x="345.9812774839054" y="-158.5574313538539"/>
+          <y:Geometry height="30.0" width="54.740234375" x="384.14171534680975" y="-121.22152175644175"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="44.740234375" x="5.0" y="6.015625">NixOS<y:LabelModel>
@@ -360,7 +359,7 @@
       <data key="d4"><![CDATA[https://aur.archlinux.org/packages/xampp/]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="91.970703125" x="213.98142053566892" y="289.0021009875733"/>
+          <y:Geometry height="30.0" width="91.970703125" x="216.49045883118833" y="319.2625449525815"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="81.970703125" x="5.0" y="6.015625">xampp AUR<y:LabelModel>
@@ -378,7 +377,7 @@
       <data key="d4"><![CDATA[https://aur.archlinux.org/packages/hammerwatch/]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="142.73046875" x="274.0114032347854" y="186.7795286776113"/>
+          <y:Geometry height="30.0" width="142.73046875" x="281.7140094424758" y="221.55876137923843"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="132.73046875" x="5.0" y="6.015625">hammerwatch AUR<y:LabelModel>
@@ -396,7 +395,7 @@
       <data key="d5"><![CDATA[Enea uses PRoot in an internal tool (host environment for API testing of target software) at a customer.]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="46.9765625" x="-57.386530251956344" y="383.5610476634682"/>
+          <y:Geometry height="30.0" width="46.9765625" x="-209.1070661324986" y="367.32272584656107"/>
           <y:Fill color="#99FFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="36.9765625" x="5.0" y="6.015625">Enea<y:LabelModel>
@@ -414,7 +413,7 @@
       <data key="d4"><![CDATA[https://forge.ocamlcore.org/projects/opam2debian]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="110.017578125" x="339.051437991661" y="53.67705187341035"/>
+          <y:Geometry height="30.0" width="110.017578125" x="356.2343185721427" y="92.25719753471871"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="100.017578125" x="5.0" y="6.015625">OPAM2Debian<y:LabelModel>
@@ -432,7 +431,7 @@
       <data key="d4"><![CDATA[http://sioworkers.readthedocs.org/en/latest/]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="98.064453125" x="347.61710561821326" y="-66.66533925751601"/>
+          <y:Geometry height="30.0" width="98.064453125" x="375.7878196465929" y="-27.36641980947448"/>
           <y:Fill color="#CCFFCC" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="88.064453125" x="5.0" y="6.015625">SIO Workers<y:LabelModel>
@@ -450,7 +449,7 @@
       <data key="d4"><![CDATA[http://adt.cs.upb.de/quf/]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="161.5859375" x="-330.89189800994626" y="-327.17066739690387"/>
+          <y:Geometry height="30.0" width="161.5859375" x="-265.6290019615982" y="-397.7017648595326"/>
           <y:Fill color="#FFFF99" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="151.5859375" x="5.0" y="6.015625">QEMU workshop 2011<y:LabelModel>
@@ -468,7 +467,7 @@
       <data key="d4"><![CDATA[http://www.slideshare.net/linaroorg/lcu14-211-lava-use-cases-sw-testing-reproducing-a-lava-failures-locally-using-care]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="153.44140625" x="-434.9466462372432" y="-192.97239584088283"/>
+          <y:Geometry height="30.0" width="153.44140625" x="-398.40020428209834" y="-292.7540252369358"/>
           <y:Fill color="#FFFF99" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="143.44140625" x="5.0" y="6.015625">Linaro Connect 2014<y:LabelModel>
@@ -487,7 +486,7 @@
       <data key="d5"><![CDATA[About 175 domains references http://proot.me according to Google]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="127.6953125" x="-462.91461689482577" y="-42.30496148506842"/>
+          <y:Geometry height="30.0" width="127.6953125" x="-464.13839253711944" y="-157.8017032206403"/>
           <y:Fill color="#FFFF99" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="117.6953125" x="5.0" y="6.015625">many web pages<y:LabelModel>
@@ -505,7 +504,7 @@
       <data key="d5"><![CDATA[Sony has an internal wiki page about CE Linux that references http://proot.me]]></data>
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="47.251953125" x="-265.43709250335104" y="303.63362064829295"/>
+          <y:Geometry height="30.0" width="47.251953125" x="-377.11120095137943" y="220.95168178833467"/>
           <y:Fill color="#99FFFF" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="37.251953125" x="5.0" y="6.015625">Sony<y:LabelModel>
@@ -522,7 +521,7 @@
     <node id="n28">
       <data key="d6">
         <y:ShapeNode>
-          <y:Geometry height="30.0" width="82.4375" x="-104.03706975114936" y="148.33664225654437"/>
+          <y:Geometry height="30.0" width="82.4375" x="-129.84723893150272" y="135.89728609129622"/>
           <y:Fill hasColor="false" transparent="false"/>
           <y:BorderStyle color="#000000" type="line" width="1.0"/>
           <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="72.4375" x="5.0" y="6.015625">is used by<y:LabelModel>
@@ -533,6 +532,43 @@
             </y:ModelParameter>
           </y:NodeLabel>
           <y:Shape type="rectangle"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n29">
+      <data key="d5"><![CDATA[Cisco has an internal wiki page that references http://proot.me]]></data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="30.0" width="49.419921875" x="-146.35284463093" y="392.21985320800195"/>
+          <y:Fill color="#99FFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="39.419921875" x="5.0" y="6.015625">Cisco
+<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="ellipse"/>
+        </y:ShapeNode>
+      </data>
+    </node>
+    <node id="n30">
+      <data key="d5"><![CDATA[Ericsson has an internal Bugzilla ticket that references http://proot.me]]></data>
+      <data key="d6">
+        <y:ShapeNode>
+          <y:Geometry height="30.0" width="70.4140625" x="-79.37080412941125" y="407.69913788066305"/>
+          <y:Fill color="#99FFFF" transparent="false"/>
+          <y:BorderStyle color="#000000" type="line" width="1.0"/>
+          <y:NodeLabel alignment="center" autoSizePolicy="content" fontFamily="DejaVu Sans" fontSize="12" fontStyle="bold" hasBackgroundColor="false" hasLineColor="false" height="17.96875" modelName="custom" textColor="#000000" visible="true" width="60.4140625" x="5.0" y="6.015625">Ericsson<y:LabelModel>
+              <y:SmartNodeLabelModel distance="4.0"/>
+            </y:LabelModel>
+            <y:ModelParameter>
+              <y:SmartNodeLabelModelParameter labelRatioX="0.0" labelRatioY="0.0" nodeRatioX="0.0" nodeRatioY="0.0" offsetX="0.0" offsetY="0.0" upX="0.0" upY="-1.0"/>
+            </y:ModelParameter>
+          </y:NodeLabel>
+          <y:Shape type="ellipse"/>
         </y:ShapeNode>
       </data>
     </node>
@@ -777,7 +813,6 @@
       </data>
     </edge>
     <edge id="e24" source="n0" target="n28">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
@@ -788,7 +823,6 @@
       </data>
     </edge>
     <edge id="e25" source="n28" target="n27">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
@@ -799,7 +833,6 @@
       </data>
     </edge>
     <edge id="e26" source="n28" target="n10">
-      <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
           <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
@@ -810,6 +843,27 @@
       </data>
     </edge>
     <edge id="e27" source="n28" target="n21">
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e28" source="n28" target="n29">
+      <data key="d9"/>
+      <data key="d10">
+        <y:PolyLineEdge>
+          <y:Path sx="0.0" sy="0.0" tx="0.0" ty="0.0"/>
+          <y:LineStyle color="#000000" type="line" width="1.0"/>
+          <y:Arrows source="none" target="standard"/>
+          <y:BendStyle smoothed="false"/>
+        </y:PolyLineEdge>
+      </data>
+    </edge>
+    <edge id="e29" source="n28" target="n30">
       <data key="d9"/>
       <data key="d10">
         <y:PolyLineEdge>
