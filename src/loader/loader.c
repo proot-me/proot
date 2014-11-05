@@ -27,6 +27,14 @@
 #include "compat.h"
 #include "arch.h"
 
+#define GCC_VERSION (__GNUC__ * 10000			\
+			+ __GNUC_MINOR__ * 100		\
+			+ __GNUC_PATCHLEVEL__)
+
+#if GCC_VERSION < 40500
+#define __builtin_unreachable()
+#endif
+
 #define MMAP_OFFSET_SHIFT 0
 
 #if defined(ARCH_X86_64)
@@ -42,7 +50,7 @@
 
 #define FATAL() do {						\
 		SYSCALL(EXIT, 1, 182);				\
-		__builtin_unreachable ();			\
+		__builtin_unreachable();			\
 	} while (0)
 
 #define unlikely(expr) __builtin_expect(!!(expr), 0)
