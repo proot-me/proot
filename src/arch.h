@@ -23,7 +23,9 @@
 #ifndef ARCH_H
 #define ARCH_H
 
+#ifndef NO_LIBC_HEADER
 #include <linux/audit.h>   /* AUDIT_ARCH_*,  */
+#endif
 
 typedef unsigned long word_t;
 typedef unsigned char byte_t;

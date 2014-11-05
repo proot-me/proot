@@ -20,34 +20,28 @@
  * 02110-1301 USA.
  */
 
-#include <sys/syscall.h> /* SYS_*, */
-#include <fcntl.h>       /* O_*, */
-#include <sys/mman.h>    /* MAP_*, */
 #include <stdbool.h>     /* bool, true, false,  */
-#include <linux/auxvec.h>  /* AT_*,  */
 
+#define NO_LIBC_HEADER
 #include "loader/script.h"
+#include "compat.h"
 #include "arch.h"
 
-#define SYS_mmapX SYS_mmap
-#define MMAP_OFFSET_SHIT 0
+#define MMAP_OFFSET_SHIFT 0
 
 #if defined(ARCH_X86_64)
     #include "loader/assembly-x86_64.h"
 #elif defined(ARCH_X86)
     #include "loader/assembly-x86.h"
 
-    #undef  SYS_mmapX
-    #define SYS_mmapX SYS_mmap2
-
-    #undef  MMAP_OFFSET_SHIT
-    #define MMAP_OFFSET_SHIT 12
+    #undef  MMAP_OFFSET_SHIFT
+    #define MMAP_OFFSET_SHIFT 12
 #else
     #error "Unsupported architecture"
 #endif
 
 #define FATAL() do {						\
-		SYSCALL(SYS_exit, 1, 182);			\
+		SYSCALL(EXIT, 1, 182);			\
 		__builtin_unreachable ();			\
 	} while (0)
 
@@ -104,13 +98,13 @@ void _start(void *cursor)
 
 		switch (stmt->action) {
 		case LOAD_ACTION_OPEN_NEXT:
-			status = SYSCALL(SYS_close, 1, fd);
+			status = SYSCALL(CLOSE, 1, fd);
 			if (unlikely((int) status < 0))
 				FATAL();
 			/* Fall through.  */
 
 		case LOAD_ACTION_OPEN:
-			fd = SYSCALL(SYS_open, 3, stmt->open.string_address, O_RDONLY, 0);
+			fd = SYSCALL(OPEN, 3, stmt->open.string_address, O_RDONLY, 0);
 			if (unlikely((int) fd < 0))
 				FATAL();
 
@@ -120,9 +114,9 @@ void _start(void *cursor)
 			break;
 
 		case LOAD_ACTION_MMAP_FILE:
-			status = SYSCALL(SYS_mmapX, 6, stmt->mmap.addr, stmt->mmap.length,
+			status = SYSCALL(MMAP, 6, stmt->mmap.addr, stmt->mmap.length,
 					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED, fd,
-					stmt->mmap.offset >> MMAP_OFFSET_SHIT);
+					stmt->mmap.offset >> MMAP_OFFSET_SHIFT);
 			if (unlikely(status != stmt->mmap.addr))
 				FATAL();
 
@@ -139,7 +133,7 @@ void _start(void *cursor)
 			break;
 
 		case LOAD_ACTION_MMAP_ANON:
-			status = SYSCALL(SYS_mmapX, 6, stmt->mmap.addr, stmt->mmap.length,
+			status = SYSCALL(MMAP, 6, stmt->mmap.addr, stmt->mmap.length,
 					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
 			if (unlikely(status != stmt->mmap.addr))
 				FATAL();
@@ -156,7 +150,7 @@ void _start(void *cursor)
 			const word_t argc = cursor2[0];
 			const word_t at_execfn = cursor2[1];
 
-			status = SYSCALL(SYS_close, 1, fd);
+			status = SYSCALL(CLOSE, 1, fd);
 			if (unlikely((int) status < 0))
 				FATAL();
 
@@ -208,7 +202,7 @@ void _start(void *cursor)
 			} while (cursor2[0] != AT_NULL);
 
 			if (unlikely(traced))
-				SYSCALL(SYS_execve, 6, -1,
+				SYSCALL(EXECVE, 6, -1,
 					stmt->start.stack_pointer,
 					stmt->start.entry_point, -2, -3, -4);
 			else

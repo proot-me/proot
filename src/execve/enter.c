@@ -535,15 +535,6 @@ static inline const char *get_loader_path(const Tracee *tracee)
 	static char *loader32_path = NULL;
 
 	if (IS_CLASS32(tracee->load_info->elf_header)) {
-		if ((size_t) &_binary_loader_m32_exe_size == 0) {
-			note(tracee, ERROR, USER,
-				"This version of PRoot doesn't support 32-bit binaries.");
-			note(tracee, INFO, USER,
-				"Get a version that supports 32-bit binaries here: "
-				"http://proot.me/#downloads");
-			return NULL;
-		}
-
 		loader32_path = loader32_path ?: getenv("PROOT_LOADER_32") ?: extract_loader(tracee, true);
 		return loader32_path;
 	}

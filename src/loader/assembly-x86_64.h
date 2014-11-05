@@ -67,11 +67,11 @@
 
 #define OUTPUT_CONTRAINTS_3			\
 	OUTPUT_CONTRAINTS_1,			\
-		"r" (arg2), "r" (arg3)
+	"r" (arg2), "r" (arg3)
 
 #define OUTPUT_CONTRAINTS_6				\
 	OUTPUT_CONTRAINTS_3,				\
-		"r" (arg4), "r" (arg5), "r" (arg6)
+	"r" (arg4), "r" (arg5), "r" (arg6)
 
 #define SYSCALL(number_, nb_args, args...)			\
 	({							\
@@ -86,3 +86,9 @@
 				: "cc", "rcx", "r11");		\
 			result;					\
 	})
+
+#define OPEN	2
+#define CLOSE	3
+#define MMAP	9
+#define EXECVE	59
+#define EXIT	60

@@ -62,14 +62,7 @@ endef
 $(eval $(call define_from_arch.h,,HAS_LOADER_32BIT))
 
 ifdef HAS_LOADER_32BIT
-  # Not all x86_64 systems support 32-bit compilation mode.
-  SUPPORT-m32 := $(shell echo '\#include <features.h>' | $(CC) -m32 -E - >/dev/null 2>&1 && echo -n yes)
-
-  ifeq ($(SUPPORT-m32),yes)
-    OBJECTS += loader/loader-m32-wrapped.o
-  else
-    $(warning "$(shell which $(CC)) doesn't support 32-bit compilation mode")
-  endif
+  OBJECTS += loader/loader-m32-wrapped.o
 endif
 
 CARE_OBJECTS = 				\
@@ -206,7 +199,10 @@ loader/loader$1-wrapped.o: loader$1.exe cli/cli.o
 endef
 
 $(eval $(build_loader))
+
+ifdef HAS_LOADER_32BIT
 $(eval $(call build_loader,-m32))
+endif
 
 ######################################################################
 # Dependencies

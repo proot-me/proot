@@ -24,8 +24,29 @@
 #define COMPAT_H
 
 /* Local definitions for compatibility with old and/or broken distros... */
+#    ifndef AT_NULL
+#        define AT_NULL			0
+#    endif
+#    ifndef AT_PHDR
+#        define AT_PHDR			3
+#    endif
+#    ifndef AT_PHENT
+#        define AT_PHENT		4
+#    endif
+#    ifndef AT_PHNUM
+#        define AT_PHNUM		5
+#    endif
+#    ifndef AT_BASE
+#        define AT_BASE			7
+#    endif
+#    ifndef AT_ENTRY
+#        define AT_ENTRY		9
+#    endif
 #    ifndef AT_RANDOM
 #        define AT_RANDOM		25
+#    endif
+#    ifndef AT_EXECFN
+#        define AT_EXECFN		31
 #    endif
 #    ifndef AT_SYSINFO
 #        define AT_SYSINFO		32
@@ -189,7 +210,20 @@
 #    ifndef F_DUPFD_CLOEXEC
 #        define F_DUPFD_CLOEXEC		1030
 #    endif
+#    ifndef O_RDONLY
+#        define O_RDONLY		00000000
+#    endif
 #    ifndef O_CLOEXEC
 #        define O_CLOEXEC		02000000
 #    endif
+#    ifndef MAP_PRIVATE
+#        define MAP_PRIVATE			0x02
+#    endif
+#    ifndef MAP_FIXED
+#        define MAP_FIXED			0x10
+#    endif
+#    ifndef MAP_ANONYMOUS
+#        define MAP_ANONYMOUS			0x20
+#    endif
+
 #endif /* COMPAT_H */
