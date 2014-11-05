@@ -48,24 +48,18 @@ static int remove_placeholder(char *path)
 	int status;
 
 	status = lstat(path, &statl);
-	if (status) {
-		note(NULL, WARNING, SYSTEM, "can't stat placeholder '%s'", path);
+	if (status)
 		return 0; /* Not fatal.  */
-	}
 
 	if (!S_ISDIR(statl.st_mode)) {
-		if (statl.st_size != 0) {
-			note(NULL, WARNING, USER, "placeholder '%s' is not empty", path);
+		if (statl.st_size != 0)
 			return 0; /* Not fatal.  */
-		}
 		status = unlink(path);
 	}
 	else
 		status = rmdir(path);
-	if (status) {
-		note(NULL, WARNING, SYSTEM, "can't remove placeholder '%s'", path);
+	if (status)
 		return 0; /* Not fatal.  */
-	}
 
 	return 0;
 }
