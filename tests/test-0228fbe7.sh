@@ -5,8 +5,6 @@ fi
 TMP1=/tmp/$(mcookie)
 TMP2=/tmp/$(mcookie)
 
-# TODO: remove the "grep -v" tweak.
-
 ${ROOTFS}/bin/ptrace-2 ${ROOTFS}/bin/true 2>&1 >${TMP1}
 
 ${PROOT} ${ROOTFS}/bin/ptrace-2 ${ROOTFS}/bin/true 2>&1 >${TMP2}
