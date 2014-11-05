@@ -41,7 +41,7 @@
 #endif
 
 #define FATAL() do {						\
-		SYSCALL(EXIT, 1, 182);			\
+		SYSCALL(EXIT, 1, 182);				\
 		__builtin_unreachable ();			\
 	} while (0)
 

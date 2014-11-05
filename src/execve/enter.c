@@ -133,6 +133,9 @@ int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const cha
 	struct stat statl;
 	int status;
 
+	if (user_path[0] == '\0')
+		return -ENOEXEC;
+
 	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
 	if (status < 0)
 		return status;

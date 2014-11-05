@@ -20,7 +20,8 @@
  * 02110-1301 USA.
  */
 
-#include <linux/limits.h>  /* ARG_MAX, PATH_MAX, */
+#include <linux/limits.h>  /* PATH_MAX, */
+#include <linux/binfmts.h> /* BINPRM_BUF_SIZE, */
 #include <sys/types.h>     /* open(2), */
 #include <sys/stat.h>      /* open(2), */
 #include <fcntl.h>         /* open(2), */
@@ -28,6 +29,7 @@
 #include <errno.h>         /* -E*, */
 #include <sys/param.h>     /* MAXSYMLINKS, */
 #include <stdbool.h>       /* bool, */
+#include <assert.h>        /* assert(3), */
 
 #include "execve/shebang.h"
 #include "execve/execve.h"
@@ -47,14 +49,20 @@
  *     string can include white space.
  */
 static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
-		char user_path[PATH_MAX], char argument[ARG_MAX])
+		char user_path[PATH_MAX], char argument[BINPRM_BUF_SIZE])
 {
 	char tmp2[2];
 	char tmp;
 
+	const size_t max_size = BINPRM_BUF_SIZE;
+	size_t current_size = 0;
+	size_t i;
+
 	int status;
 	int fd;
-	int i;
+
+	/* Assumption.  */
+	assert(BINPRM_BUF_SIZE < PATH_MAX);
 
 	argument[0] = '\0';
 
@@ -78,6 +86,8 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 		status = 0;
 		goto end;
 	}
+	current_size += 2;
+	user_path[0] = '\0';
 
 	/* Skip leading spaces. */
 	do {
@@ -87,13 +97,15 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 			goto end;
 		}
 		if ((size_t) status < sizeof(char)) { /* EOF */
-			status = 0;
+			status = -ENOEXEC;
 			goto end;
 		}
-	} while (tmp == ' ' || tmp == '\t');
+
+		current_size++;
+	} while ((tmp == ' ' || tmp == '\t') && current_size < max_size);
 
 	/* Slurp the interpreter path until the first space or end-of-line. */
-	for (i = 0; i < PATH_MAX; i++) {
+	for (i = 0; i < max_size - current_size; i++) {
 		switch (tmp) {
 		case ' ':
 		case '\t':
@@ -133,13 +145,17 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 		}
 	}
 
-	/* The interpreter path is too long. */
-	status = -ENAMETOOLONG;
+	/* The interpreter path is too long, truncate it. */
+	user_path[BINPRM_BUF_SIZE - 1] = '\0';
+	argument[0] = '\0';
+	status = 1;
 	goto end;
 
 argument:
+	current_size += i;
+
 	/* Slurp the argument until the end-of-line. */
-	for (i = 0; i < ARG_MAX; i++) {
+	for (i = 0; i < max_size - current_size; i++) {
 		switch (tmp) {
 		case '\n':
 		case '\r':
@@ -169,8 +185,8 @@ argument:
 		}
 	}
 
-	/* The argument is too long, just ignore it. */
-	argument[0] = '\0';
+	/* The argument is too long, truncate it. */
+	argument[BINPRM_BUF_SIZE - 1] = '\0';
 end:
 	close(fd);
 
@@ -191,7 +207,7 @@ end:
 int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
 {
 	ArrayOfXPointers *argv = NULL;
-	char argument[ARG_MAX];
+	char argument[BINPRM_BUF_SIZE];
 	int status;
 	size_t i;
 
@@ -272,6 +288,9 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 				return status;
 		}
 	}
+
+	if (i == MAXSYMLINKS)
+		return -ELOOP;
 
 	/* Push argv[] only on demand.  */
 	if (argv != NULL) {
