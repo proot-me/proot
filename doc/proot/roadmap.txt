@@ -2,40 +2,38 @@
  Roadmap
 =========
 
-PRoot v4.1: custom loader
-=========================
+PRoot v5.1: leveraging on the loader
+====================================
 
 Highlight
 ---------
 
-Currently, PRoot relies on the loader embedded in the GNU dynamic
-linker, sadly this latter suffers from a couple of bugs and
-limitations that avoid some programs to run correctly under PRoot (and
-CARE).  For examples:
+* Position-independent programs are loaded to predefined addresses,
+  even if ASLR is enabled.  This might results in conflicts with
+  mappings created implicitly by the kernel ("[vdso]", "[stack]",
+  ...).  A reliable solution is to let the kernel choose the position
+  of position-independent programs.
 
-    * programs that use constructors might crash: a typical example is
-      QEMU.  There's a workaround in PRoot for QEMU only.
+* The loader is loaded to a predefined address, si it might conflicts
+  with programs that are loaded to the same address.  A solution is to
+  detect such situation and to make the loader relocate itself.
 
-    * programs that use "rpath" and "symlinks" might not start: a
-      typical example is Java.  There's no workaround in PRoot, the
-      user has to by-pass the symlink manually.
+* The loader stays in memory, even once it is not used anymore.  This
+  might create useless address-space pressure for programs that need
+  large memory mappings (ex. JVM).
 
-    * programs that read the processes name are confused: typical
-      examples are ps and top.  There's no workaround in PRoot.
+* Some programs assumes the heap segment is right after the data
+  segment (cf. issue 52 on Github).
 
-    * programs that expect a kernel newer than the actual one (the
-      infamous "FATAL: kernel too old" error).  The current workaround
-      in PRoot (-k option) is not enough.
+Misc.
+-----
 
-    * programs not monitored by PRoot get a wrong program name when
-      reading /proc/$PID/cmdline, like "ld-linux.so.2"
-
-All these bugs and limitations can be fixed by writing a custom
-loader.
+* Write a loader for a.out programs, to be able to execute programs
+  from very old Linux distros :)
 
 
-PRoot v5.0: FS cache
-====================
+PRoot v6.0: VFS
+===============
 
 Highlight
 ---------
@@ -49,16 +47,12 @@ speed-up PRoot.
 The internal structure of this FS cache could also be used to emulate
 the "getdents" syscall in order to add or hide entries.
 
-TODO: insert roadmap sent to CM.
-
 
 Not yet scheduled
 =================
 
 Fixes
 -----
-
-* Mention "container" in the documentation.
 
 * Fix ptrace emulation support on ARM.
 
@@ -68,13 +62,7 @@ Fixes
 
 * Add new hidden option "PROOT_MIN_HEAP_SIZE".
 
-* Replace tracee->reconf.paths with tracee->reconf.env + getenv2()
-
 * Fix ``mkdir foo; cd foo; rmdir ../foo; readlink /proc/self/cwd``.
-
-* Fix remaining bugs in sub-reconfiguration support::
-
-      ./src/proot -B /usr/local/proot/centos-5-x86 make -C tests/
 
 * Forbid rename/unlink on a mount point:
 
@@ -108,8 +96,6 @@ Fixes
 
 Features
 --------
-
-* Start a login shell (``env -i sh -l``) instead of ``/bin/sh``.
 
 * Use PTRACE_O_EXITKILL if possible.
 
@@ -160,14 +146,11 @@ Features
 Documentation
 -------------
 
+* Mention "container" in the documentation.
+
 * Explain bindings aren't exclusive, i.e. "-b /tmp:/foo" doesn't invalidate "-b /tmp:/bar".
 
 * Explain why PRoot does not work with setuid programs
-
-* Document the compatibility with the old command-line interface
-  (without "-r")::
-
-       proot [options] <root> <command> [args...]
 
 
 Misc.

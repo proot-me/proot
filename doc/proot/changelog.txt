@@ -1,3 +1,36 @@
+Release v5.0
+============
+
+Highlight
+---------
+
+PRoot used to rely on the ELF loader embedded in the ELF interpreter
+from the GNU libc.  Sadly this latter suffers from many issues:
+
+* programs that use constructors might crash: a typical example is C++
+  programs.
+
+* programs that rely on the "rpath" mechanism and that are invoked
+  through a symlink might not start: a typical example is the JVM on
+  Debian.
+
+* programs that read processes command-line migth be confused because
+  initial argv[0] is replaced: typical examples are ps and top.
+
+Moreover not all ELF interpreters provide this feature.  For instance,
+ELF interpreters shipped with Bionic (Android) and some versions of
+the uClibC can't be used as ELF loaders.  As a consequence it was not
+possible to proot into a rootfs that uses such C library.
+
+Now PRoot has its own loader, that means all the limitations above
+doesn't exist anymore.
+
+Command-line interface changes
+------------------------------
+
+* PRoot now starts a login shell when no command is specified.
+
+
 Release v4.0.3
 ==============
 
