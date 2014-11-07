@@ -223,7 +223,7 @@ static int transfer_load_script(Tracee *tracee)
 	/* Allocate enough room for both the load script and the
 	 * strings area.  */
 	buffer_size = script_size + strings_size;
-	buffer = talloc_size(tracee->ctx, buffer_size);
+	buffer = talloc_zero_size(tracee->ctx, buffer_size);
 	if (buffer == NULL)
 		return -ENOMEM;
 

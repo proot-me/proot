@@ -54,8 +54,7 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 	char tmp2[2];
 	char tmp;
 
-	const size_t max_size = BINPRM_BUF_SIZE;
-	size_t current_size = 0;
+	size_t current_length;
 	size_t i;
 
 	int status;
@@ -86,7 +85,7 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 		status = 0;
 		goto end;
 	}
-	current_size += 2;
+	current_length = 2;
 	user_path[0] = '\0';
 
 	/* Skip leading spaces. */
@@ -101,11 +100,11 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 			goto end;
 		}
 
-		current_size++;
-	} while ((tmp == ' ' || tmp == '\t') && current_size < max_size);
+		current_length++;
+	} while ((tmp == ' ' || tmp == '\t') && current_length < BINPRM_BUF_SIZE);
 
 	/* Slurp the interpreter path until the first space or end-of-line. */
-	for (i = 0; i < max_size - current_size; i++) {
+	for (i = 0; current_length < BINPRM_BUF_SIZE; current_length++, i++) {
 		switch (tmp) {
 		case ' ':
 		case '\t':
@@ -146,16 +145,15 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 	}
 
 	/* The interpreter path is too long, truncate it. */
-	user_path[BINPRM_BUF_SIZE - 1] = '\0';
+	user_path[i] = '\0';
 	argument[0] = '\0';
 	status = 1;
 	goto end;
 
 argument:
-	current_size += i;
 
 	/* Slurp the argument until the end-of-line. */
-	for (i = 0; i < max_size - current_size; i++) {
+	for (i = 0; current_length < BINPRM_BUF_SIZE; current_length++, i++) {
 		switch (tmp) {
 		case '\n':
 		case '\r':
@@ -186,7 +184,9 @@ argument:
 	}
 
 	/* The argument is too long, truncate it. */
-	argument[BINPRM_BUF_SIZE - 1] = '\0';
+	argument[i] = '\0';
+	status = 1;
+
 end:
 	close(fd);
 
