@@ -76,13 +76,13 @@ typedef unsigned char byte_t;
     #define OFFSETOF_STAT_UID_32 24
     #define OFFSETOF_STAT_GID_32 28
 
-    #define LOADER_ADDRESS 0x00007f2000000000
+    #define LOADER_ADDRESS 0x600000000000
     #define HAS_LOADER_32BIT true
 
-    #define EXEC_PIC_ADDRESS   0x555555554000
-    #define INTERP_PIC_ADDRESS 0x7ff000000000
-    #define EXEC_PIC_ADDRESS_32   0x56555000
-    #define INTERP_PIC_ADDRESS_32 0xf7700000
+    #define EXEC_PIC_ADDRESS   0x500000000000
+    #define INTERP_PIC_ADDRESS 0x6f0000000000
+    #define EXEC_PIC_ADDRESS_32   0x0f000000
+    #define INTERP_PIC_ADDRESS_32 0xaf000000
 
 #elif defined(ARCH_ARM_EABI)
 
@@ -135,11 +135,11 @@ typedef unsigned char byte_t;
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
 
-    #define LOADER_ADDRESS 0xf7000000
+    #define LOADER_ADDRESS 0xa0000000
     #define LOADER_ARCH_CFLAGS -mregparm=3
 
-    #define EXEC_PIC_ADDRESS   0x56555000
-    #define INTERP_PIC_ADDRESS 0xf7700000
+    #define EXEC_PIC_ADDRESS   0x0f000000
+    #define INTERP_PIC_ADDRESS 0xaf000000
 
 #elif defined(ARCH_SH4)
 
