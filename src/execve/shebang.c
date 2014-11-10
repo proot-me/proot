@@ -20,11 +20,11 @@
  * 02110-1301 USA.
  */
 
-#include <linux/limits.h>  /* PATH_MAX, */
-#include <linux/binfmts.h> /* BINPRM_BUF_SIZE, */
 #include <sys/types.h>     /* open(2), */
 #include <sys/stat.h>      /* open(2), */
 #include <fcntl.h>         /* open(2), */
+#include <linux/limits.h>  /* PATH_MAX, */
+#include <linux/binfmts.h> /* BINPRM_BUF_SIZE, */
 #include <unistd.h>        /* read(2), close(2), */
 #include <errno.h>         /* -E*, */
 #include <sys/param.h>     /* MAXSYMLINKS, */

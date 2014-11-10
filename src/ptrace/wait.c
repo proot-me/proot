@@ -118,7 +118,7 @@ int translate_wait_enter(Tracee *ptracer)
  */
 static int update_wait_status(Tracee *ptracer, Tracee *ptracee)
 {
-	const int event = PTRACEE.event4.ptracer.value;
+	int event = PTRACEE.event4.ptracer.value;
 	word_t address;
 
 	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
