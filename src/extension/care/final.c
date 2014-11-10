@@ -455,7 +455,8 @@ int finalize_care(Care *care)
 		if (care->archive->offset == strlen("RAW"))
 			extractor = talloc_asprintf(care, "`care -x %s`", care->output);
 		else
-			extractor = talloc_asprintf(care, "`./%1$s` or `care -x %1$s`", care->output);
+			extractor = talloc_asprintf(care, "`%2$s%1$s` or `care -x %1$s`",
+						care->output, care->output[0] == '/' ? "" : "./");
 	}
 	else if (care->output[strlen(care->output) - 1] != '/')
 		extractor = talloc_asprintf(care, "`care -x %s`", care->output);
