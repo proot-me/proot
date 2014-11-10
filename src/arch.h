@@ -24,6 +24,7 @@
 #define ARCH_H
 
 #ifndef NO_LIBC_HEADER
+#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <linux/audit.h>   /* AUDIT_ARCH_*,  */
 #endif
 
