@@ -1,3 +1,14 @@
+CARE v2.2.1
+===========
+
++ Revert "care: Fix sub-reconfiguration support, ie. when executed
+  from proot.".  This fix has introduced a regression, and
+  sub-reconfiguration support will be dropped in a near future.
+
+  Reported-by: Jonathan Passerat-Palmbach <j.passerat-palmbach@imperial.ac.uk>
+  Ref.: https://github.com/cedric-vincent/PRoot/issues/72
+
+
 CARE v2.2
 =========
 
