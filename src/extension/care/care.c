@@ -133,7 +133,6 @@ static int generate_care(Extension *extension, const Options *options)
 	Item *item2;
 	Item *item;
 	Care *care;
-	int i;
 
 	tracee = TRACEE(extension);
 
@@ -142,25 +141,7 @@ static int generate_care(Extension *extension, const Options *options)
 		return -1;
 	care = extension->config;
 
-	/* Copy the command-line to be sure it will be still available
-	 * during finalization.  */
-	for (i = 0; options->command[i] != NULL; i++)
-		;
-
-	care->command = talloc_zero_array(care, char *, i + 1);
-	if (care->command == NULL) {
-		notice(tracee, ERROR, INTERNAL, "can't allocate care command");
-		return -ENOMEM;
-	}
-
-	for (i = 0; options->command[i] != NULL; i++) {
-		care->command[i] = talloc_strdup(care, options->command[i]);
-		if (care->command[i] == NULL) {
-			notice(tracee, ERROR, INTERNAL, "can't allocate care command[i]");
-			return -ENOMEM;
-		}
-	}
-
+	care->command = options->command;
 	care->ipc_are_volatile = !options->ignore_default_config;
 
 	if (options->output != NULL)
@@ -414,17 +395,10 @@ static void handle_host_path(Extension *extension, const char *path)
 	/* Format the location within the archive.  */
 	location = NULL;
 	assert(path[0] == '/');
-	if (strlen(path) < PATH_MAX) {
-		char path2[PATH_MAX];
-
-		/* Convert this path back to the guest point-of-view,
-		 * in case it lies in an asymmetric bindings
-		 * (concealed path or PRoot sub-reconfiguration).  */
-		strcpy(path2, path);
-		status = detranslate_path(tracee, path2, NULL);
-		if (status >= 0)
-			location = talloc_asprintf(tracee->ctx, "%s/rootfs%s", care->prefix, path2);
-		/* On error "location" is NULL, so it's OK.  */
+	location = talloc_asprintf(tracee->ctx, "%s/rootfs%s", care->prefix, path);
+	if (location == NULL) {
+		notice(tracee, WARNING, INTERNAL, "can't allocate location for '%s'", path);
+		return;
 	}
 
 	status = archive(tracee, care->archive, path, location, &statl);
