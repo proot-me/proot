@@ -61,5 +61,6 @@ extern word_t syscall_1(word_t number, word_t arg1);
 #define OPEN	5
 #define CLOSE	6
 #define MMAP	192
+#define MMAP_OFFSET_SHIFT 12
 #define EXECVE	11
 #define EXIT	1

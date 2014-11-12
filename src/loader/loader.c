@@ -35,17 +35,18 @@
 #define __builtin_unreachable()
 #endif
 
-#define MMAP_OFFSET_SHIFT 0
-
 #if defined(ARCH_X86_64)
-    #include "loader/assembly-x86_64.h"
+#    include "loader/assembly-x86_64.h"
+#elif defined(ARCH_ARM_EABI)
+#    include "loader/assembly-arm.h"
 #elif defined(ARCH_X86)
-    #include "loader/assembly-x86.h"
-
-    #undef  MMAP_OFFSET_SHIFT
-    #define MMAP_OFFSET_SHIFT 12
+#    include "loader/assembly-x86.h"
 #else
-    #error "Unsupported architecture"
+#    error "Unsupported architecture"
+#endif
+
+#if !defined(MMAP_OFFSET_SHIFT)
+#    define MMAP_OFFSET_SHIFT 0
 #endif
 
 #define FATAL() do {						\

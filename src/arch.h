@@ -101,6 +101,11 @@ typedef unsigned char byte_t;
     #define OFFSETOF_STAT_GID_32 0
     #define EM_ARM 40
 
+    #define LOADER_ADDRESS 0x10000000
+
+    #define EXEC_PIC_ADDRESS   0x0f000000
+    #define INTERP_PIC_ADDRESS 0x1f000000
+
     /* The syscall number has to be valid on ARM, so use tuxcall(2) as
      * the "void" syscall since it has no side effects.  */
     #undef SYSCALL_AVOIDER

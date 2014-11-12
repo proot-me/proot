@@ -108,6 +108,7 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(uregs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(uregs[13]),
 	[INSTR_POINTER] = USER_REGS_OFFSET(uregs[15]),
+	[USERARG_1]     = USER_REGS_OFFSET(uregs[0]),
     };
 
 #elif defined(ARCH_ARM64)
