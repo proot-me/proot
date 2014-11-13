@@ -863,8 +863,10 @@ static int parse_utsname(Config *config, const char *string)
 	struct utsname utsname;
 	int status;
 
+	assert(string != NULL);
+
 	status = uname(&utsname);
-	if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL || string == NULL)
+	if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL)
 		config->actual_release = 0;
 	else
 		config->actual_release = parse_kernel_release(utsname.release);
