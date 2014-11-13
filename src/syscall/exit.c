@@ -427,7 +427,7 @@ void translate_syscall_exit(Tracee *tracee)
 #endif
 
 	case PR_execve:
-		status = translate_execve_exit(tracee);
+		translate_execve_exit(tracee);
 		goto end;
 
 	case PR_ptrace:

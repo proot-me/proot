@@ -24,7 +24,7 @@
 #include <talloc.h>     /* talloc*, */
 #include <sys/mman.h>   /* MAP_*, */
 #include <assert.h>     /* assert(3), */
-#include <string.h>     /* strlen(3), */
+#include <string.h>     /* strlen(3), strerror(3), */
 #include <strings.h>    /* bzero(3), */
 #include <signal.h>     /* kill(2), SIG*, */
 #include <unistd.h>     /* write(2), */
@@ -40,6 +40,7 @@
 #include "execve/auxv.h"
 #include "path/binding.h"
 #include "path/temp.h"
+#include "cli/note.h"
 
 
 /**
@@ -341,10 +342,12 @@ static int transfer_load_script(Tracee *tracee)
 }
 
 /**
- * Start the loading of @tracee.  This function returns -errno if an
- * error occured, otherwise 0.
+ * Start the loading of @tracee.  This function returns no error since
+ * it's either too late to do anything useful (the calling process is
+ * already replaced) or the error reported by the kernel
+ * (syscall_result < 0) will be propagated as-is.
  */
-int translate_execve_exit(Tracee *tracee)
+void translate_execve_exit(Tracee *tracee)
 {
 	word_t syscall_result;
 	int status;
@@ -394,12 +397,12 @@ int translate_execve_exit(Tracee *tracee)
 		if ((tracee->as_ptracee.options & PTRACE_O_TRACEEXEC) == 0)
 			kill(tracee->pid, SIGTRAP);
 
-		return 0;
+		return;
 	}
 
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	if ((int) syscall_result < 0)
-		return 0;
+		return;
 
 	/* New processes have no heap.  */
 	bzero(tracee->heap, sizeof(Heap));
@@ -407,8 +410,7 @@ int translate_execve_exit(Tracee *tracee)
 	/* Transfer the load script to the loader.  */
 	status = transfer_load_script(tracee);
 	if (status < 0)
-		return status; /* Note: it's too late to do anything
-				* useful. */
+		note(tracee, ERROR, INTERNAL, "can't transfer load script: %s", strerror(-status));
 
-	return 0;
+	return;
 }
