@@ -1,7 +1,3 @@
-/* Note: loop infinitely when -r is specified to PRoot (use of ELF
- * interpreter), because argc is never equal to 0.
- */
-
 #include <unistd.h> /* execve(2), */
 #include <stdlib.h> /* exit(3), */
 #include <string.h> /* strcmp(3), */

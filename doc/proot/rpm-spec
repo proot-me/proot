@@ -1,4 +1,4 @@
-%define version v4.0.3
+%define version v5.0.0
 
 Summary   : chroot, mount --bind, and binfmt_misc without privilege/setup
 Version   : %{version}
@@ -60,7 +60,55 @@ rm -rf %{buildroot}
 %doc doc/*
 
 %changelog
-* Mon Sep 15 2014 Cédric VINCENT <cedric.vincent@st.com>
+* Thu Nov 13 2014 Cédric VINCENT <cedric.vincent@st.com>
+Release v5.0.0
+==============
+
+Highlight
+---------
+
+PRoot used to rely on the ELF loader embedded in the ELF interpreter
+from the GNU libc.  Sadly this latter suffers from many issues:
+
+* programs that use constructors or destructors might crash: a typical
+  example is C++ programs.
+
+* programs that rely on the "rpath" mechanism and that are invoked
+  through a symlink might not start: a typical example is the JVM on
+  Debian.
+
+* programs that read processes command-line migth be confused because
+  initial argv[0] is replaced: typical examples are ps and top.
+
+Moreover not all ELF interpreters provide this feature.  For instance,
+ELF interpreters shipped with Bionic (Android) and some versions of
+the uClibC can't be used as ELF loaders.  As a consequence it was not
+possible to proot into a rootfs that uses such C library.
+
+Now PRoot has its own loader, that means all the limitations above
+doesn't exist anymore.
+
+Fixes
+-----
+
+* Most bugs related to shebang support -- ie. "#!" at the beginning of
+  a program -- were fixed.
+
+Command-line interface changes
+------------------------------
+
+* PRoot now starts a login shell when no command is specified; this
+  makes the shell read profile files from the guest rootfs, as
+  expected by some guest programs.  To get the old behavior, launch
+  "/bin/sh" explicitly:
+
+      proot -r whatever /bin/sh
+
+* The -R option now binds "/run" and "/var/run/dbus/system_bus_socket"
+  too.  This is useful for guest programs that need to communicate
+  with host services.
+
+
 Release v4.0.3
 ==============
 

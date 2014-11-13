@@ -475,7 +475,7 @@ static char *extract_loader(const Tracee *tracee, bool want_32bit_version)
 	char *loader_path = NULL;
 	FILE *file = NULL;
 
-	file = open_temp_file(NULL, "proot");
+	file = open_temp_file(NULL, "prooted");
 	if (file == NULL)
 		goto end;
 	fd = fileno(file);

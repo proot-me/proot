@@ -14,7 +14,7 @@ opt       = opt-$(opt-version)
 gdb       = gdb-$(gdb-version)
 proot     = PRoot-$(proot-version)
 
-testsuites = $(libuv) $(perl) $(ltp) $(opt) $(gdb) $(proot) # $(coreutils) needs PRoot's loader
+testsuites = $(libuv) $(perl) $(ltp) $(opt) $(gdb) $(proot) $(coreutils)
 logs       = $(testsuites:=.log)
 
 logs: $(logs)

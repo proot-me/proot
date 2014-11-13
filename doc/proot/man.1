@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH PROOT 1 "2014-09-15" "4.0.3" ""
+.TH PROOT 1 "2014-11-15" "5.0.0" ""
 .SH NAME
 PRoot \- chroot, mount --bind, and binfmt_misc without privilege/setup
 .
@@ -222,6 +222,10 @@ automatically bound by this option:
 .IP \(bu 2
 /tmp/
 .IP \(bu 2
+/run/
+.IP \(bu 2
+/var/run/dbus/system_bus_socket
+.IP \(bu 2
 $HOME
 .IP \(bu 2
 \fIpath\fP
@@ -251,6 +255,8 @@ of paths to avoid unexpected changes on host files:
 /proc/
 .IP \(bu 2
 /tmp/
+.IP \(bu 2
+/run/shm
 .IP \(bu 2
 $HOME
 .IP \(bu 2
