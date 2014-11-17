@@ -25,6 +25,14 @@ Highlight
 * Some programs assumes the heap segment is right after the data
   segment (cf. issue 52 on Github).
 
+Fixes
+-----
+
+* Fix ptrace emulation: on ARM, on x86_64 for 32-bit programs, and for
+  multi-threaded programs.
+
+* Fix `proot-x86_64 -r rootfs-i686 uname -m`.
+
 Misc.
 -----
 
