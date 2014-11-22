@@ -14,3 +14,6 @@ Build status
 
 - .. image:: https://coveralls.io/repos/cedric-vincent/PRoot/badge.png?branch=master
      :target: https://coveralls.io/r/cedric-vincent/PRoot?branch=master
+
+- .. image:: https://scan.coverity.com/projects/602/badge.svg
+     :target: https://scan.coverity.com/projects/602
