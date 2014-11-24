@@ -20,17 +20,16 @@
  * 02110-1301 USA.
  */
 
-#include <stdio.h>
-#include <errno.h>
-#include <stdint.h>
-#include <assert.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <talloc.h>
-#include <sys/mman.h>
-#include <sched.h>
-#include <linux/limits.h>
+#include <stdbool.h>		/* bool, */
+#include <fcntl.h>		/* O_*, */
+#include <unistd.h>		/* access(2), readlink(2), */
+#include <linux/limits.h>	/* PATH_MAX, */
+#include <talloc.h>		/* talloc(3), */
+#include <errno.h>		/* E*, */
+#include <sys/mman.h>		/* MAP_*, PROT_*, */
 
+#include "extension/wio/wio.h"
+#include "extension/wio/event.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -38,122 +37,39 @@
 #include "syscall/syscall.h"
 #include "cli/note.h"
 #include "arch.h"
-#include "attribute.h"
-
 
 /*
-
-Operations
-==========
-
-- create: creat, open(O_CREAT), openat(O_CREAT), mkdir, mkdirat,
-          mknod, mknodat, symlink, symlinkat, link, linkat, rename,
-          renameat
-
-- access:
-
-  - metadata:
-
-    - get: stat, lstat, fstat, fstatat, access, faccessat, execve
-
-    - set: chmod, fchmod, fchmodat, chown, lchown, fchown, fchownat*,
-           utime, utimes, futimesat, utimensat
-
-  - content:
-
-    - get: getdents, read, pread, readv, preadv, execve, readlink,
-           readlinkat, mmap(PROT_EXEC | PROT_READ)
-
-    - set: write, pwrite, writev, pwritev, truncate, ftruncate,
-           open(O_TRUNC), mmap(PROT_WRITE)
-
-- delete: unlink, unlinkat, rmdir, rename, renameat
-
 
 Not yet supported
 =================
 
-- create/bind(AF_UNIX)
-- access/metadata/get/{getxattr,lgetxattr,fgetxattr,listxattr,llistxattr,flistxattr}
-- access/metadata/set/{setxattr,lsetxattr,fsetxattr,removexattr,lremovexattr,fremovexattr}
-- access/metadata/set/flock
-- access/content/get/readdir
-- access/descriptor/status (O_APPEND, O_ASYNC, O_DIRECT, O_NOATIME, O_NONBLOCK)
-- access/descriptor/position/{get,set}/llseek
+- creates: bind(AF_UNIX)
+- gets metadata: getxattr, lgetxattr, fgetxattr, listxattr, llistxattr, flistxattr
+- sets metadata: setxattr, lsetxattr, fsetxattr, removexattr, lremovexattr, fremovexattr
+- sets metadata: flock
+- gets content: readdir
+- descriptor status: (O_APPEND, O_ASYNC, O_DIRECT, O_NOATIME, O_NONBLOCK)
+- gets descriptor position: llseek
+- sets descriptor position: llseek
 
 
-Profile switches
-================
+Predefined profiles
+===================
 
-- print path traversal
-- print path type
-- print path metadata usage
-- print process (clone, pid) information
-- coalese information
+- default
+- for Laurent (Yocto)
+  + successful events
+  + path content usage
+  + coalesed
+  + exclude all but given paths
+  + external inputs and outputs
+- ...
 
 */
 
-typedef enum {
-	TRAVERSES,
-	CREATES,
-	DELETES,
-	GETS_METADATA_OF,
-	SETS_METADATA_OF,
-	GETS_CONTENT_OF,
-	SETS_CONTENT_OF,
-	EXECUTES,
-	MOVES,
-	IS_CLONED,
-} Action;
-
-#define PRINT(string) do {						\
-		path = va_arg(ap, const char *);			\
-		fprintf(stderr, "%d %s %s\n", pid, string, path);	\
-	} while (0);							\
-	break;
-
-static void report(pid_t pid, Action action, ...)
-{
-	const char *path2;
-	const char *path;
-	va_list ap;
-
-	va_start(ap, action);
-
-	switch (action) {
-	case TRAVERSES: 	PRINT("traverses");
-	case CREATES:		PRINT("creates");
-	case DELETES:		PRINT("deletes");
-	case GETS_METADATA_OF:	PRINT("gets metadata of");
-	case SETS_METADATA_OF:	PRINT("sets metadata of");
-	case GETS_CONTENT_OF:	PRINT("gets content of");
-	case SETS_CONTENT_OF:	PRINT("sets content of");
-	case EXECUTES:		PRINT("executes");
-
-	case MOVES:
-		path = va_arg(ap, const char *);
-		path2 = va_arg(ap, const char *);
-		fprintf(stderr, "%d moves %s to %s\n", pid, path, path2);
-		break;
-
-	case IS_CLONED: {
-		pid_t child_pid = va_arg(ap, pid_t);
-		word_t flags    = va_arg(ap, word_t);
-		fprintf(stderr, "%d is cloned (%s) into %d\n", pid,
-			(flags & CLONE_THREAD) != 0 ? "thread": "process", child_pid);
-		break;
-	}
-
-	default:
-		assert(0);
-		break;
-	}
-
-	va_end(ap);
-
-	return;
-}
-
+/**
+ * Report "TRAVERSES" event for given @path.
+ */
 static void handle_host_path(Extension *extension, const char *path, bool is_final)
 {
 	Tracee *tracee;
@@ -166,9 +82,14 @@ static void handle_host_path(Extension *extension, const char *path, bool is_fin
 	if (access(path, F_OK) != 0)
 		return;
 
-	report(tracee->pid, TRAVERSES, path);
+	record_event(tracee->pid, TRAVERSES, path);
 }
 
+/**
+ * Read symlink "/proc/{@tracee->pid}/fd/{peek_reg(@sysarg)}", and
+ * copy its value in @path.  This function returns -errno if an error
+ * occurred, otherwise 0.
+ */
 static int get_proc_fd_path(const Tracee *tracee, char path[PATH_MAX], Reg sysarg)
 {
 	char *tmp;
@@ -187,6 +108,10 @@ static int get_proc_fd_path(const Tracee *tracee, char path[PATH_MAX], Reg sysar
 	return 0;
 }
 
+/**
+ * Remember information that will be mutated by the current syscall
+ * but that are required by handle_sysenter_end().
+ */
 static void handle_sysenter_end(Extension *extension)
 {
 	Reg sysarg = 0;
@@ -227,6 +152,9 @@ static void handle_sysenter_end(Extension *extension)
 	return;
 }
 
+/**
+ * Report most events.
+ */
 static void handle_sysexit_start(const Extension *extension)
 {
 	char path2[PATH_MAX];
@@ -269,7 +197,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		/* This implies set_content for parent of path.  */
-		report(tracee->pid, CREATES, path);
+		record_event(tracee->pid, CREATES, path);
 		break;
 
 	/**********************************************************************
@@ -287,7 +215,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		/* This implies set_content for parent of path.  */
-		report(tracee->pid, DELETES, path);
+		record_event(tracee->pid, DELETES, path);
 		break;
 
 	/**********************************************************************
@@ -310,7 +238,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		/* This implies set_content for parent of path & path2.  */
-		report(tracee->pid, MOVES, path, path2);
+		record_event(tracee->pid, MOVES, path, path2);
 		break;
 
 	/**********************************************************************
@@ -334,7 +262,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, GETS_METADATA_OF, path);
+		record_event(tracee->pid, GETS_METADATA_OF, path);
 		break;
 
 	case PR_fstat:		/* SYSARG_1: descriptor */
@@ -344,7 +272,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, GETS_METADATA_OF, path);
+		record_event(tracee->pid, GETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -369,7 +297,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, SETS_METADATA_OF, path);
+		record_event(tracee->pid, SETS_METADATA_OF, path);
 		break;
 
 	case PR_fchown:		/* SYSARG_1: descriptor */
@@ -379,7 +307,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, SETS_METADATA_OF, path);
+		record_event(tracee->pid, SETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -395,7 +323,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, GETS_CONTENT_OF, path);
+		record_event(tracee->pid, GETS_CONTENT_OF, path);
 		break;
 
 	case PR_read:		/* SYSARG_1: descriptor */
@@ -407,7 +335,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, GETS_CONTENT_OF, path);
+		record_event(tracee->pid, GETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -422,7 +350,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, SETS_CONTENT_OF, path);
+		record_event(tracee->pid, SETS_CONTENT_OF, path);
 		break;
 
 	case PR_write:		/* SYSARG_1: descriptor */
@@ -435,7 +363,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		report(tracee->pid, SETS_CONTENT_OF, path);
+		record_event(tracee->pid, SETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -444,7 +372,7 @@ static void handle_sysexit_start(const Extension *extension)
 
 	case PR_execve:
 		/* Note: this implies get_metadata & get_content.  */
-		report(tracee->pid, EXECUTES, tracee->exe);
+		record_event(tracee->pid, EXECUTES, tracee->exe);
 		break;
 
 	case PR_openat:
@@ -464,13 +392,13 @@ static void handle_sysexit_start(const Extension *extension)
 
 		if (didnt_exist)  {
 			/* This implies set_content for parent of path.  */
-			report(tracee->pid, CREATES, path);
+			record_event(tracee->pid, CREATES, path);
 		}
 		else {
-			report(tracee->pid, GETS_METADATA_OF, path);
+			record_event(tracee->pid, GETS_METADATA_OF, path);
 
 			if ((flags & O_TRUNC) != 0)
-				report(tracee->pid, SETS_CONTENT_OF, path);
+				record_event(tracee->pid, SETS_CONTENT_OF, path);
 		}
 
 		break;
@@ -492,10 +420,10 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		if ((prot & PROT_EXEC) != 0 || (prot & PROT_READ) != 0)
-			report(tracee->pid, GETS_CONTENT_OF, path);
+			record_event(tracee->pid, GETS_CONTENT_OF, path);
 
 		if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0)
-			report(tracee->pid, SETS_CONTENT_OF, path);
+			record_event(tracee->pid, SETS_CONTENT_OF, path);
 
 		break;
 	}
@@ -608,7 +536,7 @@ int wio_callback(Extension *extension, ExtensionEvent event, intptr_t data1, int
 		const Tracee *child  = TRACEE(extension);
 		word_t flags = (word_t) data2;
 
-		report(parent->pid, IS_CLONED, child->pid, flags);
+		record_event(parent->pid, IS_CLONED, child->pid, flags);
 		return 0;
 	}
 
