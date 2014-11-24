@@ -43,7 +43,8 @@
 
 /*
 
-operations:
+Operations
+==========
 
 - create: creat, open(O_CREAT), openat(O_CREAT), mkdir, mkdirat,
           mknod, mknodat, symlink, symlinkat, link, linkat, rename,
@@ -69,7 +70,8 @@ operations:
 - delete: unlink, unlinkat, rmdir, rename, renameat
 
 
-Not yet supported:
+Not yet supported
+=================
 
 - create/bind(AF_UNIX)
 - access/metadata/get/{getxattr,lgetxattr,fgetxattr,listxattr,llistxattr,flistxattr}
@@ -79,7 +81,78 @@ Not yet supported:
 - access/descriptor/status (O_APPEND, O_ASYNC, O_DIRECT, O_NOATIME, O_NONBLOCK)
 - access/descriptor/position/{get,set}/llseek
 
+
+Profile switches
+================
+
+- print path traversal
+- print path type
+- print path metadata usage
+- print process (clone, pid) information
+- coalese information
+
 */
+
+typedef enum {
+	TRAVERSES,
+	CREATES,
+	DELETES,
+	GETS_METADATA_OF,
+	SETS_METADATA_OF,
+	GETS_CONTENT_OF,
+	SETS_CONTENT_OF,
+	EXECUTES,
+	MOVES,
+	IS_CLONED,
+} Action;
+
+#define PRINT(string) do {						\
+		path = va_arg(ap, const char *);			\
+		fprintf(stderr, "%d %s %s\n", pid, string, path);	\
+	} while (0);							\
+	break;
+
+static void report(pid_t pid, Action action, ...)
+{
+	const char *path2;
+	const char *path;
+	va_list ap;
+
+	va_start(ap, action);
+
+	switch (action) {
+	case TRAVERSES: 	PRINT("traverses");
+	case CREATES:		PRINT("creates");
+	case DELETES:		PRINT("deletes");
+	case GETS_METADATA_OF:	PRINT("gets metadata of");
+	case SETS_METADATA_OF:	PRINT("sets metadata of");
+	case GETS_CONTENT_OF:	PRINT("gets content of");
+	case SETS_CONTENT_OF:	PRINT("sets content of");
+	case EXECUTES:		PRINT("executes");
+
+	case MOVES:
+		path = va_arg(ap, const char *);
+		path2 = va_arg(ap, const char *);
+		fprintf(stderr, "%d moves %s to %s\n", pid, path, path2);
+		break;
+
+	case IS_CLONED: {
+		pid_t child_pid = va_arg(ap, pid_t);
+		word_t flags    = va_arg(ap, word_t);
+		fprintf(stderr, "%d is cloned (%s) into %d\n", pid,
+			(flags & CLONE_THREAD) != 0 ? "thread": "process", child_pid);
+		break;
+	}
+
+	default:
+		assert(0);
+		break;
+	}
+
+	va_end(ap);
+
+	return;
+}
 
 static void handle_host_path(Extension *extension, const char *path, bool is_final)
 {
@@ -93,7 +166,7 @@ static void handle_host_path(Extension *extension, const char *path, bool is_fin
 	if (access(path, F_OK) != 0)
 		return;
 
-	fprintf(stderr, "%d walks %s\n", tracee->pid, path);
+	report(tracee->pid, TRAVERSES, path);
 }
 
 static int get_proc_fd_path(const Tracee *tracee, char path[PATH_MAX], Reg sysarg)
@@ -195,8 +268,8 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		// This implies set_content for parent of path.
-		fprintf(stderr, "%d creates %s\n", tracee->pid, path);
+		/* This implies set_content for parent of path.  */
+		report(tracee->pid, CREATES, path);
 		break;
 
 	/**********************************************************************
@@ -213,8 +286,8 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		// This implies set_content for parent of path.
-		fprintf(stderr, "%d deletes %s\n", tracee->pid, path);
+		/* This implies set_content for parent of path.  */
+		report(tracee->pid, DELETES, path);
 		break;
 
 	/**********************************************************************
@@ -236,8 +309,8 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		// This implies set_content for parent of path & path2.
-		fprintf(stderr, "%d moves %s to %s\n", tracee->pid, path, path2);
+		/* This implies set_content for parent of path & path2.  */
+		report(tracee->pid, MOVES, path, path2);
 		break;
 
 	/**********************************************************************
@@ -261,7 +334,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d gets metadata of %s\n", tracee->pid, path);
+		report(tracee->pid, GETS_METADATA_OF, path);
 		break;
 
 	case PR_fstat:		/* SYSARG_1: descriptor */
@@ -271,7 +344,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d gets metadata of %s\n", tracee->pid, path);
+		report(tracee->pid, GETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -296,7 +369,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d sets metadata of %s\n", tracee->pid, path);
+		report(tracee->pid, SETS_METADATA_OF, path);
 		break;
 
 	case PR_fchown:		/* SYSARG_1: descriptor */
@@ -306,7 +379,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d sets metadata of %s\n", tracee->pid, path);
+		report(tracee->pid, SETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -322,7 +395,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d gets content of %s\n", tracee->pid, path);
+		report(tracee->pid, GETS_CONTENT_OF, path);
 		break;
 
 	case PR_read:		/* SYSARG_1: descriptor */
@@ -334,7 +407,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d gets content of %s\n", tracee->pid, path);
+		report(tracee->pid, GETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -349,7 +422,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d sets content of %s\n", tracee->pid, path);
+		report(tracee->pid, SETS_CONTENT_OF, path);
 		break;
 
 	case PR_write:		/* SYSARG_1: descriptor */
@@ -362,7 +435,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		fprintf(stderr, "%d sets content of %s\n", tracee->pid, path);
+		report(tracee->pid, SETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -370,8 +443,8 @@ static void handle_sysexit_start(const Extension *extension)
 	 **********************************************************************/
 
 	case PR_execve:
-		// Note: this implies get_metadata & get_content.
-		fprintf(stderr, "%d executes %s\n", tracee->pid, tracee->exe);
+		/* Note: this implies get_metadata & get_content.  */
+		report(tracee->pid, EXECUTES, tracee->exe);
 		break;
 
 	case PR_openat:
@@ -390,14 +463,14 @@ static void handle_sysexit_start(const Extension *extension)
 		didnt_exist = (extension->config == (void *) -1);
 
 		if (didnt_exist)  {
-			// This implies set_content for parent of path.
-			fprintf(stderr, "%d creates %s\n", tracee->pid, path);
+			/* This implies set_content for parent of path.  */
+			report(tracee->pid, CREATES, path);
 		}
 		else {
-			fprintf(stderr, "%d gets metadata of %s\n", tracee->pid, path);
+			report(tracee->pid, GETS_METADATA_OF, path);
 
 			if ((flags & O_TRUNC) != 0)
-				fprintf(stderr, "%d sets content of %s\n", tracee->pid, path);
+				report(tracee->pid, SETS_CONTENT_OF, path);
 		}
 
 		break;
@@ -419,10 +492,10 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		if ((prot & PROT_EXEC) != 0 || (prot & PROT_READ) != 0)
-			fprintf(stderr, "%d gets content of %s\n", tracee->pid, path);
+			report(tracee->pid, GETS_CONTENT_OF, path);
 
 		if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0)
-			fprintf(stderr, "%d sets content of %s\n", tracee->pid, path);
+			report(tracee->pid, SETS_CONTENT_OF, path);
 
 		break;
 	}
@@ -535,8 +608,7 @@ int wio_callback(Extension *extension, ExtensionEvent event, intptr_t data1, int
 		const Tracee *child  = TRACEE(extension);
 		word_t flags = (word_t) data2;
 
-		fprintf(stderr, "%d cloned (%s) %d\n", parent->pid,
-			(flags & CLONE_THREAD) != 0 ? "thread": "process", child->pid);
+		report(parent->pid, IS_CLONED, child->pid, flags);
 		return 0;
 	}
 
