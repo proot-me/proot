@@ -51,6 +51,7 @@ OBJECTS += \
 	ptrace/wait.o		\
 	ptrace/direct_ptracee.o	\
 	extension/extension.o	\
+	extension/wio/wio.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o \
 	loader/loader-wrapped.o
