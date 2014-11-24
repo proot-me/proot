@@ -81,6 +81,21 @@ Not yet supported:
 
 */
 
+static void handle_host_path(Extension *extension, const char *path, bool is_final)
+{
+	Tracee *tracee;
+
+	tracee = TRACEE(extension);
+
+	if (tracee->exe == NULL)
+		return;
+
+	if (access(path, F_OK) != 0)
+		return;
+
+	fprintf(stderr, "%d walks %s\n", tracee->pid, path);
+}
+
 static int get_proc_fd_path(const Tracee *tracee, char path[PATH_MAX], Reg sysarg)
 {
 	char *tmp;
@@ -506,6 +521,10 @@ int wio_callback(Extension *extension, ExtensionEvent event, intptr_t data1, int
 
 	case SYSCALL_EXIT_START:
 		handle_sysexit_start(extension);
+		return 0;
+
+	case HOST_PATH:
+		handle_host_path(extension, (const char *) data1, (bool) data2);
 		return 0;
 
 	case INHERIT_PARENT:
