@@ -23,19 +23,9 @@
 #ifndef WIO_EVENT_H
 #define WIO_EVENT_H
 
-typedef enum {
-	TRAVERSES,
-	CREATES,
-	DELETES,
-	GETS_METADATA_OF,
-	SETS_METADATA_OF,
-	GETS_CONTENT_OF,
-	SETS_CONTENT_OF,
-	EXECUTES,
-	MOVES,
-	IS_CLONED,
-} Event;
+#include "extension/wio/wio.h"
 
-extern void record_event(pid_t pid, Event event, ...);
+extern int record_event(Config *config, pid_t pid, Action action, ...);
+extern void report_events(Config *config);
 
 #endif /* WIO_EVENT_H */

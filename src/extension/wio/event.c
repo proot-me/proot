@@ -24,77 +24,147 @@
 #include <stdio.h>	/* fprintf(3), */
 #include <assert.h>	/* assert(3), */
 #include <sched.h>	/* CLONE_THREAD, */
+#include <stdbool.h>	/* bool, */
+#include <talloc.h>	/* talloc(3), */
+#include <errno.h>	/* E*, */
 
 #include "extension/wio/event.h"
+#include "extension/wio/wio.h"
 #include "arch.h"
 
 /*
 
-Coalescing
+Coalescing (TODO)
 ==========
 
-- "traverses *path*" hides further same instances
+- "*pid* traverses *path*" hides further instances (same *pid*, same
+  action, and same *path*)
 
-- "deletes *path*" unhides all events on *path*
+- "*pid* deletes *path*" unhides all events on *path* for all pids
 
-- "gets metadata of *path*" unhides "sets metadata of *path*" instances,
-  but hides further same instances
+- "*pid* gets metadata of *path*" hides further instances (same *pid*,
+  same action, and same *path*), but unhides "sets metadata of *path*"
+  for all pids
 
-- "sets metadata of *path*" unhides "gets metadata of *path*" instances,
-  but hides further same instances
+- "*pid* sets metadata of *path*" hides further instances (same *pid*,
+  same action, and same *path*), but unhides "gets metadata of *path*"
+  for all pids
 
-- "sets content of *path*" event unhides "gets content of *path*"
-  instances, but hides further same instances
+- "sets content of *path*" hides further instances (same *pid*, same
+  action, and same *path*), but unhides "gets content of *path*" for
+  all pids
 
-- "gets content of *path*" event unhides "sets content of *path*"
-  instances, but hides further same instances
+- "gets content of *path*" hides further instances (same *pid*, same
+  action, and same *path*), but unhides "sets content of *path*" for
+  all pids
 
-- "moves *path* to *path2*" unhides all events on *path* and *path2*
+- "moves *path* to *path2*" unhides all events on *path* and *path2*,
+  for all pids.
+
+- "*pid* has exited" unhides all events for *pid*.
 
 */
 
-/* TODO: static struct XXX *history; */
-/* TODO: static struct XXX *coalescing; */
+/**
+ * Allocate a new event, with given @pid and @action, at the end of
+ * @config->history.  This function return NULL if an error occurred,
+ * otherwise 0.
+ */
+static Event *new_event(Config *config, pid_t pid, Action action)
+{
+	size_t length;
+	Event *event;
+	void *tmp;
 
-#define PRINT(string) do {						\
-		path = va_arg(ap, const char *);			\
-		fprintf(stderr, "%d %s %s\n", pid, string, path);	\
-	} while (0);							\
-	break;
+	if (config->history == NULL) {
+		config->history = talloc_array(config, Event, 1);
+		if (config->history == NULL)
+			return NULL;
+	}
+
+	length = talloc_array_length(config->history);
+
+	tmp = talloc_realloc(NULL, config->history, Event, length + 1);
+	if (tmp == NULL)
+		return NULL;
+	config->history = tmp;
+
+	event = &config->history[length];
+
+	event->pid = pid;
+	event->action = action;
+
+	return event;
+}
 
 /**
- * Record @event from @pid.
+ * Record event for given @action performed by @pid.  This function
+ * return -errno if an error occurred, otherwise 0.
  */
-void record_event(pid_t pid, Event event, ...)
+int record_event(Config *config, pid_t pid, Action action, ...)
 {
-	const char *path2;
-	const char *path;
+	Event *event;
 	va_list ap;
 
-	va_start(ap, event);
+	va_start(ap, action);
 
-	switch (event) {
-	case TRAVERSES: 	PRINT("traverses");
-	case CREATES:		PRINT("creates");
-	case DELETES:		PRINT("deletes");
-	case GETS_METADATA_OF:	PRINT("gets metadata of");
-	case SETS_METADATA_OF:	PRINT("sets metadata of");
-	case GETS_CONTENT_OF:	PRINT("gets content of");
-	case SETS_CONTENT_OF:	PRINT("sets content of");
-	case EXECUTES:		PRINT("executes");
+	switch (action) {
+	case TRAVERSES:
+	case CREATES:
+	case DELETES:
+	case GETS_METADATA_OF:
+	case SETS_METADATA_OF:
+	case GETS_CONTENT_OF:
+	case SETS_CONTENT_OF:
+	case EXECUTES:
+		event = new_event(config, pid, action);
+		if (event == NULL)
+			return -ENOMEM;
+
+		event->load.path = talloc_strdup(config->history, va_arg(ap, const char *));
+		if (event->load.path == NULL)
+			return -ENOMEM;
+
+		break;
 
 	case MOVES:
-		path = va_arg(ap, const char *);
-		path2 = va_arg(ap, const char *);
-		fprintf(stderr, "%d moves %s to %s\n", pid, path, path2);
+		event = new_event(config, pid, action);
+		if (event == NULL)
+			return -ENOMEM;
+
+		event->load.path = talloc_strdup(config->history, va_arg(ap, const char *));
+		if (event->load.path == NULL)
+			return -ENOMEM;
+
+		event->load.path2 = talloc_strdup(config->history, va_arg(ap, const char *));
+		if (event->load.path2 == NULL)
+			return -ENOMEM;
 		break;
 
 	case IS_CLONED: {
-		pid_t child_pid = va_arg(ap, pid_t);
-		word_t flags    = va_arg(ap, word_t);
-		fprintf(stderr, "%d is cloned (%s) into %d\n", pid,
-			(flags & CLONE_THREAD) != 0 ? "thread": "process", child_pid);
+		event = new_event(config, pid, action);
+		if (event == NULL)
+			return -ENOMEM;
+
+		event->load.pid = va_arg(ap, pid_t);
+		if (event->load.path == NULL)
+			return -ENOMEM;
+
+		event->load.thread = (va_arg(ap, word_t) & CLONE_THREAD) != 0;
+		if (event->load.path == NULL)
+			return -ENOMEM;
+
 		break;
+	}
+
+	case HAS_EXITED: {
+		event = new_event(config, pid, action);
+		if (event == NULL)
+			return -ENOMEM;
+
+		event->load.status = va_arg(ap, word_t);
+		if (event->load.path == NULL)
+			return -ENOMEM;
 	}
 
 	default:
@@ -104,5 +174,52 @@ void record_event(pid_t pid, Event event, ...)
 
 	va_end(ap);
 
-	return;
+	return 0;
+}
+
+/**
+ * Report all events that were stored in @config->history.
+ */
+void report_events(Config *config)
+{
+	size_t length;
+	size_t i;
+
+	if (config->history == NULL)
+		return;
+
+	length = talloc_array_length(config->history);
+	for (i = 0; i < length; i++) {
+		const Event *event = &config->history[i];
+		switch (event->action) {
+#define CASE(a) case a:							\
+			fprintf(stderr, "%d %s %s\n", event->pid, #a, event->load.path); \
+			break;						\
+
+		CASE(TRAVERSES)
+		CASE(CREATES)
+		CASE(DELETES)
+		CASE(GETS_METADATA_OF)
+		CASE(SETS_METADATA_OF)
+		CASE(GETS_CONTENT_OF)
+		CASE(SETS_CONTENT_OF)
+		CASE(EXECUTES)
+#undef CASE
+
+		case MOVES:
+			fprintf(stderr, "%d moves %s to %s\n", event->pid,
+				event->load.path, event->load.path2);
+			break;
+
+		case IS_CLONED:
+			fprintf(stderr, "%d is cloned (%s) into %d\n", event->pid,
+				event->load.thread ? "thread" : "process", event->load.pid);
+			break;
+
+		case HAS_EXITED:
+			fprintf(stderr, "%d has exited (status = %ld)\n", event->pid,
+				event->load.status);
+			break;
+		}
+	}
 }

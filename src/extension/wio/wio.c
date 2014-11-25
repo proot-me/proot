@@ -82,7 +82,7 @@ static void handle_host_path(Extension *extension, const char *path, bool is_fin
 	if (access(path, F_OK) != 0)
 		return;
 
-	record_event(tracee->pid, TRAVERSES, path);
+	record_event(extension->config, tracee->pid, TRAVERSES, path);
 }
 
 /**
@@ -122,7 +122,6 @@ static void handle_sysenter_end(Extension *extension)
 	int status;
 
 	tracee = TRACEE(extension);
-	extension->config = NULL;
 
 	sysnum = get_sysnum(tracee, ORIGINAL);
 	switch (sysnum) {
@@ -139,9 +138,8 @@ static void handle_sysenter_end(Extension *extension)
 
 		flags = peek_reg(tracee, ORIGINAL, sysarg + 1);
 
-		if (access(path, F_OK) != 0 && (flags & O_CREAT) != 0)
-			extension->config = (void *) -1;
-
+		((Config *) extension->config)->open_creates_path =
+			(access(path, F_OK) != 0 && (flags & O_CREAT) != 0);
 		break;
 	}
 
@@ -197,7 +195,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		/* This implies set_content for parent of path.  */
-		record_event(tracee->pid, CREATES, path);
+		record_event(extension->config, tracee->pid, CREATES, path);
 		break;
 
 	/**********************************************************************
@@ -215,7 +213,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		/* This implies set_content for parent of path.  */
-		record_event(tracee->pid, DELETES, path);
+		record_event(extension->config, tracee->pid, DELETES, path);
 		break;
 
 	/**********************************************************************
@@ -238,7 +236,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		/* This implies set_content for parent of path & path2.  */
-		record_event(tracee->pid, MOVES, path, path2);
+		record_event(extension->config, tracee->pid, MOVES, path, path2);
 		break;
 
 	/**********************************************************************
@@ -262,7 +260,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, GETS_METADATA_OF, path);
+		record_event(extension->config, tracee->pid, GETS_METADATA_OF, path);
 		break;
 
 	case PR_fstat:		/* SYSARG_1: descriptor */
@@ -272,7 +270,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, GETS_METADATA_OF, path);
+		record_event(extension->config, tracee->pid, GETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -297,7 +295,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, SETS_METADATA_OF, path);
+		record_event(extension->config, tracee->pid, SETS_METADATA_OF, path);
 		break;
 
 	case PR_fchown:		/* SYSARG_1: descriptor */
@@ -307,7 +305,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, SETS_METADATA_OF, path);
+		record_event(extension->config, tracee->pid, SETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -323,7 +321,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, GETS_CONTENT_OF, path);
+		record_event(extension->config, tracee->pid, GETS_CONTENT_OF, path);
 		break;
 
 	case PR_read:		/* SYSARG_1: descriptor */
@@ -335,7 +333,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, GETS_CONTENT_OF, path);
+		record_event(extension->config, tracee->pid, GETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -350,7 +348,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, SETS_CONTENT_OF, path);
+		record_event(extension->config, tracee->pid, SETS_CONTENT_OF, path);
 		break;
 
 	case PR_write:		/* SYSARG_1: descriptor */
@@ -363,7 +361,7 @@ static void handle_sysexit_start(const Extension *extension)
 		if (status < 0)
 			goto error;
 
-		record_event(tracee->pid, SETS_CONTENT_OF, path);
+		record_event(extension->config, tracee->pid, SETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -372,7 +370,7 @@ static void handle_sysexit_start(const Extension *extension)
 
 	case PR_execve:
 		/* Note: this implies get_metadata & get_content.  */
-		record_event(tracee->pid, EXECUTES, tracee->exe);
+		record_event(extension->config, tracee->pid, EXECUTES, tracee->exe);
 		break;
 
 	case PR_openat:
@@ -381,24 +379,22 @@ static void handle_sysexit_start(const Extension *extension)
 		sysarg++;
 
 		word_t flags;
-		bool didnt_exist;
 
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
 
 		flags = peek_reg(tracee, MODIFIED, sysarg + 1);
-		didnt_exist = (extension->config == (void *) -1);
 
-		if (didnt_exist)  {
+		if (((Config *) extension->config)->open_creates_path)  {
 			/* This implies set_content for parent of path.  */
-			record_event(tracee->pid, CREATES, path);
+			record_event(extension->config, tracee->pid, CREATES, path);
 		}
 		else {
-			record_event(tracee->pid, GETS_METADATA_OF, path);
+			record_event(extension->config, tracee->pid, GETS_METADATA_OF, path);
 
 			if ((flags & O_TRUNC) != 0)
-				record_event(tracee->pid, SETS_CONTENT_OF, path);
+				record_event(extension->config, tracee->pid, SETS_CONTENT_OF, path);
 		}
 
 		break;
@@ -420,10 +416,10 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 
 		if ((prot & PROT_EXEC) != 0 || (prot & PROT_READ) != 0)
-			record_event(tracee->pid, GETS_CONTENT_OF, path);
+			record_event(extension->config, tracee->pid, GETS_CONTENT_OF, path);
 
 		if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0)
-			record_event(tracee->pid, SETS_CONTENT_OF, path);
+			record_event(extension->config, tracee->pid, SETS_CONTENT_OF, path);
 
 		break;
 	}
@@ -512,9 +508,16 @@ static FilteredSysnum filtered_sysnums[] = {
 int wio_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
 {
 	switch (event) {
-	case INITIALIZATION:
+	case INITIALIZATION: {
 		extension->filtered_sysnums = filtered_sysnums;
+
+		extension->config = talloc_zero(extension, Config);
+		if (extension->config == NULL)
+			return -1;
+
+		talloc_set_destructor(extension->config, report_events);
 		return 0;
+	}
 
 	case SYSCALL_ENTER_END:
 		handle_sysenter_end(extension);
@@ -528,15 +531,12 @@ int wio_callback(Extension *extension, ExtensionEvent event, intptr_t data1, int
 		handle_host_path(extension, (const char *) data1, (bool) data2);
 		return 0;
 
-	case INHERIT_PARENT:
-		return 1;
-
-	case INHERIT_CHILD: {
-		const Tracee *parent = TRACEE((Extension *) data1);
-		const Tracee *child  = TRACEE(extension);
+	case INHERIT_PARENT: {
+		const Tracee *parent = TRACEE(extension);
+		const Tracee *child  = (Tracee *) data1;
 		word_t flags = (word_t) data2;
 
-		record_event(parent->pid, IS_CLONED, child->pid, flags);
+		record_event(extension->config, parent->pid, IS_CLONED, child->pid, flags);
 		return 0;
 	}
 

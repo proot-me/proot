@@ -24,6 +24,7 @@
 #define WIO_H
 
 #include <stdbool.h>	/* bool, */
+#include "arch.h"
 
 typedef struct {
 	struct {
@@ -33,7 +34,7 @@ typedef struct {
 		bool path_type;				/* (TODO)		*/
 		bool path_content_usage;		/* (TODO: switchable)	*/
 		bool path_metadata_usage;		/* (TODO: switchable)	*/
-		bool process_usage;			/* (TODO: switchable)	*/
+		bool process_usage; /* clone, execve */	/* (TODO: switchable)	*/
 
 		struct {
 			bool coalesced;			/* (TODO: WIP)		*/
@@ -54,5 +55,42 @@ typedef struct {
 		} format;
 	} output;
 } Options;
+
+typedef enum {
+	TRAVERSES,
+	CREATES,
+	DELETES,
+	GETS_METADATA_OF,
+	SETS_METADATA_OF,
+	GETS_CONTENT_OF,
+	SETS_CONTENT_OF,
+	EXECUTES,
+	MOVES,
+	IS_CLONED,
+	HAS_EXITED,
+} Action;
+
+typedef struct {
+	pid_t pid;
+	Action action;
+	union {
+		struct {
+			const char *path;
+			const char *path2;
+		};
+		struct {
+			pid_t pid;
+			bool thread;
+		};
+		word_t status;
+	} load;
+} Event;
+
+typedef struct {
+	Event *history;
+	/* TODO: coalescing */
+
+	bool open_creates_path;
+} Config;
 
 #endif /* WIO_H */
