@@ -24,6 +24,8 @@
 #define WIO_H
 
 #include <stdbool.h>	/* bool, */
+#include <uthash.h>	/* ut_hash_handle, */
+
 #include "arch.h"
 
 typedef struct {
@@ -86,11 +88,20 @@ typedef struct {
 	} load;
 } Event;
 
+typedef struct
+{
+	UT_hash_handle hh;
+	char *string;
+} HashedString;
+
 typedef struct {
 	Event *history;
+	HashedString *strings;
+
 	/* TODO: coalescing */
 
 	bool open_creates_path;
+
 } Config;
 
 #endif /* WIO_H */

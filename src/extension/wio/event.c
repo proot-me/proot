@@ -25,8 +25,9 @@
 #include <assert.h>	/* assert(3), */
 #include <sched.h>	/* CLONE_THREAD, */
 #include <stdbool.h>	/* bool, */
-#include <talloc.h>	/* talloc(3), */
 #include <errno.h>	/* E*, */
+#include <talloc.h>	/* talloc(3), */
+#include <uthash.h>	/* UT*, */
 
 #include "extension/wio/event.h"
 #include "extension/wio/wio.h"
@@ -98,6 +99,31 @@ static Event *new_event(Config *config, pid_t pid, Action action)
 }
 
 /**
+ * Return a copy of @original from @config->strings cache.
+ */
+static const char *get_string_copy(Config *config, const char *original)
+{
+	HashedString *entry;
+
+	HASH_FIND_STR(config->strings, original, entry);
+	if (entry != NULL)
+		return entry->string;
+
+	entry = talloc(config, HashedString);
+	if (entry == NULL)
+		return NULL;
+
+	entry->string = talloc_strdup(entry, original);
+	if (entry->string == NULL)
+		return NULL;
+
+	HASH_ADD_KEYPTR(hh, config->strings, entry->string,
+			talloc_get_size(entry->string) - 1, entry);
+
+	return entry->string;
+}
+
+/**
  * Record event for given @action performed by @pid.  This function
  * return -errno if an error occurred, otherwise 0.
  */
@@ -121,7 +147,7 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 		if (event == NULL)
 			return -ENOMEM;
 
-		event->load.path = talloc_strdup(config->history, va_arg(ap, const char *));
+		event->load.path = get_string_copy(config, va_arg(ap, const char *));
 		if (event->load.path == NULL)
 			return -ENOMEM;
 
@@ -132,11 +158,11 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 		if (event == NULL)
 			return -ENOMEM;
 
-		event->load.path = talloc_strdup(config->history, va_arg(ap, const char *));
+		event->load.path = get_string_copy(config, va_arg(ap, const char *));
 		if (event->load.path == NULL)
 			return -ENOMEM;
 
-		event->load.path2 = talloc_strdup(config->history, va_arg(ap, const char *));
+		event->load.path2 = get_string_copy(config, va_arg(ap, const char *));
 		if (event->load.path2 == NULL)
 			return -ENOMEM;
 		break;
