@@ -1,6 +1,6 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file is part of PRoot.
+ * This file is part of WioM.
  *
  * Copyright (C) 2014 STMicroelectronics
  *
@@ -28,9 +28,11 @@
 #include <errno.h>	/* E*, */
 #include <talloc.h>	/* talloc(3), */
 #include <uthash.h>	/* UT*, */
+#include <sys/queue.h>	/* SIMPLEQ, */
 
-#include "extension/wio/event.h"
-#include "extension/wio/wio.h"
+#include "extension/wiom/event.h"
+#include "extension/wiom/wiom.h"
+#include "path/path.h"
 #include "arch.h"
 
 /*
@@ -124,11 +126,49 @@ static const char *get_string_copy(Config *config, const char *original)
 }
 
 /**
+ * Check whether @path is masked with respect to @config->options.
+ */
+static bool is_masked(Config *config, const char *path)
+{
+	bool masked = false;
+	Comparison comparison;
+	Item *item;
+
+	if (config->options->masked_paths == NULL)
+		return false;
+
+	SIMPLEQ_FOREACH(item, config->options->masked_paths, link) {
+		comparison = compare_paths(item->load, path);
+		if (   comparison == PATHS_ARE_EQUAL
+		    || comparison == PATH1_IS_PREFIX) {
+			masked = true;
+			break;
+		}
+	}
+
+	if (!masked || config->options->unmasked_paths == NULL)
+		return masked;
+
+	SIMPLEQ_FOREACH(item, config->options->unmasked_paths, link) {
+		comparison = compare_paths(item->load, path);
+		if (   comparison == PATHS_ARE_EQUAL
+		    || comparison == PATH1_IS_PREFIX) {
+			masked = false;
+			break;
+		}
+	}
+
+	return masked;
+}
+
+/**
  * Record event for given @action performed by @pid.  This function
  * return -errno if an error occurred, otherwise 0.
  */
 int record_event(Config *config, pid_t pid, Action action, ...)
 {
+	const char *path2;
+	const char *path;
 	Event *event;
 	va_list ap;
 
@@ -143,26 +183,35 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 	case GETS_CONTENT_OF:
 	case SETS_CONTENT_OF:
 	case EXECUTES:
+		path = va_arg(ap, const char *);
+		if (is_masked(config, path))
+			break;
+
 		event = new_event(config, pid, action);
 		if (event == NULL)
 			return -ENOMEM;
 
-		event->load.path = get_string_copy(config, va_arg(ap, const char *));
+		event->load.path = get_string_copy(config, path);
 		if (event->load.path == NULL)
 			return -ENOMEM;
 
 		break;
 
 	case MOVES:
+		path  = va_arg(ap, const char *);
+		path2 = va_arg(ap, const char *);
+		if (is_masked(config, path) && is_masked(config, path2))
+			break;
+
 		event = new_event(config, pid, action);
 		if (event == NULL)
 			return -ENOMEM;
 
-		event->load.path = get_string_copy(config, va_arg(ap, const char *));
+		event->load.path = get_string_copy(config, path);
 		if (event->load.path == NULL)
 			return -ENOMEM;
 
-		event->load.path2 = get_string_copy(config, va_arg(ap, const char *));
+		event->load.path2 = get_string_copy(config, path2);
 		if (event->load.path2 == NULL)
 			return -ENOMEM;
 		break;

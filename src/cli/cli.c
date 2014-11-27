@@ -307,6 +307,8 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 		if (strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
 			cli = get_care_cli(tracee->ctx);
 	}
+	else if (get_wiom_cli != NULL)
+		cli = get_wiom_cli(tracee->ctx);
 
 	/* Unknown tool name?  Default to PRoot.  */
 	if (cli == NULL)

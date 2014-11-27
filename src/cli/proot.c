@@ -300,8 +300,6 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 {
 	int status;
 
-	(void) initialize_extension(tracee, wio_callback, NULL);
-
 	/* Default to "." if no CWD were specified.  */
 	if (tracee->fs->cwd == NULL) {
 		status = handle_option_w(tracee, cli, ".");

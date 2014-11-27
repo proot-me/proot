@@ -1,6 +1,6 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file is part of PRoot.
+ * This file is part of WioM.
  *
  * Copyright (C) 2014 STMicroelectronics
  *
@@ -20,12 +20,12 @@
  * 02110-1301 USA.
  */
 
-#ifndef WIO_EVENT_H
-#define WIO_EVENT_H
+#ifndef WIOM_EVENT_H
+#define WIOM_EVENT_H
 
-#include "extension/wio/wio.h"
+#include "extension/wiom/wiom.h"
 
 extern int record_event(Config *config, pid_t pid, Action action, ...);
 extern void report_events(Config *config);
 
-#endif /* WIO_EVENT_H */
+#endif /* WIOM_EVENT_H */

@@ -25,28 +25,36 @@
 
 #include <stdbool.h>	/* bool, */
 #include <uthash.h>	/* ut_hash_handle, */
+#include <sys/queue.h>	/* SIMPLEQ, */
 
 #include "arch.h"
+
+typedef struct item {
+	void *load;
+	SIMPLEQ_ENTRY(item) link;
+} Item;
+
+typedef SIMPLEQ_HEAD(list, item) List;
 
 typedef struct {
 	struct {
 		bool successful_actions;		/* (TODO: switchable)	*/
 		bool unsuccessful_actions;		/* (TODO)		*/
+
 		bool path_traversal;			/* (TODO: switchable)	*/
 		bool path_type;				/* (TODO)		*/
 		bool path_content_usage;		/* (TODO: switchable)	*/
 		bool path_metadata_usage;		/* (TODO: switchable)	*/
-		bool process_usage; /* clone, execve */	/* (TODO: switchable)	*/
 
-		struct {
-			bool coalesced;			/* (TODO: WIP)		*/
-			/* List *exclude_paths;		 * (TODO)		*/
-			/* List *exclude_all_but_paths;	 * (TODO)		*/
-		} simplification;
+		bool process_usage; /* clone, execve */	/* (TODO: switchable)	*/
 	} record;
 
+	bool coalesce_events;			/* (TODO: WIP)		*/
+	List *masked_paths;			/* (TODO: WIP)		*/
+	List *unmasked_paths;			/* (TODO: WIP)		*/
+
 	struct {
-		const char path;			/* (TODO)		*/
+		const char *path;			/* (TODO)		*/
 		enum {
 			TEXT_EVERYTHING,		/* (TODO)		*/
 			TEXT_IO_FILES,			/* (TODO)		*/
@@ -102,6 +110,7 @@ typedef struct {
 
 	bool open_creates_path;
 
+	Options *options;
 } Config;
 
 #endif /* WIO_H */

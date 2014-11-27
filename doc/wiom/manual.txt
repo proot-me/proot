@@ -1,0 +1,110 @@
+======
+ WioM
+======
+
+------------------------------------------
+Watch process Inputs, Ouputs, and More ...
+------------------------------------------
+
+:Date: 2014-11-26
+:Version: 0.0.1
+:Manual section: 1
+
+
+Synopsis
+========
+
+**wiom** [*option*] ... [*command*]
+**wiom** [*option*] ... -i *path*
+
+
+Description
+===========
+
+TODO
+
+
+Options
+=======
+
+-i path, --output=path
+    TODO
+
+-o path, --output=path
+    TODO
+
+-f string, --format=string
+    TODO
+
+-p string, --predefined-profile=string
+    TODO
+
+-m path, --mask-path=path
+    TODO
+
+-M path, --unmask-path=path
+    TODO
+
+-r string, --record=string
+    TODO
+
+    TODO:
+
+    * successful-actions
+    * unsuccessful-actions
+    * path-traversal
+    * path-type
+    * path-content-usage
+    * path-metadata-usage
+    * process-usage
+
+-c, --coalesce-events
+    TODO
+
+-v value, --verbose=value
+    Set the level of debug information to *value*.
+
+    The higher the integer *value* is, the more detailed debug
+    information is printed to the standard error stream.  A negative
+    *value* makes WioM quiet except on fatal errors.
+
+-V, --version, --about
+    Print version, copyright, license and contact, then exit.
+
+-h, --help, --usage
+    Print the user manual, then exit.
+
+
+Exit Status
+===========
+
+If an internal error occurs, ``wiom`` returns a non-zero exit status,
+otherwise it returns the exit status of the last terminated
+program. When an error has occurred, the only way to know if it comes
+from the last terminated program or from ``wiom`` itself is to have a
+look at the error message.
+
+
+Files
+=====
+
+WioM reads links in ``/proc/<pid>/fd/``.
+
+
+Examples
+========
+
+TODO
+
+
+Colophon
+========
+
+Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.
+
+::
+
+    ____ ___ ___ ____       ____ ____
+    \   \   \   (____)_____|    \    \
+     \          |    /  _  \          \
+      \____\____|____\_____/___\___\___\

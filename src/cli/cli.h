@@ -54,6 +54,7 @@ typedef struct Cli {
 
 extern const Cli *get_proot_cli(TALLOC_CTX *context);
 extern const Cli * WEAK get_care_cli(TALLOC_CTX *context);
+extern const Cli * WEAK get_wiom_cli(TALLOC_CTX *context);
 
 extern void print_usage(Tracee *tracee, const Cli *cli, bool detailed);
 extern void print_version(const Cli *cli);

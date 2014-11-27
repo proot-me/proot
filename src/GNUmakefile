@@ -51,8 +51,6 @@ OBJECTS += \
 	ptrace/wait.o		\
 	ptrace/direct_ptracee.o	\
 	extension/extension.o	\
-	extension/wio/wio.o	\
-	extension/wio/event.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o \
 	loader/loader-wrapped.o
@@ -74,6 +72,11 @@ CARE_OBJECTS = 				\
 	extension/care/final.o		\
 	extension/care/extract.o	\
 	extension/care/archive.o
+
+WIOM_OBJECTS = 				\
+	cli/wiom.o			\
+	extension/wiom/wiom.o		\
+	extension/wiom/event.o
 
 .DEFAULT_GOAL = proot
 all: proot
@@ -151,9 +154,12 @@ proot: $(OBJECTS)
 care: $(OBJECTS) $(CARE_OBJECTS)
 	$(LINK) $(CARE_LDFLAGS)
 
+wiom: $(OBJECTS) $(WIOM_OBJECTS)
+	$(LINK)
+
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
-USE_BUILD_H := $(patsubst $(SRC)%.c,%.o,$(shell egrep -sl 'include[[:space:]]+"build.h"' $(patsubst %.o,$(SRC)%.c,$(OBJECTS) $(CARE_OBJECTS))))
+USE_BUILD_H := $(patsubst $(SRC)%.c,%.o,$(shell egrep -sl 'include[[:space:]]+"build.h"' $(patsubst %.o,$(SRC)%.c,$(OBJECTS) $(CARE_OBJECTS) $(WIOM_OBJECTS))))
 $(USE_BUILD_H): build.h
 
 %.o: %.c
@@ -212,9 +218,9 @@ endif
 # Dependencies
 
 .DELETE_ON_ERROR:
-$(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS): $(firstword $(MAKEFILE_LIST))
+$(OBJECTS) $(CARE_OBJECTS) $(WIOM_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS): $(firstword $(MAKEFILE_LIST))
 
-DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(LOADER_OBJECTS:.o=.d) $(LOADER-m32_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
+DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(WIOM_OBJECTS:.o=.d) $(LOADER_OBJECTS:.o=.d) $(LOADER-m32_OBJECTS:.o=.d) $(CHECK_OBJECTS:.o=.d)
 -include $(DEPS)
 
 ######################################################################
@@ -225,7 +231,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install install-care uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(WIOM_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<

@@ -1,4 +1,4 @@
-OUTPUTS = proot/man.1 proot.h proot/rpm-spec proot/index.html care.h care/index.html
+OUTPUTS = proot/man.1 proot.h proot/rpm-spec proot/index.html care.h care/index.html wiom.h
 all: $(OUTPUTS)
 
 %/man.1: %/manual.txt

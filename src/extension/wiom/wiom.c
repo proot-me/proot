@@ -1,6 +1,6 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
- * This file is part of PRoot.
+ * This file is part of WioM.
  *
  * Copyright (C) 2014 STMicroelectronics
  *
@@ -28,8 +28,8 @@
 #include <errno.h>		/* E*, */
 #include <sys/mman.h>		/* MAP_*, PROT_*, */
 
-#include "extension/wio/wio.h"
-#include "extension/wio/event.h"
+#include "extension/wiom/wiom.h"
+#include "extension/wiom/event.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -505,17 +505,23 @@ static FilteredSysnum filtered_sysnums[] = {
  * Handler for this @extension.  It is triggered each time an @event
  * occurred.  See ExtensionEvent for the meaning of @data1 and @data2.
  */
-int wio_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
+int wiom_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
 {
 	switch (event) {
 	case INITIALIZATION: {
+		Config *config;
+
 		extension->filtered_sysnums = filtered_sysnums;
 
 		extension->config = talloc_zero(extension, Config);
 		if (extension->config == NULL)
 			return -1;
+		config = extension->config;
 
-		talloc_set_destructor(extension->config, report_events);
+		config->options = (Options *) data1;
+		talloc_steal(config, config->options);
+
+		talloc_set_destructor(config, report_events);
 		return 0;
 	}
 
