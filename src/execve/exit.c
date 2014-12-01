@@ -404,6 +404,13 @@ void translate_execve_exit(Tracee *tracee)
 	if ((int) syscall_result < 0)
 		return;
 
+	/* Execve happened; commit the new "/proc/self/exe".  */
+	if (tracee->new_exe != NULL) {
+		(void) talloc_unlink(tracee, tracee->exe);
+		tracee->exe = talloc_reference(tracee, tracee->new_exe);
+		talloc_set_name_const(tracee->exe, "$exe");
+	}
+
 	/* New processes have no heap.  */
 	bzero(tracee->heap, sizeof(Heap));
 

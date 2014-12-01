@@ -558,6 +558,7 @@ int translate_execve_enter(Tracee *tracee)
 {
 	char user_path[PATH_MAX];
 	char host_path[PATH_MAX];
+	char new_exe[PATH_MAX];
 	const char *loader_path;
 	int status;
 
@@ -580,6 +581,18 @@ int translate_execve_enter(Tracee *tracee)
 		/* The Linux kernel actually returns -EACCES when
 		 * trying to execute a directory.  */
 		return status == -EISDIR ? -EACCES : status;
+
+	/* Remember the new value for "/proc/self/exe".  It points to
+	 * a canonicalized guest path, hence detranslate_path()
+	 * instead of using user_path directly.  */
+	strcpy(new_exe, host_path);
+	status = detranslate_path(tracee, new_exe, NULL);
+	if (status >= 0) {
+		talloc_unlink(tracee, tracee->new_exe);
+		tracee->new_exe = talloc_strdup(tracee, new_exe);
+	}
+	else
+		tracee->new_exe = NULL;
 
 	if (tracee->qemu != NULL) {
 		status = expand_runner(tracee, host_path, user_path);
@@ -618,16 +631,6 @@ int translate_execve_enter(Tracee *tracee)
 	}
 
 	compute_load_addresses(tracee);
-
-	/* Remember the value for "/proc/self/exe".  It points to a
-	 * canonicalized guest path, hence detranslate_path() instead
-	 * of using user_path directly.  */
-	status = detranslate_path(tracee, host_path, NULL);
-	if (status >= 0) {
-		tracee->exe = talloc_strdup(tracee, host_path);
-		if (tracee->exe != NULL)
-			talloc_set_name_const(tracee->exe, "$exe");
-	}
 
 	/* Execute the loader instead of the program.  */
 	loader_path = get_loader_path(tracee);
