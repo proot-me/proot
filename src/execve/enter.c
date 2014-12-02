@@ -559,6 +559,7 @@ int translate_execve_enter(Tracee *tracee)
 	char user_path[PATH_MAX];
 	char host_path[PATH_MAX];
 	char new_exe[PATH_MAX];
+	char *raw_path;
 	const char *loader_path;
 	int status;
 
@@ -576,11 +577,22 @@ int translate_execve_enter(Tracee *tracee)
 	if (status < 0)
 		return status;
 
+	/* Remember the user path before it is overwritten by
+	 * expand_shebang().  This "raw" path is useful to fix the
+	 * value of AT_EXECFN and /proc/{@tracee->pid}/comm.  */
+	raw_path = talloc_strdup(tracee->ctx, user_path);
+	if (raw_path == NULL)
+		return -ENOMEM;
+
 	status = expand_shebang(tracee, host_path, user_path);
 	if (status < 0)
 		/* The Linux kernel actually returns -EACCES when
 		 * trying to execute a directory.  */
 		return status == -EISDIR ? -EACCES : status;
+
+	/* If it is a script, user path was not modified.  */
+	if (status == 0)
+		TALLOC_FREE(raw_path);
 
 	/* Remember the new value for "/proc/self/exe".  It points to
 	 * a canonicalized guest path, hence detranslate_path()
@@ -600,8 +612,7 @@ int translate_execve_enter(Tracee *tracee)
 			return status;
 	}
 
-	if (tracee->load_info != NULL)
-		TALLOC_FREE(tracee->load_info);
+	TALLOC_FREE(tracee->load_info);
 
 	tracee->load_info = talloc_zero(tracee, LoadInfo);
 	if (tracee->load_info == NULL)
@@ -613,6 +624,12 @@ int translate_execve_enter(Tracee *tracee)
 
 	tracee->load_info->user_path = talloc_strdup(tracee->load_info, user_path);
 	if (tracee->load_info->user_path == NULL)
+		return -ENOMEM;
+
+	tracee->load_info->raw_path = (raw_path != NULL
+			? talloc_reparent(tracee->ctx, tracee->load_info, raw_path)
+			: talloc_reference(tracee->load_info, tracee->load_info->user_path));
+	if (tracee->load_info->raw_path == NULL)
 		return -ENOMEM;
 
 	status = extract_load_info(tracee, tracee->load_info);

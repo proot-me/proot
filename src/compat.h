@@ -189,6 +189,9 @@
 #    ifndef TALLOC_FREE
 #        define TALLOC_FREE(ctx) do { talloc_free(ctx); ctx = NULL; } while(0)
 #    endif
+#    ifndef PR_SET_NAME
+#        define PR_SET_NAME		15
+#    endif
 #    ifndef PR_SET_NO_NEW_PRIVS
 #        define PR_SET_NO_NEW_PRIVS	38
 #    endif

@@ -362,8 +362,8 @@ works better with::
     TT       COMMAND
     ?        -bash
     ?        proot -b /proc /mnt/slackware-8.0/
-    ?        /lib/ld-linux.so.2 /bin/sh
-    ?        /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
+    ?        /bin/sh
+    ?        /usr/bin/ps -o tty,command
 
 Actually there's a bunch of such specific files, that's why PRoot
 provides the option ``-R`` to bind automatically a pre-defined list of
@@ -375,8 +375,8 @@ recommended paths::
     TT       COMMAND
     pts/6    -bash
     pts/6    proot -R /mnt/slackware-8.0/
-    pts/6    /lib/ld-linux.so.2 /bin/sh
-    pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
+    pts/6    /bin/sh
+    pts/6    /usr/bin/ps -o tty,command
 
 
 ``chroot`` + ``mount --bind`` + ``su`` equivalent
