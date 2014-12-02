@@ -204,7 +204,7 @@ static int transfer_load_script(Tracee *tracee)
 	/* A padding will be appended at the end of the load script
 	 * (a.k.a "strings area") to ensure this latter is aligned on
 	 * a word boundary, for sake of performance.  */
-	padding_size = (stack_pointer - string1_size - string2_size) % sizeof(word_t);
+	padding_size = (stack_pointer - string1_size - string2_size) % sizeof_word(tracee);
 
 	strings_size = string1_size + string2_size + padding_size;
 	string1_address = stack_pointer - strings_size;
@@ -298,15 +298,19 @@ static int transfer_load_script(Tracee *tracee)
 	cursor += padding_size;
 	assert((uintptr_t) cursor - (uintptr_t) buffer == buffer_size);
 
+	/* Allocate enough room in tracee's memory for the load
+	 * script, and make the first user argument points to this
+	 * location.  Note that it is safe to update the stack pointer
+	 * manually since we are in execve sysexit.  However it should
+	 * be done before transfering data since the kernel might not
+	 * allow page faults below the stack pointer.  */
+	poke_reg(tracee, STACK_POINTER, stack_pointer - buffer_size);
+	poke_reg(tracee, USERARG_1, stack_pointer - buffer_size);
+
 	/* Copy everything in the tracee's memory at once.  */
 	status = write_data(tracee, stack_pointer - buffer_size, buffer, buffer_size);
 	if (status < 0)
 		return status;
-
-	/* Update the stack pointer and the pointer to the load
-	 * script.  */
-	poke_reg(tracee, STACK_POINTER, stack_pointer - buffer_size);
-	poke_reg(tracee, USERARG_1, stack_pointer - buffer_size);
 
 	/* Tracee's stack content is now as follow:
 	 *
@@ -334,7 +338,7 @@ static int transfer_load_script(Tracee *tracee)
 	 */
 
 	/* Remember we are in the sysexit stage, so be sure the
-	 * current register values will be used as at the end.  */
+	 * current register values will be used as-is at the end.  */
 	save_current_regs(tracee, ORIGINAL);
 	tracee->_regs_were_changed = true;
 

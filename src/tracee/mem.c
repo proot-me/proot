@@ -513,6 +513,13 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 {
 	word_t stack_pointer;
 
+	/* This function should be called in sysenter only since the
+	 * stack pointer is systematically restored at the end of
+	 * sysexit (except for execve, but in this case the stack
+	 * pointer should be handled with care since it is used by the
+	 * process to retrieve argc, argv, envp, and auxv).  */
+	assert(IS_IN_SYSENTER(tracee));
+
 	/* Get the current value of the stack pointer from the tracee's
 	 * USER area. */
 	stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
