@@ -8,8 +8,11 @@ SRC    = $(dir $(firstword $(MAKEFILE_LIST)))
 GIT      = git
 RM       = rm
 INSTALL  = install
-CC       = gcc
+CC       = $(CROSS_COMPILE)gcc
 LD       = $(CC)
+STRIP    = $(CROSS_COMPILE)strip
+OBJCOPY  = $(CROSS_COMPILE)objcopy
+OBJDUMP  = $(CROSS_COMPILE)objdump
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -Wall -Wextra -O2
@@ -135,11 +138,11 @@ COMPILE = $($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $(SRC)$< -o $@
 LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
 OBJIFY = $($(quiet)GEN)									\
-	objcopy										\
+	$(OBJCOPY)									\
 		--input binary								\
-		--output `env LANG=C objdump -f cli/cli.o |				\
+		--output `env LANG=C $(OBJDUMP) -f cli/cli.o |				\
 			grep 'file format' | awk '{print $$4}'`				\
-		--binary-architecture `env LANG=C objdump -f cli/cli.o |		\
+		--binary-architecture `env LANG=C $(OBJDUMP) -f cli/cli.o |		\
 				grep architecture | cut -f 1 -d , | awk '{print $$2}'`	\
 		$< $@
 
@@ -194,7 +197,7 @@ loader/loader$1: $$(LOADER$1_OBJECTS)
 .INTERMEDIATE: loader$1.exe
 loader$1.exe: loader/loader$1
 	$$(Q)cp $$< $$@
-	$$(Q)strip $$@
+	$$(Q)$(STRIP) $$@
 
 loader/loader$1-wrapped.o: loader$1.exe cli/cli.o
 	$$(OBJIFY)
