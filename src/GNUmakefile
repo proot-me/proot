@@ -131,6 +131,8 @@ build.h: $(CHECK_RESULTS)
 	$(Q)cat $^                      >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
+BUILD_ID_NONE := $(shell if ld --build-id=none --version >/dev/null 2>&1; then echo ',--build-id=none'; fi)
+
 ######################################################################
 # Build rules
 
@@ -181,7 +183,7 @@ $(eval $(call define_from_arch.h,$1,LOADER_ARCH_CFLAGS))
 $(eval $(call define_from_arch.h,$1,LOADER_ADDRESS))
 
 LOADER_CFLAGS$1  += -fPIC -ffreestanding $(LOADER_ARCH_CFLAGS$1)
-LOADER_LDFLAGS$1 += -static -nostdlib -Wl,-Ttext=$(LOADER_ADDRESS$1)
+LOADER_LDFLAGS$1 += -static -nostdlib -Wl$(BUILD_ID_NONE),-Ttext=$(LOADER_ADDRESS$1)
 
 loader/loader$1.o: loader/loader.c
 	@mkdir -p $$(dir $$@)
