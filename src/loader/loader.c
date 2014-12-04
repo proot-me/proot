@@ -238,9 +238,9 @@ void _start(void *cursor)
 			SYSCALL(PRCTL, 3, PR_SET_NAME, basename(stmt->start.at_execfn), 0);
 
 			if (unlikely(traced))
-				SYSCALL(EXECVE, 6, -1,
+				SYSCALL(EXECVE, 6, 1,
 					stmt->start.stack_pointer,
-					stmt->start.entry_point, -2, -3, -4);
+					stmt->start.entry_point, 2, 3, 4);
 			else
 				BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
 			FATAL();

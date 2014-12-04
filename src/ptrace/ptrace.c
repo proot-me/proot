@@ -105,6 +105,10 @@ int translate_ptrace_exit(Tracee *tracee)
 	address = peek_reg(tracee, ORIGINAL, SYSARG_3);
 	data    = peek_reg(tracee, ORIGINAL, SYSARG_4);
 
+	/* Propagate signedness for this special value.  */
+	if (is_32on64_mode(tracee) && pid == 0xFFFFFFFF)
+		pid = (word_t) -1;
+
 	/* The TRACEME request is the only one used by a tracee.  */
 	if (request == PTRACE_TRACEME) {
 		ptracer = tracee->parent;
