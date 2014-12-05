@@ -179,6 +179,7 @@ void _start(void *cursor)
 			word_t *cursor2 = (word_t *) stmt->start.stack_pointer;
 			const word_t argc = cursor2[0];
 			const word_t at_execfn = cursor2[1];
+			word_t name;
 
 			status = SYSCALL(CLOSE, 1, fd);
 			if (unlikely((int) status < 0))
@@ -235,7 +236,8 @@ void _start(void *cursor)
 			} while (cursor2[0] != AT_NULL);
 
 			/* Note that only 2 arguments are actually necessary... */
-			SYSCALL(PRCTL, 3, PR_SET_NAME, basename(stmt->start.at_execfn), 0);
+			name = basename(stmt->start.at_execfn);
+			SYSCALL(PRCTL, 3, PR_SET_NAME, name, 0);
 
 			if (unlikely(traced))
 				SYSCALL(EXECVE, 6, 1,
