@@ -590,8 +590,9 @@ int translate_execve_enter(Tracee *tracee)
 		 * trying to execute a directory.  */
 		return status == -EISDIR ? -EACCES : status;
 
-	/* If it is a script, user path was not modified.  */
-	if (status == 0)
+	/* user_path is modified only if there's an interpreter
+	 * (ie. for a script or with qemu).  */
+	if (status == 0 && tracee->qemu == NULL)
 		TALLOC_FREE(raw_path);
 
 	/* Remember the new value for "/proc/self/exe".  It points to
