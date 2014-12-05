@@ -235,10 +235,9 @@ int main(int argc, char *argv[])
 		/* Wait for the next tracee's stop. */
 		pid = waitpid(-1, &tracee_status, __WALL);
 		if (pid < 0) {
-			if (errno != ECHILD) {
-				perror("waitpid()");
+			perror("waitpid()");
+			if (errno != ECHILD)
 				exit(EXIT_FAILURE);
-			}
 			break;
 		}
 
@@ -258,6 +257,7 @@ int main(int argc, char *argv[])
 			pids[i + 1] = 0;
 			pids[i] = pid;
 			sid = i + 1;
+			fprintf(stderr, "sid %d -> pid %d\n", sid, pid);
 		}
 
 		if (WIFEXITED(tracee_status)) {
@@ -400,7 +400,7 @@ int main(int argc, char *argv[])
 		 * exit of a system call. */
 		status = ptrace(restart_how, pid, NULL, signal);
 		if (status < 0)
-			fprintf(stderr, "ptrace(<restart_how>, %d, %d)\n", sid, signal);
+			fprintf(stderr, "ptrace(<restart_how>, %d, %d): %s\n", sid, signal, strerror(errno));
 	}
 
 	return last_exit_status;

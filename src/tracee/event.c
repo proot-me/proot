@@ -386,11 +386,15 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	if (WIFEXITED(tracee_status)) {
 		last_exit_status = WEXITSTATUS(tracee_status);
 		VERBOSE(tracee, 1, "pid %d: exited with status %d", pid, last_exit_status);
+		TALLOC_FREE(tracee);
+		return -1;
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
 		VERBOSE(tracee, (int) (last_exit_status != -1),
 			"pid %d: terminated with signal %d", pid, WTERMSIG(tracee_status));
+		TALLOC_FREE(tracee);
+		return -1;
 	}
 	else if (WIFSTOPPED(tracee_status)) {
 		/* Don't use WSTOPSIG() to extract the signal
@@ -587,13 +591,11 @@ bool restart_tracee(Tracee *tracee, int signal)
 	/* Restart the tracee and stop it at the next instruction, or
 	 * at the next entry or exit of a system call. */
 	status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
-	if (status < 0) {
-		/* The process died in a syscall.  */
-		TALLOC_FREE(tracee);
-		return false;
-	}
+	if (status < 0)
+		return false; /* The process likely died in a syscall.  */
 
 	tracee->restart_how = 0;
 	tracee->running = true;
+
 	return true;
 }

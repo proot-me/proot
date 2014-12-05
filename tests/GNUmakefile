@@ -80,6 +80,9 @@ check-test-iiiiiiii.c: test-iiiiiiii
 check-test-9c07fad8.c: test-9c07fad8
 	$(call check_c,$<,$(PROOT) ./$<)
 
+check-test-fa205b56.c: test-fa205b56
+	$(call check_c,$<,$(PROOT) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -169,6 +172,9 @@ test-iiiiiiii: test-iiiiiiii.c
 
 test-9c07fad8: test-9c07fad8.c
 	$(Q)$(CC) -fPIE -pie $< -o $@ $(silently) || true
+
+test-fa205b56: test-fa205b56.c
+	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

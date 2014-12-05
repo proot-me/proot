@@ -90,7 +90,6 @@ static int remove_tracee(Tracee *tracee)
 {
 	Tracee *relative;
 	Tracee *ptracer;
-	int status;
 	int event;
 
 	LIST_REMOVE(tracee, link);
@@ -135,10 +134,12 @@ static int remove_tracee(Tracee *tracee)
 	assert(PTRACER.nb_ptracees > 0);
 
 	/* Zombify this ptracee until its ptracer is notified about
-	 * its death.  */
+	 * its death, except when its ptracer is its direct parent;
+	 * see ptrace/wait.c for details.  */
 	event = tracee->as_ptracee.event4.ptracer.value;
 	if (tracee->as_ptracee.event4.ptracer.pending
-	    && (WIFEXITED(event) || WIFSIGNALED(event))) {
+	    && (WIFEXITED(event) || WIFSIGNALED(event))
+	    && tracee->as_ptracee.ptracer != tracee->parent) {
 		Tracee *zombie;
 
 		zombie = new_dummy_tracee(ptracer);
@@ -164,11 +165,7 @@ static int remove_tracee(Tracee *tracee)
 		poke_reg(ptracer, SYSARG_RESULT, -ECHILD);
 
 		/* Don't forget to write its register cache back.  */
-		status = push_regs(ptracer);
-		if (status < 0) {
-			TALLOC_FREE(ptracer);
-			return 0;
-		}
+		(void) push_regs(ptracer);
 
 		PTRACER.wait_pid = 0;
 		(void) restart_tracee(ptracer, 0);
