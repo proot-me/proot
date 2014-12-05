@@ -10,10 +10,11 @@ RM       = rm
 INSTALL  = install
 CC       = gcc
 LD       = $(CC)
+SWIG     = swig
 
-CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
-CFLAGS   += -Wall -Wextra -O2
-LDFLAGS  += -ltalloc
+CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I/usr/include/python2.7 -I/usr/include/x86_64-linux-gnu/python2.7
+CFLAGS   += -Wall -Wextra -O2 -g
+LDFLAGS  += -ltalloc -L/usr/lib/python2.7/config-x86_64-linux-gnu -L/usr/lib -lpython2.7 -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
 
 CARE_LDFLAGS = -larchive
 
@@ -53,6 +54,8 @@ OBJECTS += \
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o \
+	extension/python/python.o \
+	extension/python/proot_wrap.o \
 	loader/loader-wrapped.o
 
 define define_from_arch.h
@@ -83,6 +86,7 @@ quiet_GEN = @echo "  GEN	$@"; $(GEN)
 quiet_CC  = @echo "  CC	$@"; $(CC)
 quiet_LD  = @echo "  LD	$@"; $(LD)
 quiet_INSTALL = @echo "  INSTALL	$?"; $(INSTALL)
+quiet_SWIG = @echo "  SWIG	$@"; $(SWIG)
 
 V = 0
 ifeq ($(V), 0)
@@ -168,6 +172,9 @@ cli/care-manual.o: manual cli/cli.o
 cli/%-licenses.o: licenses cli/cli.o
 	$(OBJIFY)
 
+extension/python/proot_wrap.c: extension/python/proot.i
+	$($(quiet)SWIG) -python extension/python/proot.i
+
 ######################################################################
 # Build rules for the loader
 
@@ -223,7 +230,8 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install install-care uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) extension/python/python_extension.pyc \
+	extension/python/proot.pyc extension/python/proot_wrap.c extension/python/proot.py proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<

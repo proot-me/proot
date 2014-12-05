@@ -58,6 +58,7 @@ static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_k(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
 
@@ -214,6 +215,14 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 \tgid.  Likewise, files actually owned by the current user and\n\
 \tgroup appear as if they were owned by uid and gid instead.\n\
 \tNote that the -0 option is the same as -i 0:0.",
+	},
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-p", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_p,
+	  .description = "Allow to access tracee information from python.",
+	  .detail = "\tblah blah",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
