@@ -9,8 +9,10 @@ static FilteredSysnum filtered_sysnums[] = {
 	FILTERED_SYSNUM_END,
 };
 
+/* build by swig */
 extern void init_proot(void);
 
+/* helper for proot module */
 Tracee *get_tracee_from_extension(long extension_handle)
 {
 	Extension *extension = (Extension *)extension_handle;
@@ -19,6 +21,7 @@ Tracee *get_tracee_from_extension(long extension_handle)
 	return tracee;
 }
 
+/* init python once */
 void init_python_env()
 {
 	static bool is_done = false;
@@ -31,24 +34,26 @@ void init_python_env()
 		PyRun_SimpleString("import sys");
 		PyRun_SimpleString("sys.path.insert(0, '/home/mike/work/PRoot/src/extension/python')");
 		pName = PyString_FromString("python_extension");
-		if (!pName)
+		if (pName) {
+			pModule = PyImport_Import(pName);
+			Py_DECREF(pName);
+			if (pModule) {
+				python_callback_func = PyObject_GetAttrString(pModule, "python_callback");
+				if (python_callback_func && PyCallable_Check(python_callback_func))
+					note(NULL, INFO, USER, "python_callback find\n");
+				else
+					note(NULL, ERROR, USER, "python_callback_func error\n");
+			} else {
+				PyErr_Print();
+				note(NULL, ERROR, USER, "pModule error\n");
+			}
+		} else
 			note(NULL, ERROR, USER, "pName error\n");
-		pModule = PyImport_Import(pName);
-		Py_DECREF(pName);
-		if (pModule) {
-			python_callback_func = PyObject_GetAttrString(pModule, "python_callback");
-			if (python_callback_func && PyCallable_Check(python_callback_func)) {
-				note(NULL, ERROR, USER, "python_callback find\n");
-			} else
-				note(NULL, ERROR, USER, "python_callback_func error\n");
-		} else {
-			PyErr_Print();
-			note(NULL, ERROR, USER, "pModule error\n");
-		}
 		is_done = true;
 	}
 }
 
+/* call python callback */
 static int python_callback_func_wrapper(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
 {
 	int res = 0;
@@ -77,6 +82,7 @@ static int python_callback_func_wrapper(Extension *extension, ExtensionEvent eve
 		if (!pValue)
 			note(NULL, ERROR, USER, "pValue allocation failure\n");
 		PyTuple_SetItem(pArgs, 3, pValue);
+
 		/* call function */
 		pValue = PyObject_CallObject(python_callback_func, pArgs);
 		if (pValue != NULL) {
@@ -99,19 +105,20 @@ static int python_callback_func_wrapper(Extension *extension, ExtensionEvent eve
  */
 int python_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
 {
+	int res = 0;
+
 	switch (event) {
 		case INITIALIZATION:
 			{
 				init_python_env();
+				res = python_callback_func_wrapper(extension, event, data1, data2);
 
 				extension->filtered_sysnums = filtered_sysnums;
-				return 0;
 			}
 			break;
 		default:
-			{
-				python_callback_func_wrapper(extension, event, data1, data2);
-			}
-			return 0;
+			res = python_callback_func_wrapper(extension, event, data1, data2);
 	}
+
+	return res;
 }

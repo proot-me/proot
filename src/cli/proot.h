@@ -218,7 +218,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	},
 	{ .class = "Extension options",
 	  .arguments = {
-		{ .name = "-p", .separator = '\0', .value = NULL },
+		{ .name = "-p", .separator = ' ', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_p,
 	  .description = "Allow to access tracee information from python.",
