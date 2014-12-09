@@ -420,11 +420,17 @@ int new_child(Tracee *parent, word_t clone_flags)
 	 *
 	 * -- clone(2) man-page
 	 */
-	child->clone = ((clone_flags & CLONE_PARENT) != 0);
-	if (child->clone)
+	if ((clone_flags & CLONE_PARENT) != 0)
 		child->parent = parent->parent;
 	else
 		child->parent = parent;
+
+	/* Remember if this child belongs to the same thread group as
+	 * its parent.  This is currently useful for ptrace emulation
+	 * only but it deserves to be extended to support execve(2)
+	 * specificity (ie. when a thread calls execve(2), its pid
+	 * gets replaced by the pid of its thread group leader).  */
+	child->clone = ((clone_flags & CLONE_THREAD) != 0);
 
 	/* Depending on how the new process is created, it may be
 	 * automatically traced by the parent's tracer.  */

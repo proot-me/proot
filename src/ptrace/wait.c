@@ -215,6 +215,7 @@ int translate_wait_exit(Tracee *ptracer)
 		 * handle_ptracee_event() later.  */
 		PTRACER.wait_pid = pid;
 		PTRACER.wait_options = options;
+
 		return 0;
 	}
 

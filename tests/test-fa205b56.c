@@ -23,6 +23,8 @@ int main()
 	int status;
 	long i;
 
+	exit(125); /* NYI */
+
 	for(i = 0; i < NUM_THREADS ; i++) {
 		status = pthread_create(&threads[i], NULL, exec, (void *) i);
 		if (status)
