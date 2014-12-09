@@ -54,11 +54,6 @@ static Tracees tracees;
  */
 static int remove_zombie(Tracee *zombie)
 {
-	Tracee *ptracer;
-
-	ptracer = talloc_get_type_abort(talloc_parent(zombie), Tracee);
-	PTRACER.nb_ptracees--;
-
 	LIST_REMOVE(zombie, link);
 	return 0;
 }
@@ -129,17 +124,11 @@ static int remove_tracee(Tracee *tracee)
 	if (ptracer == NULL)
 		return 0;
 
-	/* Sanity checks.  */
-	assert(ptracer != tracee);
-	assert(PTRACER.nb_ptracees > 0);
-
 	/* Zombify this ptracee until its ptracer is notified about
-	 * its death, except when its ptracer is its direct parent;
-	 * see ptrace/wait.c for details.  */
+	 * its death.  */
 	event = tracee->as_ptracee.event4.ptracer.value;
 	if (tracee->as_ptracee.event4.ptracer.pending
-	    && (WIFEXITED(event) || WIFSIGNALED(event))
-	    && tracee->as_ptracee.ptracer != tracee->parent) {
+	    && (WIFEXITED(event) || WIFSIGNALED(event))) {
 		Tracee *zombie;
 
 		zombie = new_dummy_tracee(ptracer);
@@ -147,19 +136,25 @@ static int remove_tracee(Tracee *tracee)
 			LIST_INSERT_HEAD(&PTRACER.zombies, zombie, link);
 			talloc_set_destructor(zombie, remove_zombie);
 
+			zombie->parent = tracee->parent;
+			zombie->clone = tracee->clone;
+			zombie->pid = tracee->pid;
+
+			detach_from_ptracer(tracee);
+			attach_to_ptracer(zombie, ptracer);
+
 			zombie->as_ptracee.event4.ptracer.pending = true;
 			zombie->as_ptracee.event4.ptracer.value = event;
 			zombie->as_ptracee.is_zombie = true;
-			zombie->clone = tracee->clone;
-			zombie->pid = tracee->pid;
 
 			return 0;
 		}
 		/* Fallback to the common path.  */
 	}
 
+	detach_from_ptracer(tracee);
+
 	/* Wake its ptracer if there's nothing else to wait for.  */
-	PTRACER.nb_ptracees--;
 	if (PTRACER.nb_ptracees == 0 && PTRACER.wait_pid != 0) {
 		/* Update the return value of ptracer's wait(2).  */
 		poke_reg(ptracer, SYSARG_RESULT, -ECHILD);
@@ -440,9 +435,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	if (parent->as_ptracee.ptracer != NULL
 	    && (   (ptrace_options & parent->as_ptracee.options) != 0
 		|| (clone_flags & CLONE_PTRACE) != 0)) {
-		Tracee *ptracer = parent->as_ptracee.ptracer;
-		child->as_ptracee.ptracer = ptracer;
-		PTRACER.nb_ptracees++;
+		attach_to_ptracer(child, parent->as_ptracee.ptracer);
 
 		/* All these flags are inheritable, no matter why this
 		 * child is being traced.  */

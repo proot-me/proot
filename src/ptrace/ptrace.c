@@ -87,6 +87,32 @@ int translate_ptrace_enter(Tracee *tracee)
 }
 
 /**
+ * Set @ptracee's tracer to @ptracer, and increment ptracees counter
+ * of this later.
+ */
+void attach_to_ptracer(Tracee *ptracee, Tracee *ptracer)
+{
+	bzero(&(PTRACEE), sizeof(PTRACEE));
+	PTRACEE.ptracer = ptracer;
+
+	PTRACER.nb_ptracees++;
+}
+
+/**
+ * Unset @ptracee's tracer, and decrement ptracees counter of this
+ * later.
+ */
+void detach_from_ptracer(Tracee *ptracee)
+{
+	Tracee *ptracer = PTRACEE.ptracer;
+
+	PTRACEE.ptracer = NULL;
+
+	assert(PTRACER.nb_ptracees > 0);
+	PTRACER.nb_ptracees--;
+}
+
+/**
  * Emulate the ptrace syscall made by @tracee.  This function returns
  * -errno if an error occured (unsupported request), otherwise 0.
  */
@@ -119,8 +145,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (PTRACEE.ptracer != NULL || ptracee == ptracer)
 			return -EPERM;
 
-		PTRACEE.ptracer = ptracer;
-		PTRACER.nb_ptracees++;
+		attach_to_ptracer(ptracee, ptracer);
 
 		/* Detect when the ptracer has gone to wait before the
 		 * ptracee did the ptrace(ATTACHME) request.  */
@@ -158,8 +183,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (PTRACEE.ptracer != NULL || ptracee == ptracer)
 			return -EPERM;
 
-		PTRACEE.ptracer = ptracer;
-		PTRACER.nb_ptracees++;
+		attach_to_ptracer(ptracee, ptracer);
 
 		/* The tracee is sent a SIGSTOP, but will not
 		 * necessarily have stopped by the completion of this
@@ -221,9 +245,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		break;  /* Restart the ptracee.  */
 
 	case PTRACE_DETACH:
-		assert(PTRACER.nb_ptracees > 0);
-		PTRACER.nb_ptracees--;
-		PTRACEE.ptracer = NULL;
+		detach_from_ptracer(ptracee);
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
