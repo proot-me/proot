@@ -105,7 +105,7 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat		 \
        $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd $(ROOTFS)/bin/argv \
        $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2	 \
-       $(ROOTFS)/bin/puts_proc_self_exe
+       $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32
 
 ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 
@@ -121,6 +121,9 @@ $(ROOTFS)/bin/abs-true:
 
 $(ROOTFS)/bin/rel-true:
 	@ln -fs ./true $@
+
+$(ROOTFS)/bin/exec-m32: exec.c
+	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true
 
 .SECONDARY: $(patsubst %.c,$(ROOTFS)/bin/%, $(wildcard test-*.c))
 $(ROOTFS)/bin/%: %.c

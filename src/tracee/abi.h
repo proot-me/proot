@@ -74,7 +74,7 @@ static inline bool is_32on64_mode(const Tracee *tracee)
 		return true;
 
 	case 0x33:
-		if (tracee->_regs[ORIGINAL].ds == 0x2B)
+		if (tracee->_regs[CURRENT].ds == 0x2B)
 			return true;
 		/* Fall through.  */
 	default:

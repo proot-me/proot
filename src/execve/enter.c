@@ -463,7 +463,7 @@ extern unsigned char WEAK _binary_loader_m32_exe_size;
  * error occurred, otherwise it returns the path to the extracted
  * loader.  Note: @tracee is only used for notification purpose.
  */
-static char *extract_loader(const Tracee *tracee, bool want_32bit_version)
+static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 {
 	char path[PATH_MAX];
 	size_t status2;
@@ -480,7 +480,7 @@ static char *extract_loader(const Tracee *tracee, bool want_32bit_version)
 		goto end;
 	fd = fileno(file);
 
-	if (want_32bit_version) {
+	if (wants_32bit_version) {
 		start = (void *) &_binary_loader_m32_exe_start;
 		size  = (size_t) &_binary_loader_m32_exe_size;
 	}
