@@ -71,6 +71,10 @@ check-test-a3e68988.c: test-a3e68988
 	@which gdb >/dev/null 2>&1 || rm -f $<
 	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
 
+check-test-c47aeb7d.c: test-c47aeb7d
+	@which gdb >/dev/null 2>&1 || rm -f $<
+	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
+
 check-test-fdf487a0.c: test-fdf487a0
 	$(call check_c,$<,echo test | $(PROOT) ./$<)
 
@@ -177,6 +181,9 @@ test-9c07fad8: test-9c07fad8.c
 	$(Q)$(CC) -fPIE -pie $< -o $@ $(silently) || true
 
 test-fa205b56: test-fa205b56.c
+	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
+
+test-c47aeb7d: test-c47aeb7d.c
 	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
 
 ######################################################################
