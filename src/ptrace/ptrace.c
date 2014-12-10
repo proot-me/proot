@@ -46,6 +46,10 @@
 #include <asm/ldt.h>    /* struct user_desc, */
 #endif
 
+#if defined(ARCH_X86_64)
+#include <asm/prctl.h>    /* ARCH_{G,S}ET_{F,G}S, */
+#endif
+
 #if defined(ARCH_ARM_EABI)
 #define user_fpregs_struct user_fpregs
 #endif
@@ -69,7 +73,7 @@ static const char *stringify_ptrace(enum __ptrace_request request)
 	CASE_STR(PTRACE_SETREGSET)	CASE_STR(PTRACE_SEIZE)		CASE_STR(PTRACE_INTERRUPT)
 	CASE_STR(PTRACE_LISTEN)		CASE_STR(PTRACE_SET_SYSCALL)
 	CASE_STR(PTRACE_GET_THREAD_AREA)	CASE_STR(PTRACE_SET_THREAD_AREA)
-	CASE_STR(PTRACE_GETVFPREGS)	CASE_STR(PTRACE_SINGLEBLOCK)
+	CASE_STR(PTRACE_GETVFPREGS)	CASE_STR(PTRACE_SINGLEBLOCK)	CASE_STR(PTRACE_ARCH_PRCTL)
 	default: return "PTRACE_???"; }
 }
 
@@ -598,6 +602,37 @@ int translate_ptrace_exit(Tracee *tracee)
 		warned = true;
 		return -ENOTSUP;
 	}
+
+#if defined(ARCH_X86_64)
+	case PTRACE_ARCH_PRCTL:
+		switch (data) {
+		case ARCH_GET_GS:
+		case ARCH_GET_FS:
+			status = ptrace(request, pid, &result, data);
+			if (status < 0)
+				return -errno;
+
+			poke_word(ptracer, address, result);
+			if (errno != 0)
+				return -errno;
+			break;
+
+		case ARCH_SET_GS:
+		case ARCH_SET_FS: {
+			static bool warned = false;
+			if (!warned)
+				note(ptracer, WARNING, INTERNAL,
+					"ptrace request '%s' ARCH_SET_{G,F}S not supported yet",
+					stringify_ptrace(request));
+			return -ENOTSUP;
+		}
+
+		default:
+			return -ENOTSUP;
+		}
+
+		return 0;  /* Don't restart the ptracee.  */
+#endif
 
 	default:
 		note(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
