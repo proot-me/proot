@@ -17,7 +17,7 @@ all: $(OUTPUTS)
 %.h: %/stylesheets/cli.xsl %/manual-quoted.xml
 	xsltproc --output $@ $^
 
-%/rpm-spec:  %/stylesheets/rpm-spec.xsl %/manual.xml
+%/rpm-spec:  %/stylesheets/rpm-spec.xsl %/manual.xml # %/changelog.txt
 	xsltproc --output $@ $^
 	echo "* $(shell date +'%a %b %d %Y') Cédric VINCENT <cedric.vincent@st.com>" >> $@
 	cat $*/changelog.txt >> $@

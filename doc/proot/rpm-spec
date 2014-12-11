@@ -1,4 +1,4 @@
-%define version v5.0.0
+%define version v5.1.0
 
 Summary   : chroot, mount --bind, and binfmt_misc without privilege/setup
 Version   : %{version}
@@ -60,7 +60,64 @@ rm -rf %{buildroot}
 %doc doc/*
 
 %changelog
-* Thu Nov 13 2014 Cédric VINCENT <cedric.vincent@st.com>
+* Thu Dec 11 2014 Cédric VINCENT <cedric.vincent@st.com>
+Release v5.1.0
+==============
+
+New features
+------------
+
++ Processes under PRoot now appear with their real names, that is,
+  they are not renamed "ld-linux.so" or "prooted-..." anymore:
+
+  before:
+
+      $ proot-v4.0.3 ps
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       8131 pts/11   00:00:00 proot-v4.0.3
+       8132 pts/11   00:00:00 ld-2.17.so
+
+      $ proot-v5.0.0 ps
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       7916 pts/11   00:00:00 proot-v5.0.0
+       7917 pts/11   00:00:00 prooted-7916-Jb
+
+  now:
+
+      $ proot-v5.1.0
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       8585 pts/11   00:00:00 proot-v5.1.0
+       8586 pts/11   00:00:00 ps
+
+Fixes
+-----
+
++ It is now possible to use GDB against multi-threaded programs under
+  PRoot.
+
++ It is possible to execute 32-bit programs from 64-bit programs
+  again.
+
++ It is possible to use 32-bit ptrace-based programs (strace, gdb,
+  ...) under PRoot 64-bit again.
+
++ The loader is now built with the "build-id" linker option explicitly
+  disabled.  This special section might interfere with loaded
+  programs.
+
+Thanks
+------
+
+Thanks to Erwan Gouriou, Sébastien Gandon, Christian "milkylainen",
+and Henrik Wallin for their bug reports and tests.
+
+Thanks to Jérôme Audu, Yann Droneaud and Christophe Monat for their
+precious help to fix bugs.
+
+
 Release v5.0.0
 ==============
 
@@ -70,14 +127,14 @@ Highlight
 PRoot used to rely on the ELF loader embedded in the ELF interpreter
 from the GNU libc.  Sadly this latter suffers from many issues:
 
-* programs that use constructors or destructors might crash: a typical
++ programs that use constructors or destructors might crash: a typical
   example is C++ programs.
 
-* programs that rely on the "rpath" mechanism and that are invoked
++ programs that rely on the "rpath" mechanism and that are invoked
   through a symlink might not start: a typical example is the JVM on
   Debian.
 
-* programs that read processes command-line migth be confused because
++ programs that read processes command-line migth be confused because
   initial argv[0] is replaced: typical examples are ps and top.
 
 Moreover not all ELF interpreters provide this feature.  For instance,
@@ -91,20 +148,20 @@ doesn't exist anymore.
 Fixes
 -----
 
-* Most bugs related to shebang support -- ie. "#!" at the beginning of
++ Most bugs related to shebang support -- ie. "#!" at the beginning of
   a program -- were fixed.
 
 Command-line interface changes
 ------------------------------
 
-* PRoot now starts a login shell when no command is specified; this
++ PRoot now starts a login shell when no command is specified; this
   makes the shell read profile files from the guest rootfs, as
   expected by some guest programs.  To get the old behavior, launch
   "/bin/sh" explicitly:
 
       proot -r whatever /bin/sh
 
-* The -R option now binds "/run" and "/var/run/dbus/system_bus_socket"
++ The -R option now binds "/run" and "/var/run/dbus/system_bus_socket"
   too.  This is useful for guest programs that need to communicate
   with host services.
 

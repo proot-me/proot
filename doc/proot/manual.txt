@@ -6,8 +6,8 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2014-11-15
-:Version: 5.0.0
+:Date: 2014-12-12
+:Version: 5.1.0
 :Manual section: 1
 
 
@@ -362,8 +362,8 @@ works better with::
     TT       COMMAND
     ?        -bash
     ?        proot -b /proc /mnt/slackware-8.0/
-    ?        /bin/sh
-    ?        /usr/bin/ps -o tty,command
+    ?        -
+    ?        ps -o tty,command
 
 Actually there's a bunch of such specific files, that's why PRoot
 provides the option ``-R`` to bind automatically a pre-defined list of
@@ -375,8 +375,8 @@ recommended paths::
     TT       COMMAND
     pts/6    -bash
     pts/6    proot -R /mnt/slackware-8.0/
-    pts/6    /bin/sh
-    pts/6    /usr/bin/ps -o tty,command
+    pts/6    -
+    pts/6    ps -o tty,command
 
 
 ``chroot`` + ``mount --bind`` + ``su`` equivalent

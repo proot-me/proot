@@ -2,14 +2,10 @@
  Roadmap
 =========
 
-PRoot v5.0.1
+PRoot v5.1.1
 ============
 
-* Fix process name; in loader.c: #include <sys/prctl.h>
-  prctl(PR_SET_NAME, XXX, 0, 0, 0, 0);
-
-* Fix ptrace emulation: on ARM, on x86_64 for 32-bit programs, and for
-  multi-threaded programs.
+* Fix ptrace emulation: on ARM.
 
 * Fix ``proot-x86_64 -k ... -r rootfs-i686 uname -m``
 
@@ -18,7 +14,7 @@ PRoot v5.0.1
 * Understand why loader-wrapped.o is so big on x86_64?
 
 
-PRoot v5.1: leveraging on the loader
+PRoot v5.2: leveraging on the loader
 ====================================
 
 Highlight

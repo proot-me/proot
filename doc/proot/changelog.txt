@@ -1,3 +1,60 @@
+Release v5.1.0
+==============
+
+New features
+------------
+
++ Processes under PRoot now appear with their real names, that is,
+  they are not renamed "ld-linux.so" or "prooted-..." anymore:
+
+  before:
+
+      $ proot-v4.0.3 ps
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       8131 pts/11   00:00:00 proot-v4.0.3
+       8132 pts/11   00:00:00 ld-2.17.so
+
+      $ proot-v5.0.0 ps
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       7916 pts/11   00:00:00 proot-v5.0.0
+       7917 pts/11   00:00:00 prooted-7916-Jb
+
+  now:
+
+      $ proot-v5.1.0
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       8585 pts/11   00:00:00 proot-v5.1.0
+       8586 pts/11   00:00:00 ps
+
+Fixes
+-----
+
++ It is now possible to use GDB against multi-threaded programs under
+  PRoot.
+
++ It is possible to execute 32-bit programs from 64-bit programs
+  again.
+
++ It is possible to use 32-bit ptrace-based programs (strace, gdb,
+  ...) under PRoot 64-bit again.
+
++ The loader is now built with the "build-id" linker option explicitly
+  disabled.  This special section might interfere with loaded
+  programs.
+
+Thanks
+------
+
+Thanks to Erwan Gouriou, Sébastien Gandon, Christian "milkylainen",
+and Henrik Wallin for their bug reports and tests.
+
+Thanks to Jérôme Audu, Yann Droneaud and Christophe Monat for their
+precious help to fix bugs.
+
+
 Release v5.0.0
 ==============
 
