@@ -68,7 +68,6 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 		page_mask = ~(page_size - 1);
 	}
 
-
 	if (load_info->mappings == NULL)
 		index = 0;
 	else
@@ -326,7 +325,8 @@ static void add_load_base(LoadInfo *load_info, word_t load_base)
  */
 static void compute_load_addresses(Tracee *tracee)
 {
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header)) {
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header)
+	    && tracee->load_info->mappings[0].addr == 0) {
 #if defined(HAS_LOADER_32BIT)
 		if (IS_CLASS32(tracee->load_info->elf_header))
 			add_load_base(tracee->load_info, EXEC_PIC_ADDRESS_32);
@@ -339,7 +339,8 @@ static void compute_load_addresses(Tracee *tracee)
 	if (tracee->load_info->interp == NULL)
 		return;
 
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header)) {
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header)
+	    && tracee->load_info->interp->mappings[0].addr == 0) {
 #if defined(HAS_LOADER_32BIT)
 		if (IS_CLASS32(tracee->load_info->elf_header))
 			add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS_32);

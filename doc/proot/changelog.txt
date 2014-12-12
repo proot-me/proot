@@ -45,14 +45,14 @@ Fixes
   disabled.  This special section might interfere with loaded
   programs.
 
-Thanks
-------
+Acknowledgements
+----------------
 
-Thanks to Erwan Gouriou, Sébastien Gandon, Christian "milkylainen",
-and Henrik Wallin for their bug reports and tests.
+Thanks to Erwan Gouriou, Sébastien Gandon, Christian milkylainen,
+Henrik Wallin, and Frank Teo for their bug reports and tests.
 
-Thanks to Jérôme Audu, Yann Droneaud and Christophe Monat for their
-precious help to fix bugs.
+Thanks to Jérôme Audu, Yann Droneaud, and Christophe Monat for their
+precious help.
 
 
 Release v5.0.0
