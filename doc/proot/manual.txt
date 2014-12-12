@@ -360,9 +360,9 @@ works better with::
     
     $ ps -o tty,command
     TT       COMMAND
-    ?        -bash
+    ?        bash
     ?        proot -b /proc /mnt/slackware-8.0/
-    ?        -
+    ?        sh
     ?        ps -o tty,command
 
 Actually there's a bunch of such specific files, that's why PRoot
@@ -373,9 +373,9 @@ recommended paths::
     
     $ ps -o tty,command
     TT       COMMAND
-    pts/6    -bash
+    pts/6    bash
     pts/6    proot -R /mnt/slackware-8.0/
-    pts/6    -
+    pts/6    sh
     pts/6    ps -o tty,command
 
 

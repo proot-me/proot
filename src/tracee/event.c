@@ -53,7 +53,7 @@
  */
 int launch_process(Tracee *tracee, char *const argv[])
 {
-	char *const default_argv[] = { "-", NULL };
+	char *const default_argv[] = { "-sh", NULL };
 	long status;
 	pid_t pid;
 
