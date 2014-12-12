@@ -4,6 +4,7 @@
 
 static PyObject *python_callback_func;
 
+//static bool is_seccomp_disabling_done = false;
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
 	FILTERED_SYSNUM_END,
@@ -11,15 +12,6 @@ static FilteredSysnum filtered_sysnums[] = {
 
 /* build by swig */
 extern void init_proot(void);
-
-/* helper for proot module */
-Tracee *get_tracee_from_extension(long extension_handle)
-{
-	Extension *extension = (Extension *)extension_handle;
-	Tracee *tracee = TRACEE(extension);
-
-	return tracee;
-}
 
 /* init python once */
 void init_python_env()
@@ -110,6 +102,14 @@ int python_callback(Extension *extension, ExtensionEvent event, intptr_t data1, 
 	switch (event) {
 		case INITIALIZATION:
 			{
+				/* not working. Use 'export PROOT_NO_SECCOMP=1' */
+				/*if (!is_seccomp_disabling_done) {
+					Tracee *tracee = TRACEE(extension);
+
+					if (tracee->seccomp == ENABLED)
+						tracee->seccomp = DISABLING;
+					is_seccomp_disabling_done = true;
+				}*/
 				init_python_env();
 				res = python_callback_func_wrapper(extension, event, data1, data2);
 

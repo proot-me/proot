@@ -1,18 +1,76 @@
 %module proot
 %{
+#include "arch.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
-#include "extension/extension.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
+#include "extension/extension.h"
 
-extern Tracee *get_tracee_from_extension(long extension);
+/* define an internal global with correct PR number */
+#define SYSNUM(item) static const int PR_internal ## item = PR_ ## item;
+#include "syscall/sysnums.list"
+#undef SYSNUM
 %}
 
-/* python extension helper */
-Tracee *get_tracee_from_extension(long extension);
+/* now say PR_item has value PR_internal */
+/* works but ugly. Another way to do this ? */
+#define SYSNUM(item) static const int PR_ ## item = PR_internal ## item;
+%include "syscall/sysnums.list"
+#undef SYSNUM
 
-/* List of possible events.  */
+/* python extension helper */
+%inline %{
+Tracee *get_tracee_from_extension(long extension_handle)
+{
+	Extension *extension = (Extension *)extension_handle;
+	Tracee *tracee = TRACEE(extension);
+
+	return tracee;
+}
+%}
+
+/* arch.h */
+typedef unsigned long word_t;
+
+/* tracee/tracee.h */
+typedef enum {
+	CURRENT  = 0,
+	ORIGINAL = 1,
+	MODIFIED = 2,
+	NB_REG_VERSION
+} RegVersion;
+
+/* syscall/sysnum.h */
+typedef enum Sysnum;
+extern Sysnum get_sysnum(const Tracee *tracee, RegVersion version);
+extern void set_sysnum(Tracee *tracee, Sysnum sysnum);
+
+/* tracee/reg.h */
+typedef enum {
+	SYSARG_NUM = 0,
+	SYSARG_1,
+	SYSARG_2,
+	SYSARG_3,
+	SYSARG_4,
+	SYSARG_5,
+	SYSARG_6,
+	SYSARG_RESULT,
+	STACK_POINTER,
+	INSTR_POINTER,
+	RTLD_FINI,
+	STATE_FLAGS,
+	USERARG_1,
+} Reg;
+
+extern word_t peek_reg(const Tracee *tracee, RegVersion version, Reg reg);
+extern void poke_reg(Tracee *tracee, Reg reg, word_t value);
+
+/* tracee/mem.h */
+extern int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
+extern int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t size);
+
+/* extension/extention.h */
 typedef enum {
 	GUEST_PATH,
 	HOST_PATH,
@@ -30,15 +88,3 @@ typedef enum {
 	PRINT_CONFIG,
 	PRINT_USAGE,
 } ExtensionEvent;
-
-typedef enum {
-	CURRENT  = 0,
-	ORIGINAL = 1,
-	MODIFIED = 2,
-	NB_REG_VERSION
-} RegVersion;
-
-
-%include "syscall/sysnum.h"
-%include "tracee/reg.h"
-%include "tracee/mem.h"
