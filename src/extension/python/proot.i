@@ -67,9 +67,11 @@ extern word_t peek_reg(const Tracee *tracee, RegVersion version, Reg reg);
 extern void poke_reg(Tracee *tracee, Reg reg, word_t value);
 
 /* tracee/mem.h */
-extern int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size);
- /* make read_data usable for python */
 %include <pybuffer.i>
+%pybuffer_mutable_binary(const void *src_tracer,  word_t size2);
+extern int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size2);
+
+ /* make read_data usable for python */
 %rename(read_data) read_data_for_python;
 %pybuffer_mutable_binary(void *dest_tracer,  word_t size2);
 %inline %{
