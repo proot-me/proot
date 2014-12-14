@@ -67,20 +67,22 @@ extern word_t peek_reg(const Tracee *tracee, RegVersion version, Reg reg);
 extern void poke_reg(Tracee *tracee, Reg reg, word_t value);
 
 /* tracee/mem.h */
-%include <pybuffer.i>
-%pybuffer_mutable_binary(const void *src_tracer,  word_t size2);
+/* make read_data / write_data pythonic */
+%apply (char *STRING, size_t LENGTH) { (const void *src_tracer, word_t size2) };
 extern int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size2);
 
- /* make read_data usable for python */
+ %include <cstring.i>
 %rename(read_data) read_data_for_python;
-%pybuffer_mutable_binary(void *dest_tracer,  word_t size2);
+%cstring_output_withsize(void *dest_tracer, int *size2);
 %inline %{
-int read_data_for_python(const Tracee *tracee, void *dest_tracer,  word_t size2, word_t src_tracee)
+void read_data_for_python(const Tracee *tracee, word_t src_tracee, void *dest_tracer, int *size2)
 {
-	return read_data(tracee, dest_tracer, src_tracee, size2);
+	int res = read_data(tracee, dest_tracer, src_tracee, *size2);
+	/* in case of error we return empty string */
+	if (res)
+		*size2 = 0;
 }
 %}
-
 
 /* extension/extention.h */
 typedef enum {
