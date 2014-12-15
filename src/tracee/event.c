@@ -318,6 +318,9 @@ int event_loop()
 		int signal;
 		pid_t pid;
 
+		/* This is the only safe place to free tracees.  */
+		free_terminated_tracees();
+
 		/* Wait for the next tracee's stop. */
 		pid = waitpid(-1, &tracee_status, __WALL);
 		if (pid < 0) {
@@ -386,15 +389,13 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	if (WIFEXITED(tracee_status)) {
 		last_exit_status = WEXITSTATUS(tracee_status);
 		VERBOSE(tracee, 1, "pid %d: exited with status %d", pid, last_exit_status);
-		TALLOC_FREE(tracee);
-		return -1;
+		tracee->terminated = true;
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
 		VERBOSE(tracee, (int) (last_exit_status != -1),
 			"pid %d: terminated with signal %d", pid, WTERMSIG(tracee_status));
-		TALLOC_FREE(tracee);
-		return -1;
+		tracee->terminated = true;
 	}
 	else if (WIFSTOPPED(tracee_status)) {
 		/* Don't use WSTOPSIG() to extract the signal

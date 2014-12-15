@@ -336,6 +336,24 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
 }
 
 /**
+ * Free all tracees marked as terminated.
+ */
+void free_terminated_tracees()
+{
+	Tracee *next;
+
+	/* Items can't be deleted when using LIST_FOREACH.  */
+	next = tracees.lh_first;
+	while (next != NULL) {
+		Tracee *tracee = next;
+		next = tracee->link.le_next;
+
+		if (tracee->terminated)
+			TALLOC_FREE(tracee);
+	}
+}
+
+/**
  * Make new @parent's child inherit from it.  Depending on
  * @clone_flags, some information are copied or shared.  This function
  * returns -errno if an error occured, otherwise 0.

@@ -85,6 +85,10 @@ typedef struct tracee {
 	/* Is it currently running or not?  */
 	bool running;
 
+	/* Is this tracee ready to be freed?  TODO: move to a list
+	 * dedicated to terminated tracees instead.  */
+	bool terminated;
+
 	/* Parent of this tracee, NULL if none.  */
 	struct tracee *parent;
 
@@ -262,6 +266,7 @@ extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
+extern void free_terminated_tracees();
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern void kill_all_tracees();
 
