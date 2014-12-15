@@ -23,7 +23,7 @@ New features
 
   now:
 
-      $ proot-v5.1.0
+      $ proot-v5.1.0 ps
         PID TTY          TIME CMD
        7885 pts/11   00:00:00 bash
        8585 pts/11   00:00:00 proot-v5.1.0
@@ -33,17 +33,19 @@ Fixes
 -----
 
 + It is now possible to use GDB against multi-threaded programs under
-  PRoot.
+  PRoot x86_64 and x86.
 
-+ It is possible to execute 32-bit programs from 64-bit programs
-  again.
++ It is possible to execute x86_64 programs from x86 programs again.
 
-+ It is possible to use 32-bit ptrace-based programs (strace, gdb,
-  ...) under PRoot 64-bit again.
++ It is possible to use x86 ptrace-based programs (strace, gdb, ...)
+  under PRoot x86_64 again.
 
 + The loader is now built with the "build-id" linker option explicitly
   disabled.  This special section might interfere with loaded
   programs.
+
++ The loader can now load relocatable objects that have a predefined
+  base address.
 
 Acknowledgements
 ----------------
