@@ -176,6 +176,7 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 	const char *path2;
 	const char *path;
 	Event *event;
+	int status;
 	va_list ap;
 
 	va_start(ap, action);
@@ -194,12 +195,16 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 			break;
 
 		event = new_event(config, pid, action);
-		if (event == NULL)
-			return -ENOMEM;
+		if (event == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
 
 		event->load.path = get_string_copy(config, path);
-		if (event->load.path == NULL)
-			return -ENOMEM;
+		if (event->load.path == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
 
 		break;
 
@@ -210,42 +215,49 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 			break;
 
 		event = new_event(config, pid, action);
-		if (event == NULL)
-			return -ENOMEM;
+		if (event == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
 
 		event->load.path = get_string_copy(config, path);
-		if (event->load.path == NULL)
-			return -ENOMEM;
+		if (event->load.path == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
 
 		event->load.path2 = get_string_copy(config, path2);
-		if (event->load.path2 == NULL)
-			return -ENOMEM;
+		if (event->load.path2 == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
+
 		break;
 
 	case IS_CLONED: {
 		event = new_event(config, pid, action);
-		if (event == NULL)
-			return -ENOMEM;
+		if (event == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
 
 		event->load.pid = va_arg(ap, pid_t);
-		if (event->load.path == NULL)
-			return -ENOMEM;
 
 		event->load.thread = (va_arg(ap, word_t) & CLONE_THREAD) != 0;
-		if (event->load.path == NULL)
-			return -ENOMEM;
 
 		break;
 	}
 
 	case HAS_EXITED: {
 		event = new_event(config, pid, action);
-		if (event == NULL)
-			return -ENOMEM;
+		if (event == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
 
 		event->load.status = va_arg(ap, word_t);
-		if (event->load.path == NULL)
-			return -ENOMEM;
+
+		break;
 	}
 
 	default:
@@ -253,9 +265,15 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 		break;
 	}
 
+	status = 0;
+end:
+	if (status < 0)
+		note(NULL, WARNING, INTERNAL, "wiom: can't record event: %s\n",
+			strerror(-status));
+
 	va_end(ap);
 
-	return 0;
+	return status;
 }
 
 /**

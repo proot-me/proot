@@ -431,7 +431,7 @@ static void handle_sysexit_start(const Extension *extension)
 	return;
 
 error:
-	note(tracee, ERROR, INTERNAL, "extension: can't check syscall %s made by %d\n",
+	note(tracee, ERROR, INTERNAL, "wiom: can't check syscall %s made by %d\n",
 		stringify_sysnum(sysnum), tracee->pid);
 	return;
 }
