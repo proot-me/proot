@@ -76,7 +76,9 @@ CARE_OBJECTS = 				\
 WIOM_OBJECTS = 				\
 	cli/wiom.o			\
 	extension/wiom/wiom.o		\
-	extension/wiom/event.o
+	extension/wiom/event.o		\
+	extension/wiom/format/binary.o	\
+	extension/wiom/format/text.o
 
 .DEFAULT_GOAL = proot
 all: proot

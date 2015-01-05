@@ -26,13 +26,16 @@
 #include <sched.h>	/* CLONE_THREAD, */
 #include <stdbool.h>	/* bool, */
 #include <errno.h>	/* E*, */
+#include <unistd.h>	/* close(2), */
 #include <talloc.h>	/* talloc(3), */
 #include <uthash.h>	/* UT*, */
 #include <sys/queue.h>	/* SIMPLEQ, */
 
 #include "extension/wiom/event.h"
 #include "extension/wiom/wiom.h"
+#include "extension/wiom/format.h"
 #include "path/path.h"
+#include "cli/note.h"
 #include "arch.h"
 
 /*
@@ -75,24 +78,27 @@ Coalescing (TODO)
  */
 static Event *new_event(Config *config, pid_t pid, Action action)
 {
-	size_t length;
+	size_t index;
 	Event *event;
 	void *tmp;
 
 	if (config->history == NULL) {
+		index = 0;
+
 		config->history = talloc_array(config, Event, 1);
 		if (config->history == NULL)
 			return NULL;
 	}
+	else {
+		index = talloc_array_length(config->history);
 
-	length = talloc_array_length(config->history);
+		tmp = talloc_realloc(NULL, config->history, Event, index + 1);
+		if (tmp == NULL)
+			return NULL;
+		config->history = tmp;
+	}
 
-	tmp = talloc_realloc(NULL, config->history, Event, length + 1);
-	if (tmp == NULL)
-		return NULL;
-	config->history = tmp;
-
-	event = &config->history[length];
+	event = &config->history[index];
 
 	event->pid = pid;
 	event->action = action;
@@ -257,44 +263,29 @@ int record_event(Config *config, pid_t pid, Action action, ...)
  */
 void report_events(Config *config)
 {
-	size_t length;
-	size_t i;
+	Tracee *tracee = TRACEE(talloc_parent(config));
 
-	if (config->history == NULL)
-		return;
+	switch (config->options->output.format) {
+	case BINARY:
+		report_events_binary(config->options->output.fd, config->history);
+		break;
 
-	length = talloc_array_length(config->history);
-	for (i = 0; i < length; i++) {
-		const Event *event = &config->history[i];
-		switch (event->action) {
-#define CASE(a) case a:							\
-			fprintf(stderr, "%d %s %s\n", event->pid, #a, event->load.path); \
-			break;						\
+	case TEXT:
+		report_events_text(config->options->output.fd, config->history);
+		break;
 
-		CASE(TRAVERSES)
-		CASE(CREATES)
-		CASE(DELETES)
-		CASE(GETS_METADATA_OF)
-		CASE(SETS_METADATA_OF)
-		CASE(GETS_CONTENT_OF)
-		CASE(SETS_CONTENT_OF)
-		CASE(EXECUTES)
-#undef CASE
+	case TEXT_IO_FILES:
+	case KCONFIG_FS_USAGE:
+	case KCONFIG_PROCESS_TREE:
+	case KCONFIG_FS_DEPENDENCIES:
+	case GMAKE_FS_DEPENDENCIES:
+		note(tracee, ERROR, INTERNAL, "this format is not yet implemented");
+		break;
 
-		case MOVES:
-			fprintf(stderr, "%d moves %s to %s\n", event->pid,
-				event->load.path, event->load.path2);
-			break;
-
-		case IS_CLONED:
-			fprintf(stderr, "%d is cloned (%s) into %d\n", event->pid,
-				event->load.thread ? "thread" : "process", event->load.pid);
-			break;
-
-		case HAS_EXITED:
-			fprintf(stderr, "%d has exited (status = %ld)\n", event->pid,
-				event->load.status);
-			break;
-		}
+	default:
+		assert(0);
 	}
+
+	close(config->options->output.fd);
+	config->options->output.fd = -1;
 }

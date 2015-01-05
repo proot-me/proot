@@ -53,10 +53,14 @@ typedef struct {
 	List *masked_paths;			/* (TODO: WIP)		*/
 	List *unmasked_paths;			/* (TODO: WIP)		*/
 
+	int input_fd;
+
 	struct {
-		const char *path;			/* (TODO)		*/
+		int fd;
 		enum {
-			TEXT_EVERYTHING,		/* (TODO)		*/
+			NONE = 0,
+			BINARY,
+			TEXT,
 			TEXT_IO_FILES,			/* (TODO)		*/
 			KCONFIG_FS_USAGE,		/* (TODO)		*/
 			KCONFIG_PROCESS_TREE,		/* (TODO)		*/

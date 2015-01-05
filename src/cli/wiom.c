@@ -35,22 +35,59 @@
 #include "path/path.h"
 #include "attribute.h"
 
-static int handle_option_i(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value)
 {
-	note(tracee, ERROR, INTERNAL, "-i option not yet implemented");
-	return -1;
+	Options *options = talloc_get_type_abort(cli->private, Options);
+
+	if (options->input_fd != -1) {
+		note(tracee, WARNING, USER, "\"-i %s\" overrides previous choice", value);
+		close(options->input_fd);
+	}
+
+	options->input_fd = open(value, O_RDONLY);
+	if (options->input_fd < 0) {
+		note(tracee, ERROR, SYSTEM, "can't open %s", value);
+		return -1;
+	}
+
+	return 0;
 }
 
-static int handle_option_o(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_o(Tracee *tracee, const Cli *cli, const char *value)
 {
-	note(tracee, ERROR, INTERNAL, "-o option not yet implemented");
-	return -1;
+	Options *options = talloc_get_type_abort(cli->private, Options);
+
+	if (options->output.fd != -1) {
+		note(tracee, WARNING, USER, "\"-o %s\" overrides previous choice", value);
+		close(options->output.fd);
+	}
+
+	options->output.fd = open(value, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+	if (options->output.fd < 0) {
+		note(tracee, ERROR, SYSTEM, "can't open %s", value);
+		return -1;
+	}
+
+	return 0;
 }
 
-static int handle_option_f(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 {
-	note(tracee, ERROR, INTERNAL, "-f option not yet implemented");
-	return -1;
+	Options *options = talloc_get_type_abort(cli->private, Options);
+
+	if (options->output.format != NONE)
+		note(tracee, WARNING, USER, "\"-f %s\" overrides previous choice", value);
+
+	if (strcmp(value, "binary") == 0)
+		options->output.format = BINARY;
+	else if (strcmp(value, "text") == 0)
+		options->output.format = TEXT;
+	else {
+		options->output.format = NONE;
+		note(tracee, WARNING, USER, "\"-f %s\" not supported", value);
+	}
+
+	return 0;
 }
 
 static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
@@ -217,6 +254,15 @@ static int post_initialize_bindings(Tracee *tracee UNUSED, const Cli *cli UNUSED
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	int status;
 
+	if (options->output.format == NONE) {
+		options->output.format = (options->output.fd != -1
+					? BINARY
+					: TEXT);
+	}
+
+	if (options->output.fd == -1)
+		options->output.fd = 1; /* stdout */
+
 	status = canonicalize_paths(tracee, options->masked_paths);
 	if (status < 0)
 		return -1;
@@ -243,6 +289,8 @@ const Cli *get_wiom_cli(TALLOC_CTX *context)
 	options = talloc_zero(context, Options);
 	if (options == NULL)
 		return NULL;
+	options->input_fd  = -1;
+	options->output.fd = -1;
 
 	wiom_cli.private = options;
 	return &wiom_cli;
