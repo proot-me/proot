@@ -20,7 +20,10 @@
  * 02110-1301 USA.
  */
 
+#include <sched.h>	/* CLONE_THREAD, */
+#include <unistd.h>	/* dup(2), */
 #include <stdio.h>	/* fdopen(3), fprintf(3), */
+#include <assert.h>	/* assert(3), */
 #include <talloc.h>	/* talloc(3), */
 
 #include "extension/wiom/wiom.h"
@@ -80,13 +83,18 @@ void report_events_text(int fd, const Event *history)
 
 		case IS_CLONED:
 			status = fprintf(file, "%d is cloned (%s) into %d\n", event->pid,
-					event->load.thread ? "thread" : "process",
-					event->load.pid);
+					(event->load.flags & CLONE_THREAD) != 0
+					? "thread" : "process",
+					event->load.new_pid);
 			break;
 
 		case HAS_EXITED:
 			status = fprintf(file, "%d has exited (status = %ld)\n", event->pid,
 					event->load.status);
+			break;
+
+		default:
+			assert(0);
 			break;
 		}
 

@@ -21,6 +21,7 @@
     <xsl:text>
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
 static int post_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
+static int pre_initialize_exe(Tracee *, const Cli *, size_t, char *const *, size_t);
 </xsl:text>
     <xsl:text>
 static Cli wiom_cli = {

@@ -22,8 +22,9 @@
 
 #include <unistd.h>	/* getcwd(2), */
 #include <limits.h> 	/* PATH_MAX, */
-#include <sys/queue.h> 	/* SIMPLEQ_*, */
+#include <sys/queue.h> 	/* SIMPLEQ_*, LIST_*, */
 #include <stdio.h> 	/* strerror(3), */
+#include <assert.h> 	/* assert(3), */
 
 #include "cli/wiom.h"
 #include "cli/cli.h"
@@ -31,6 +32,8 @@
 #include "tracee/tracee.h"
 #include "extension/extension.h"
 #include "extension/wiom/wiom.h"
+#include "extension/wiom/format.h"
+#include "extension/wiom/event.h"
 #include "path/binding.h"
 #include "path/path.h"
 #include "attribute.h"
@@ -278,6 +281,43 @@ static int post_initialize_bindings(Tracee *tracee UNUSED, const Cli *cli UNUSED
 	}
 
 	return cursor;
+}
+
+/**
+ * Replay events if -i option was specified, instead of executing a
+ * command.
+ */
+static int pre_initialize_exe(Tracee *tracee, const Cli *cli,
+			size_t argc, char *const argv[] UNUSED, size_t cursor)
+{
+	Options *options = talloc_get_type_abort(cli->private, Options);
+	Config *config = NULL;
+	Extension *extension;
+	int status;
+
+	if (options->input_fd == -1)
+		return 0;
+
+	if (cursor != argc)
+		note(tracee, WARNING, USER,
+			"both '-i' option and a command are specified; these are mutually"
+			" exclusive thus this latter is discared.");
+
+	/* Search for WioM configuration.  */
+	LIST_FOREACH(extension, tracee->extensions, link) {
+		if (extension->callback == wiom_callback) {
+			config = extension->config;
+			break;
+		}
+	}
+	assert(config != NULL);
+
+	status = replay_events_binary(tracee->ctx, config);
+	if (status < 0)
+		return -1;
+
+	exit_failure = false;
+	return -1;
 }
 
 const Cli *get_wiom_cli(TALLOC_CTX *context)

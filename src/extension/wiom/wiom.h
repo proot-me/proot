@@ -93,8 +93,8 @@ typedef struct {
 			const char *path2;
 		};
 		struct {
-			pid_t pid;
-			bool thread;
+			pid_t new_pid;
+			word_t flags;
 		};
 		word_t status;
 	} load;

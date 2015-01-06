@@ -23,7 +23,6 @@
 #include <stdarg.h>	/* va_*, */
 #include <stdio.h>	/* fprintf(3), */
 #include <assert.h>	/* assert(3), */
-#include <sched.h>	/* CLONE_THREAD, */
 #include <stdbool.h>	/* bool, */
 #include <errno.h>	/* E*, */
 #include <unistd.h>	/* close(2), */
@@ -241,9 +240,8 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 			goto end;
 		}
 
-		event->load.pid = va_arg(ap, pid_t);
-
-		event->load.thread = (va_arg(ap, word_t) & CLONE_THREAD) != 0;
+		event->load.new_pid = va_arg(ap, pid_t);
+		event->load.flags   = va_arg(ap, word_t);
 
 		break;
 	}

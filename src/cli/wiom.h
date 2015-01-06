@@ -23,6 +23,7 @@ static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
 static int post_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
+static int pre_initialize_exe(Tracee *, const Cli *, size_t, char *const *, size_t);
 
 static Cli wiom_cli = {
 	.version  = VERSION,
@@ -38,6 +39,7 @@ ____ ___ __ ____\n\
 
 	.pre_initialize_bindings  = pre_initialize_bindings,
 	.post_initialize_bindings = post_initialize_bindings,
+	.pre_initialize_exe       = pre_initialize_exe,
 
 	.options = {
 	{ .class = "Options",
