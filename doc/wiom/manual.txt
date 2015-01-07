@@ -27,7 +27,7 @@ TODO
 Options
 =======
 
--i path, --output=path
+-i path, --input=path
     TODO
 
 -o path, --output=path
@@ -35,6 +35,16 @@ Options
 
 -f string, --format=string
     TODO
+
+    TODO:
+
+    * BINARY,
+    * TEXT,
+    * TEXT_IO_FILES,
+    * KCONFIG_FS_USAGE,
+    * KCONFIG_PROCESS_TREE,
+    * KCONFIG_FS_DEPENDENCIES,
+    * GMAKE_FS_DEPENDENCIES,
 
 -p string, --predefined-profile=string
     TODO
@@ -45,20 +55,24 @@ Options
 -M path, --unmask-path=path
     TODO
 
--r string, --record=string
+-a string, --filter-actions=string
     TODO
 
     TODO:
 
-    * successful-actions
-    * unsuccessful-actions
-    * path-traversal
-    * path-type
-    * path-content-usage
-    * path-metadata-usage
-    * process-usage
+    * TRAVERSES
+    * CREATES
+    * DELETES
+    * GETS_METADATA_OF
+    * SETS_METADATA_OF
+    * GETS_CONTENT_OF
+    * SETS_CONTENT_OF
+    * EXECUTES
+    * MOVES
+    * CLONED
+    * EXITED
 
--c, --coalesce-events
+-c, --coalesce-actions
     TODO
 
 -v value, --verbose=value

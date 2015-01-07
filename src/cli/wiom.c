@@ -25,6 +25,7 @@
 #include <sys/queue.h> 	/* SIMPLEQ_*, LIST_*, */
 #include <stdio.h> 	/* strerror(3), */
 #include <assert.h> 	/* assert(3), */
+#include <string.h> 	/* str*, */
 
 #include "cli/wiom.h"
 #include "cli/cli.h"
@@ -105,8 +106,8 @@ static int add_path(Tracee *tracee, Options *options, const char *path, bool mas
 	Item *item;
 
 	list = (masked
-		? options->masked_paths
-		: options->unmasked_paths);
+		? options->paths.masked
+		: options->paths.unmasked);
 
 	if (list == NULL) {
 		list = talloc(options, List);
@@ -118,9 +119,9 @@ static int add_path(Tracee *tracee, Options *options, const char *path, bool mas
 		SIMPLEQ_INIT(list);
 
 		if (masked)
-			options->masked_paths = list;
+			options->paths.masked = list;
 		else
-			options->unmasked_paths = list;
+			options->paths.unmasked = list;
 	}
 
 	item = talloc(list, Item);
@@ -140,25 +141,74 @@ static int add_path(Tracee *tracee, Options *options, const char *path, bool mas
 	return 0;
 }
 
-static int handle_option_m(Tracee *tracee UNUSED, const Cli *cli, const char *value)
+static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value)
 {
 	return add_path(tracee, talloc_get_type_abort(cli->private, Options), value, true);
 }
 
-static int handle_option_M(Tracee *tracee UNUSED, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_M(Tracee *tracee, const Cli *cli, const char *value)
 {
 	return add_path(tracee, talloc_get_type_abort(cli->private, Options), value, false);
 }
 
-static int handle_option_r(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value)
 {
-	note(tracee, ERROR, INTERNAL, "-R option not yet implemented");
-	return -1;
+	Options *options = talloc_get_type_abort(cli->private, Options);
+	const char *cursor;
+
+	#define ACTION(name) #name,
+	static const char *known_actions[] = {
+		#include "extension/wiom/actions.list"
+		NULL,
+	};
+	#undef ACTION
+
+	options->actions.filter = 0;
+
+	cursor = value;
+	while (1) {
+		const char *old_cursor = cursor;
+		size_t size;
+		bool known;
+		size_t i;
+
+		cursor = strchrnul(old_cursor, ',');
+		size = cursor - old_cursor;
+
+		for (known = false, i = 0; known_actions[i] != NULL; i++) {
+			if (strncasecmp(known_actions[i], old_cursor, size) != 0)
+				continue;
+
+			if (GET_ACTION_BIT(options, i) != 0)
+				note(tracee, WARNING, USER,
+					"action '%s' already set", known_actions[i]);
+
+			SET_ACTION_BIT(options, i);
+
+			puts(known_actions[i]);
+			known = true;
+		}
+
+		if (!known) {
+			note(tracee, WARNING, USER, "unknown action '%s'", old_cursor);
+			note(tracee, INFO, USER, "Supported actions are:");
+			for (known = false, i = 0; known_actions[i] != NULL; i++)
+				note(tracee, INFO, USER, "\t%s", known_actions[i]);
+			return -1;
+		}
+
+		if (cursor[0] == '\0')
+			break;
+
+		cursor++;
+	}
+
+	return 0;
 }
 
 static int handle_option_c(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
 {
-	note(tracee, ERROR, INTERNAL, "-C option not yet implemented");
+	note(tracee, ERROR, INTERNAL, "-c option not yet implemented");
 	return -1;
 }
 
@@ -184,7 +234,7 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, const char *va
 	return -1;
 }
 
-static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value UNUSED)
 {
 	print_usage(tracee, cli, true);
 	exit_failure = false;
@@ -195,7 +245,7 @@ static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, const c
  * Initialize @tracee's fields that are mandatory for PRoot/WioM but
  * that are not specifiable on the command line.
  */
-static int pre_initialize_bindings(Tracee *tracee UNUSED, const Cli *cli UNUSED,
+static int pre_initialize_bindings(Tracee *tracee, const Cli *cli UNUSED,
 				size_t argc UNUSED, char *const argv[] UNUSED, size_t cursor)
 {
 	char path[PATH_MAX];
@@ -251,7 +301,7 @@ static int canonicalize_paths(Tracee *tracee, List *list)
 /**
  * Initialize WioM extensions.
  */
-static int post_initialize_bindings(Tracee *tracee UNUSED, const Cli *cli UNUSED,
+static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 			       size_t argc UNUSED, char *const argv[] UNUSED, size_t cursor)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
@@ -266,11 +316,11 @@ static int post_initialize_bindings(Tracee *tracee UNUSED, const Cli *cli UNUSED
 	if (options->output.fd == -1)
 		options->output.fd = 1; /* stdout */
 
-	status = canonicalize_paths(tracee, options->masked_paths);
+	status = canonicalize_paths(tracee, options->paths.masked);
 	if (status < 0)
 		return -1;
 
-	status = canonicalize_paths(tracee, options->unmasked_paths);
+	status = canonicalize_paths(tracee, options->paths.unmasked);
 	if (status < 0)
 		return -1;
 
@@ -296,7 +346,7 @@ static int pre_initialize_exe(Tracee *tracee, const Cli *cli,
 	int status;
 
 	if (options->input_fd == -1)
-		return 0;
+		return cursor;
 
 	if (cursor != argc)
 		note(tracee, WARNING, USER,
@@ -331,6 +381,7 @@ const Cli *get_wiom_cli(TALLOC_CTX *context)
 		return NULL;
 	options->input_fd  = -1;
 	options->output.fd = -1;
+	options->actions.filter = ~0UL;
 
 	wiom_cli.private = options;
 	return &wiom_cli;

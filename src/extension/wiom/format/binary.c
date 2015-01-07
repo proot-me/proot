@@ -128,7 +128,7 @@ void report_events_binary(int fd, const Event *history)
 
 			break;
 
-		case IS_CLONED:
+		case CLONED:
 			status = write_uint32(fd, event->load.new_pid);
 			if (status < 0)
 				goto error;
@@ -139,7 +139,7 @@ void report_events_binary(int fd, const Event *history)
 
 			break;
 
-		case HAS_EXITED:
+		case EXITED:
 			status = write_uint32(fd, event->load.status);
 			if (status < 0)
 				goto error;
@@ -300,7 +300,7 @@ int replay_events_binary(TALLOC_CTX *context, Config *config)
 			break;
 		}
 
-		case IS_CLONED: {
+		case CLONED: {
 			uint32_t new_pid;
 			uint32_t flags;
 
@@ -319,7 +319,7 @@ int replay_events_binary(TALLOC_CTX *context, Config *config)
 			break;
 		}
 
-		case HAS_EXITED: {
+		case EXITED: {
 			uint32_t status2;
 
 			status = read_uint32(fd, &status2);

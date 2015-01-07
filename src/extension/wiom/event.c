@@ -139,10 +139,10 @@ static bool is_masked(Config *config, const char *path)
 	Comparison comparison;
 	Item *item;
 
-	if (config->options->masked_paths == NULL)
+	if (config->options->paths.masked == NULL)
 		return false;
 
-	SIMPLEQ_FOREACH(item, config->options->masked_paths, link) {
+	SIMPLEQ_FOREACH(item, config->options->paths.masked, link) {
 		comparison = compare_paths(item->load, path);
 		if (   comparison == PATHS_ARE_EQUAL
 		    || comparison == PATH1_IS_PREFIX) {
@@ -151,10 +151,10 @@ static bool is_masked(Config *config, const char *path)
 		}
 	}
 
-	if (!masked || config->options->unmasked_paths == NULL)
+	if (!masked || config->options->paths.unmasked == NULL)
 		return masked;
 
-	SIMPLEQ_FOREACH(item, config->options->unmasked_paths, link) {
+	SIMPLEQ_FOREACH(item, config->options->paths.unmasked, link) {
 		comparison = compare_paths(item->load, path);
 		if (   comparison == PATHS_ARE_EQUAL
 		    || comparison == PATH1_IS_PREFIX) {
@@ -179,6 +179,11 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 	va_list ap;
 
 	va_start(ap, action);
+
+	if (GET_ACTION_BIT(config->options, action) == 0) {
+		status = 0;
+		goto end;
+	}
 
 	switch (action) {
 	case TRAVERSES:
@@ -233,7 +238,7 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 
 		break;
 
-	case IS_CLONED: {
+	case CLONED: {
 		event = new_event(config, pid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
@@ -246,7 +251,7 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 		break;
 	}
 
-	case HAS_EXITED: {
+	case EXITED: {
 		event = new_event(config, pid, action);
 		if (event == NULL) {
 			status = -ENOMEM;

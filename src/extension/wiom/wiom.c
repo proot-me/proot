@@ -72,15 +72,23 @@ Predefined profiles
  */
 static void handle_host_path(Extension *extension, const char *path, bool is_final)
 {
-	Tracee *tracee;
-
-	tracee = TRACEE(extension);
+	Tracee *tracee = TRACEE(extension);
 
 	if (tracee->exe == NULL)
 		return;
 
-	if (access(path, F_OK) != 0)
+	if (access(path, F_OK) != 0) {
+#if 0
+		if (TODO->config.record.failure)
+			TODO;
+#endif
 		return;
+	}
+
+#if 0
+	if (!TODO->config.record.success)
+		return;
+#endif
 
 	record_event(extension->config, tracee->pid, TRAVERSES, path);
 }
@@ -167,8 +175,18 @@ static void handle_sysexit_start(const Extension *extension)
 	tracee = TRACEE(extension);
 
 	status = (int) peek_reg(tracee, CURRENT, SYSARG_RESULT);
-	if (status < 0 && status > -4096)
+	if (status < 0 && status > -4096) {
+#if 0
+		if (TODO->config.record.failure)
+			TODO;
+#endif
 		return;
+	}
+
+#if 0
+	if (!TODO->config.record.success)
+		return;
+#endif
 
 	sysnum = get_sysnum(tracee, MODIFIED);
 	switch (sysnum) {
@@ -542,7 +560,7 @@ int wiom_callback(Extension *extension, ExtensionEvent event, intptr_t data1, in
 		const Tracee *child  = (Tracee *) data1;
 		word_t flags = (word_t) data2;
 
-		record_event(extension->config, parent->pid, IS_CLONED, child->pid, flags);
+		record_event(extension->config, parent->pid, CLONED, child->pid, flags);
 		return 0;
 	}
 

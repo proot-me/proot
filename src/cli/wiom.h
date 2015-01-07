@@ -15,7 +15,7 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_M(Tracee *tracee, const Cli *cli, const char *value);
-static int handle_option_r(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_c(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
@@ -98,10 +98,10 @@ ____ ___ __ ____\n\
 	},
 	{ .class = "Options",
 	  .arguments = {
-		{ .name = "-r", .separator = ' ', .value = "string" },
-		{ .name = "--record", .separator = '=', .value = "string" },
+		{ .name = "-a", .separator = ' ', .value = "string" },
+		{ .name = "--filter-actions", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_r,
+	  .handler = handle_option_a,
 	  .description = "TODO",
 	  .detail = "",
 	},

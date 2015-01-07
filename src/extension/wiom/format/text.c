@@ -77,19 +77,19 @@ void report_events_text(int fd, const Event *history)
 #undef CASE
 
 		case MOVES:
-			status = fprintf(file, "%d moves %s to %s\n", event->pid,
+			status = fprintf(file, "%d MOVES %s to %s\n", event->pid,
 					event->load.path, event->load.path2);
 			break;
 
-		case IS_CLONED:
-			status = fprintf(file, "%d is cloned (%s) into %d\n", event->pid,
+		case CLONED:
+			status = fprintf(file, "%d CLONED (%s) into %d\n", event->pid,
 					(event->load.flags & CLONE_THREAD) != 0
 					? "thread" : "process",
 					event->load.new_pid);
 			break;
 
-		case HAS_EXITED:
-			status = fprintf(file, "%d has exited (status = %ld)\n", event->pid,
+		case EXITED:
+			status = fprintf(file, "%d EXITED (status = %ld)\n", event->pid,
 					event->load.status);
 			break;
 

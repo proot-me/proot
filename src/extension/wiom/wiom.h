@@ -38,20 +38,18 @@ typedef SIMPLEQ_HEAD(list, item) List;
 
 typedef struct {
 	struct {
-		bool successful_actions;		/* (TODO: switchable)	*/
-		bool unsuccessful_actions;		/* (TODO)		*/
+		unsigned long filter;
 
-		bool path_traversal;			/* (TODO: switchable)	*/
-		bool path_type;				/* (TODO)		*/
-		bool path_content_usage;		/* (TODO: switchable)	*/
-		bool path_metadata_usage;		/* (TODO: switchable)	*/
+		bool success;
+		bool failure;
 
-		bool process_usage; /* clone, execve */	/* (TODO: switchable)	*/
-	} record;
+		bool is_coalesced;	/* (TODO) */
+	} actions;
 
-	bool coalesce_events;			/* (TODO: WIP)		*/
-	List *masked_paths;			/* (TODO: WIP)		*/
-	List *unmasked_paths;			/* (TODO: WIP)		*/
+	struct {
+		List *masked;
+		List *unmasked;
+	} paths;
 
 	int input_fd;
 
@@ -61,28 +59,23 @@ typedef struct {
 			NONE = 0,
 			BINARY,
 			TEXT,
-			TEXT_IO_FILES,			/* (TODO)		*/
-			KCONFIG_FS_USAGE,		/* (TODO)		*/
-			KCONFIG_PROCESS_TREE,		/* (TODO)		*/
-			KCONFIG_FS_DEPENDENCIES,	/* (TODO)		*/
-			GMAKE_FS_DEPENDENCIES,		/* (TODO)		*/
+			TEXT_IO_FILES,			/* (TODO) */
+			KCONFIG_FS_USAGE,		/* (TODO) */
+			KCONFIG_PROCESS_TREE,		/* (TODO) */
+			KCONFIG_FS_DEPENDENCIES,	/* (TODO) */
+			GMAKE_FS_DEPENDENCIES,		/* (TODO) */
 		} format;
 	} output;
 } Options;
 
 typedef enum {
-	TRAVERSES,
-	CREATES,
-	DELETES,
-	GETS_METADATA_OF,
-	SETS_METADATA_OF,
-	GETS_CONTENT_OF,
-	SETS_CONTENT_OF,
-	EXECUTES,
-	MOVES,
-	IS_CLONED,
-	HAS_EXITED,
+	#define ACTION(name) name,
+	#include "extension/wiom/actions.list"
+	#undef ACTION
 } Action;
+
+#define GET_ACTION_BIT(options, action) ((1 << (action)) & (options)->actions.filter)
+#define SET_ACTION_BIT(options, action) ((options)->actions.filter |= (1 << (action)))
 
 typedef struct {
 	pid_t pid;
