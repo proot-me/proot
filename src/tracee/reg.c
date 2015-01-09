@@ -26,7 +26,8 @@
 #include <assert.h>     /* assert(3), */
 #include <errno.h>      /* errno(3), */
 #include <stddef.h>     /* offsetof(), */
-#include <stdint.h>     /* *int*_t(), */
+#include <stdint.h>     /* *int*_t, */
+#include <inttypes.h>   /* PRI*, */
 #include <limits.h>     /* ULONG_MAX, */
 #include <string.h>     /* memcpy(3), */
 #include <sys/uio.h>    /* struct iovec, */
@@ -210,8 +211,8 @@ void print_current_regs(Tracee *tracee, int verbose_level, const char *message)
 		return;
 
 	note(tracee, INFO, INTERNAL,
-		"pid %d: %s: %s(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx, %d]",
-		tracee->pid, message,
+		"vpid %" PRIu64 ": %s: %s(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx, %d]",
+		tracee->vpid, message,
 		stringify_sysnum(get_sysnum(tracee, CURRENT)),
 		peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
 		peek_reg(tracee, CURRENT, SYSARG_3), peek_reg(tracee, CURRENT, SYSARG_4),
