@@ -59,8 +59,6 @@ requests before sending them to the host kernel.  This means that
 guest programs can use host resources (devices, network, ...) just as
 if they were "normal" host programs.
 
-.. _CARE: http://reproducible.io
-
 
 Options
 =======
@@ -526,16 +524,122 @@ following command on the expected Linux distribution::
     tar --one-file-system --create --gzip --file my_rootfs.tar.gz /
 
 
-QEMU user-mode
---------------
+Ecosystem
+=========
 
-QEMU user-mode is required only if the guest rootfs was made for a CPU
-architecture incompatible with the host one, for instance when using a
-ARM rootfs on a x86_64 computer.  This package can be installed either
-from http://qemu.proot.me or from the host package manager under the
-name of "qemu-user" on most Linux distro.  In case one would like to
-build QEMU user-mode from sources, the ``--enable-linux-user`` option
-has to be specified to the ``./configure`` script.
+The following ecosystem has developed around PRoot since it has been
+made publicly available.
+
+Projects using PRoot or CARE
+----------------------------
+
+* CARE_: archive material used during an execution to make it
+  reproducible on any Linux system.
+
+* `GNURoot
+  <https://play.google.com/store/apps/details?id=champion.gnuroot>`_:
+  use several Linux distros on Android without root access.
+
+* `Debian noroot
+  <https://play.google.com/store/apps/details?id=com.cuntubuntu>`_:
+  use Debian Linux on Android without root access.
+
+* `Polysquare Travis Container
+  <https://github.com/polysquare/polysquare-travis-container>`_:
+  use several Linux distros on Travis-CI without root access.
+
+* `JuJu <https://github.com/fsquillace/juju>`_:
+  use Arch Linux on any Linux distros without root access.
+
+* `Brickstrap <https://github.com/ev3dev/brickstrap>`_:
+  create ev3dev file system images.
+
+* `Portable PyPy <https://github.com/squeaky-pl/portable-pypy>`_:
+  portable 32 and 64 bit x86 PyPy binaries.
+
+* `OpenMOLE <http://www.openmole.org/documentation/console/task>`_:
+  execute programs on distributed computing environments.
+
+* `ATOS
+  <http://compilation.gforge.inria.fr/2013_12_Dammarie/pdf/17-Francois_DeFerriere.pdf>`_:
+  find automatically C/C++ compiler options that provide best
+  optimizations.
+
+* `OPAM2Debian <https://forge.ocamlcore.org/projects/opam2debian>`_:
+  create Debian packages which contains a fully compiled OPAM
+  installation.
+
+* `SIO Workers <http://sioworkers.readthedocs.org/en/latest>`_:
+  batch long-term computations with Python.
+
+.. _CARE: http://reproducible.io
+
+
+Third party packages
+--------------------
+
+Binaries from the Downloads_ section are likely more up-to-date.
+
+* `Arch Linux (PRoot) <https://aur.archlinux.org/packages/proot/>`_
+
+* `Arch Linux (CARE) <https://aur.archlinux.org/packages/care-static>`_
+
+* `Gentoo <http://packages.gentoo.org/package/sys-apps/proot>`_
+
+* `Debian <https://packages.debian.org/sid/proot>`_
+
+* `Ubuntu <https://launchpad.net/ubuntu/+source/proot>`_
+
+* `NixOS <https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/system/proot>`_
+
+* `KaOS <https://github.com/KaOS-Community-Packages/proot>`_
+
+* `University of Chicago RCC <https://rcc.uchicago.edu/docs/software/modules/proot/current.html>`_
+
+
+Public material about PRoot or CARE
+-----------------------------------
+
+* articles on `Rémi's blog
+  <http://ivoire.dinauz.org/blog/tag/PRoot>`_.  Rémi (a.k.a Ivoire)
+  is one of the PRoot developers.
+
+* presentation "`Software engineering tools based on syscall
+  instrumentation
+  <https://archive.fosdem.org/2014/schedule/event/syscall>`_" during
+  FOSDEM 2014.
+
+* presentation "`SW testing & Reproducing a LAVA failures locally
+  using CARE <https://lcu14.zerista.com/event/member/137797>`_"
+  during Linaro Connect USA 2014
+
+* presentation and essay "`CARE: the Comprehensive Archiver for
+  Reproducible Execution
+  <http://c-mind.org/events/trust2014/presentations/trust14_care.pdf>`_"
+  (`essay <http://dl.acm.org/citation.cfm?doid=2618137.2618138>`_)
+  during TRUST 2014
+
+* presentation "`An Introduction to the CARE tool
+  <http://www.hipeac.net/system/files/bertin_care_comprehensive_archiving_for_reproducible_execution.pdf>`_"
+  during HiPEAC CSW 2013
+
+* presentation and essay "`PRoot: a Step Forward for QEMU User-Mode
+  <http://adt.cs.upb.de/quf/quf11/quf2011_13.pdf>`_" (`proceedings
+  <http://adt.cs.upb.de/quf/quf2011_proceedings.pdf>`_) during
+  QUF'11
+
+* tutorial "`How to install nix in home (on another distribution)
+  <https://nixos.org/wiki/How_to_install_nix_in_home_%28on_another_distribution%29#PRoot_Installation>`_"
+
+
+Companies using PRoot or CARE internally
+----------------------------------------
+
+* STMicroelectronics (main sponsor)
+* Sony
+* Ericsson
+* Cisco
+* Gogo
 
 
 See Also
