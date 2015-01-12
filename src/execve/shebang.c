@@ -199,14 +199,17 @@ end:
 
 /**
  * Expand in argv[] the shebang of @user_path, if any.  This function
- * returns -errno if an error occurred, otherwise 0.  On success, both
- * @host_path and @user_path point to the program to execute
- * (respectively from host point-of-view and as-is), and @tracee's
- * argv[] (pointed to by SYSARG_2) is correctly updated.
+ * returns -errno if an error occurred, 1 if a shebang was found and
+ * extracted, otherwise 0.  On success, both @host_path and @user_path
+ * point to the program to execute (respectively from host
+ * point-of-view and as-is), and @tracee's argv[] (pointed to by
+ * SYSARG_2) is correctly updated.
  */
 int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
 {
 	ArrayOfXPointers *argv = NULL;
+	bool has_shebang = false;
+
 	char argument[BINPRM_BUF_SIZE];
 	int status;
 	size_t i;
@@ -221,7 +224,7 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 	 * where arg...  is the series of words pointed to by the argv
 	 * argument of execve()." -- man 2 execve
 	 *
-	 * [1]: as of this writing (3.10.17) this true only for the
+	 * [1]: as of this writing (3.10.17) this is true only for the
 	 *      ELF interpreter; ie. a script can use a script as
 	 *      interpreter.
 	 */
@@ -246,6 +249,7 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 		/* No more shebang.  */
 		if (status == 0)
 			break;
+		has_shebang = true;
 
 		/* Translate new path (user -> host), then check it is executable.  */
 		status = translate_and_check_exec(tracee, host_path, user_path);
@@ -299,5 +303,5 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 			return status;
 	}
 
-	return 0;
+	return (has_shebang ? 1 : 0);
 }

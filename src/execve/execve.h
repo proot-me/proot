@@ -46,6 +46,7 @@ typedef struct mapping {
 typedef struct load_info {
 	char *host_path;
 	char *user_path;
+	char *raw_path;
 	Mapping *mappings;
 	ElfHeader elf_header;
 
@@ -54,9 +55,9 @@ typedef struct load_info {
 
 #define IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee) (			\
 		(tracee)->as_ptracee.ptracer != NULL			\
-		&& peek_reg((tracee), CURRENT, SYSARG_1) == (word_t) -1	\
-		&& peek_reg((tracee), CURRENT, SYSARG_4) == (word_t) -2 \
-		&& peek_reg((tracee), CURRENT, SYSARG_5) == (word_t) -3 \
-		&& peek_reg((tracee), CURRENT, SYSARG_6) == (word_t) -4)
+		&& peek_reg((tracee), CURRENT, SYSARG_1) == (word_t) 1	\
+		&& peek_reg((tracee), CURRENT, SYSARG_4) == (word_t) 2	\
+		&& peek_reg((tracee), CURRENT, SYSARG_5) == (word_t) 3	\
+		&& peek_reg((tracee), CURRENT, SYSARG_6) == (word_t) 4)
 
 #endif /* EXECVE_H */

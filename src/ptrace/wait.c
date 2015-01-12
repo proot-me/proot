@@ -28,9 +28,9 @@
 #include <talloc.h>     /* talloc*, */
 
 #include "ptrace/wait.h"
-#include "ptrace/direct_ptracee.h"
 #include "ptrace/ptrace.h"
 #include "syscall/sysnum.h"
+#include "syscall/chain.h"
 #include "tracee/tracee.h"
 #include "tracee/event.h"
 #include "tracee/reg.h"
@@ -114,34 +114,64 @@ int translate_wait_enter(Tracee *ptracer)
 
 /**
  * Update pid & wait status of @ptracer's wait(2) for the given
- * @ptracee.
+ * @ptracee.  This function returns -errno if an error occurred, 0 if
+ * the wait syscall will be restarted (ie. the event is discarded),
+ * otherwise @ptracee's pid.
  */
 static int update_wait_status(Tracee *ptracer, Tracee *ptracee)
 {
-	int event = PTRACEE.event4.ptracer.value;
 	word_t address;
+	int result;
+
+	/* Special case: the Linux kernel reports the terminating
+	 * event issued by a process to both its parent and its
+	 * tracer, except when they are the same.  In this case the
+	 * Linux kernel reports the terminating event only once to the
+	 * tracing parent ...  */
+	if (PTRACEE.ptracer == ptracee->parent
+	    && (WIFEXITED(PTRACEE.event4.ptracer.value)
+	     || WIFSIGNALED(PTRACEE.event4.ptracer.value))) {
+		/* ... So hide this terminating event (toward its
+		 * tracer, ie. PRoot) and make the second one appear
+		 * (towards its parent, ie. the ptracer).  This will
+		 * ensure its exit status is collected from a kernel
+		 * point-of-view (ie. it doesn't stay a zombie
+		 * forever).  */
+		restart_original_syscall(ptracer);
+
+		/* Detach this ptracee from its ptracer, PRoot doesn't
+		 * have anything else to emulate.  */
+		detach_from_ptracer(ptracee);
+
+		/* Zombies can rest in peace once the ptracer is
+		 * notified.  */
+		if (PTRACEE.is_zombie)
+			TALLOC_FREE(ptracee);
+
+		return 0;
+	}
 
 	address = peek_reg(ptracer, ORIGINAL, SYSARG_2);
 	if (address != 0) {
-		poke_int32(ptracer, address, event);
+		poke_int32(ptracer, address, PTRACEE.event4.ptracer.value);
 		if (errno != 0)
 			return -errno;
 	}
 
 	PTRACEE.event4.ptracer.pending = false;
 
-	/* Under PRoot, the kernel will report its termination once
-	 * again to its parent since "ptracer != parent" from kernel's
-	 * point-of-view.  PRoot has to mask this second notification
-	 * not to make the parent/ptracer confused.  */
-	if (   (WIFEXITED(event) || WIFSIGNALED(event))
-	    && is_direct_ptracee(ptracer, ptracee->pid)) {
-		set_exited_direct_ptracee(ptracer, ptracee->pid);
+	/* Be careful; ptracee might get freed before its pid is
+	 * returned.  */
+	result = ptracee->pid;
+
+	/* Zombies can rest in peace once the ptracer is notified.  */
+	if (PTRACEE.is_zombie) {
+		detach_from_ptracer(ptracee);
+		TALLOC_FREE(ptracee);
 	}
 
-	return ptracee->pid;
+	return result;
 }
-
 
 /**
  * Emulate the wait* syscall made by @ptracer if it was in the context
@@ -185,6 +215,7 @@ int translate_wait_exit(Tracee *ptracer)
 		 * handle_ptracee_event() later.  */
 		PTRACER.wait_pid = pid;
 		PTRACER.wait_options = options;
+
 		return 0;
 	}
 
@@ -192,13 +223,7 @@ int translate_wait_exit(Tracee *ptracer)
 	if (status < 0)
 		return status;
 
-	pid = ptracee->pid;
-
-	/* Zombies can rest in peace once the ptracer is notified.  */
-	if (PTRACEE.is_zombie)
-		TALLOC_FREE(ptracee);
-
-	return pid;
+	return status;
 }
 
 /**
@@ -314,7 +339,10 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		int status;
 
 		status = update_wait_status(ptracer, ptracee);
-		poke_reg(ptracer, SYSARG_RESULT, (word_t) status);
+		if (status == 0)
+			chain_next_syscall(ptracer);
+		else
+			poke_reg(ptracer, SYSARG_RESULT, (word_t) status);
 
 		/* Write ptracer's register cache back.  */
 		(void) push_regs(ptracer);

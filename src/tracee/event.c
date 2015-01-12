@@ -33,6 +33,7 @@
 #include <assert.h>     /* assert(3), */
 #include <stdlib.h>     /* atexit(3), getenv(3), */
 #include <talloc.h>     /* talloc_*, */
+#include <inttypes.h>   /* PRI*, */
 
 #include "tracee/event.h"
 #include "cli/note.h"
@@ -53,7 +54,7 @@
  */
 int launch_process(Tracee *tracee, char *const argv[])
 {
-	char *const default_argv[] = { "-", NULL };
+	char *const default_argv[] = { "-sh", NULL };
 	long status;
 	pid_t pid;
 
@@ -318,6 +319,9 @@ int event_loop()
 		int signal;
 		pid_t pid;
 
+		/* This is the only safe place to free tracees.  */
+		free_terminated_tracees();
+
 		/* Wait for the next tracee's stop. */
 		pid = waitpid(-1, &tracee_status, __WALL);
 		if (pid < 0) {
@@ -359,7 +363,6 @@ int event_loop()
 int handle_tracee_event(Tracee *tracee, int tracee_status)
 {
 	static bool seccomp_detected = false;
-	pid_t pid = tracee->pid;
 	long status;
 	int signal;
 
@@ -385,12 +388,17 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 
 	if (WIFEXITED(tracee_status)) {
 		last_exit_status = WEXITSTATUS(tracee_status);
-		VERBOSE(tracee, 1, "pid %d: exited with status %d", pid, last_exit_status);
+		VERBOSE(tracee, 1,
+			"vpid %" PRIu64 ": exited with status %d",
+			tracee->vpid, last_exit_status);
+		tracee->terminated = true;
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
 		VERBOSE(tracee, (int) (last_exit_status != -1),
-			"pid %d: terminated with signal %d", pid, WTERMSIG(tracee_status));
+			"vpid %" PRIu64 ": terminated with signal %d",
+			tracee->vpid, WTERMSIG(tracee_status));
+		tracee->terminated = true;
 	}
 	else if (WIFSTOPPED(tracee_status)) {
 		/* Don't use WSTOPSIG() to extract the signal
@@ -587,13 +595,11 @@ bool restart_tracee(Tracee *tracee, int signal)
 	/* Restart the tracee and stop it at the next instruction, or
 	 * at the next entry or exit of a system call. */
 	status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
-	if (status < 0) {
-		/* The process died in a syscall.  */
-		TALLOC_FREE(tracee);
-		return false;
-	}
+	if (status < 0)
+		return false; /* The process likely died in a syscall.  */
 
 	tracee->restart_how = 0;
 	tracee->running = true;
+
 	return true;
 }

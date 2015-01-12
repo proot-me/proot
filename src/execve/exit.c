@@ -180,10 +180,12 @@ static int transfer_load_script(Tracee *tracee)
 	size_t strings_size;
 	size_t string1_size;
 	size_t string2_size;
+	size_t string3_size;
 	size_t padding_size;
 
 	word_t string1_address;
 	word_t string2_address;
+	word_t string3_address;
 
 	void *buffer;
 	size_t buffer_size;
@@ -198,17 +200,25 @@ static int transfer_load_script(Tracee *tracee)
 	 * stack pointer -- the only known adresses so far -- in the
 	 * "strings area".  */
 	string1_size = strlen(tracee->load_info->user_path) + 1;
-	string2_size = tracee->load_info->interp == NULL ? 0
-		     : strlen(tracee->load_info->interp->user_path) + 1;
+
+	string2_size = (tracee->load_info->interp == NULL ? 0
+			: strlen(tracee->load_info->interp->user_path) + 1);
+
+	string3_size = (tracee->load_info->raw_path == tracee->load_info->user_path ? 0
+			: strlen(tracee->load_info->raw_path) + 1);
 
 	/* A padding will be appended at the end of the load script
 	 * (a.k.a "strings area") to ensure this latter is aligned on
 	 * a word boundary, for sake of performance.  */
-	padding_size = (stack_pointer - string1_size - string2_size) % sizeof(word_t);
+	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
+			% sizeof_word(tracee);
 
-	strings_size = string1_size + string2_size + padding_size;
+	strings_size = string1_size + string2_size + string3_size + padding_size;
 	string1_address = stack_pointer - strings_size;
 	string2_address = stack_pointer - strings_size + string1_size;
+	string3_address = (string3_size == 0
+			? string1_address
+			: stack_pointer - strings_size + string1_size + string2_size);
 
 	/* Compute the size of the load script.  */
 	script_size =
@@ -272,6 +282,7 @@ static int transfer_load_script(Tracee *tracee)
 	statement->start.at_entry = ELF_FIELD(tracee->load_info->elf_header, entry);
 	statement->start.at_phdr  = ELF_FIELD(tracee->load_info->elf_header, phoff)
 				  + tracee->load_info->mappings[0].addr;
+	statement->start.at_execfn = string3_address;
 
 	cursor += LOAD_STATEMENT_SIZE(*statement, start);
 
@@ -294,24 +305,35 @@ static int transfer_load_script(Tracee *tracee)
 		cursor += string2_size;
 	}
 
+	if (string3_size != 0) {
+		memcpy(cursor, tracee->load_info->raw_path, string3_size);
+		cursor += string3_size;
+	}
+
 	/* Sanity check.  */
 	cursor += padding_size;
 	assert((uintptr_t) cursor - (uintptr_t) buffer == buffer_size);
+
+	/* Allocate enough room in tracee's memory for the load
+	 * script, and make the first user argument points to this
+	 * location.  Note that it is safe to update the stack pointer
+	 * manually since we are in execve sysexit.  However it should
+	 * be done before transfering data since the kernel might not
+	 * allow page faults below the stack pointer.  */
+	poke_reg(tracee, STACK_POINTER, stack_pointer - buffer_size);
+	poke_reg(tracee, USERARG_1, stack_pointer - buffer_size);
 
 	/* Copy everything in the tracee's memory at once.  */
 	status = write_data(tracee, stack_pointer - buffer_size, buffer, buffer_size);
 	if (status < 0)
 		return status;
 
-	/* Update the stack pointer and the pointer to the load
-	 * script.  */
-	poke_reg(tracee, STACK_POINTER, stack_pointer - buffer_size);
-	poke_reg(tracee, USERARG_1, stack_pointer - buffer_size);
-
 	/* Tracee's stack content is now as follow:
 	 *
 	 *   +------------+ <- initial stack pointer (higher address)
 	 *   |  padding   |
+	 *   +------------+
+	 *   |  string3   |
 	 *   +------------+
 	 *   |  string2   |
 	 *   +------------+
@@ -334,7 +356,7 @@ static int transfer_load_script(Tracee *tracee)
 	 */
 
 	/* Remember we are in the sysexit stage, so be sure the
-	 * current register values will be used as at the end.  */
+	 * current register values will be used as-is at the end.  */
 	save_current_regs(tracee, ORIGINAL);
 	tracee->_regs_were_changed = true;
 
@@ -403,6 +425,13 @@ void translate_execve_exit(Tracee *tracee)
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	if ((int) syscall_result < 0)
 		return;
+
+	/* Execve happened; commit the new "/proc/self/exe".  */
+	if (tracee->new_exe != NULL) {
+		(void) talloc_unlink(tracee, tracee->exe);
+		tracee->exe = talloc_reference(tracee, tracee->new_exe);
+		talloc_set_name_const(tracee->exe, "$exe");
+	}
 
 	/* New processes have no heap.  */
 	bzero(tracee->heap, sizeof(Heap));

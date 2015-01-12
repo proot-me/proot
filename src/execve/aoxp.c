@@ -304,7 +304,7 @@ int resize_array_of_xpointers(ArrayOfXPointers *array, size_t index, ssize_t del
  */
 int fetch_array_of_xpointers(Tracee *tracee, ArrayOfXPointers **array_, Reg reg, size_t nb_entries)
 {
-	word_t pointer = (word_t)-1;
+	word_t pointer = 1; /* ie. != 0 */
 	word_t address;
 	ArrayOfXPointers *array;
 	size_t i;

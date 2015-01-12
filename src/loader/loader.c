@@ -91,6 +91,27 @@ static inline void clear(word_t start, word_t end)
 }
 
 /**
+ * Return the address of the last path component of @string_.  Note
+ * that @string_ is not modified.
+ */
+static inline word_t basename(word_t string_)
+{
+	byte_t *string = (byte_t *) string_;
+	byte_t *cursor;
+
+	for (cursor = string; *cursor != 0; cursor++)
+		;
+
+	for (; *cursor != (byte_t) '/' && cursor > string; cursor--)
+		;
+
+	if (cursor != string)
+		cursor++;
+
+	return (word_t) cursor;
+}
+
+/**
  * Interpret the load script pointed to by @cursor.
  */
 void _start(void *cursor)
@@ -158,6 +179,7 @@ void _start(void *cursor)
 			word_t *cursor2 = (word_t *) stmt->start.stack_pointer;
 			const word_t argc = cursor2[0];
 			const word_t at_execfn = cursor2[1];
+			word_t name;
 
 			status = SYSCALL(CLOSE, 1, fd);
 			if (unlikely((int) status < 0))
@@ -201,6 +223,9 @@ void _start(void *cursor)
 					break;
 
 				case AT_EXECFN:
+					/* stmt->start.at_execfn can't be used for now since it is
+					 * currently stored in a location that will be scratched
+					 * by the process (below the final stack pointer).  */
 					cursor2[1] = at_execfn;
 					break;
 
@@ -210,10 +235,14 @@ void _start(void *cursor)
 				cursor2 += 2;
 			} while (cursor2[0] != AT_NULL);
 
+			/* Note that only 2 arguments are actually necessary... */
+			name = basename(stmt->start.at_execfn);
+			SYSCALL(PRCTL, 3, PR_SET_NAME, name, 0);
+
 			if (unlikely(traced))
-				SYSCALL(EXECVE, 6, -1,
+				SYSCALL(EXECVE, 6, 1,
 					stmt->start.stack_pointer,
-					stmt->start.entry_point, -2, -3, -4);
+					stmt->start.entry_point, 2, 3, 4);
 			else
 				BRANCH(stmt->start.stack_pointer, stmt->start.entry_point);
 			FATAL();

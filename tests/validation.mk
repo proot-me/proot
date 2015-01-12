@@ -5,6 +5,7 @@ ltp-version       = 20140422
 opt-version       = 20140422
 gdb-version       = 7.6.1
 proot-version     = 3.2.2
+glibc-version     = 2.17
 
 libuv     = libuv-$(libuv-version)
 coreutils = coreutils-$(coreutils-version)
@@ -13,8 +14,9 @@ ltp       = ltp-$(ltp-version)
 opt       = opt-$(opt-version)
 gdb       = gdb-$(gdb-version)
 proot     = PRoot-$(proot-version)
+glibc     = glibc-$(glibc-version)
 
-testsuites = $(libuv) $(perl) $(ltp) $(opt) $(gdb) $(proot) $(coreutils)
+testsuites = $(libuv) $(perl) $(ltp) $(opt) $(gdb) $(proot) $(coreutils) # $(glibc) too long.
 logs       = $(testsuites:=.log)
 
 logs: $(logs)
@@ -98,11 +100,26 @@ $(gdb).log: $(gdb).tar.gz
 	tar -xf $<
 	cd $(gdb) && ./configure
 	$(MAKE) -C $(gdb)
-	rm -f $(gdb)/gdb/testsuite/gdb.base/foll-fork.exp        # makes PRoot stall
-	rm -f $(gdb)/gdb/testsuite/gdb.base/foll-vfork.exp       # makes PRoot stall
-	rm -f $(gdb)/gdb/testsuite/gdb.base/watch_thread_num.exp # makes PRoot stall
 	rm -f $(gdb)/gdb/testsuite/gdb.base/attach-twice.exp     # kills PRoot explicitly
 	($(MAKE) -C $(gdb)/gdb/testsuite check-gdb.base1 check-gdb.base2 check-gdb.server || true) | tee $@
+
+######################################################################
+
+$(glibc).tar.xz:
+	wget http://ftp.gnu.org/gnu/glibc/$(glibc).tar.xz -O $@
+
+$(glibc).log: $(glibc).tar.xz
+	rm -fr $(glibc)
+	tar -xf $<
+	mkdir -p $(glibc)/build/prefix
+	cd $(glibc)/build && ../configure --prefix=$(PWD)/prefix
+	$(MAKE) -C $(glibc)/build
+	cp /usr/lib*/libgcc_s.so.1  $(glibc)/build
+	cp /usr/lib*/libstdc++.so.6 $(glibc)/build
+	sed -i s/tst-atexit3//g $(glibc)/dlfcn/Makefile # fails natively on Slack64-14.1
+	sed -i s/tst-cputimer1//g $(glibc)/rt/Makefile  # fails natively on Slack64-14.1
+	sed -i 's/tests: check-abi/tests: /g' $(glibc)/Makerules # fails natively on Slack64-14.1
+	($(MAKE) -j 1 -C $(glibc)/build check || true) | tee $@  # has broken // build
 
 ######################################################################
 

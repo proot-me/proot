@@ -49,6 +49,7 @@ struct load_statement {
 			word_t at_phent;
 			word_t at_phnum;
 			word_t at_entry;
+			word_t at_execfn;
 		} start;
 	};
 } PACKED;

@@ -28,5 +28,6 @@ ${PROOT} ${BIN_DIR}/${TMP} | grep "${ROOTFS}/bin/argv -x ${BIN_DIR}/${TMP}"
 env PATH=${BIN_DIR} ${PROOT} ${TMP} | grep "${ROOTFS}/bin/argv -x ${BIN_DIR}/${TMP}"
 
 # TODO: (cd ${BIN_DIR}; ${PROOT} ./${TMP}) | grep "${ROOTFS}/bin/argv -x ./${TMP}"
+(cd ${BIN_DIR}; ${PROOT} sh -c "true; ./${TMP}") | grep "${ROOTFS}/bin/argv -x ./${TMP}"
 
 rm -fr ${BIN_DIR}

@@ -38,7 +38,6 @@
 #include "path/path.h"
 #include "ptrace/ptrace.h"
 #include "ptrace/wait.h"
-#include "ptrace/direct_ptracee.h"
 #include "extension/extension.h"
 #include "arch.h"
 
@@ -436,18 +435,8 @@ void translate_syscall_exit(Tracee *tracee)
 
 	case PR_wait4:
 	case PR_waitpid:
-		if (tracee->as_ptracer.waits_in != WAITS_IN_PROOT) {
-			pid_t pid;
-
-			/* See ptrace/wait.c for explanation.  */
-			pid = (pid_t) syscall_result;
-			if (pid > 0 && is_exited_direct_ptracee(tracee, pid)) {
-				remove_exited_direct_ptracee(tracee, pid);
-				restart_original_syscall(tracee);
-			}
-
+		if (tracee->as_ptracer.waits_in != WAITS_IN_PROOT)
 			goto end;
-		}
 
 		status = translate_wait_exit(tracee);
 		break;

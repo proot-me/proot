@@ -177,6 +177,21 @@
 #    ifndef PTRACE_GETVFPREGS
 #        define PTRACE_GETVFPREGS	27
 #    endif
+#    ifndef PTRACE_ARCH_PRCTL
+#        define PTRACE_ARCH_PRCTL	30
+#    endif
+#    ifndef ARCH_SET_GS
+#        define ARCH_SET_GS	0x1001
+#    endif
+#    ifndef ARCH_SET_FS
+#        define ARCH_SET_FS	0x1002
+#    endif
+#    ifndef ARCH_GET_GS
+#        define ARCH_GET_FS	0x1003
+#    endif
+#    ifndef ARCH_GET_FS
+#        define ARCH_GET_GS	0x1004
+#    endif
 #    ifndef PTRACE_SINGLEBLOCK
 #        define PTRACE_SINGLEBLOCK	33
 #    endif
@@ -188,6 +203,9 @@
 #    endif
 #    ifndef TALLOC_FREE
 #        define TALLOC_FREE(ctx) do { talloc_free(ctx); ctx = NULL; } while(0)
+#    endif
+#    ifndef PR_SET_NAME
+#        define PR_SET_NAME		15
 #    endif
 #    ifndef PR_SET_NO_NEW_PRIVS
 #        define PR_SET_NO_NEW_PRIVS	38

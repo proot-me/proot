@@ -68,7 +68,6 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 		page_mask = ~(page_size - 1);
 	}
 
-
 	if (load_info->mappings == NULL)
 		index = 0;
 	else
@@ -326,7 +325,8 @@ static void add_load_base(LoadInfo *load_info, word_t load_base)
  */
 static void compute_load_addresses(Tracee *tracee)
 {
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header)) {
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header)
+	    && tracee->load_info->mappings[0].addr == 0) {
 #if defined(HAS_LOADER_32BIT)
 		if (IS_CLASS32(tracee->load_info->elf_header))
 			add_load_base(tracee->load_info, EXEC_PIC_ADDRESS_32);
@@ -339,7 +339,8 @@ static void compute_load_addresses(Tracee *tracee)
 	if (tracee->load_info->interp == NULL)
 		return;
 
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header)) {
+	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header)
+	    && tracee->load_info->interp->mappings[0].addr == 0) {
 #if defined(HAS_LOADER_32BIT)
 		if (IS_CLASS32(tracee->load_info->elf_header))
 			add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS_32);
@@ -463,7 +464,7 @@ extern unsigned char WEAK _binary_loader_m32_exe_size;
  * error occurred, otherwise it returns the path to the extracted
  * loader.  Note: @tracee is only used for notification purpose.
  */
-static char *extract_loader(const Tracee *tracee, bool want_32bit_version)
+static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 {
 	char path[PATH_MAX];
 	size_t status2;
@@ -480,7 +481,7 @@ static char *extract_loader(const Tracee *tracee, bool want_32bit_version)
 		goto end;
 	fd = fileno(file);
 
-	if (want_32bit_version) {
+	if (wants_32bit_version) {
 		start = (void *) &_binary_loader_m32_exe_start;
 		size  = (size_t) &_binary_loader_m32_exe_size;
 	}
@@ -558,6 +559,8 @@ int translate_execve_enter(Tracee *tracee)
 {
 	char user_path[PATH_MAX];
 	char host_path[PATH_MAX];
+	char new_exe[PATH_MAX];
+	char *raw_path;
 	const char *loader_path;
 	int status;
 
@@ -575,11 +578,35 @@ int translate_execve_enter(Tracee *tracee)
 	if (status < 0)
 		return status;
 
+	/* Remember the user path before it is overwritten by
+	 * expand_shebang().  This "raw" path is useful to fix the
+	 * value of AT_EXECFN and /proc/{@tracee->pid}/comm.  */
+	raw_path = talloc_strdup(tracee->ctx, user_path);
+	if (raw_path == NULL)
+		return -ENOMEM;
+
 	status = expand_shebang(tracee, host_path, user_path);
 	if (status < 0)
 		/* The Linux kernel actually returns -EACCES when
 		 * trying to execute a directory.  */
 		return status == -EISDIR ? -EACCES : status;
+
+	/* user_path is modified only if there's an interpreter
+	 * (ie. for a script or with qemu).  */
+	if (status == 0 && tracee->qemu == NULL)
+		TALLOC_FREE(raw_path);
+
+	/* Remember the new value for "/proc/self/exe".  It points to
+	 * a canonicalized guest path, hence detranslate_path()
+	 * instead of using user_path directly.  */
+	strcpy(new_exe, host_path);
+	status = detranslate_path(tracee, new_exe, NULL);
+	if (status >= 0) {
+		talloc_unlink(tracee, tracee->new_exe);
+		tracee->new_exe = talloc_strdup(tracee, new_exe);
+	}
+	else
+		tracee->new_exe = NULL;
 
 	if (tracee->qemu != NULL) {
 		status = expand_runner(tracee, host_path, user_path);
@@ -587,8 +614,7 @@ int translate_execve_enter(Tracee *tracee)
 			return status;
 	}
 
-	if (tracee->load_info != NULL)
-		TALLOC_FREE(tracee->load_info);
+	TALLOC_FREE(tracee->load_info);
 
 	tracee->load_info = talloc_zero(tracee, LoadInfo);
 	if (tracee->load_info == NULL)
@@ -600,6 +626,12 @@ int translate_execve_enter(Tracee *tracee)
 
 	tracee->load_info->user_path = talloc_strdup(tracee->load_info, user_path);
 	if (tracee->load_info->user_path == NULL)
+		return -ENOMEM;
+
+	tracee->load_info->raw_path = (raw_path != NULL
+			? talloc_reparent(tracee->ctx, tracee->load_info, raw_path)
+			: talloc_reference(tracee->load_info, tracee->load_info->user_path));
+	if (tracee->load_info->raw_path == NULL)
 		return -ENOMEM;
 
 	status = extract_load_info(tracee, tracee->load_info);
@@ -618,16 +650,6 @@ int translate_execve_enter(Tracee *tracee)
 	}
 
 	compute_load_addresses(tracee);
-
-	/* Remember the value for "/proc/self/exe".  It points to a
-	 * canonicalized guest path, hence detranslate_path() instead
-	 * of using user_path directly.  */
-	status = detranslate_path(tracee, host_path, NULL);
-	if (status >= 0) {
-		tracee->exe = talloc_strdup(tracee, host_path);
-		if (tracee->exe != NULL)
-			talloc_set_name_const(tracee->exe, "$exe");
-	}
 
 	/* Execute the loader instead of the program.  */
 	loader_path = get_loader_path(tracee);

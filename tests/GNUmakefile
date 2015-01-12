@@ -71,6 +71,10 @@ check-test-a3e68988.c: test-a3e68988
 	@which gdb >/dev/null 2>&1 || rm -f $<
 	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
 
+check-test-c47aeb7d.c: test-c47aeb7d
+	@which gdb >/dev/null 2>&1 || rm -f $<
+	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
+
 check-test-fdf487a0.c: test-fdf487a0
 	$(call check_c,$<,echo test | $(PROOT) ./$<)
 
@@ -78,6 +82,9 @@ check-test-iiiiiiii.c: test-iiiiiiii
 	$(call check_c,$<,echo test | env PROOT_DONT_POLLUTE_ROOTFS=1 $(PROOT) -b /bin:/this_shall_not_exist_outside_proot ./$<)
 
 check-test-9c07fad8.c: test-9c07fad8
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-fa205b56.c: test-fa205b56
 	$(call check_c,$<,$(PROOT) ./$<)
 
 check_c = $(Q)if [ -e $< ]; then			\
@@ -101,7 +108,8 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true $(ROOTFS)/bin/echo		 \
        $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat		 \
        $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd $(ROOTFS)/bin/argv \
-       $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2
+       $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2	 \
+       $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32
 
 ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 
@@ -117,6 +125,9 @@ $(ROOTFS)/bin/abs-true:
 
 $(ROOTFS)/bin/rel-true:
 	@ln -fs ./true $@
+
+$(ROOTFS)/bin/exec-m32: exec.c
+	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true
 
 .SECONDARY: $(patsubst %.c,$(ROOTFS)/bin/%, $(wildcard test-*.c))
 $(ROOTFS)/bin/%: %.c
@@ -168,6 +179,12 @@ test-iiiiiiii: test-iiiiiiii.c
 
 test-9c07fad8: test-9c07fad8.c
 	$(Q)$(CC) -fPIE -pie $< -o $@ $(silently) || true
+
+test-fa205b56: test-fa205b56.c
+	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
+
+test-c47aeb7d: test-c47aeb7d.c
+	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

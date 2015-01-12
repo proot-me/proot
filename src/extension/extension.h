@@ -43,7 +43,7 @@ typedef enum {
 	/* A canonicalized host path is being accessed during the
 	 * translation of a guest path: "(char *) data1" is the
 	 * canonicalized host path and "(bool) data2" is true if it is
-	 * the final path.  Note that several host paths are accessed
+	 * the last iteration.  Note that several host paths are accessed
 	 * for a given guest path since PRoot has to walk along all
 	 * parent directories and symlinks in order to translate it.
 	 * If the extension returns < 0, then PRoot reports this errno

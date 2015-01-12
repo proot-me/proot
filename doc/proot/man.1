@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH PROOT 1 "2014-11-15" "5.0.0" ""
+.TH PROOT 1 "2014-12-12" "5.1.0" ""
 .SH NAME
 PRoot \- chroot, mount --bind, and binfmt_misc without privilege/setup
 .
@@ -455,10 +455,10 @@ proot \-r /mnt/slackware\-8.0/ \-b /proc
 
 $ ps \-o tty,command
 TT       COMMAND
-?        \-bash
+?        bash
 ?        proot \-b /proc /mnt/slackware\-8.0/
-?        /lib/ld\-linux.so.2 /bin/sh
-?        /lib/ld\-linux.so.2 /usr/bin/ps \-o tty,command
+?        sh
+?        ps \-o tty,command
 .ft P
 .fi
 .UNINDENT
@@ -476,10 +476,10 @@ proot \-R /mnt/slackware\-8.0/
 
 $ ps \-o tty,command
 TT       COMMAND
-pts/6    \-bash
+pts/6    bash
 pts/6    proot \-R /mnt/slackware\-8.0/
-pts/6    /lib/ld\-linux.so.2 /bin/sh
-pts/6    /lib/ld\-linux.so.2 /usr/bin/ps \-o tty,command
+pts/6    sh
+pts/6    ps \-o tty,command
 .ft P
 .fi
 .UNINDENT

@@ -651,16 +651,21 @@ static void adjust_elf_auxv(Tracee *tracee, Config *config)
 	if (status < 0)
 		goto end;
 
+	/* Allocate enough room in tracee's stack for the new ELF
+	 * auxiliary vector.  */
 	stack_pointer   -= 2 * sizeof_word(tracee);
 	vectors_address -= 2 * sizeof_word(tracee);
 
+	/* Note that it is safe to update the stack pointer manually
+	 * since we are in execve sysexit.  However it should be done
+	 * before transfering data since the kernel might not allow
+	 * page faults below the stack pointer.  */
+	poke_reg(tracee, STACK_POINTER, stack_pointer);
+
 	status = write_data(tracee, stack_pointer, argv_envp, size);
 	if (status < 0)
-		goto end;
+		return;
 
-	/* The content of argv[] and env[] is now copied to its new
-	 * location; the stack pointer can be safely updated.  */
-	poke_reg(tracee, STACK_POINTER, stack_pointer);
 end:
 	push_elf_aux_vectors(tracee, vectors, vectors_address);
 	return;

@@ -88,4 +88,5 @@
 #define MMAP_OFFSET_SHIFT 12
 #define EXECVE	11
 #define EXIT	1
+#define PRCTL	172
 

@@ -31,7 +31,6 @@
 
 #include "ptrace/ptrace.h"
 #include "ptrace/user.h"
-#include "ptrace/direct_ptracee.h"
 #include "tracee/tracee.h"
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
@@ -45,6 +44,10 @@
 
 #if defined(ARCH_X86_64) || defined(ARCH_X86)
 #include <asm/ldt.h>    /* struct user_desc, */
+#endif
+
+#if defined(ARCH_X86_64)
+#include <asm/prctl.h>    /* ARCH_{G,S}ET_{F,G}S, */
 #endif
 
 #if defined(ARCH_ARM_EABI)
@@ -70,7 +73,7 @@ static const char *stringify_ptrace(enum __ptrace_request request)
 	CASE_STR(PTRACE_SETREGSET)	CASE_STR(PTRACE_SEIZE)		CASE_STR(PTRACE_INTERRUPT)
 	CASE_STR(PTRACE_LISTEN)		CASE_STR(PTRACE_SET_SYSCALL)
 	CASE_STR(PTRACE_GET_THREAD_AREA)	CASE_STR(PTRACE_SET_THREAD_AREA)
-	CASE_STR(PTRACE_GETVFPREGS)	CASE_STR(PTRACE_SINGLEBLOCK)
+	CASE_STR(PTRACE_GETVFPREGS)	CASE_STR(PTRACE_SINGLEBLOCK)	CASE_STR(PTRACE_ARCH_PRCTL)
 	default: return "PTRACE_???"; }
 }
 
@@ -85,6 +88,32 @@ int translate_ptrace_enter(Tracee *tracee)
 	/* The ptrace syscall have to be emulated since it can't be nested.  */
 	set_sysnum(tracee, PR_void);
 	return 0;
+}
+
+/**
+ * Set @ptracee's tracer to @ptracer, and increment ptracees counter
+ * of this later.
+ */
+void attach_to_ptracer(Tracee *ptracee, Tracee *ptracer)
+{
+	bzero(&(PTRACEE), sizeof(PTRACEE));
+	PTRACEE.ptracer = ptracer;
+
+	PTRACER.nb_ptracees++;
+}
+
+/**
+ * Unset @ptracee's tracer, and decrement ptracees counter of this
+ * later.
+ */
+void detach_from_ptracer(Tracee *ptracee)
+{
+	Tracee *ptracer = PTRACEE.ptracer;
+
+	PTRACEE.ptracer = NULL;
+
+	assert(PTRACER.nb_ptracees > 0);
+	PTRACER.nb_ptracees--;
 }
 
 /**
@@ -105,6 +134,10 @@ int translate_ptrace_exit(Tracee *tracee)
 	address = peek_reg(tracee, ORIGINAL, SYSARG_3);
 	data    = peek_reg(tracee, ORIGINAL, SYSARG_4);
 
+	/* Propagate signedness for this special value.  */
+	if (is_32on64_mode(tracee) && pid == 0xFFFFFFFF)
+		pid = (word_t) -1;
+
 	/* The TRACEME request is the only one used by a tracee.  */
 	if (request == PTRACE_TRACEME) {
 		ptracer = tracee->parent;
@@ -116,10 +149,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (PTRACEE.ptracer != NULL || ptracee == ptracer)
 			return -EPERM;
 
-		PTRACEE.ptracer = ptracer;
-		PTRACER.nb_ptracees++;
-
-		add_direct_ptracee(ptracer, ptracee->pid);
+		attach_to_ptracer(ptracee, ptracer);
 
 		/* Detect when the ptracer has gone to wait before the
 		 * ptracee did the ptrace(ATTACHME) request.  */
@@ -157,8 +187,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		if (PTRACEE.ptracer != NULL || ptracee == ptracer)
 			return -EPERM;
 
-		PTRACEE.ptracer = ptracer;
-		PTRACER.nb_ptracees++;
+		attach_to_ptracer(ptracee, ptracer);
 
 		/* The tracee is sent a SIGSTOP, but will not
 		 * necessarily have stopped by the completion of this
@@ -220,9 +249,7 @@ int translate_ptrace_exit(Tracee *tracee)
 		break;  /* Restart the ptracee.  */
 
 	case PTRACE_DETACH:
-		assert(PTRACER.nb_ptracees > 0);
-		PTRACER.nb_ptracees--;
-		PTRACEE.ptracer = NULL;
+		detach_from_ptracer(ptracee);
 		status = 0;
 		break;  /* Restart the ptracee.  */
 
@@ -575,6 +602,37 @@ int translate_ptrace_exit(Tracee *tracee)
 		warned = true;
 		return -ENOTSUP;
 	}
+
+#if defined(ARCH_X86_64)
+	case PTRACE_ARCH_PRCTL:
+		switch (data) {
+		case ARCH_GET_GS:
+		case ARCH_GET_FS:
+			status = ptrace(request, pid, &result, data);
+			if (status < 0)
+				return -errno;
+
+			poke_word(ptracer, address, result);
+			if (errno != 0)
+				return -errno;
+			break;
+
+		case ARCH_SET_GS:
+		case ARCH_SET_FS: {
+			static bool warned = false;
+			if (!warned)
+				note(ptracer, WARNING, INTERNAL,
+					"ptrace request '%s' ARCH_SET_{G,F}S not supported yet",
+					stringify_ptrace(request));
+			return -ENOTSUP;
+		}
+
+		default:
+			return -ENOTSUP;
+		}
+
+		return 0;  /* Don't restart the ptracee.  */
+#endif
 
 	default:
 		note(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
