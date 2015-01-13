@@ -322,7 +322,7 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word
 
 	/* A chunk shall not cross a page boundary.  */
 	if (chunk_size == 0) {
-		chunk_size = sysconf(_SC_PAGESIZE);
+		chunk_size = sysconf(_SC_PAGE_SIZE);
 		chunk_size = (chunk_size > 0 && chunk_size < 1024 ? chunk_size : 1024);
 		chunk_mask = ~(chunk_size - 1);
 	}

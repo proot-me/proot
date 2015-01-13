@@ -30,6 +30,7 @@
 #include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "syscall/sysnum.h"
+#include "execve/execve.h"
 #include "cli/note.h"
 
 #include "compat.h"
@@ -81,6 +82,8 @@ word_t translate_brk_enter(Tracee *tracee)
 	/* Allocate a new mapping for the emulated heap.  */
 	if (tracee->heap->base == 0) {
 		Sysnum sysnum;
+		Mapping *mappings;
+		Mapping *bss;
 
 		/* From PRoot's point-of-view this is the first time this
 		 * tracee calls brk(2), although an address was specified.
@@ -98,6 +101,21 @@ word_t translate_brk_enter(Tracee *tracee)
 			return 0;
 		}
 
+		/* Put the heap as close to the BSS as possible since
+		 * some programs -- like dump-emacs -- assume the gap
+		 * between the end of the BSS and the start of the
+		 * heap is relatively small (ie. < 1MB) even if ALSR
+		 * is enabled.  Note that bss->addr + bss->length is
+		 * naturally aligned on a page boundary according to
+		 * add_mapping() in execve/enter.c, ie. no need to
+		 * align new_brk_address again.  Now, the gap between
+		 * the BSS and the heap is only "heap_offset" bytes
+		 * long.  To emulate ADDR_NO_RANDOMIZE personality,
+		 * this gap should be removed (not yet supported).  */
+		mappings = tracee->load_info->mappings;
+		bss = &mappings[talloc_array_length(mappings) - 1];
+		new_brk_address = bss->addr + bss->length;
+
 		/* I don't understand yet why mmap(2) fails (EFAULT)
 		 * on architectures that also have mmap2(2).  Maybe
 		 * this former implies MAP_FIXED in such cases.  */
@@ -106,7 +124,7 @@ word_t translate_brk_enter(Tracee *tracee)
 			: PR_mmap;
 
 		set_sysnum(tracee, sysnum);
-		poke_reg(tracee, SYSARG_1 /* address */, 0);
+		poke_reg(tracee, SYSARG_1 /* address */, new_brk_address);
 		poke_reg(tracee, SYSARG_2 /* length  */, heap_offset + tracee->heap->prealloc_size);
 		poke_reg(tracee, SYSARG_3 /* prot    */, PROT_READ | PROT_WRITE);
 		poke_reg(tracee, SYSARG_4 /* flags   */, MAP_PRIVATE | MAP_ANONYMOUS);
