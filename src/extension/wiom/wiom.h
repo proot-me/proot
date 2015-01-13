@@ -102,12 +102,12 @@ typedef struct
 typedef struct {
 	Event *history;
 	HashedString *strings;
-
-	/* TODO: coalescing */
-
-	bool open_creates_path;
-
 	Options *options;
+} SharedConfig;
+
+typedef struct {
+	SharedConfig *shared;
+	bool syscall_creates_path;
 } Config;
 
 #endif /* WIO_H */

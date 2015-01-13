@@ -25,7 +25,7 @@
 
 #include "extension/wiom/wiom.h"
 
-extern int record_event(Config *config, pid_t pid, Action action, ...);
-extern void report_events(Config *config);
+extern int record_event(SharedConfig *config, pid_t pid, Action action, ...);
+extern void report_events(SharedConfig *config);
 
 #endif /* WIOM_EVENT_H */

@@ -79,7 +79,7 @@ static int write_string(int fd, const char *value)
  */
 void report_events_binary(int fd, const Event *history)
 {
-	const char *header = "WioM_02";
+	const char *header = "WioM_03";
 	int status;
 	size_t length;
 	size_t i;
@@ -117,7 +117,8 @@ void report_events_binary(int fd, const Event *history)
 				goto error;
 			break;
 
-		case MOVES:
+		case MOVE_CREATES:
+		case MOVE_OVERRIDES:
 			status = write_string(fd, event->load.path);
 			if (status < 0)
 				goto error;
@@ -215,7 +216,7 @@ static int read_string(TALLOC_CTX *context, int fd, char **result)
  * Replay events from @config->options->fd.  This function returns
  * -errno if an error occured, 0 otherwise.
  */
-int replay_events_binary(TALLOC_CTX *context, Config *config)
+int replay_events_binary(TALLOC_CTX *context, SharedConfig *config)
 {
 	const int fd = config->options->input_fd;
 	char *string;
@@ -234,7 +235,7 @@ int replay_events_binary(TALLOC_CTX *context, Config *config)
 	if (status < 0)
 		goto error;
 
-	if (strcmp(string, "WioM_02") != 0) {
+	if (strcmp(string, "WioM_03") != 0) {
 		note(NULL, ERROR, USER, "unknown input file format");
 		return -1;
 	}
@@ -282,7 +283,8 @@ int replay_events_binary(TALLOC_CTX *context, Config *config)
 
 			break;
 
-		case MOVES: {
+		case MOVE_CREATES:
+		case MOVE_OVERRIDES: {
 			char *string2;
 
 			status = read_string(tmp, fd, &string);

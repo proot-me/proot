@@ -76,8 +76,13 @@ void report_events_text(int fd, const Event *history)
 		CASE(EXECUTES)
 #undef CASE
 
-		case MOVES:
-			status = fprintf(file, "%d MOVES %s to %s\n", event->pid,
+		case MOVE_CREATES:
+			status = fprintf(file, "%d MOVE_CREATES %s to %s\n", event->pid,
+					event->load.path, event->load.path2);
+			break;
+
+		case MOVE_OVERRIDES:
+			status = fprintf(file, "%d MOVE_OVERRIDES %s to %s\n", event->pid,
 					event->load.path, event->load.path2);
 			break;
 

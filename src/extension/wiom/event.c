@@ -75,7 +75,7 @@ Coalescing (TODO)
  * @config->history.  This function return NULL if an error occurred,
  * otherwise 0.
  */
-static Event *new_event(Config *config, pid_t pid, Action action)
+static Event *new_event(SharedConfig *config, pid_t pid, Action action)
 {
 	size_t index;
 	Event *event;
@@ -108,7 +108,7 @@ static Event *new_event(Config *config, pid_t pid, Action action)
 /**
  * Return a copy of @original from @config->strings cache.
  */
-static const char *get_string_copy(Config *config, const char *original)
+static const char *get_string_copy(SharedConfig *config, const char *original)
 {
 	HashedString *entry;
 
@@ -133,7 +133,7 @@ static const char *get_string_copy(Config *config, const char *original)
 /**
  * Check whether @path is masked with respect to @config->options.
  */
-static bool is_masked(Config *config, const char *path)
+static bool is_masked(SharedConfig *config, const char *path)
 {
 	bool masked = false;
 	Comparison comparison;
@@ -170,7 +170,7 @@ static bool is_masked(Config *config, const char *path)
  * Record event for given @action performed by @pid.  This function
  * return -errno if an error occurred, otherwise 0.
  */
-int record_event(Config *config, pid_t pid, Action action, ...)
+int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 {
 	const char *path2;
 	const char *path;
@@ -212,7 +212,8 @@ int record_event(Config *config, pid_t pid, Action action, ...)
 
 		break;
 
-	case MOVES:
+	case MOVE_CREATES:
+	case MOVE_OVERRIDES:
 		path  = va_arg(ap, const char *);
 		path2 = va_arg(ap, const char *);
 		if (is_masked(config, path) && is_masked(config, path2))
@@ -282,10 +283,8 @@ end:
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events(Config *config)
+void report_events(SharedConfig *config)
 {
-	Tracee *tracee = TRACEE(talloc_parent(config));
-
 	switch (config->options->output.format) {
 	case BINARY:
 		report_events_binary(config->options->output.fd, config->history);
@@ -300,7 +299,7 @@ void report_events(Config *config)
 	case KCONFIG_PROCESS_TREE:
 	case KCONFIG_FS_DEPENDENCIES:
 	case GMAKE_FS_DEPENDENCIES:
-		note(tracee, ERROR, INTERNAL, "this format is not yet implemented");
+		note(NULL, ERROR, INTERNAL, "this format is not yet implemented");
 		break;
 
 	default:

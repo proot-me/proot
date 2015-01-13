@@ -362,7 +362,7 @@ static int pre_initialize_exe(Tracee *tracee, const Cli *cli,
 	}
 	assert(config != NULL);
 
-	status = replay_events_binary(tracee->ctx, config);
+	status = replay_events_binary(tracee->ctx, config->shared);
 	if (status < 0)
 		return -1;
 
