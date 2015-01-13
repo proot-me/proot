@@ -23,7 +23,7 @@
 #include <unistd.h>	/* getcwd(2), */
 #include <limits.h> 	/* PATH_MAX, */
 #include <sys/queue.h> 	/* SIMPLEQ_*, LIST_*, */
-#include <stdio.h> 	/* strerror(3), */
+#include <stdio.h> 	/* strerror(3), fopen(3), */
 #include <assert.h> 	/* assert(3), */
 #include <string.h> 	/* str*, */
 
@@ -61,13 +61,13 @@ static int handle_option_o(Tracee *tracee, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 
-	if (options->output.fd != -1) {
+	if (options->output.file != NULL) {
 		note(tracee, WARNING, USER, "\"-o %s\" overrides previous choice", value);
-		close(options->output.fd);
+		fclose(options->output.file);
 	}
 
-	options->output.fd = open(value, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-	if (options->output.fd < 0) {
+	options->output.file = fopen(value, "w");
+	if (options->output.file == NULL) {
 		note(tracee, ERROR, SYSTEM, "can't open %s", value);
 		return -1;
 	}
@@ -82,11 +82,11 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 	if (options->output.format != NONE)
 		note(tracee, WARNING, USER, "\"-f %s\" overrides previous choice", value);
 
-	if (strcmp(value, "binary") == 0)
+	if (strcmp(value, "binary") == 0 || strcmp(value, "bin") == 0)
 		options->output.format = BINARY;
 	else if (strcmp(value, "raw") == 0)
 		options->output.format = RAW;
-	else if (strcmp(value, "fs_state") == 0)
+	else if (strcmp(value, "fs_state") == 0 || strcmp(value, "fs-state") == 0)
 		options->output.format = FS_STATE;
 	else {
 		options->output.format = NONE;
@@ -309,14 +309,11 @@ static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	int status;
 
-	if (options->output.format == NONE) {
-		options->output.format = (options->output.fd != -1
-					? BINARY
-					: FS_STATE);
-	}
+	if (options->output.format == NONE)
+		options->output.format = FS_STATE;
 
-	if (options->output.fd == -1)
-		options->output.fd = 1; /* stdout */
+	if (options->output.file == NULL)
+		options->output.file = stdout;
 
 	status = canonicalize_paths(tracee, options->paths.masked);
 	if (status < 0)
@@ -382,7 +379,6 @@ const Cli *get_wiom_cli(TALLOC_CTX *context)
 	if (options == NULL)
 		return NULL;
 	options->input_fd  = -1;
-	options->output.fd = -1;
 	options->actions.filter = ~0UL;
 
 	wiom_cli.private = options;

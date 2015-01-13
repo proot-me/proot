@@ -23,8 +23,10 @@
 #include <assert.h>	/* assert(3), */
 #include <talloc.h>	/* talloc(3), */
 #include <uthash.h>	/* ut*, UT*, HASH*, */
+#include <stdio.h>	/* fprintf(3), */
 
 #include <extension/wiom/wiom.h>
+#include "cli/note.h"
 
 /* Make uthash use talloc.  */
 #undef  uthash_malloc
@@ -33,11 +35,11 @@
 #define uthash_free(pointer, size) TALLOC_FREE(pointer)
 
 typedef enum {
-	UNSEEN = 0,
-	CREATED,
-	DELETED,
-	MODIFIED,
-	USED,
+	STATE_UNSEEN = 0,
+	STATE_CREATED,
+	STATE_DELETED,
+	STATE_MODIFIED,
+	STATE_USED,
 } State;
 
 typedef struct
@@ -58,7 +60,7 @@ static State get_state(const char *path)
 
 	HASH_FIND_STR(fs_state, path, entry);
 	if (entry == NULL)
-		return UNSEEN;
+		return STATE_UNSEEN;
 
 	return entry->state;
 }
@@ -98,19 +100,19 @@ static void handle_action_creates(TALLOC_CTX *context, const char *path)
 	State state = get_state(path);
 
 	switch (state) {
-	case UNSEEN:
-	case USED:
-	case MODIFIED:
-		/* CREATED eclipses USED and MODIFIED.  */
-		set_state(context, path, CREATED);
+	case STATE_UNSEEN:
+	case STATE_USED:
+	case STATE_MODIFIED:
+		/* STATE_CREATED eclipses STATE_USED and STATE_MODIFIED.  */
+		set_state(context, path, STATE_CREATED);
 		break;
 
-	case DELETED:
+	case STATE_DELETED:
 		/* That was a temporary path.  */
-		set_state(context, path, UNSEEN);
+		set_state(context, path, STATE_UNSEEN);
 		break;
 
-	case CREATED:
+	case STATE_CREATED:
 		/* Inconsistency detected.  */
 		assert(0);
 	}
@@ -125,20 +127,20 @@ static void handle_action_deletes(TALLOC_CTX *context, const char *path)
 	State state = get_state(path);
 
 	switch (state) {
-	case UNSEEN:
-		set_state(context, path, DELETED);
+	case STATE_UNSEEN:
+		set_state(context, path, STATE_DELETED);
 		break;
 
-	case CREATED:
+	case STATE_CREATED:
 		/* This path was deleted then created,
 		 * this is equivalent to modify this
 		 * path.  */
-		set_state(context, path, MODIFIED);
+		set_state(context, path, STATE_MODIFIED);
 		break;
 
-	case USED:
-	case MODIFIED:
-	case DELETED:
+	case STATE_USED:
+	case STATE_MODIFIED:
+	case STATE_DELETED:
 		/* Inconsistency detected.  */
 		assert(0);
 	}
@@ -153,18 +155,18 @@ static void handle_action_modifies(TALLOC_CTX *context, const char *path)
 	State state = get_state(path);
 
 	switch (state) {
-	case UNSEEN:
-	case USED:
-		/* MODIFIED eclipses USED.  */
-		set_state(context, path, MODIFIED);
+	case STATE_UNSEEN:
+	case STATE_USED:
+		/* STATE_MODIFIED eclipses STATE_USED.  */
+		set_state(context, path, STATE_MODIFIED);
 		break;
 
-	case MODIFIED:
-	case DELETED:
-		/* MODIFIED and DELETED eclipse MODIFIED.  */
+	case STATE_MODIFIED:
+	case STATE_DELETED:
+		/* STATE_MODIFIED and STATE_DELETED eclipse STATE_MODIFIED.  */
 		break;
 
-	case CREATED:
+	case STATE_CREATED:
 		/* Inconsistency detected.  */
 		assert(0);
 		break;
@@ -181,15 +183,15 @@ static void handle_action_uses(TALLOC_CTX *context, const char *path)
 	State state = get_state(path);
 
 	switch (state) {
-	case UNSEEN:
-	case USED:
-		set_state(context, path, USED);
+	case STATE_UNSEEN:
+	case STATE_USED:
+		set_state(context, path, STATE_USED);
 		break;
 
-	case MODIFIED:
-	case CREATED:
-	case DELETED:
-		/* MODIFIED, CREATED and DELETED eclipse USED.  */
+	case STATE_MODIFIED:
+	case STATE_CREATED:
+	case STATE_DELETED:
+		/* STATE_MODIFIED, STATE_CREATED and STATE_DELETED eclipse STATE_USED.  */
 		break;
 	}
 }
@@ -197,10 +199,10 @@ static void handle_action_uses(TALLOC_CTX *context, const char *path)
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events_fs_state(int fd, const Event *history)
+void report_events_fs_state(FILE *file, const Event *history)
 {
 	HashedPathState *item;
-	void *context;
+	void *context = NULL;
 	size_t length;
 	size_t i;
 
@@ -255,9 +257,11 @@ void report_events_fs_state(int fd, const Event *history)
 	}
 
 	for(item = fs_state; item != NULL; item = item->hh.next) {
+		int status;
+
 		switch (item->state) {
-#define CASE(a) case a:							\
-			fprintf(stderr, "%s: %s\n", item->path, #a);	\
+#define CASE(a) case STATE_ ##a:					\
+			status = fprintf(file, "%s: %s\n", item->path, #a); \
 			break;						\
 
 		CASE(CREATED)
@@ -266,6 +270,12 @@ void report_events_fs_state(int fd, const Event *history)
 		CASE(USED)
 #undef CASE
 		default:
+			status = 0;
+			break;
+		}
+
+		if (status < 0) {
+			note(NULL, ERROR, SYSTEM, "can't write event");
 			break;
 		}
 	}

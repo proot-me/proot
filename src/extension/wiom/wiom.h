@@ -54,7 +54,7 @@ typedef struct {
 	int input_fd;
 
 	struct {
-		int fd;
+		FILE *file;
 		enum {
 			NONE = 0,
 			BINARY,

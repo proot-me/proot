@@ -77,15 +77,22 @@ static int write_string(int fd, const char *value)
 /**
  * Dump @history events into @fd.
  */
-void report_events_binary(int fd, const Event *history)
+void report_events_binary(FILE *file, const Event *history)
 {
 	const char *header = "WioM_03";
 	int status;
 	size_t length;
 	size_t i;
+	int fd;
 
 	if (history == NULL)
 		return;
+
+	fd = fileno(file);
+	if (fd < 0) {
+		status = -errno;
+		goto error;
+	}
 
 	status = write_string(fd, header);
 	if (status < 0)

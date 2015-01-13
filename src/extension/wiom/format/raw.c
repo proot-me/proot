@@ -21,7 +21,6 @@
  */
 
 #include <sched.h>	/* CLONE_THREAD, */
-#include <unistd.h>	/* dup(2), */
 #include <stdio.h>	/* fdopen(3), fprintf(3), */
 #include <assert.h>	/* assert(3), */
 #include <talloc.h>	/* talloc(3), */
@@ -33,30 +32,14 @@
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events_raw(int fd, const Event *history)
+void report_events_raw(FILE *file, const Event *history)
 {
-	int new_fd = -1;
-	FILE *file = NULL;
-
 	size_t length;
 	size_t i;
 	int status;
 
 	if (history == NULL)
 		return;
-
-	/* Duplicate fd because of fclose() at the end.  */
-	new_fd = dup(fd);
-	if (new_fd < 0) {
-		note(NULL, ERROR, SYSTEM, "can't duplicate output file descriptor");
-		return;
-	}
-
-	file = fdopen(new_fd, "w");
-	if (file == NULL) {
-		note(NULL, ERROR, SYSTEM, "can't use output file descriptor");
-		goto end;
-	}
 
 	length = talloc_array_length(history);
 	for (i = 0; i < length; i++) {
@@ -105,13 +88,7 @@ void report_events_raw(int fd, const Event *history)
 
 		if (status < 0) {
 			note(NULL, ERROR, SYSTEM, "can't write event");
-			goto end;
+			break;
 		}
 	}
-
-end:
-	if (file != NULL)
-		fclose(file);
-	else if (new_fd != -1)
-		close(new_fd);
 }

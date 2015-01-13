@@ -289,15 +289,15 @@ void report_events(SharedConfig *config)
 {
 	switch (config->options->output.format) {
 	case BINARY:
-		report_events_binary(config->options->output.fd, config->history);
+		report_events_binary(config->options->output.file, config->history);
 		break;
 
 	case RAW:
-		report_events_raw(config->options->output.fd, config->history);
+		report_events_raw(config->options->output.file, config->history);
 		break;
 
 	case FS_STATE:
-		report_events_fs_state(config->options->output.fd, config->history);
+		report_events_fs_state(config->options->output.file, config->history);
 		break;
 
 	case KCONFIG_FS_USAGE:
@@ -311,6 +311,6 @@ void report_events(SharedConfig *config)
 		assert(0);
 	}
 
-	close(config->options->output.fd);
-	config->options->output.fd = -1;
+	fclose(config->options->output.file);
+	config->options->output.file = NULL;
 }
