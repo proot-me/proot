@@ -30,7 +30,7 @@
 #include "arch.h"
 
 typedef struct item {
-	void *load;
+	void *payload;
 	SIMPLEQ_ENTRY(item) link;
 } Item;
 
@@ -90,7 +90,7 @@ typedef struct {
 			word_t flags;
 		};
 		word_t status;
-	} load;
+	} payload;
 } Event;
 
 typedef struct

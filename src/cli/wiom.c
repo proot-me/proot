@@ -130,8 +130,8 @@ static int add_path(Tracee *tracee, Options *options, const char *path, bool mas
 		return -1;
 	}
 
-	item->load = talloc_strdup(item, path);
-	if (item->load == NULL) {
+	item->payload = talloc_strdup(item, path);
+	if (item->payload == NULL) {
 		note(tracee, ERROR, SYSTEM, "not enough memory");
 		return -1;
 	}
@@ -280,16 +280,16 @@ static int canonicalize_paths(Tracee *tracee, List *list)
 		return 0;
 
 	SIMPLEQ_FOREACH(item, list, link) {
-		status = realpath2(tracee, path, item->load, false);
+		status = realpath2(tracee, path, item->payload, false);
 		if (status < 0) {
 			note(tracee, ERROR, SYSTEM, "can't canonicalize '%s': %s",
-				(char *) item->load, strerror(-status));
+				(char *) item->payload, strerror(-status));
 			return -1;
 		}
 
-		TALLOC_FREE(item->load);
-		item->load = talloc_strdup(item, path);
-		if (item->load == NULL) {
+		TALLOC_FREE(item->payload);
+		item->payload = talloc_strdup(item, path);
+		if (item->payload == NULL) {
 			note(tracee, ERROR, SYSTEM, "not enough memory");
 			return -1;
 		}

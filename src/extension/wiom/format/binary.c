@@ -112,36 +112,36 @@ void report_events_binary(int fd, const Event *history)
 		case GETS_CONTENT_OF:
 		case SETS_CONTENT_OF:
 		case EXECUTES:
-			status = write_string(fd, event->load.path);
+			status = write_string(fd, event->payload.path);
 			if (status < 0)
 				goto error;
 			break;
 
 		case MOVE_CREATES:
 		case MOVE_OVERRIDES:
-			status = write_string(fd, event->load.path);
+			status = write_string(fd, event->payload.path);
 			if (status < 0)
 				goto error;
 
-			status = write_string(fd, event->load.path2);
+			status = write_string(fd, event->payload.path2);
 			if (status < 0)
 				goto error;
 
 			break;
 
 		case CLONED:
-			status = write_uint32(fd, event->load.new_pid);
+			status = write_uint32(fd, event->payload.new_pid);
 			if (status < 0)
 				goto error;
 
-			status = write_uint32(fd, event->load.flags);
+			status = write_uint32(fd, event->payload.flags);
 			if (status < 0)
 				goto error;
 
 			break;
 
 		case EXITED:
-			status = write_uint32(fd, event->load.status);
+			status = write_uint32(fd, event->payload.status);
 			if (status < 0)
 				goto error;
 			break;

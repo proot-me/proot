@@ -143,7 +143,7 @@ static bool is_masked(SharedConfig *config, const char *path)
 		return false;
 
 	SIMPLEQ_FOREACH(item, config->options->paths.masked, link) {
-		comparison = compare_paths(item->load, path);
+		comparison = compare_paths(item->payload, path);
 		if (   comparison == PATHS_ARE_EQUAL
 		    || comparison == PATH1_IS_PREFIX) {
 			masked = true;
@@ -155,7 +155,7 @@ static bool is_masked(SharedConfig *config, const char *path)
 		return masked;
 
 	SIMPLEQ_FOREACH(item, config->options->paths.unmasked, link) {
-		comparison = compare_paths(item->load, path);
+		comparison = compare_paths(item->payload, path);
 		if (   comparison == PATHS_ARE_EQUAL
 		    || comparison == PATH1_IS_PREFIX) {
 			masked = false;
@@ -204,8 +204,8 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 			goto end;
 		}
 
-		event->load.path = get_string_copy(config, path);
-		if (event->load.path == NULL) {
+		event->payload.path = get_string_copy(config, path);
+		if (event->payload.path == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
@@ -225,14 +225,14 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 			goto end;
 		}
 
-		event->load.path = get_string_copy(config, path);
-		if (event->load.path == NULL) {
+		event->payload.path = get_string_copy(config, path);
+		if (event->payload.path == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
 
-		event->load.path2 = get_string_copy(config, path2);
-		if (event->load.path2 == NULL) {
+		event->payload.path2 = get_string_copy(config, path2);
+		if (event->payload.path2 == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
@@ -246,8 +246,8 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 			goto end;
 		}
 
-		event->load.new_pid = va_arg(ap, pid_t);
-		event->load.flags   = va_arg(ap, word_t);
+		event->payload.new_pid = va_arg(ap, pid_t);
+		event->payload.flags   = va_arg(ap, word_t);
 
 		break;
 	}
@@ -259,7 +259,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 			goto end;
 		}
 
-		event->load.status = va_arg(ap, word_t);
+		event->payload.status = va_arg(ap, word_t);
 
 		break;
 	}

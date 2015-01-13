@@ -63,7 +63,7 @@ void report_events_text(int fd, const Event *history)
 		const Event *event = &history[i];
 		switch (event->action) {
 #define CASE(a) case a:							\
-			status = fprintf(file, "%d %s %s\n", event->pid, #a, event->load.path); \
+			status = fprintf(file, "%d %s %s\n", event->pid, #a, event->payload.path); \
 			break;						\
 
 		CASE(TRAVERSES)
@@ -78,24 +78,24 @@ void report_events_text(int fd, const Event *history)
 
 		case MOVE_CREATES:
 			status = fprintf(file, "%d MOVE_CREATES %s to %s\n", event->pid,
-					event->load.path, event->load.path2);
+					event->payload.path, event->payload.path2);
 			break;
 
 		case MOVE_OVERRIDES:
 			status = fprintf(file, "%d MOVE_OVERRIDES %s to %s\n", event->pid,
-					event->load.path, event->load.path2);
+					event->payload.path, event->payload.path2);
 			break;
 
 		case CLONED:
 			status = fprintf(file, "%d CLONED (%s) into %d\n", event->pid,
-					(event->load.flags & CLONE_THREAD) != 0
+					(event->payload.flags & CLONE_THREAD) != 0
 					? "thread" : "process",
-					event->load.new_pid);
+					event->payload.new_pid);
 			break;
 
 		case EXITED:
 			status = fprintf(file, "%d EXITED (status = %ld)\n", event->pid,
-					event->load.status);
+					event->payload.status);
 			break;
 
 		default:
