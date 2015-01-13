@@ -134,7 +134,8 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_brk:
-		status = translate_brk_enter(tracee);
+		translate_brk_enter(tracee);
+		status = 0;
 		break;
 
 	case PR_getcwd:
