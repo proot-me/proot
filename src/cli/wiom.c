@@ -86,6 +86,8 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 		options->output.format = BINARY;
 	else if (strcmp(value, "text") == 0)
 		options->output.format = TEXT;
+	else if (strcmp(value, "sio") == 0)
+		options->output.format = SIO;
 	else {
 		options->output.format = NONE;
 		note(tracee, WARNING, USER, "\"-f %s\" not supported", value);

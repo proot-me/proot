@@ -80,7 +80,8 @@ WIOM_OBJECTS = 				\
 	extension/wiom/wiom.o		\
 	extension/wiom/event.o		\
 	extension/wiom/format/binary.o	\
-	extension/wiom/format/text.o
+	extension/wiom/format/text.o	\
+	extension/wiom/format/sio.o
 
 .DEFAULT_GOAL = proot
 all: proot

@@ -59,7 +59,7 @@ typedef struct {
 			NONE = 0,
 			BINARY,
 			TEXT,
-			TEXT_IO_FILES,			/* (TODO) */
+			SIO,
 			KCONFIG_FS_USAGE,		/* (TODO) */
 			KCONFIG_PROCESS_TREE,		/* (TODO) */
 			KCONFIG_FS_DEPENDENCIES,	/* (TODO) */

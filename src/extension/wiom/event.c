@@ -121,8 +121,10 @@ static const char *get_string_copy(SharedConfig *config, const char *original)
 		return NULL;
 
 	entry->string = talloc_strdup(entry, original);
-	if (entry->string == NULL)
+	if (entry->string == NULL) {
+		TALLOC_FREE(entry);
 		return NULL;
+	}
 
 	HASH_ADD_KEYPTR(hh, config->strings, entry->string,
 			talloc_get_size(entry->string) - 1, entry);
@@ -294,7 +296,10 @@ void report_events(SharedConfig *config)
 		report_events_text(config->options->output.fd, config->history);
 		break;
 
-	case TEXT_IO_FILES:
+	case SIO:
+		report_events_sio(config->options->output.fd, config->history);
+		break;
+
 	case KCONFIG_FS_USAGE:
 	case KCONFIG_PROCESS_TREE:
 	case KCONFIG_FS_DEPENDENCIES:
