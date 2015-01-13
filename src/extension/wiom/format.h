@@ -30,7 +30,7 @@
 extern void report_events_binary(int fd, const Event *history);
 extern int replay_events_binary(TALLOC_CTX *context, SharedConfig *config);
 
-extern void report_events_text(int fd, const Event *history);
-extern void report_events_sio(int fd, const Event *history);
+extern void report_events_raw(int fd, const Event *history);
+extern void report_events_fs_state(int fd, const Event *history);
 
 #endif /* WIOM_FORMAT_H */

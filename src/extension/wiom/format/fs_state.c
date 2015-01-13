@@ -197,7 +197,7 @@ static void handle_action_uses(TALLOC_CTX *context, const char *path)
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events_sio(int fd, const Event *history)
+void report_events_fs_state(int fd, const Event *history)
 {
 	HashedPathState *item;
 	void *context;

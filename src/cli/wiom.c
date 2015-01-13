@@ -84,10 +84,10 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 
 	if (strcmp(value, "binary") == 0)
 		options->output.format = BINARY;
-	else if (strcmp(value, "text") == 0)
-		options->output.format = TEXT;
-	else if (strcmp(value, "sio") == 0)
-		options->output.format = SIO;
+	else if (strcmp(value, "raw") == 0)
+		options->output.format = RAW;
+	else if (strcmp(value, "fs_state") == 0)
+		options->output.format = FS_STATE;
 	else {
 		options->output.format = NONE;
 		note(tracee, WARNING, USER, "\"-f %s\" not supported", value);
@@ -312,7 +312,7 @@ static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 	if (options->output.format == NONE) {
 		options->output.format = (options->output.fd != -1
 					? BINARY
-					: TEXT);
+					: FS_STATE);
 	}
 
 	if (options->output.fd == -1)

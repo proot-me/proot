@@ -33,7 +33,7 @@
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events_text(int fd, const Event *history)
+void report_events_raw(int fd, const Event *history)
 {
 	int new_fd = -1;
 	FILE *file = NULL;

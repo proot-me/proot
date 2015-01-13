@@ -58,8 +58,8 @@ typedef struct {
 		enum {
 			NONE = 0,
 			BINARY,
-			TEXT,
-			SIO,
+			RAW,
+			FS_STATE,
 			KCONFIG_FS_USAGE,		/* (TODO) */
 			KCONFIG_PROCESS_TREE,		/* (TODO) */
 			KCONFIG_FS_DEPENDENCIES,	/* (TODO) */

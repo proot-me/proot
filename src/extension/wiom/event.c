@@ -292,12 +292,12 @@ void report_events(SharedConfig *config)
 		report_events_binary(config->options->output.fd, config->history);
 		break;
 
-	case TEXT:
-		report_events_text(config->options->output.fd, config->history);
+	case RAW:
+		report_events_raw(config->options->output.fd, config->history);
 		break;
 
-	case SIO:
-		report_events_sio(config->options->output.fd, config->history);
+	case FS_STATE:
+		report_events_fs_state(config->options->output.fd, config->history);
 		break;
 
 	case KCONFIG_FS_USAGE:

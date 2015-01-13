@@ -38,13 +38,9 @@ Options
 
     TODO:
 
-    * BINARY,
-    * TEXT,
-    * TEXT_IO_FILES,
-    * KCONFIG_FS_USAGE,
-    * KCONFIG_PROCESS_TREE,
-    * KCONFIG_FS_DEPENDENCIES,
-    * GMAKE_FS_DEPENDENCIES,
+    * "binary",
+    * "raw",
+    * "fs-state",
 
 -p string, --predefined-profile=string
     TODO
