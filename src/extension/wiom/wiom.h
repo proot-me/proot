@@ -25,7 +25,7 @@
 
 #include <stdbool.h>	/* bool, */
 #include <uthash.h>	/* ut_hash_handle, */
-#include <sys/queue.h>	/* SIMPLEQ, */
+#include <sys/queue.h>	/* SIMPLEQ, CIRCLEQ */
 
 #include "arch.h"
 
@@ -40,9 +40,8 @@ typedef struct {
 	struct {
 		unsigned long filter;
 
-		bool success;
-		bool failure;
-
+		bool success;		/* (TODO) */
+		bool failure;		/* (TODO) */
 		bool is_coalesced;	/* (TODO) */
 	} actions;
 
@@ -77,7 +76,7 @@ typedef enum {
 #define GET_ACTION_BIT(options, action) ((1 << (action)) & (options)->actions.filter)
 #define SET_ACTION_BIT(options, action) ((options)->actions.filter |= (1 << (action)))
 
-typedef struct {
+typedef struct event {
 	pid_t pid;
 	Action action;
 	union {
@@ -91,6 +90,7 @@ typedef struct {
 		};
 		word_t status;
 	} payload;
+	CIRCLEQ_ENTRY(event) link;
 } Event;
 
 typedef struct
@@ -99,8 +99,10 @@ typedef struct
 	char *string;
 } HashedString;
 
+typedef CIRCLEQ_HEAD(history, event) History;
+
 typedef struct {
-	Event *history;
+	History history;
 	HashedString *strings;
 	Options *options;
 } SharedConfig;

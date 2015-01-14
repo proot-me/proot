@@ -24,26 +24,23 @@
 #include <stdio.h>	/* fdopen(3), fprintf(3), */
 #include <assert.h>	/* assert(3), */
 #include <talloc.h>	/* talloc(3), */
+#include <sys/queue.h>	/* CIRCLEQ*, */
 
 #include "extension/wiom/wiom.h"
 #include "extension/wiom/format.h"
 #include "cli/note.h"
 
 /**
- * Report all events that were stored in @config->history.
+ * Report all events that were stored in @history.
  */
-void report_events_raw(FILE *file, const Event *history)
+void report_events_raw(FILE *file, const History *history)
 {
-	size_t length;
-	size_t i;
+	const Event *event;
 	int status;
 
-	if (history == NULL)
-		return;
+	assert(history != NULL);
 
-	length = talloc_array_length(history);
-	for (i = 0; i < length; i++) {
-		const Event *event = &history[i];
+	CIRCLEQ_FOREACH(event, history, link) {
 		switch (event->action) {
 #define CASE(a) case a:							\
 			status = fprintf(file, "%d %s %s\n", event->pid, #a, event->payload.path); \

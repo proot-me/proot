@@ -611,6 +611,8 @@ int wiom_callback(Extension *extension, ExtensionEvent event, intptr_t data1, in
 		if (config->shared == NULL)
 			return -1;
 
+		CIRCLEQ_INIT(&config->shared->history);
+
 		config->shared->options = (Options *) data1;
 		talloc_steal(config->shared, config->shared->options);
 

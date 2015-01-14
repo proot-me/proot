@@ -28,7 +28,7 @@
 #include <unistd.h>	/* close(2), */
 #include <talloc.h>	/* talloc(3), */
 #include <uthash.h>	/* UT*, */
-#include <sys/queue.h>	/* SIMPLEQ, */
+#include <sys/queue.h>	/* SIMPLEQ, CIRCLEQ */
 
 #include "extension/wiom/event.h"
 #include "extension/wiom/wiom.h"
@@ -77,30 +77,16 @@ Coalescing (TODO)
  */
 static Event *new_event(SharedConfig *config, pid_t pid, Action action)
 {
-	size_t index;
 	Event *event;
-	void *tmp;
 
-	if (config->history == NULL) {
-		index = 0;
-
-		config->history = talloc_array(config, Event, 1);
-		if (config->history == NULL)
-			return NULL;
-	}
-	else {
-		index = talloc_array_length(config->history);
-
-		tmp = talloc_realloc(NULL, config->history, Event, index + 1);
-		if (tmp == NULL)
-			return NULL;
-		config->history = tmp;
-	}
-
-	event = &config->history[index];
+	event = talloc(config, Event);
+	if (event == NULL)
+		return NULL;
 
 	event->pid = pid;
 	event->action = action;
+
+	CIRCLEQ_INSERT_TAIL(&config->history, event, link);
 
 	return event;
 }
@@ -289,15 +275,15 @@ void report_events(SharedConfig *config)
 {
 	switch (config->options->output.format) {
 	case BINARY:
-		report_events_binary(config->options->output.file, config->history);
+		report_events_binary(config->options->output.file, &config->history);
 		break;
 
 	case RAW:
-		report_events_raw(config->options->output.file, config->history);
+		report_events_raw(config->options->output.file, &config->history);
 		break;
 
 	case FS_STATE:
-		report_events_fs_state(config->options->output.file, config->history);
+		report_events_fs_state(config->options->output.file, &config->history);
 		break;
 
 	case KCONFIG_FS_USAGE:

@@ -26,6 +26,7 @@
 #include <errno.h>	/* errno(3), E*, */
 #include <assert.h>	/* assert(3), */
 #include <talloc.h>	/* talloc(3), */
+#include <sys/queue.h>	/* CIRCLEQ*, */
 
 #include "extension/wiom/wiom.h"
 #include "extension/wiom/format.h"
@@ -77,16 +78,14 @@ static int write_string(int fd, const char *value)
 /**
  * Dump @history events into @fd.
  */
-void report_events_binary(FILE *file, const Event *history)
+void report_events_binary(FILE *file, const History *history)
 {
 	const char *header = "WioM_03";
+	const Event *event;
 	int status;
-	size_t length;
-	size_t i;
 	int fd;
 
-	if (history == NULL)
-		return;
+	assert(history != NULL);
 
 	fd = fileno(file);
 	if (fd < 0) {
@@ -98,10 +97,7 @@ void report_events_binary(FILE *file, const Event *history)
 	if (status < 0)
 		goto error;
 
-	length = talloc_array_length(history);
-	for (i = 0; i < length; i++) {
-		const Event *event = &history[i];
-
+	CIRCLEQ_FOREACH(event, history, link) {
 		status = write_uint32(fd, event->pid);
 		if (status < 0)
 			goto error;
