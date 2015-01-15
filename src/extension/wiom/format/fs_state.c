@@ -24,7 +24,6 @@
 #include <talloc.h>	/* talloc(3), */
 #include <uthash.h>	/* ut*, UT*, HASH*, */
 #include <stdio.h>	/* fprintf(3), */
-#include <sys/queue.h>	/* CIRCLEQ*, */
 
 #include <extension/wiom/wiom.h>
 #include "cli/note.h"
@@ -205,22 +204,28 @@ static void handle_action_uses(FileSystemState *fs_state, const char *path)
 }
 
 /**
- * Report all events that were stored in @history.
+ * Report all events that were stored in @config->history.
  */
-void report_events_fs_state(FILE *file, const History *history)
+void report_events_fs_state(FILE *file, const Event *history)
 {
 	FileSystemState *fs_state;
 	HashedPathState *item;
 	const Event *event;
+	size_t length;
+	size_t i;
 
-	assert(history != NULL);
+	if (history == NULL)
+		return;
 
 	fs_state = talloc_zero(NULL, FileSystemState);
 	if (fs_state == NULL)
 		return;
 
 	/* Parse events backward, like for live range analysis.  */
-	CIRCLEQ_FOREACH_REVERSE(event, history, link) {
+	length = talloc_array_length(history);
+	for (i = length - 1; i > 0; i--) {
+		const Event *event = &history[i];
+
 		switch (event->action) {
 		case CREATES:
 			handle_action_creates(fs_state, event->payload.path);

@@ -27,10 +27,10 @@
 
 #include "extension/wiom/wiom.h"
 
-extern void report_events_dump(FILE *file, const History *history);
+extern void report_events_dump(FILE *file, const Event *history);
 extern int replay_events_dump(TALLOC_CTX *context, SharedConfig *config);
 
-extern void report_events_trace(FILE *file, const History *history);
-extern void report_events_fs_state(FILE *file, const History *history);
+extern void report_events_trace(FILE *file, const Event *history);
+extern void report_events_fs_state(FILE *file, const Event *history);
 
 #endif /* WIOM_FORMAT_H */
