@@ -53,8 +53,8 @@ typedef struct {
 
 /* CARE internal configuration.  */
 typedef struct {
-	struct Entry *entries;
-	struct Entry *dentries;
+	struct HashedString *entries;
+	struct HashedString *dentries;
 
 	char *const *command;
 	List *volatile_paths;

@@ -29,12 +29,6 @@
 #include <extension/wiom/wiom.h>
 #include "cli/note.h"
 
-/* Make uthash use talloc.  */
-#undef  uthash_malloc
-#undef  uthash_free
-#define uthash_malloc(size) talloc_size(context, size)
-#define uthash_free(pointer, size) TALLOC_FREE(pointer)
-
 typedef enum {
 	STATE_UNSEEN = 0,
 	STATE_CREATED,
@@ -50,16 +44,18 @@ typedef struct
 	State state;
 } HashedPathState;
 
-HashedPathState *fs_state = NULL;
+typedef struct {
+	HashedPathState *entries;
+} FileSystemState;
 
 /**
  * Return state of the given @path.
  */
-static State get_state(const char *path)
+static State get_state(FileSystemState *fs_state, const char *path)
 {
 	HashedPathState *entry;
 
-	HASH_FIND_STR(fs_state, path, entry);
+	HASH_FIND_STR(fs_state->entries, path, entry);
 	if (entry == NULL)
 		return STATE_UNSEEN;
 
@@ -67,17 +63,28 @@ static State get_state(const char *path)
 }
 
 /**
+ * Free the memory internally used by uthash.  This is a Talloc
+ * destructor.
+ */
+static void remove_from_hash(HashedPathState *entry)
+{
+	FileSystemState *fs_state = talloc_get_type_abort(talloc_parent(entry), FileSystemState);
+	HASH_DEL(fs_state->entries, entry);
+}
+
+/**
  * Set @path's state to @state.
  */
-static void set_state(TALLOC_CTX *context, const char *path, State state)
+static void set_state(FileSystemState *fs_state, const char *path, State state)
 {
 	HashedPathState *entry;
 
-	HASH_FIND_STR(fs_state, path, entry);
+	HASH_FIND_STR(fs_state->entries, path, entry);
 	if (entry == NULL) {
-		entry = talloc(context, HashedPathState);
+		entry = talloc_zero(fs_state, HashedPathState);
 		if (entry == NULL)
 			return;
+		talloc_set_destructor(entry, remove_from_hash);
 
 		entry->path = talloc_strdup(entry, path);
 		if (entry->path == NULL) {
@@ -85,7 +92,7 @@ static void set_state(TALLOC_CTX *context, const char *path, State state)
 			return;
 		}
 
-		HASH_ADD_KEYPTR(hh, fs_state, entry->path,
+		HASH_ADD_KEYPTR(hh, fs_state->entries, entry->path,
 				talloc_get_size(entry->path) - 1, entry);
 	}
 
@@ -96,21 +103,21 @@ static void set_state(TALLOC_CTX *context, const char *path, State state)
  * A "creates" action happens to @path, change its state with respect
  * to its current state.
  */
-static void handle_action_creates(TALLOC_CTX *context, const char *path)
+static void handle_action_creates(FileSystemState *fs_state, const char *path)
 {
-	State state = get_state(path);
+	State state = get_state(fs_state, path);
 
 	switch (state) {
 	case STATE_UNSEEN:
 	case STATE_USED:
 	case STATE_MODIFIED:
 		/* STATE_CREATED eclipses STATE_USED and STATE_MODIFIED.  */
-		set_state(context, path, STATE_CREATED);
+		set_state(fs_state, path, STATE_CREATED);
 		break;
 
 	case STATE_DELETED:
 		/* That was a temporary path.  */
-		set_state(context, path, STATE_UNSEEN);
+		set_state(fs_state, path, STATE_UNSEEN);
 		break;
 
 	case STATE_CREATED:
@@ -123,20 +130,20 @@ static void handle_action_creates(TALLOC_CTX *context, const char *path)
  * A "deletes" action happens to @path, change its state with respect
  * to its current state.
  */
-static void handle_action_deletes(TALLOC_CTX *context, const char *path)
+static void handle_action_deletes(FileSystemState *fs_state, const char *path)
 {
-	State state = get_state(path);
+	State state = get_state(fs_state, path);
 
 	switch (state) {
 	case STATE_UNSEEN:
-		set_state(context, path, STATE_DELETED);
+		set_state(fs_state, path, STATE_DELETED);
 		break;
 
 	case STATE_CREATED:
 		/* This path was deleted then created,
 		 * this is equivalent to modify this
 		 * path.  */
-		set_state(context, path, STATE_MODIFIED);
+		set_state(fs_state, path, STATE_MODIFIED);
 		break;
 
 	case STATE_USED:
@@ -151,15 +158,15 @@ static void handle_action_deletes(TALLOC_CTX *context, const char *path)
  * A "modifies" action happens to @path, change its state with respect
  * to its current state.
  */
-static void handle_action_modifies(TALLOC_CTX *context, const char *path)
+static void handle_action_modifies(FileSystemState *fs_state, const char *path)
 {
-	State state = get_state(path);
+	State state = get_state(fs_state, path);
 
 	switch (state) {
 	case STATE_UNSEEN:
 	case STATE_USED:
 		/* STATE_MODIFIED eclipses STATE_USED.  */
-		set_state(context, path, STATE_MODIFIED);
+		set_state(fs_state, path, STATE_MODIFIED);
 		break;
 
 	case STATE_MODIFIED:
@@ -179,14 +186,14 @@ static void handle_action_modifies(TALLOC_CTX *context, const char *path)
  * A "uses" action happens to @path, change its state with respect to
  * its current state.
  */
-static void handle_action_uses(TALLOC_CTX *context, const char *path)
+static void handle_action_uses(FileSystemState *fs_state, const char *path)
 {
-	State state = get_state(path);
+	State state = get_state(fs_state, path);
 
 	switch (state) {
 	case STATE_UNSEEN:
 	case STATE_USED:
-		set_state(context, path, STATE_USED);
+		set_state(fs_state, path, STATE_USED);
 		break;
 
 	case STATE_MODIFIED:
@@ -202,29 +209,29 @@ static void handle_action_uses(TALLOC_CTX *context, const char *path)
  */
 void report_events_fs_state(FILE *file, const History *history)
 {
+	FileSystemState *fs_state;
 	HashedPathState *item;
 	const Event *event;
-	void *context;
 
 	assert(history != NULL);
 
-	context = talloc_new(NULL);
-	if (context == NULL)
+	fs_state = talloc_zero(NULL, FileSystemState);
+	if (fs_state == NULL)
 		return;
 
 	/* Parse events backward, like for live range analysis.  */
 	CIRCLEQ_FOREACH_REVERSE(event, history, link) {
 		switch (event->action) {
 		case CREATES:
-			handle_action_creates(context, event->payload.path);
+			handle_action_creates(fs_state, event->payload.path);
 			break;
 
 		case DELETES:
-			handle_action_deletes(context, event->payload.path);
+			handle_action_deletes(fs_state, event->payload.path);
 			break;
 
 		case SETS_CONTENT_OF:
-			handle_action_modifies(context, event->payload.path);
+			handle_action_modifies(fs_state, event->payload.path);
 			break;
 
 		case GETS_METADATA_OF:
@@ -232,17 +239,17 @@ void report_events_fs_state(FILE *file, const History *history)
 		case GETS_CONTENT_OF:
 		case TRAVERSES:
 		case EXECUTES:
-			handle_action_uses(context, event->payload.path);
+			handle_action_uses(fs_state, event->payload.path);
 			break;
 
 		case MOVE_CREATES:
-			handle_action_deletes(context, event->payload.path);
-			handle_action_creates(context, event->payload.path2);
+			handle_action_deletes(fs_state, event->payload.path);
+			handle_action_creates(fs_state, event->payload.path2);
 			break;
 
 		case MOVE_OVERRIDES:
-			handle_action_deletes(context, event->payload.path);
-			handle_action_modifies(context, event->payload.path2);
+			handle_action_deletes(fs_state, event->payload.path);
+			handle_action_modifies(fs_state, event->payload.path2);
 			break;
 
 		case CLONED:
@@ -252,7 +259,7 @@ void report_events_fs_state(FILE *file, const History *history)
 		}
 	}
 
-	for(item = fs_state; item != NULL; item = item->hh.next) {
+	for(item = fs_state->entries; item != NULL; item = item->hh.next) {
 		int status;
 
 		switch (item->state) {
@@ -276,6 +283,6 @@ void report_events_fs_state(FILE *file, const History *history)
 		}
 	}
 
-	TALLOC_FREE(context);
+	TALLOC_FREE(fs_state);
 	return;
 }

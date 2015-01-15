@@ -116,7 +116,7 @@ static int add_path(Tracee *tracee, Options *options, const char *path, bool mas
 		: options->paths.unmasked);
 
 	if (list == NULL) {
-		list = talloc(options, List);
+		list = talloc_zero(options, List);
 		if (list == NULL) {
 			note(tracee, ERROR, SYSTEM, "not enough memory");
 			return -1;
@@ -130,7 +130,7 @@ static int add_path(Tracee *tracee, Options *options, const char *path, bool mas
 			options->paths.unmasked = list;
 	}
 
-	item = talloc(list, Item);
+	item = talloc_zero(list, Item);
 	if (item == NULL) {
 		note(tracee, ERROR, SYSTEM, "not enough memory");
 		return -1;

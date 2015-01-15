@@ -46,17 +46,11 @@
 #include "path/binding.h"
 #include "cli/note.h"
 
-/* Make uthash use talloc.  */
-#undef  uthash_malloc
-#undef  uthash_free
-#define uthash_malloc(size) talloc_size(care, size)
-#define uthash_free(pointer, size) TALLOC_FREE(pointer)
-
 /* Hash entry.  */
-typedef struct Entry {
+typedef struct HashedString {
 	UT_hash_handle hh;
 	char *path;
-} Entry;
+} HashedString;
 
 /**
  * Add a copy of @value at the end if the given @list.  All the newly
@@ -274,15 +268,35 @@ static void register_concealed_access(const Tracee *tracee, Care *care, const ch
 }
 
 /**
+ * Free the memory internally used by uthash.  This is a Talloc
+ * destructor.
+ */
+static void remove_from_hash_dentries(HashedString *entry)
+{
+	Care *care = talloc_get_type_abort(talloc_parent(entry), Care);
+	HASH_DEL(care->dentries, entry);
+}
+
+/**
+ * Free the memory internally used by uthash.  This is a Talloc
+ * destructor.
+ */
+static void remove_from_hash_entries(HashedString *entry)
+{
+	Care *care = talloc_get_type_abort(talloc_parent(entry), Care);
+	HASH_DEL(care->entries, entry);
+}
+
+/**
  * Archive @path if needed.
  */
 static void handle_host_path(Extension *extension, const char *path)
 {
+	HashedString *entry;
 	struct stat statl;
 	bool as_dentries;
 	char *location;
 	Tracee *tracee;
-	Entry *entry;
 	Care *care;
 	int status;
 
@@ -315,7 +329,7 @@ static void handle_host_path(Extension *extension, const char *path)
 		break;
 	}
 
-	entry = talloc_zero(care, Entry);
+	entry = talloc_zero(care, HashedString);
 	if (entry == NULL) {
 		note(tracee, WARNING, INTERNAL, "can't allocate entry for '%s'", path);
 		return;
@@ -328,10 +342,14 @@ static void handle_host_path(Extension *extension, const char *path)
 	}
 
 	/* Remember this new entry.  */
-	if (as_dentries)
+	if (as_dentries) {
 		HASH_ADD_KEYPTR(hh, care->dentries, entry->path, strlen(entry->path), entry);
-	else
+		talloc_set_destructor(entry, remove_from_hash_dentries);
+	}
+	else {
 		HASH_ADD_KEYPTR(hh, care->entries, entry->path, strlen(entry->path), entry);
+		talloc_set_destructor(entry, remove_from_hash_entries);
+	}
 
 	/* Don't use faccessat(2) here since it would require Linux >=
 	 * 2.6.16 and Glibc >= 2.4, whereas CARE is supposed to work

@@ -781,11 +781,11 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		if (errno != 0)
 			gid = getgid();
 
-		extension->config = talloc(extension, Config);
+		extension->config = talloc_zero(extension, Config);
 		if (extension->config == NULL)
 			return -1;
 
-		config = talloc_get_type_abort(extension->config, Config);
+		config = extension->config;
 		config->ruid  = uid;
 		config->euid  = uid;
 		config->suid  = uid;

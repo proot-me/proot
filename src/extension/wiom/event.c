@@ -92,6 +92,16 @@ static Event *new_event(SharedConfig *config, pid_t pid, Action action)
 }
 
 /**
+ * Free the memory internally used by uthash.  This is a Talloc
+ * destructor.
+ */
+static void remove_from_hash(HashedString *entry)
+{
+	SharedConfig *config = talloc_get_type_abort(talloc_parent(entry), SharedConfig);
+	HASH_DEL(config->strings, entry);
+}
+
+/**
  * Return a copy of @original from @config->strings cache.
  */
 static const char *get_string_copy(SharedConfig *config, const char *original)
@@ -105,6 +115,7 @@ static const char *get_string_copy(SharedConfig *config, const char *original)
 	entry = talloc(config, HashedString);
 	if (entry == NULL)
 		return NULL;
+	talloc_set_destructor(entry, remove_from_hash);
 
 	entry->string = talloc_strdup(entry, original);
 	if (entry->string == NULL) {
