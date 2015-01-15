@@ -39,10 +39,8 @@ typedef SIMPLEQ_HEAD(list, item) List;
 typedef struct {
 	struct {
 		unsigned long filter;
-
-		bool success;		/* (TODO) */
-		bool failure;		/* (TODO) */
-		bool is_coalesced;	/* (TODO) */
+		bool success;	/* (TODO) */
+		bool failure;	/* (TODO) */
 	} actions;
 
 	struct {
@@ -56,8 +54,8 @@ typedef struct {
 		FILE *file;
 		enum {
 			NONE = 0,
-			BINARY,
-			RAW,
+			DUMP,
+			TRACE,
 			FS_STATE,
 			KCONFIG_FS_USAGE,		/* (TODO) */
 			KCONFIG_PROCESS_TREE,		/* (TODO) */
@@ -75,6 +73,7 @@ typedef enum {
 
 #define GET_ACTION_BIT(options, action) ((1 << (action)) & (options)->actions.filter)
 #define SET_ACTION_BIT(options, action) ((options)->actions.filter |= (1 << (action)))
+#define UNSET_ACTION_BIT(options, action) ((options)->actions.filter &= ~(1 << (action)))
 
 typedef struct event {
 	pid_t pid;

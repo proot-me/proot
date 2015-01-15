@@ -51,24 +51,10 @@ Options
 -M path, --unmask-path=path
     TODO
 
--a string, --filter-actions=string
+-a string, --remember-actions=string
     TODO
 
-    TODO:
-
-    * TRAVERSES
-    * CREATES
-    * DELETES
-    * GETS_METADATA_OF
-    * SETS_METADATA_OF
-    * GETS_CONTENT_OF
-    * SETS_CONTENT_OF
-    * EXECUTES
-    * MOVES
-    * CLONED
-    * EXITED
-
--c, --coalesce-actions
+-A string, --forget-actions=string
     TODO
 
 -v value, --verbose=value

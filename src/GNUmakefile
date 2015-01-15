@@ -79,8 +79,8 @@ WIOM_OBJECTS = 				\
 	cli/wiom.o			\
 	extension/wiom/wiom.o		\
 	extension/wiom/event.o		\
-	extension/wiom/format/binary.o	\
-	extension/wiom/format/raw.o	\
+	extension/wiom/format/dump.o	\
+	extension/wiom/format/trace.o	\
 	extension/wiom/format/fs_state.o
 
 .DEFAULT_GOAL = proot

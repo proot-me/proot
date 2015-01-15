@@ -33,7 +33,7 @@
 /**
  * Report all events that were stored in @history.
  */
-void report_events_raw(FILE *file, const History *history)
+void report_events_trace(FILE *file, const History *history)
 {
 	const Event *event;
 	int status;

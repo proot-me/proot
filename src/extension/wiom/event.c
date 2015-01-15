@@ -274,12 +274,12 @@ end:
 void report_events(SharedConfig *config)
 {
 	switch (config->options->output.format) {
-	case BINARY:
-		report_events_binary(config->options->output.file, &config->history);
+	case DUMP:
+		report_events_dump(config->options->output.file, &config->history);
 		break;
 
-	case RAW:
-		report_events_raw(config->options->output.file, &config->history);
+	case TRACE:
+		report_events_trace(config->options->output.file, &config->history);
 		break;
 
 	case FS_STATE:

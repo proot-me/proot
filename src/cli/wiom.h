@@ -16,7 +16,7 @@ static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_M(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value);
-static int handle_option_c(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_A(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
@@ -32,10 +32,10 @@ static Cli wiom_cli = {
 	.synopsis = "wiom [option] ... [command]",
 	.colophon = "Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	.logo = "\
-____ ___ __ ____\n\
-\\   \\   \\  (____)_____\n\
- \\         |    /  _  \\\n\
-  \\___\\___/|____\\_____/",
+    ____ ___ ___ ____       ____ ____\n\
+    \\   \\   \\   (____)_____|    \\    \\\n\
+     \\          |    /  _  \\          \\\n\
+      \\____\\____|____\\_____/___\\___\\___\\",
 
 	.pre_initialize_bindings  = pre_initialize_bindings,
 	.post_initialize_bindings = post_initialize_bindings,
@@ -99,7 +99,7 @@ ____ ___ __ ____\n\
 	{ .class = "Options",
 	  .arguments = {
 		{ .name = "-a", .separator = ' ', .value = "string" },
-		{ .name = "--filter-actions", .separator = '=', .value = "string" },
+		{ .name = "--remember-actions", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_a,
 	  .description = "TODO",
@@ -107,10 +107,10 @@ ____ ___ __ ____\n\
 	},
 	{ .class = "Options",
 	  .arguments = {
-		{ .name = "-c", .separator = '\0', .value = NULL },
-		{ .name = "--coalesce-events", .separator = '\0', .value = NULL },
+		{ .name = "-A", .separator = ' ', .value = "string" },
+		{ .name = "--forget-actions", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_c,
+	  .handler = handle_option_A,
 	  .description = "TODO",
 	  .detail = "",
 	},

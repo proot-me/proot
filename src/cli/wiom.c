@@ -82,11 +82,15 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 	if (options->output.format != NONE)
 		note(tracee, WARNING, USER, "\"-f %s\" overrides previous choice", value);
 
-	if (strcmp(value, "binary") == 0 || strcmp(value, "bin") == 0)
-		options->output.format = BINARY;
-	else if (strcmp(value, "raw") == 0)
-		options->output.format = RAW;
-	else if (strcmp(value, "fs_state") == 0 || strcmp(value, "fs-state") == 0)
+	if (   strcmp(value, "binary") == 0
+	    || strcmp(value, "bin") == 0
+	    || strcmp(value, "raw") == 0
+	    || strcmp(value, "dump") == 0)
+		options->output.format = DUMP;
+	else if (strcmp(value, "trace") == 0)
+		options->output.format = TRACE;
+	else if (  strcmp(value, "fs_state") == 0
+		|| strcmp(value, "fs-state") == 0)
 		options->output.format = FS_STATE;
 	else {
 		options->output.format = NONE;
@@ -153,11 +157,8 @@ static int handle_option_M(Tracee *tracee, const Cli *cli, const char *value)
 	return add_path(tracee, talloc_get_type_abort(cli->private, Options), value, false);
 }
 
-static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value)
+static int handle_filter_actions(const Tracee *tracee, Options *options, const char *cursor, bool set)
 {
-	Options *options = talloc_get_type_abort(cli->private, Options);
-	const char *cursor;
-
 	#define ACTION(name) #name,
 	static const char *known_actions[] = {
 		#include "extension/wiom/actions.list"
@@ -165,9 +166,6 @@ static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value)
 	};
 	#undef ACTION
 
-	options->actions.filter = 0;
-
-	cursor = value;
 	while (1) {
 		const char *old_cursor = cursor;
 		size_t size;
@@ -181,13 +179,11 @@ static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value)
 			if (strncasecmp(known_actions[i], old_cursor, size) != 0)
 				continue;
 
-			if (GET_ACTION_BIT(options, i) != 0)
-				note(tracee, WARNING, USER,
-					"action '%s' already set", known_actions[i]);
+			if (set)
+				SET_ACTION_BIT(options, i);
+			else
+				UNSET_ACTION_BIT(options, i);
 
-			SET_ACTION_BIT(options, i);
-
-			puts(known_actions[i]);
 			known = true;
 		}
 
@@ -208,10 +204,19 @@ static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value)
 	return 0;
 }
 
-static int handle_option_c(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value)
 {
-	note(tracee, ERROR, INTERNAL, "-c option not yet implemented");
-	return -1;
+	Options *options = talloc_get_type_abort(cli->private, Options);
+
+	options->actions.filter = 0;
+	return handle_filter_actions(tracee, options, value, true);
+}
+
+static int handle_option_A(Tracee *tracee, const Cli *cli, const char *value)
+{
+	Options *options = talloc_get_type_abort(cli->private, Options);
+
+	return handle_filter_actions(tracee, options, value, false);
 }
 
 static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *value)
@@ -361,7 +366,7 @@ static int pre_initialize_exe(Tracee *tracee, const Cli *cli,
 	}
 	assert(config != NULL);
 
-	status = replay_events_binary(tracee->ctx, config->shared);
+	status = replay_events_dump(tracee->ctx, config->shared);
 	if (status < 0)
 		return -1;
 

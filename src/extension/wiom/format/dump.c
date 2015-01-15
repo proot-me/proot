@@ -78,7 +78,7 @@ static int write_string(int fd, const char *value)
 /**
  * Dump @history events into @fd.
  */
-void report_events_binary(FILE *file, const History *history)
+void report_events_dump(FILE *file, const History *history)
 {
 	const char *header = "WioM_03";
 	const Event *event;
@@ -219,7 +219,7 @@ static int read_string(TALLOC_CTX *context, int fd, char **result)
  * Replay events from @config->options->fd.  This function returns
  * -errno if an error occured, 0 otherwise.
  */
-int replay_events_binary(TALLOC_CTX *context, SharedConfig *config)
+int replay_events_dump(TALLOC_CTX *context, SharedConfig *config)
 {
 	const int fd = config->options->input_fd;
 	char *string;
