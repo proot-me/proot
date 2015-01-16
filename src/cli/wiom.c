@@ -93,8 +93,8 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 		|| strcmp(value, "fs-state") == 0)
 		options->output.format = FS_STATE;
 	else {
-		options->output.format = NONE;
-		note(tracee, WARNING, USER, "\"-f %s\" not supported", value);
+		note(tracee, ERROR, USER, "format '%s' unknown", value);
+		return -1;
 	}
 
 	return 0;

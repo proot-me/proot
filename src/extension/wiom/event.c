@@ -77,27 +77,49 @@ Coalescing (TODO)
  */
 static Event *new_event(SharedConfig *config, pid_t pid, Action action)
 {
-	size_t index;
+	size_t length1;
+	size_t length2;
 	Event *event;
 	void *tmp;
 
 	if (config->history == NULL) {
-		index = 0;
-
-		config->history = talloc_array(config, Event, 1);
+		config->history = talloc_array(config, Event *, 1);
 		if (config->history == NULL)
 			return NULL;
+
+		config->history[0] = talloc_array(config->history, Event, 1);
+		if (config->history[0] == NULL)
+			return NULL;
+
+		length1 = 1;
+		length2 = 1;
 	}
 	else {
-		index = talloc_array_length(config->history);
+		length1 = talloc_array_length(config->history);
+		length2 = talloc_array_length(config->history[length1 - 1]);
 
-		tmp = talloc_realloc(NULL, config->history, Event, index + 1);
-		if (tmp == NULL)
-			return NULL;
-		config->history = tmp;
+		tmp = talloc_realloc(NULL, config->history[length1 - 1], Event, length2 + 1);
+		if (tmp == NULL) {
+			/* The current array can't grow, let's create a new one.  */
+			tmp = talloc_realloc(NULL, config->history, Event *, length1 + 1);
+			if (tmp == NULL)
+				return NULL;
+			config->history = tmp;
+			length1++;
+
+			config->history[length1 - 1] = talloc_array(config->history, Event, 1);
+			if (config->history[length1 - 1] == NULL)
+				return NULL;
+
+			length2 = 1;
+		}
+		else {
+			config->history[length1 - 1] = tmp;
+			length2++;
+		}
 	}
 
-	event = &config->history[index];
+	event = &config->history[length1 - 1][length2 - 1];
 
 	event->pid = pid;
 	event->action = action;

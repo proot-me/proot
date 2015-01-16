@@ -6,7 +6,7 @@
 #include "cli/cli.h"
 
 #ifndef VERSION
-#define VERSION "0.0.1"
+#define VERSION "0.0.2"
 #endif
 
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
@@ -81,7 +81,7 @@ static Cli wiom_cli = {
 	{ .class = "Options",
 	  .arguments = {
 		{ .name = "-m", .separator = ' ', .value = "path" },
-		{ .name = "--masked-path", .separator = '=', .value = "path" },
+		{ .name = "--mask-path", .separator = '=', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_m,
 	  .description = "TODO",
@@ -90,7 +90,7 @@ static Cli wiom_cli = {
 	{ .class = "Options",
 	  .arguments = {
 		{ .name = "-M", .separator = ' ', .value = "path" },
-		{ .name = "--unmasked-path", .separator = '=', .value = "path" },
+		{ .name = "--unmask-path", .separator = '=', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_M,
 	  .description = "TODO",

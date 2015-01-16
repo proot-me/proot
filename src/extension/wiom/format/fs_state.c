@@ -206,13 +206,13 @@ static void handle_action_uses(FileSystemState *fs_state, const char *path)
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events_fs_state(FILE *file, const Event *history)
+void report_events_fs_state(FILE *file, Event *const *history)
 {
 	FileSystemState *fs_state;
 	HashedPathState *item;
-	const Event *event;
-	size_t length;
-	size_t i;
+	size_t length1;
+	size_t length2;
+	ssize_t i, j;
 
 	if (history == NULL)
 		return;
@@ -222,45 +222,48 @@ void report_events_fs_state(FILE *file, const Event *history)
 		return;
 
 	/* Parse events backward, like for live range analysis.  */
-	length = talloc_array_length(history);
-	for (i = length - 1; i > 0; i--) {
-		const Event *event = &history[i];
+	length1 = talloc_array_length(history);
+	for (i = length1 - 1; i >= 0; i--) {
+		length2 = talloc_array_length(history[i]);
+		for (j = length2 - 1; j >= 0; j--) {
+			const Event *event = &history[i][j];
 
-		switch (event->action) {
-		case CREATES:
-			handle_action_creates(fs_state, event->payload.path);
-			break;
+			switch (event->action) {
+			case CREATES:
+				handle_action_creates(fs_state, event->payload.path);
+				break;
 
-		case DELETES:
-			handle_action_deletes(fs_state, event->payload.path);
-			break;
+			case DELETES:
+				handle_action_deletes(fs_state, event->payload.path);
+				break;
 
-		case SETS_CONTENT_OF:
-			handle_action_modifies(fs_state, event->payload.path);
-			break;
+			case SETS_CONTENT_OF:
+				handle_action_modifies(fs_state, event->payload.path);
+				break;
 
-		case GETS_METADATA_OF:
-		case SETS_METADATA_OF:
-		case GETS_CONTENT_OF:
-		case TRAVERSES:
-		case EXECUTES:
-			handle_action_uses(fs_state, event->payload.path);
-			break;
+			case GETS_METADATA_OF:
+			case SETS_METADATA_OF:
+			case GETS_CONTENT_OF:
+			case TRAVERSES:
+			case EXECUTES:
+				handle_action_uses(fs_state, event->payload.path);
+				break;
 
-		case MOVE_CREATES:
-			handle_action_deletes(fs_state, event->payload.path);
-			handle_action_creates(fs_state, event->payload.path2);
-			break;
+			case MOVE_CREATES:
+				handle_action_deletes(fs_state, event->payload.path);
+				handle_action_creates(fs_state, event->payload.path2);
+				break;
 
-		case MOVE_OVERRIDES:
-			handle_action_deletes(fs_state, event->payload.path);
-			handle_action_modifies(fs_state, event->payload.path2);
-			break;
+			case MOVE_OVERRIDES:
+				handle_action_deletes(fs_state, event->payload.path);
+				handle_action_modifies(fs_state, event->payload.path2);
+				break;
 
-		case CLONED:
-		case EXITED:
-			/* Not used.  */
-			break;
+			case CLONED:
+			case EXITED:
+				/* Not used.  */
+				break;
+			}
 		}
 	}
 

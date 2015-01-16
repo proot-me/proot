@@ -98,7 +98,7 @@ typedef struct
 } HashedString;
 
 typedef struct {
-	Event *history;
+	Event **history;
 	HashedString *strings;
 	Options *options;
 } SharedConfig;

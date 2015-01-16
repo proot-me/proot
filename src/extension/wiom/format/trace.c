@@ -32,63 +32,68 @@
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events_trace(FILE *file, const Event *history)
+void report_events_trace(FILE *file, Event * const *history)
 {
-	size_t length;
-	size_t i;
+	size_t length1;
+	size_t length2;
+	size_t i, j;
 	int status;
 
 	if (history == NULL)
 		return;
 
-	length = talloc_array_length(history);
-	for (i = 0; i < length; i++) {
-		const Event *event = &history[i];
-		switch (event->action) {
-#define CASE(a) case a:							\
-			status = fprintf(file, "%d %s %s\n", event->pid, #a, event->payload.path); \
-			break;						\
+	length1 = talloc_array_length(history);
+	for (i = 0; i < length1; i++) {
+		length2 = talloc_array_length(history[i]);
+		for (j = 0; j < length2; j++) {
+			const Event *event = &history[i][j];
 
-		CASE(TRAVERSES)
-		CASE(CREATES)
-		CASE(DELETES)
-		CASE(GETS_METADATA_OF)
-		CASE(SETS_METADATA_OF)
-		CASE(GETS_CONTENT_OF)
-		CASE(SETS_CONTENT_OF)
-		CASE(EXECUTES)
+			switch (event->action) {
+#define CASE(a) case a:							\
+				status = fprintf(file, "%d %s %s\n", event->pid, #a, event->payload.path); \
+				break;					\
+
+				CASE(TRAVERSES)
+				CASE(CREATES)
+				CASE(DELETES)
+				CASE(GETS_METADATA_OF)
+				CASE(SETS_METADATA_OF)
+				CASE(GETS_CONTENT_OF)
+				CASE(SETS_CONTENT_OF)
+				CASE(EXECUTES)
 #undef CASE
 
-		case MOVE_CREATES:
-			status = fprintf(file, "%d MOVE_CREATES %s to %s\n", event->pid,
-					event->payload.path, event->payload.path2);
-			break;
+			case MOVE_CREATES:
+				status = fprintf(file, "%d MOVE_CREATES %s to %s\n", event->pid,
+						event->payload.path, event->payload.path2);
+				break;
 
-		case MOVE_OVERRIDES:
-			status = fprintf(file, "%d MOVE_OVERRIDES %s to %s\n", event->pid,
-					event->payload.path, event->payload.path2);
-			break;
+			case MOVE_OVERRIDES:
+				status = fprintf(file, "%d MOVE_OVERRIDES %s to %s\n", event->pid,
+						event->payload.path, event->payload.path2);
+				break;
 
-		case CLONED:
-			status = fprintf(file, "%d CLONED (%s) into %d\n", event->pid,
-					(event->payload.flags & CLONE_THREAD) != 0
-					? "thread" : "process",
-					event->payload.new_pid);
-			break;
+			case CLONED:
+				status = fprintf(file, "%d CLONED (%s) into %d\n", event->pid,
+						(event->payload.flags & CLONE_THREAD) != 0
+						? "thread" : "process",
+						event->payload.new_pid);
+				break;
 
-		case EXITED:
-			status = fprintf(file, "%d EXITED (status = %ld)\n", event->pid,
-					event->payload.status);
-			break;
+			case EXITED:
+				status = fprintf(file, "%d EXITED (status = %ld)\n", event->pid,
+						event->payload.status);
+				break;
 
-		default:
-			assert(0);
-			break;
-		}
+			default:
+				assert(0);
+				break;
+			}
 
-		if (status < 0) {
-			note(NULL, ERROR, SYSTEM, "can't write event");
-			break;
+			if (status < 0) {
+				note(NULL, ERROR, SYSTEM, "can't write event");
+				break;
+			}
 		}
 	}
 }

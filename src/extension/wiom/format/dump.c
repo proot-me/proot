@@ -77,12 +77,13 @@ static int write_string(int fd, const char *value)
 /**
  * Dump @history events into @fd.
  */
-void report_events_dump(FILE *file, const Event *history)
+void report_events_dump(FILE *file, Event * const *history)
 {
 	const char *header = "WioM_03";
+	size_t length1;
+	size_t length2;
+	size_t i, j;
 	int status;
-	size_t length;
-	size_t i;
 	int fd;
 
 	if (history == NULL)
@@ -98,67 +99,70 @@ void report_events_dump(FILE *file, const Event *history)
 	if (status < 0)
 		goto error;
 
-	length = talloc_array_length(history);
-	for (i = 0; i < length; i++) {
-		const Event *event = &history[i];
+	length1 = talloc_array_length(history);
+	for (i = 0; i < length1; i++) {
+		length2 = talloc_array_length(history[i]);
+		for (j = 0; j < length2; j++) {
+			const Event *event = &history[i][j];
 
-		status = write_uint32(fd, event->pid);
-		if (status < 0)
-			goto error;
-
-		status = write_uint32(fd, event->action);
-		if (status < 0)
-			goto error;
-
-		switch (event->action) {
-		case TRAVERSES:
-		case CREATES:
-		case DELETES:
-		case GETS_METADATA_OF:
-		case SETS_METADATA_OF:
-		case GETS_CONTENT_OF:
-		case SETS_CONTENT_OF:
-		case EXECUTES:
-			status = write_string(fd, event->payload.path);
-			if (status < 0)
-				goto error;
-			break;
-
-		case MOVE_CREATES:
-		case MOVE_OVERRIDES:
-			status = write_string(fd, event->payload.path);
+			status = write_uint32(fd, event->pid);
 			if (status < 0)
 				goto error;
 
-			status = write_string(fd, event->payload.path2);
+			status = write_uint32(fd, event->action);
 			if (status < 0)
 				goto error;
 
-			break;
+			switch (event->action) {
+			case TRAVERSES:
+			case CREATES:
+			case DELETES:
+			case GETS_METADATA_OF:
+			case SETS_METADATA_OF:
+			case GETS_CONTENT_OF:
+			case SETS_CONTENT_OF:
+			case EXECUTES:
+				status = write_string(fd, event->payload.path);
+				if (status < 0)
+					goto error;
+				break;
 
-		case CLONED:
-			status = write_uint32(fd, event->payload.new_pid);
-			if (status < 0)
-				goto error;
+			case MOVE_CREATES:
+			case MOVE_OVERRIDES:
+				status = write_string(fd, event->payload.path);
+				if (status < 0)
+					goto error;
 
-			status = write_uint32(fd, event->payload.flags);
-			if (status < 0)
-				goto error;
+				status = write_string(fd, event->payload.path2);
+				if (status < 0)
+					goto error;
 
-			break;
+				break;
 
-		case EXITED:
-			status = write_uint32(fd, event->payload.status);
-			if (status < 0)
-				goto error;
-			break;
+			case CLONED:
+				status = write_uint32(fd, event->payload.new_pid);
+				if (status < 0)
+					goto error;
+
+				status = write_uint32(fd, event->payload.flags);
+				if (status < 0)
+					goto error;
+
+				break;
+
+			case EXITED:
+				status = write_uint32(fd, event->payload.status);
+				if (status < 0)
+					goto error;
+				break;
+			}
 		}
 	}
 
 	return;
 
 error:
-	note(NULL, ERROR, SYSTEM, "can't write event: %s", strerror(-status));
+	note(NULL, INTERNAL, SYSTEM, "can't write event: %s", strerror(-status));
 }
 
 /**
@@ -349,6 +353,6 @@ int replay_events_dump(TALLOC_CTX *context, SharedConfig *config)
 	};
 
 error:
-	note(NULL, ERROR, SYSTEM, "can't read event: %s", strerror(-status));
+	note(NULL, INTERNAL, SYSTEM, "can't read event: %s", strerror(-status));
 	return status;
 }
