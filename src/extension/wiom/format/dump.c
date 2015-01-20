@@ -20,11 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <unistd.h>	/* write(2), read(2), */
+#include <unistd.h>	/* write(2), read(2), fstat(2), */
+#include <sys/types.h>	/* fstat(2), */
+#include <sys/stat.h>	/* fstat(2), */
+#include <sys/mman.h>	/* mmap(2), */
 #include <stdint.h>	/* *int*_t, */
 #include <string.h>	/* strcmp(3), */
 #include <errno.h>	/* errno(3), E*, */
 #include <assert.h>	/* assert(3), */
+#include <stdlib.h>	/* getenv(3), */
 #include <talloc.h>	/* talloc(3), */
 
 #include "extension/wiom/wiom.h"
@@ -162,7 +166,7 @@ void report_events_dump(FILE *file, Event * const *history)
 	return;
 
 error:
-	note(NULL, INTERNAL, SYSTEM, "can't write event: %s", strerror(-status));
+	note(NULL, WARNING, INTERNAL, "can't write event: %s", strerror(-status));
 }
 
 /**
@@ -224,10 +228,10 @@ static int read_string(TALLOC_CTX *context, int fd, char **result)
 }
 
 /**
- * Replay events from @config->options->fd.  This function returns
- * -errno if an error occured, 0 otherwise.
+ * Replay events from @config->options->fd, using read() syscalls.
+ * This function returns -errno if an error occured, 0 otherwise.
  */
-int replay_events_dump(TALLOC_CTX *context, SharedConfig *config)
+static int replay_events_dump_slow(TALLOC_CTX *context, SharedConfig *config)
 {
 	const int fd = config->options->input_fd;
 	char *string;
@@ -333,13 +337,13 @@ int replay_events_dump(TALLOC_CTX *context, SharedConfig *config)
 		}
 
 		case EXITED: {
-			uint32_t status2;
+			uint32_t exit_code;
 
-			status = read_uint32(fd, &status2);
+			status = read_uint32(fd, &exit_code);
 			if (status < 0)
 				goto error;
 
-			status = record_event(config, pid, action, status2);
+			status = record_event(config, pid, action, exit_code);
 			if (status < 0)
 				goto error;
 
@@ -353,6 +357,194 @@ int replay_events_dump(TALLOC_CTX *context, SharedConfig *config)
 	};
 
 error:
-	note(NULL, INTERNAL, SYSTEM, "can't read event: %s", strerror(-status));
+	note(NULL, WARNING, INTERNAL, "can't read event: %s", strerror(-status));
+	return status;
+}
+
+/**
+ * Return *@cursor and increment this latter by @size.  If *@cursor +
+ * @size is greater than @end, then NULL is returned and *@cursor is
+ * not incremented.
+ */
+static const void *slurp_data(const void **cursor, const size_t size, const void *end)
+{
+	const void *result;
+
+	if (*cursor > end - size) {
+		note(NULL, WARNING, USER, "unexpected end of mapping");
+		return NULL;
+	}
+
+	result = *cursor;
+	*cursor += size;
+
+	return result;
+}
+
+/**
+ * Return the uint32_t value pointed by *@cursor.
+ */
+static uint32_t slurp_uint32(const void **cursor, const void *end)
+{
+	const uint32_t *result;
+
+	result = slurp_data(cursor, sizeof(uint32_t), end);
+	if (result == NULL)
+		return 0;
+
+	return *result;
+}
+
+/**
+ * Return the string pointed by *@cursor.
+ */
+static const char *slurp_string(const void **cursor, const void *end)
+{
+	const char *result;
+	uint32_t size;
+
+	size = slurp_uint32(cursor, end);
+
+	result = slurp_data(cursor, size, end);
+	if (result == NULL)
+		result = "";
+
+	return result;
+}
+
+/**
+ * Replay events from @config->options->fd, using mmap() syscall.
+ * This function returns -errno if an error occured, 0 otherwise.
+ */
+static int replay_events_dump_fast(SharedConfig *config)
+{
+	const int fd = config->options->input_fd;
+	struct stat statf;
+	void *mapping;
+	const void *cursor;
+	const void *end;
+	const char *string;
+	int status2;
+	int status;
+
+	if (getenv("WIOM_NO_MMAP") != NULL)
+		return -1;
+
+	status = fstat(fd, &statf);
+	if (status < 0) {
+		note(NULL, ERROR, SYSTEM, "can't stat input file");
+		return -1;
+	}
+
+	mapping = mmap(NULL, statf.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+	if (mapping == MAP_FAILED) {
+		note(NULL, ERROR, SYSTEM, "can't map input file");
+		status = -1;
+		goto end;
+	}
+
+	cursor = mapping;
+	end = mapping + statf.st_size;
+
+	string = slurp_string(&cursor, end);
+
+	if (strcmp(string, "WioM_03") != 0) {
+		note(NULL, ERROR, USER, "unknown input file format");
+		status = -1;
+		goto end;
+	}
+
+	while (cursor < end) {
+		uint32_t pid;
+		uint32_t action;
+
+		pid    = slurp_uint32(&cursor, end);
+		action = slurp_uint32(&cursor, end);
+
+		switch (action) {
+		case TRAVERSES:
+		case CREATES:
+		case DELETES:
+		case GETS_METADATA_OF:
+		case SETS_METADATA_OF:
+		case GETS_CONTENT_OF:
+		case SETS_CONTENT_OF:
+		case EXECUTES:
+			string = slurp_string(&cursor, end);
+
+			status = record_event(config, pid, action, string);
+			if (status < 0)
+				goto end;
+			break;
+
+		case MOVE_CREATES:
+		case MOVE_OVERRIDES: {
+			char const *string2;
+
+			string  = slurp_string(&cursor, end);
+			string2 = slurp_string(&cursor, end);
+
+			status = record_event(config, pid, action, string, string2);
+			if (status < 0)
+				goto end;
+
+			break;
+		}
+
+		case CLONED: {
+			uint32_t new_pid;
+			uint32_t flags;
+
+			new_pid = slurp_uint32(&cursor, end);
+			flags   = slurp_uint32(&cursor, end);
+
+			status = record_event(config, pid, action, new_pid, flags);
+			if (status < 0)
+				goto end;
+
+			break;
+		}
+
+		case EXITED: {
+			uint32_t exit_code;
+
+			exit_code = slurp_uint32(&cursor, end);
+
+			status = record_event(config, pid, action, exit_code);
+			if (status < 0)
+				goto end;
+
+			break;
+		}
+
+		default:
+			assert(0);
+			break;
+		}
+	};
+
+	status = 0;
+end:
+	status2 = munmap(mapping, statf.st_size);
+	if (status2 < 0)
+		note(NULL, WARNING, SYSTEM, "can't unmap input file");
+
+	return status;
+}
+
+/**
+ * Replay events from @config->options->fd.  This function returns
+ * -errno if an error occured, 0 otherwise.
+ */
+int replay_events_dump(TALLOC_CTX *context, SharedConfig *config)
+{
+	int status;
+
+	status = replay_events_dump_fast(config);
+	if (status < 0) {
+		note(NULL, INFO, INTERNAL, "fast replay has failed, using slow replay");
+		status = replay_events_dump_slow(context, config);
+	}
+
 	return status;
 }

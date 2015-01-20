@@ -89,7 +89,7 @@ static Cli wiom_cli = {
 	{ .class = "Options",
 	  .arguments = {
 		{ .name = "-a", .separator = ' ', .value = "string" },
-		{ .name = "--remember-actions", .separator = '=', .value = "string" },
+		{ .name = "--mask-action", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_a,
 	  .description = "TODO",
@@ -98,7 +98,7 @@ static Cli wiom_cli = {
 	{ .class = "Options",
 	  .arguments = {
 		{ .name = "-A", .separator = ' ', .value = "string" },
-		{ .name = "--forget-actions", .separator = '=', .value = "string" },
+		{ .name = "--unmask-action", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_A,
 	  .description = "TODO",
