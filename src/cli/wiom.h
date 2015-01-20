@@ -13,8 +13,7 @@ static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_o(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
-static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value);
-static int handle_option_M(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_P(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_A(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
@@ -71,8 +70,8 @@ static Cli wiom_cli = {
 	},
 	{ .class = "Options",
 	  .arguments = {
-		{ .name = "-p", .separator = ' ', .value = "string" },
-		{ .name = "--predefined-profile", .separator = '=', .value = "string" },
+		{ .name = "-p", .separator = ' ', .value = "path" },
+		{ .name = "--mask-path", .separator = '=', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_p,
 	  .description = "TODO",
@@ -80,19 +79,10 @@ static Cli wiom_cli = {
 	},
 	{ .class = "Options",
 	  .arguments = {
-		{ .name = "-m", .separator = ' ', .value = "path" },
-		{ .name = "--mask-path", .separator = '=', .value = "path" },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_m,
-	  .description = "TODO",
-	  .detail = "",
-	},
-	{ .class = "Options",
-	  .arguments = {
-		{ .name = "-M", .separator = ' ', .value = "path" },
+		{ .name = "-P", .separator = ' ', .value = "path" },
 		{ .name = "--unmask-path", .separator = '=', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_M,
+	  .handler = handle_option_P,
 	  .description = "TODO",
 	  .detail = "",
 	},

@@ -25,28 +25,26 @@
 
 #include <stdbool.h>	/* bool, */
 #include <uthash.h>	/* ut_hash_handle, */
-#include <sys/queue.h>	/* SIMPLEQ, */
+#include <sys/queue.h>	/* STAILQ, */
 
 #include "arch.h"
 
-typedef struct item {
-	void *payload;
-	SIMPLEQ_ENTRY(item) link;
-} Item;
+typedef struct filtered_path {
+	char *path;
+	bool masked;
+	STAILQ_ENTRY(filtered_path) link;
+} FilteredPath;
 
-typedef SIMPLEQ_HEAD(list, item) List;
+typedef STAILQ_HEAD(filtered_paths, filtered_path) FilteredPaths;
 
 typedef struct {
 	struct {
-		unsigned long filter;
+		unsigned long actions;
+		FilteredPaths *paths;
+
 		bool success;	/* (TODO) */
 		bool failure;	/* (TODO) */
-	} actions;
-
-	struct {
-		List *masked;
-		List *unmasked;
-	} paths;
+	} filtered;
 
 	int input_fd;
 
@@ -71,9 +69,9 @@ typedef enum {
 	#undef ACTION
 } Action;
 
-#define GET_ACTION_BIT(options, action) ((1 << (action)) & (options)->actions.filter)
-#define SET_ACTION_BIT(options, action) ((options)->actions.filter |= (1 << (action)))
-#define UNSET_ACTION_BIT(options, action) ((options)->actions.filter &= ~(1 << (action)))
+#define GET_FILTERED_ACTION_BIT(options, action) ((1 << (action)) & (options)->filtered.actions)
+#define SET_FILTERED_ACTION_BIT(options, action) ((options)->filtered.actions |= (1 << (action)))
+#define UNSET_FILTERED_ACTION_BIT(options, action) ((options)->filtered.actions &= ~(1 << (action)))
 
 typedef struct {
 	pid_t pid;

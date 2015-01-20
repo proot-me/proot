@@ -22,7 +22,7 @@
 
 #include <unistd.h>	/* getcwd(2), */
 #include <limits.h> 	/* PATH_MAX, */
-#include <sys/queue.h> 	/* SIMPLEQ_*, LIST_*, */
+#include <sys/queue.h> 	/* STAILQ_*, LIST_*, */
 #include <stdio.h> 	/* strerror(3), fopen(3), */
 #include <assert.h> 	/* assert(3), */
 #include <string.h> 	/* str*, */
@@ -100,65 +100,54 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 	return 0;
 }
 
-static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_filtered_path(Tracee *tracee, Options *options, const char *path, bool masked)
 {
-	note(tracee, ERROR, INTERNAL, "-p option not yet implemented");
-	return -1;
-}
+	FilteredPath *item;
 
-static int add_path(Tracee *tracee, Options *options, const char *path, bool masked)
-{
-	List *list;
-	Item *item;
-
-	list = (masked
-		? options->paths.masked
-		: options->paths.unmasked);
-
-	if (list == NULL) {
-		list = talloc_zero(options, List);
-		if (list == NULL) {
+	if (options->filtered.paths == NULL) {
+		options->filtered.paths = talloc_zero(options, FilteredPaths);
+		if (options->filtered.paths == NULL) {
 			note(tracee, ERROR, SYSTEM, "not enough memory");
 			return -1;
 		}
 
-		SIMPLEQ_INIT(list);
-
-		if (masked)
-			options->paths.masked = list;
-		else
-			options->paths.unmasked = list;
+		STAILQ_INIT(options->filtered.paths);
 	}
 
-	item = talloc_zero(list, Item);
+	item = talloc_zero(options->filtered.paths, FilteredPath);
 	if (item == NULL) {
 		note(tracee, ERROR, SYSTEM, "not enough memory");
 		return -1;
 	}
 
-	item->payload = talloc_strdup(item, path);
-	if (item->payload == NULL) {
+	item->path = talloc_strdup(item, path);
+	if (item->path == NULL) {
 		note(tracee, ERROR, SYSTEM, "not enough memory");
 		return -1;
 	}
 
-	SIMPLEQ_INSERT_HEAD(list, item, link);
+	item->masked = masked;
+
+	STAILQ_INSERT_TAIL(options->filtered.paths, item, link);
 
 	return 0;
 }
 
-static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value)
+static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value)
 {
-	return add_path(tracee, talloc_get_type_abort(cli->private, Options), value, true);
+	return handle_filtered_path(tracee, talloc_get_type_abort(cli->private, Options), value, true);
 }
 
-static int handle_option_M(Tracee *tracee, const Cli *cli, const char *value)
+static int handle_option_P(Tracee *tracee, const Cli *cli, const char *value)
 {
-	return add_path(tracee, talloc_get_type_abort(cli->private, Options), value, false);
+	return handle_filtered_path(tracee, talloc_get_type_abort(cli->private, Options), value, false);
 }
 
-static int handle_filter_actions(const Tracee *tracee, Options *options, const char *cursor, bool set)
+static int handle_filtered_action(const Tracee *tracee, void *private, const char *value, bool masked)
 {
+	Options *options = talloc_get_type_abort(private, Options);
+	size_t i;
+
 	#define ACTION(name) #name,
 	static const char *known_actions[] = {
 		#include "extension/wiom/actions.list"
@@ -166,57 +155,42 @@ static int handle_filter_actions(const Tracee *tracee, Options *options, const c
 	};
 	#undef ACTION
 
-	while (1) {
-		const char *old_cursor = cursor;
-		size_t size;
-		bool known;
-		size_t i;
-
-		cursor = strchrnul(old_cursor, ',');
-		size = cursor - old_cursor;
-
-		for (known = false, i = 0; known_actions[i] != NULL; i++) {
-			if (strncasecmp(known_actions[i], old_cursor, size) != 0)
-				continue;
-
-			if (set)
-				SET_ACTION_BIT(options, i);
-			else
-				UNSET_ACTION_BIT(options, i);
-
-			known = true;
-		}
-
-		if (!known) {
-			note(tracee, WARNING, USER, "unknown action '%s'", old_cursor);
-			note(tracee, INFO, USER, "Supported actions are:");
-			for (known = false, i = 0; known_actions[i] != NULL; i++)
-				note(tracee, INFO, USER, "\t%s", known_actions[i]);
-			return -1;
-		}
-
-		if (cursor[0] == '\0')
-			break;
-
-		cursor++;
+	if (strcasecmp(value, "all") == 0) {
+		if (masked)
+			options->filtered.actions = 0;
+		else
+			options->filtered.actions = ~0UL;
+		return 0;
 	}
 
-	return 0;
+	for (i = 0; known_actions[i] != NULL; i++) {
+		if (strcasecmp(value, known_actions[i]) == 0) {
+			if (masked)
+				UNSET_FILTERED_ACTION_BIT(options, i);
+			else
+				SET_FILTERED_ACTION_BIT(options, i);
+			return 0;
+		}
+	}
+
+	note(tracee, WARNING, USER, "unknown action '%s'", value);
+
+	note(tracee, INFO, USER, "Supported actions are:");
+	note(tracee, INFO, USER, "\tALL");
+	for (i = 0; known_actions[i] != NULL; i++)
+		note(tracee, INFO, USER, "\t%s", known_actions[i]);
+
+	return -1;
 }
 
 static int handle_option_a(Tracee *tracee, const Cli *cli, const char *value)
 {
-	Options *options = talloc_get_type_abort(cli->private, Options);
-
-	options->actions.filter = 0;
-	return handle_filter_actions(tracee, options, value, true);
+	return handle_filtered_action(tracee, cli->private, value, true);
 }
 
 static int handle_option_A(Tracee *tracee, const Cli *cli, const char *value)
 {
-	Options *options = talloc_get_type_abort(cli->private, Options);
-
-	return handle_filter_actions(tracee, options, value, false);
+	return handle_filtered_action(tracee, cli->private, value, false);
 }
 
 static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *value)
@@ -277,26 +251,26 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli UNUSED,
 	return cursor;
 }
 
-static int canonicalize_paths(Tracee *tracee, List *list)
+static int canonicalize_paths(Tracee *tracee, FilteredPaths *list)
 {
+	FilteredPath *item;
 	char path[PATH_MAX];
-	Item *item;
 	int status;
 
 	if (list == NULL)
 		return 0;
 
-	SIMPLEQ_FOREACH(item, list, link) {
-		status = realpath2(tracee, path, item->payload, false);
+	STAILQ_FOREACH(item, list, link) {
+		status = realpath2(tracee, path, item->path, false);
 		if (status < 0) {
 			note(tracee, ERROR, SYSTEM, "can't canonicalize '%s': %s",
-				(char *) item->payload, strerror(-status));
+				(char *) item->path, strerror(-status));
 			return -1;
 		}
 
-		TALLOC_FREE(item->payload);
-		item->payload = talloc_strdup(item, path);
-		if (item->payload == NULL) {
+		TALLOC_FREE(item->path);
+		item->path = talloc_strdup(item, path);
+		if (item->path == NULL) {
 			note(tracee, ERROR, SYSTEM, "not enough memory");
 			return -1;
 		}
@@ -320,11 +294,7 @@ static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 	if (options->output.file == NULL)
 		options->output.file = stdout;
 
-	status = canonicalize_paths(tracee, options->paths.masked);
-	if (status < 0)
-		return -1;
-
-	status = canonicalize_paths(tracee, options->paths.unmasked);
+	status = canonicalize_paths(tracee, options->filtered.paths);
 	if (status < 0)
 		return -1;
 
@@ -384,7 +354,7 @@ const Cli *get_wiom_cli(TALLOC_CTX *context)
 	if (options == NULL)
 		return NULL;
 	options->input_fd  = -1;
-	options->actions.filter = ~0UL;
+	options->filtered.actions = ~0UL;
 
 	wiom_cli.private = options;
 	return &wiom_cli;

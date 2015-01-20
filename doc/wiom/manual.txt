@@ -27,6 +27,8 @@ TODO
 Options
 =======
 
+TODO
+
 -i path, --input=path
     TODO
 
@@ -42,21 +44,6 @@ Options
     * "raw",
     * "fs-state",
 
--p string, --predefined-profile=string
-    TODO
-
--m path, --mask-path=path
-    TODO
-
--M path, --unmask-path=path
-    TODO
-
--a string, --remember-actions=string
-    TODO
-
--A string, --forget-actions=string
-    TODO
-
 -v value, --verbose=value
     Set the level of debug information to *value*.
 
@@ -69,6 +56,36 @@ Options
 
 -h, --help, --usage
     Print the user manual, then exit.
+
+Filtering
+---------
+
+TODO "events" = "action" + "path", if any of "action" or "path" is
+masked, the event is discarded.
+
+TODO all paths and actions are unmasked by default.
+
+-p path, --mask-path=path
+    TODO
+
+    TODO "glob:*.d"
+
+-P path, --unmask-path=path
+    TODO
+
+    TODO "glob:*.d"
+
+    "-p" and "-P" options can be chained, the latest has highest
+    priority.
+
+-a string, --mask-action=string
+    TODO
+
+-A string, --unmask-action=string
+    TODO
+
+    "-a" and "-A" options can be chained, the latest has highest
+    priority.
 
 
 Exit Status

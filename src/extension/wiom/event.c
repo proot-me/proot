@@ -28,7 +28,7 @@
 #include <unistd.h>	/* close(2), */
 #include <talloc.h>	/* talloc(3), */
 #include <uthash.h>	/* UT*, */
-#include <sys/queue.h>	/* SIMPLEQ, */
+#include <sys/queue.h>	/* STAILQ, */
 
 #include "extension/wiom/event.h"
 #include "extension/wiom/wiom.h"
@@ -168,34 +168,23 @@ static const char *get_string_copy(SharedConfig *config, const char *original)
 /**
  * Check whether @path is masked with respect to @config->options.
  */
-static bool is_masked(SharedConfig *config, const char *path)
+static bool is_path_masked(SharedConfig *config, const char *path)
 {
-	bool masked = false;
+	FilteredPath *current;
 	Comparison comparison;
-	Item *item;
+	bool masked = false;
 
-	if (config->options->paths.masked == NULL)
+	if (config->options->filtered.paths == NULL)
 		return false;
 
-	SIMPLEQ_FOREACH(item, config->options->paths.masked, link) {
-		comparison = compare_paths(item->payload, path);
+	STAILQ_FOREACH(current, config->options->filtered.paths, link) {
+		/* Does the current filtered path contain this path?
+		 * Note that filtered paths are not sorted on
+		 * purpose.  */
+		comparison = compare_paths(current->path, path);
 		if (   comparison == PATHS_ARE_EQUAL
-		    || comparison == PATH1_IS_PREFIX) {
-			masked = true;
-			break;
-		}
-	}
-
-	if (!masked || config->options->paths.unmasked == NULL)
-		return masked;
-
-	SIMPLEQ_FOREACH(item, config->options->paths.unmasked, link) {
-		comparison = compare_paths(item->payload, path);
-		if (   comparison == PATHS_ARE_EQUAL
-		    || comparison == PATH1_IS_PREFIX) {
-			masked = false;
-			break;
-		}
+		    || comparison == PATH1_IS_PREFIX)
+			masked = current->masked;
 	}
 
 	return masked;
@@ -215,7 +204,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 
 	va_start(ap, action);
 
-	if (GET_ACTION_BIT(config->options, action) == 0) {
+	if (GET_FILTERED_ACTION_BIT(config->options, action) == 0) {
 		status = 0;
 		goto end;
 	}
@@ -230,7 +219,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 	case SETS_CONTENT_OF:
 	case EXECUTES:
 		path = va_arg(ap, const char *);
-		if (is_masked(config, path))
+		if (is_path_masked(config, path))
 			break;
 
 		event = new_event(config, pid, action);
@@ -251,7 +240,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 	case MOVE_OVERRIDES:
 		path  = va_arg(ap, const char *);
 		path2 = va_arg(ap, const char *);
-		if (is_masked(config, path) && is_masked(config, path2))
+		if (is_path_masked(config, path) && is_path_masked(config, path2))
 			break;
 
 		event = new_event(config, pid, action);
