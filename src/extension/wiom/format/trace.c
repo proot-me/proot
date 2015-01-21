@@ -30,27 +30,28 @@
 #include "cli/note.h"
 
 /**
- * Report all events that were stored in @config->history.
+ * Report all events from @config->history into
+ * @config->options->output.file.
  */
-void report_events_trace(FILE *file, Event * const *history)
+void report_events_trace(const SharedConfig *config)
 {
-	size_t length1;
-	size_t length2;
+	size_t nb_chunks;
 	size_t i, j;
 	int status;
 
-	if (history == NULL)
+	if (config->history == NULL)
 		return;
 
-	length1 = talloc_array_length(history);
-	for (i = 0; i < length1; i++) {
-		length2 = talloc_array_length(history[i]);
-		for (j = 0; j < length2; j++) {
-			const Event *event = &history[i][j];
-
+	for (i = 0; i < talloc_array_length(config->history); i++) {
+		for (j = 0; j < config->history[i].nb_events; j++) {
+			const Event *event = &config->history[i].events[j];
 			switch (event->action) {
 #define CASE(a) case a:							\
-				status = fprintf(file, "%d %s %s\n", event->pid, #a, event->payload.path); \
+				status = fprintf(config->options->output.file, \
+						"%d %s %s\n",		\
+						event->pid,		\
+						#a,			\
+						event->payload.path);	\
 				break;					\
 
 				CASE(TRAVERSES)
@@ -64,24 +65,34 @@ void report_events_trace(FILE *file, Event * const *history)
 #undef CASE
 
 			case MOVE_CREATES:
-				status = fprintf(file, "%d MOVE_CREATES %s to %s\n", event->pid,
-						event->payload.path, event->payload.path2);
+				status = fprintf(config->options->output.file,
+						"%d MOVE_CREATES %s to %s\n",
+						event->pid,
+						event->payload.path,
+						event->payload.path2);
 				break;
 
 			case MOVE_OVERRIDES:
-				status = fprintf(file, "%d MOVE_OVERRIDES %s to %s\n", event->pid,
-						event->payload.path, event->payload.path2);
+				status = fprintf(config->options->output.file,
+						"%d MOVE_OVERRIDES %s to %s\n",
+						event->pid,
+						event->payload.path,
+						event->payload.path2);
 				break;
 
 			case CLONED:
-				status = fprintf(file, "%d CLONED (%s) into %d\n", event->pid,
+				status = fprintf(config->options->output.file,
+						"%d CLONED (%s) into %d\n",
+						event->pid,
 						(event->payload.flags & CLONE_THREAD) != 0
 						? "thread" : "process",
 						event->payload.new_pid);
 				break;
 
 			case EXITED:
-				status = fprintf(file, "%d EXITED (status = %ld)\n", event->pid,
+				status = fprintf(config->options->output.file,
+						"%d EXITED (status = %ld)\n",
+						event->pid,
 						event->payload.status);
 				break;
 

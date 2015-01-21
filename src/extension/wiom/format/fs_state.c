@@ -204,17 +204,16 @@ static void handle_action_uses(FileSystemState *fs_state, const char *path)
 }
 
 /**
- * Report all events that were stored in @config->history.
+ * Report all events from @config->history into
+ * @config->options->output.file.
  */
-void report_events_fs_state(FILE *file, Event *const *history)
+void report_events_fs_state(const SharedConfig *config)
 {
 	FileSystemState *fs_state;
 	HashedPathState *item;
-	size_t length1;
-	size_t length2;
 	ssize_t i, j;
 
-	if (history == NULL)
+	if (config->history == NULL)
 		return;
 
 	fs_state = talloc_zero(NULL, FileSystemState);
@@ -222,11 +221,9 @@ void report_events_fs_state(FILE *file, Event *const *history)
 		return;
 
 	/* Parse events backward, like for live range analysis.  */
-	length1 = talloc_array_length(history);
-	for (i = length1 - 1; i >= 0; i--) {
-		length2 = talloc_array_length(history[i]);
-		for (j = length2 - 1; j >= 0; j--) {
-			const Event *event = &history[i][j];
+	for (i = talloc_array_length(config->history) - 1; i >= 0; i--) {
+		for (j = config->history[i].nb_events - 1; j >= 0; j--) {
+			const Event *event = &config->history[i].events[j];
 
 			switch (event->action) {
 			case CREATES:
@@ -272,7 +269,8 @@ void report_events_fs_state(FILE *file, Event *const *history)
 
 		switch (item->state) {
 #define CASE(a) case STATE_ ##a:					\
-			status = fprintf(file, "%s: %s\n", item->path, #a); \
+			status = fprintf(config->options->output.file,	\
+					"%s: %s\n", item->path, #a);	\
 			break;						\
 
 		CASE(CREATED)

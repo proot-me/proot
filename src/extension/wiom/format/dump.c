@@ -79,21 +79,20 @@ static int write_string(int fd, const char *value)
 }
 
 /**
- * Dump @history events into @fd.
+ * Report all events from @config->history into
+ * @config->options->output.file.
  */
-void report_events_dump(FILE *file, Event * const *history)
+void report_events_dump(const SharedConfig *config)
 {
 	const char *header = "WioM_03";
-	size_t length1;
-	size_t length2;
 	size_t i, j;
 	int status;
 	int fd;
 
-	if (history == NULL)
+	if (config->history == NULL)
 		return;
 
-	fd = fileno(file);
+	fd = fileno(config->options->output.file);
 	if (fd < 0) {
 		status = -errno;
 		goto error;
@@ -103,11 +102,9 @@ void report_events_dump(FILE *file, Event * const *history)
 	if (status < 0)
 		goto error;
 
-	length1 = talloc_array_length(history);
-	for (i = 0; i < length1; i++) {
-		length2 = talloc_array_length(history[i]);
-		for (j = 0; j < length2; j++) {
-			const Event *event = &history[i][j];
+	for (i = 0; i < talloc_array_length(config->history); i++) {
+		for (j = 0; j < config->history[i].nb_events; j++) {
+			const Event *event = &config->history[i].events[j];
 
 			status = write_uint32(fd, event->pid);
 			if (status < 0)

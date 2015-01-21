@@ -28,6 +28,7 @@
 #include <sys/queue.h>	/* STAILQ, */
 
 #include "arch.h"
+#include "attribute.h"
 
 typedef struct filtered_path {
 	char *path;
@@ -88,7 +89,7 @@ typedef struct {
 		};
 		word_t status;
 	} payload;
-} Event;
+} PACKED Event;
 
 typedef struct
 {
@@ -97,7 +98,13 @@ typedef struct
 } HashedString;
 
 typedef struct {
-	Event **history;
+	Event *events;
+	size_t nb_events;
+	size_t max_nb_events;
+} HistoryChunk;
+
+typedef struct {
+	HistoryChunk *history;
 	HashedString *strings;
 	Options *options;
 } SharedConfig;
