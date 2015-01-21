@@ -51,7 +51,8 @@ typedef struct {
 	struct {
 		FILE *file;
 		enum {
-			NONE = 0,
+			UNSPECIFIED = 0,
+			NONE,
 			DUMP,
 			TRACE,
 			FS_STATE,

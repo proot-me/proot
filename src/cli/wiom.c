@@ -79,13 +79,12 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 
-	if (options->output.format != NONE)
+	if (options->output.format != UNSPECIFIED)
 		note(tracee, WARNING, USER, "\"-f %s\" overrides previous choice", value);
 
-	if (   strcmp(value, "binary") == 0
-	    || strcmp(value, "bin") == 0
-	    || strcmp(value, "raw") == 0
-	    || strcmp(value, "dump") == 0)
+	if (strcmp(value, "none") == 0)
+		options->output.format = NONE;
+	else if (strcmp(value, "dump") == 0)
 		options->output.format = DUMP;
 	else if (strcmp(value, "trace") == 0)
 		options->output.format = TRACE;
@@ -288,7 +287,7 @@ static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	int status;
 
-	if (options->output.format == NONE)
+	if (options->output.format == UNSPECIFIED)
 		options->output.format = FS_STATE;
 
 	if (options->output.file == NULL)

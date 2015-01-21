@@ -310,6 +310,9 @@ end:
 void report_events(SharedConfig *config)
 {
 	switch (config->options->output.format) {
+	case NONE:
+		break;
+
 	case DUMP:
 		report_events_dump(config->options->output.file, config->history);
 		break;
