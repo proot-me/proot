@@ -214,7 +214,7 @@ int replay_events_dump(SharedConfig *config)
 		case SETS_CONTENT_OF:
 		case EXECUTES:
 			if (event->payload.path > *nb_strings) {
-				note(NULL, ERROR, INTERNAL, "XXX");
+				note(NULL, ERROR, INTERNAL, "unexpected string index");
 				status = -1;
 				break;
 			}
@@ -227,7 +227,7 @@ int replay_events_dump(SharedConfig *config)
 		case MOVE_OVERRIDES:
 			if (   event->payload.path > *nb_strings
 			    || event->payload.path2 > *nb_strings) {
-				note(NULL, ERROR, INTERNAL, "XXX");
+				note(NULL, ERROR, INTERNAL, "unexpected string index");
 				status = -1;
 				break;
 			}

@@ -118,10 +118,13 @@ static Event *new_event(SharedConfig *config, pid_t pid, Action action)
  * Free the memory internally used by uthash.  This is a Talloc
  * destructor.
  */
-static void remove_from_hash(HashedString *entry)
+static int remove_from_hash(HashedString *entry)
 {
 	SharedConfig *config = talloc_get_type_abort(talloc_parent(entry), SharedConfig);
+
 	HASH_DEL(config->strings, entry);
+
+	return 0;
 }
 
 /**
@@ -297,7 +300,7 @@ end:
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events(const SharedConfig *config)
+int report_events(SharedConfig *config)
 {
 	switch (config->options->output.format) {
 	case NONE:
@@ -328,4 +331,6 @@ void report_events(const SharedConfig *config)
 
 	fclose(config->options->output.file);
 	config->options->output.file = NULL;
+
+	return 0;
 }

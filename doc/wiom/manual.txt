@@ -6,8 +6,8 @@
 Watch process Inputs, Ouputs, and More ...
 ------------------------------------------
 
-:Date: 2014-11-26
-:Version: 0.0.1
+:Date: 2015-01-22
+:Version: 0.0.3
 :Manual section: 1
 
 

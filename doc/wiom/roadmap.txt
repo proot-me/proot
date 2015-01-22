@@ -1,0 +1,59 @@
+Fixes
+-----
+
+* Fix "move" support for directories:
+
+    $ ./src/wiom -m / -M $PWD
+    $ mkdir bin.tmp
+    $ touch bin.tmp/ls
+    $ mv bin.tmp/ bin
+    $ exit
+    /usr/local/cedric/git/proot/bin: CREATED
+    /usr/local/cedric/git/proot: USED
+    /usr/local/cedric/git/proot/bin.tmp/ls: CREATED
+
+* Fix support for " (deleted)" paths
+
+* Fix "-i test.bin -m /work1" where /work1 doesn't exist
+
+* Fix support for EXITED event
+
+
+Features
+--------
+
+* Add support for "-p pcre:\.d$"
+
+* How to know which files are accessed by which processes?
+
+  - fs-usage.kconfig
+
+    [ ] CREATED
+    [ ] DELETED
+    [ ] MODIFIED
+    [ ] USED
+
+    "/"
+     |- boot
+     |- etc
+     |  |- ssh
+     |  |   `- ssh_config
+     |  `- fstab
+     `- bin
+
+    help message -> events
+
+* How to know which process access by which files?
+
+  - ps-tree.kconfig
+
+     |-tmux-+-bash---emacs-24.3-no-x---aspell
+     |      |-bash
+     |      |-bash---less
+     |      |-bash---xargs---emacs
+     |      |-bash---pstree
+     |      |-bash---mutt
+     |      |-bash---emacs
+     |      `-2*[bash---top]
+
+    help message -> events

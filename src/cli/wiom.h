@@ -6,7 +6,7 @@
 #include "cli/cli.h"
 
 #ifndef VERSION
-#define VERSION "0.0.2"
+#define VERSION "0.0.3"
 #endif
 
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);

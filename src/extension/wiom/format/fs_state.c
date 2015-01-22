@@ -65,10 +65,13 @@ static State get_state(FileSystemState *fs_state, const char *path)
  * Free the memory internally used by uthash.  This is a Talloc
  * destructor.
  */
-static void remove_from_hash(HashedPathState *entry)
+static int remove_from_hash(HashedPathState *entry)
 {
 	FileSystemState *fs_state = talloc_get_type_abort(talloc_parent(entry), FileSystemState);
+
 	HASH_DEL(fs_state->entries, entry);
+
+	return 0;
 }
 
 /**
