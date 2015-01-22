@@ -28,7 +28,7 @@
 #include "extension/wiom/wiom.h"
 
 extern void report_events_dump(const SharedConfig *config);
-extern int replay_events_dump(TALLOC_CTX *context, SharedConfig *config);
+extern int replay_events_dump(SharedConfig *config);
 
 extern void report_events_trace(const SharedConfig *config);
 extern void report_events_fs_state(const SharedConfig *config);

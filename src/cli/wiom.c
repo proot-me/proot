@@ -323,8 +323,7 @@ static int pre_initialize_exe(Tracee *tracee, const Cli *cli,
 
 	if (cursor != argc)
 		note(tracee, WARNING, USER,
-			"both '-i' option and a command are specified; these are mutually"
-			" exclusive thus this latter is discared.");
+			"the specified command is discarded because of '-i' option.");
 
 	/* Search for WioM configuration.  */
 	LIST_FOREACH(extension, tracee->extensions, link) {
@@ -335,7 +334,7 @@ static int pre_initialize_exe(Tracee *tracee, const Cli *cli,
 	}
 	assert(config != NULL);
 
-	status = replay_events_dump(tracee->ctx, config->shared);
+	status = replay_events_dump(config->shared);
 	if (status < 0)
 		return -1;
 

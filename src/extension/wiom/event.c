@@ -94,7 +94,7 @@ static Event *new_event(SharedConfig *config, pid_t pid, Action action)
 		length++;
 
 		HISTORY.nb_events = 0;
-		HISTORY.max_nb_events = 10000;
+		HISTORY.max_nb_events = 500000;
 
 		HISTORY.events = talloc_array(config->history, Event,
 					HISTORY.max_nb_events);
@@ -125,31 +125,37 @@ static void remove_from_hash(HashedString *entry)
 }
 
 /**
- * Return a copy of @original from @config->strings cache.
+ * Get the index in the @config->strings cache. of the @original
+ * string.  This function returns -errno if an error occurred, 0
+ * otherwise.
  */
-static const char *get_string_copy(SharedConfig *config, const char *original)
+static ssize_t get_string_index(SharedConfig *config, const char *original)
 {
 	HashedString *entry;
 
 	HASH_FIND_STR(config->strings, original, entry);
 	if (entry != NULL)
-		return entry->string;
+		return entry->index;
 
 	entry = talloc(config, HashedString);
 	if (entry == NULL)
-		return NULL;
-	talloc_set_destructor(entry, remove_from_hash);
+		return -ENOMEM;
 
 	entry->string = talloc_strdup(entry, original);
 	if (entry->string == NULL) {
 		TALLOC_FREE(entry);
-		return NULL;
+		return -ENOMEM;
 	}
 
 	HASH_ADD_KEYPTR(hh, config->strings, entry->string,
 			talloc_get_size(entry->string) - 1, entry);
 
-	return entry->string;
+	talloc_set_destructor(entry, remove_from_hash);
+
+	entry->index = config->nb_strings;
+	config->nb_strings++;
+
+	return entry->index;
 }
 
 /**
@@ -185,8 +191,8 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 {
 	const char *path2;
 	const char *path;
+	ssize_t status;
 	Event *event;
-	int status;
 	va_list ap;
 
 	va_start(ap, action);
@@ -215,11 +221,10 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 			goto end;
 		}
 
-		event->payload.path = get_string_copy(config, path);
-		if (event->payload.path == NULL) {
-			status = -ENOMEM;
+		status = get_string_index(config, path);
+		if (status < 0)
 			goto end;
-		}
+		event->payload.path = status;
 
 		break;
 
@@ -236,17 +241,15 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 			goto end;
 		}
 
-		event->payload.path = get_string_copy(config, path);
-		if (event->payload.path == NULL) {
-			status = -ENOMEM;
+		status = get_string_index(config, path);
+		if (status < 0)
 			goto end;
-		}
+		event->payload.path = status;
 
-		event->payload.path2 = get_string_copy(config, path2);
-		if (event->payload.path2 == NULL) {
-			status = -ENOMEM;
+		status = get_string_index(config, path2);
+		if (status < 0)
 			goto end;
-		}
+		event->payload.path2 = status;
 
 		break;
 
@@ -294,7 +297,7 @@ end:
 /**
  * Report all events that were stored in @config->history.
  */
-void report_events(SharedConfig *config)
+void report_events(const SharedConfig *config)
 {
 	switch (config->options->output.format) {
 	case NONE:

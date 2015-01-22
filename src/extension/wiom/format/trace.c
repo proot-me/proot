@@ -35,12 +35,24 @@
  */
 void report_events_trace(const SharedConfig *config)
 {
-	size_t nb_chunks;
+	const char **strings = NULL;
+	const HashedString *entry;
 	size_t i, j;
 	int status;
 
 	if (config->history == NULL)
 		return;
+
+	strings = talloc_array(config, const char *, config->nb_strings);
+	if (strings == NULL) {
+		note(NULL, ERROR, SYSTEM, "can't allocate memory");
+		return;
+	}
+
+	for (entry = config->strings, i = 0; entry != NULL; entry = entry->hh.next, i++) {
+		assert(entry->index == i);
+		strings[i] = entry->string;
+	}
 
 	for (i = 0; i < talloc_array_length(config->history); i++) {
 		for (j = 0; j < config->history[i].nb_events; j++) {
@@ -51,7 +63,7 @@ void report_events_trace(const SharedConfig *config)
 						"%d %s %s\n",		\
 						event->pid,		\
 						#a,			\
-						event->payload.path);	\
+						strings[event->payload.path]);	\
 				break;					\
 
 				CASE(TRAVERSES)
@@ -68,16 +80,16 @@ void report_events_trace(const SharedConfig *config)
 				status = fprintf(config->options->output.file,
 						"%d MOVE_CREATES %s to %s\n",
 						event->pid,
-						event->payload.path,
-						event->payload.path2);
+						strings[event->payload.path],
+						strings[event->payload.path2]);
 				break;
 
 			case MOVE_OVERRIDES:
 				status = fprintf(config->options->output.file,
 						"%d MOVE_OVERRIDES %s to %s\n",
 						event->pid,
-						event->payload.path,
-						event->payload.path2);
+						strings[event->payload.path],
+						strings[event->payload.path2]);
 				break;
 
 			case CLONED:
@@ -107,4 +119,6 @@ void report_events_trace(const SharedConfig *config)
 			}
 		}
 	}
+
+	return;
 }

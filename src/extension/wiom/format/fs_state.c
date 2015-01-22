@@ -83,7 +83,6 @@ static void set_state(FileSystemState *fs_state, const char *path, State state)
 		entry = talloc_zero(fs_state, HashedPathState);
 		if (entry == NULL)
 			return;
-		talloc_set_destructor(entry, remove_from_hash);
 
 		entry->path = talloc_strdup(entry, path);
 		if (entry->path == NULL) {
@@ -93,6 +92,8 @@ static void set_state(FileSystemState *fs_state, const char *path, State state)
 
 		HASH_ADD_KEYPTR(hh, fs_state->entries, entry->path,
 				talloc_get_size(entry->path) - 1, entry);
+
+		talloc_set_destructor(entry, remove_from_hash);
 	}
 
 	entry->state = state;
@@ -209,16 +210,31 @@ static void handle_action_uses(FileSystemState *fs_state, const char *path)
  */
 void report_events_fs_state(const SharedConfig *config)
 {
+	const HashedString *entry;
 	FileSystemState *fs_state;
 	HashedPathState *item;
+	const char **strings;
 	ssize_t i, j;
 
 	if (config->history == NULL)
 		return;
 
-	fs_state = talloc_zero(NULL, FileSystemState);
-	if (fs_state == NULL)
+	fs_state = talloc_zero(config, FileSystemState);
+	if (fs_state == NULL) {
+		note(NULL, ERROR, SYSTEM, "can't allocate memory");
 		return;
+	}
+
+	strings = talloc_array(config, const char *, config->nb_strings);
+	if (strings == NULL) {
+		note(NULL, ERROR, SYSTEM, "can't allocate memory");
+		return;
+	}
+
+	for (entry = config->strings, i = 0; entry != NULL; entry = entry->hh.next, i++) {
+		assert(entry->index == (uint32_t) i);
+		strings[i] = entry->string;
+	}
 
 	/* Parse events backward, like for live range analysis.  */
 	for (i = talloc_array_length(config->history) - 1; i >= 0; i--) {
@@ -227,15 +243,15 @@ void report_events_fs_state(const SharedConfig *config)
 
 			switch (event->action) {
 			case CREATES:
-				handle_action_creates(fs_state, event->payload.path);
+				handle_action_creates(fs_state, strings[event->payload.path]);
 				break;
 
 			case DELETES:
-				handle_action_deletes(fs_state, event->payload.path);
+				handle_action_deletes(fs_state, strings[event->payload.path]);
 				break;
 
 			case SETS_CONTENT_OF:
-				handle_action_modifies(fs_state, event->payload.path);
+				handle_action_modifies(fs_state, strings[event->payload.path]);
 				break;
 
 			case GETS_METADATA_OF:
@@ -243,17 +259,17 @@ void report_events_fs_state(const SharedConfig *config)
 			case GETS_CONTENT_OF:
 			case TRAVERSES:
 			case EXECUTES:
-				handle_action_uses(fs_state, event->payload.path);
+				handle_action_uses(fs_state, strings[event->payload.path]);
 				break;
 
 			case MOVE_CREATES:
-				handle_action_deletes(fs_state, event->payload.path);
-				handle_action_creates(fs_state, event->payload.path2);
+				handle_action_deletes(fs_state, strings[event->payload.path]);
+				handle_action_creates(fs_state, strings[event->payload.path2]);
 				break;
 
 			case MOVE_OVERRIDES:
-				handle_action_deletes(fs_state, event->payload.path);
-				handle_action_modifies(fs_state, event->payload.path2);
+				handle_action_deletes(fs_state, strings[event->payload.path]);
+				handle_action_modifies(fs_state, strings[event->payload.path2]);
 				break;
 
 			case CLONED:
@@ -289,6 +305,5 @@ void report_events_fs_state(const SharedConfig *config)
 		}
 	}
 
-	TALLOC_FREE(fs_state);
 	return;
 }

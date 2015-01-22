@@ -76,15 +76,15 @@ typedef enum {
 #define UNSET_FILTERED_ACTION_BIT(options, action) ((options)->filtered.actions &= ~(1 << (action)))
 
 typedef struct {
-	pid_t pid;
-	Action action;
+	uint32_t pid;
+	uint8_t action;
 	union {
 		struct {
-			const char *path;
-			const char *path2;
+			uint32_t path;
+			uint32_t path2;
 		};
 		struct {
-			pid_t new_pid;
+			uint32_t new_pid;
 			word_t flags;
 		};
 		word_t status;
@@ -95,6 +95,7 @@ typedef struct
 {
 	UT_hash_handle hh;
 	char *string;
+	size_t index;
 } HashedString;
 
 typedef struct {
@@ -105,7 +106,10 @@ typedef struct {
 
 typedef struct {
 	HistoryChunk *history;
+
 	HashedString *strings;
+	size_t nb_strings;
+
 	Options *options;
 } SharedConfig;
 
