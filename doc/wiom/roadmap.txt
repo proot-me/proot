@@ -57,3 +57,6 @@ Features
      |      `-2*[bash---top]
 
     help message -> events
+
+* Add new options -t/-T to mask/unmask according to the file type
+  (directory, symlink, ...)

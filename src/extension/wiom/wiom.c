@@ -53,19 +53,6 @@ Not yet supported
 - gets descriptor position: llseek
 - sets descriptor position: llseek
 
-
-Predefined profiles
-===================
-
-- default
-- for Laurent (Yocto)
-  + successful events
-  + path content usage
-  + coalesed
-  + exclude all but given paths
-  + external inputs and outputs
-- ...
-
 */
 
 /**
@@ -147,7 +134,7 @@ static void handle_sysenter_end(Extension *extension)
 		word_t flags;
 
 		status = get_sysarg_path(tracee, path, sysarg);
-		if (status < 0 || path[0] != '/')
+		if (status < 0)
 			return;
 		chop_finality(path);
 
@@ -165,12 +152,12 @@ static void handle_sysenter_end(Extension *extension)
 		sysarg2 += 2;
 
 		status = get_sysarg_path(tracee, path, sysarg);
-		if (status < 0 || path[0] != '/')
+		if (status < 0)
 			return;
 		chop_finality(path);
 
 		status = get_sysarg_path(tracee, path2, sysarg2);
-		if (status < 0 || path2[0] != '/')
+		if (status < 0)
 			return;
 		chop_finality(path2);
 
@@ -239,8 +226,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		/* This implies set_content for parent of path.  */
@@ -260,8 +245,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		/* This implies set_content for parent of path.  */
@@ -282,15 +265,11 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		status = get_sysarg_path(tracee, path2, sysarg2);
 		if (status < 0)
 			goto error;
-		if (path2[0] != '/')
-			break;
 		chop_finality(path2);
 
 		/* This implies set_content for parent of path & path2.  */
@@ -318,8 +297,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, GETS_METADATA_OF, path);
@@ -331,8 +308,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_proc_fd_path(tracee, path, SYSARG_1);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, GETS_METADATA_OF, path);
@@ -359,8 +334,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, SETS_METADATA_OF, path);
@@ -372,8 +345,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_proc_fd_path(tracee, path, SYSARG_1);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, SETS_METADATA_OF, path);
@@ -391,8 +362,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, GETS_CONTENT_OF, path);
@@ -406,8 +375,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_proc_fd_path(tracee, path, SYSARG_1);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, GETS_CONTENT_OF, path);
@@ -424,8 +391,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, SETS_CONTENT_OF, path);
@@ -440,8 +405,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_proc_fd_path(tracee, path, SYSARG_1);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		record_event(config->shared, tracee->pid, SETS_CONTENT_OF, path);
@@ -466,8 +429,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_sysarg_path(tracee, path, sysarg);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		flags = peek_reg(tracee, MODIFIED, sysarg + 1);
@@ -500,8 +461,6 @@ static void handle_sysexit_start(const Extension *extension)
 		status = get_proc_fd_path(tracee, path, SYSARG_5);
 		if (status < 0)
 			goto error;
-		if (path[0] != '/')
-			break;
 		chop_finality(path);
 
 		if ((prot & PROT_EXEC) != 0 || (prot & PROT_READ) != 0)

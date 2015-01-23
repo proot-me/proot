@@ -37,39 +37,6 @@
 #include "cli/note.h"
 #include "arch.h"
 
-/*
-
-Coalescing (TODO)
-==========
-
-- "*pid* traverses *path*" hides further instances (same *pid*, same
-  action, and same *path*)
-
-- "*pid* deletes *path*" unhides all events on *path* for all pids
-
-- "*pid* gets metadata of *path*" hides further instances (same *pid*,
-  same action, and same *path*), but unhides "sets metadata of *path*"
-  for all pids
-
-- "*pid* sets metadata of *path*" hides further instances (same *pid*,
-  same action, and same *path*), but unhides "gets metadata of *path*"
-  for all pids
-
-- "sets content of *path*" hides further instances (same *pid*, same
-  action, and same *path*), but unhides "gets content of *path*" for
-  all pids
-
-- "gets content of *path*" hides further instances (same *pid*, same
-  action, and same *path*), but unhides "sets content of *path*" for
-  all pids
-
-- "moves *path* to *path2*" unhides all events on *path* and *path2*,
-  for all pids.
-
-- "*pid* has exited" unhides all events for *pid*.
-
-*/
-
 /**
  * Allocate a new event, with given @pid and @action, at the end of
  * @config->history.  This function return NULL if an error occurred,
@@ -169,6 +136,9 @@ static bool is_path_masked(SharedConfig *config, const char *path)
 	FilteredPath *current;
 	Comparison comparison;
 	bool masked = false;
+
+	if (path[0] != '/')
+		return config->options->filtered.mask_pseudo_files;
 
 	if (config->options->filtered.paths == NULL)
 		return false;

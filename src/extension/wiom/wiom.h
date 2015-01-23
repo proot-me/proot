@@ -42,6 +42,7 @@ typedef struct {
 	struct {
 		unsigned long actions;
 		FilteredPaths *paths;
+		bool mask_pseudo_files;
 
 		bool success;	/* (TODO) */
 		bool failure;	/* (TODO) */

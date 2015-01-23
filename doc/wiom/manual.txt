@@ -78,6 +78,9 @@ TODO all paths and actions are unmasked by default.
     "-p" and "-P" options can be chained, the latest has highest
     priority.
 
+-q, --mask-pseudo-files
+    TODO
+
 -a string, --mask-action=string
     TODO
 
