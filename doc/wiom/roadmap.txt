@@ -16,8 +16,6 @@ Fixes
 
 * Fix "-i test.bin -m /work1" where /work1 doesn't exist
 
-* Fix support for EXITED event
-
 
 Features
 --------

@@ -126,6 +126,12 @@ static void handle_sysenter_end(Extension *extension)
 
 	sysnum = get_sysnum(tracee, ORIGINAL);
 	switch (sysnum) {
+	case PR_exit:
+	case PR_exit_group:
+		record_event(config->shared, tracee->pid, EXITED,
+			peek_reg(tracee, ORIGINAL, SYSARG_1));
+		break;
+
 	case PR_openat:
 		sysarg++;
 	case PR_open: {
@@ -491,6 +497,8 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_chown32,		FILTER_SYSEXIT },
 	{ PR_creat,		FILTER_SYSEXIT },
 	{ PR_execve,		FILTER_SYSEXIT },
+	{ PR_exit,		0 },
+	{ PR_exit_group,	0 },
 	{ PR_faccessat,		FILTER_SYSEXIT },
 	{ PR_fchmod,		FILTER_SYSEXIT },
 	{ PR_fchmodat,		FILTER_SYSEXIT },
