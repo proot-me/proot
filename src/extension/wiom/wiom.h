@@ -76,7 +76,7 @@ typedef enum {
 #define UNSET_FILTERED_ACTION_BIT(options, action) ((options)->filtered.actions &= ~(1 << (action)))
 
 typedef struct {
-	uint32_t pid;
+	uint32_t vpid;
 	uint8_t action;
 	union {
 		struct {
@@ -84,10 +84,10 @@ typedef struct {
 			uint32_t path2;
 		};
 		struct {
-			uint32_t new_pid;
-			word_t flags;
+			uint32_t new_vpid;
+			uint32_t flags;
 		};
-		word_t status;
+		int32_t status;
 	} payload;
 } PACKED Event;
 

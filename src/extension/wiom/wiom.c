@@ -80,7 +80,7 @@ static void handle_host_path(Extension *extension, const char *path, bool is_fin
 		return;
 #endif
 
-	record_event(config->shared, tracee->pid, TRAVERSES, path);
+	record_event(config->shared, tracee->vpid, TRAVERSES, path);
 }
 
 /**
@@ -165,7 +165,7 @@ static void handle_sysenter_end(Extension *extension)
 
 	case PR_exit:
 	case PR_exit_group:
-		record_event(config->shared, tracee->pid, EXITED,
+		record_event(config->shared, tracee->vpid, EXITED,
 			peek_reg(tracee, ORIGINAL, SYSARG_1));
 		break;
 
@@ -272,7 +272,7 @@ static void handle_sysexit_start(const Extension *extension)
 		chop_finality(path);
 
 		/* This implies set_content for parent of path.  */
-		record_event(config->shared, tracee->pid, CREATES, path);
+		record_event(config->shared, tracee->vpid, CREATES, path);
 		break;
 
 	/**********************************************************************
@@ -291,7 +291,7 @@ static void handle_sysexit_start(const Extension *extension)
 		chop_finality(path);
 
 		/* This implies set_content for parent of path.  */
-		record_event(config->shared, tracee->pid, DELETES, path);
+		record_event(config->shared, tracee->vpid, DELETES, path);
 		break;
 
 	/**********************************************************************
@@ -316,7 +316,7 @@ static void handle_sysexit_start(const Extension *extension)
 		chop_finality(path2);
 
 		/* This implies set_content for parent of path & path2.  */
-		record_event(config->shared, tracee->pid,
+		record_event(config->shared, tracee->vpid,
 			config->syscall_creates_path ? MOVE_CREATES : MOVE_OVERRIDES, path, path2);
 		break;
 
@@ -342,7 +342,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, GETS_METADATA_OF, path);
+		record_event(config->shared, tracee->vpid, GETS_METADATA_OF, path);
 		break;
 
 	case PR_fstat:		/* SYSARG_1: descriptor */
@@ -353,7 +353,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, GETS_METADATA_OF, path);
+		record_event(config->shared, tracee->vpid, GETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -379,7 +379,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, SETS_METADATA_OF, path);
+		record_event(config->shared, tracee->vpid, SETS_METADATA_OF, path);
 		break;
 
 	case PR_fchown:		/* SYSARG_1: descriptor */
@@ -390,7 +390,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, SETS_METADATA_OF, path);
+		record_event(config->shared, tracee->vpid, SETS_METADATA_OF, path);
 		break;
 
 	/**********************************************************************
@@ -407,7 +407,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, GETS_CONTENT_OF, path);
+		record_event(config->shared, tracee->vpid, GETS_CONTENT_OF, path);
 		break;
 
 	case PR_read:		/* SYSARG_1: descriptor */
@@ -420,7 +420,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, GETS_CONTENT_OF, path);
+		record_event(config->shared, tracee->vpid, GETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -436,7 +436,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, SETS_CONTENT_OF, path);
+		record_event(config->shared, tracee->vpid, SETS_CONTENT_OF, path);
 		break;
 
 	case PR_write:		/* SYSARG_1: descriptor */
@@ -450,7 +450,7 @@ static void handle_sysexit_start(const Extension *extension)
 			goto error;
 		chop_finality(path);
 
-		record_event(config->shared, tracee->pid, SETS_CONTENT_OF, path);
+		record_event(config->shared, tracee->vpid, SETS_CONTENT_OF, path);
 		break;
 
 	/**********************************************************************
@@ -459,7 +459,7 @@ static void handle_sysexit_start(const Extension *extension)
 
 	case PR_execve:
 		/* Note: this implies get_metadata & get_content.  */
-		record_event(config->shared, tracee->pid, EXECUTES, tracee->new_exe, config->argv);
+		record_event(config->shared, tracee->vpid, EXECUTES, tracee->new_exe, config->argv);
 		break;
 
 	case PR_openat:
@@ -478,13 +478,13 @@ static void handle_sysexit_start(const Extension *extension)
 
 		if (config->syscall_creates_path)  {
 			/* This implies set_content for parent of path.  */
-			record_event(config->shared, tracee->pid, CREATES, path);
+			record_event(config->shared, tracee->vpid, CREATES, path);
 		}
 		else {
-			record_event(config->shared, tracee->pid, GETS_METADATA_OF, path);
+			record_event(config->shared, tracee->vpid, GETS_METADATA_OF, path);
 
 			if ((flags & O_TRUNC) != 0)
-				record_event(config->shared, tracee->pid, SETS_CONTENT_OF, path);
+				record_event(config->shared, tracee->vpid, SETS_CONTENT_OF, path);
 		}
 
 		break;
@@ -507,10 +507,10 @@ static void handle_sysexit_start(const Extension *extension)
 		chop_finality(path);
 
 		if ((prot & PROT_EXEC) != 0 || (prot & PROT_READ) != 0)
-			record_event(config->shared, tracee->pid, GETS_CONTENT_OF, path);
+			record_event(config->shared, tracee->vpid, GETS_CONTENT_OF, path);
 
 		if ((prot & PROT_WRITE) != 0 && (flags & MAP_PRIVATE) == 0)
-			record_event(config->shared, tracee->pid, SETS_CONTENT_OF, path);
+			record_event(config->shared, tracee->vpid, SETS_CONTENT_OF, path);
 
 		break;
 	}
@@ -522,7 +522,7 @@ static void handle_sysexit_start(const Extension *extension)
 	return;
 
 error:
-	note(tracee, ERROR, INTERNAL, "wiom: can't check syscall %s made by %d",
+	note(tracee, ERROR, INTERNAL, "wiom: can't check syscall %s made by pid %d",
 		stringify_sysnum(sysnum), tracee->pid);
 	return;
 }
@@ -640,7 +640,7 @@ int wiom_callback(Extension *extension, ExtensionEvent event, intptr_t data1, in
 		word_t flags = (word_t) data2;
 		Config *config = extension->config;
 
-		record_event(config->shared, parent->pid, CLONED, child->pid, flags);
+		record_event(config->shared, parent->vpid, CLONED, child->vpid, flags);
 		return 1;
 	}
 

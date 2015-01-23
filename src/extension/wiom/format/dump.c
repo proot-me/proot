@@ -82,7 +82,7 @@ void report_events_dump(const SharedConfig *config)
 	}
 
 	/* Header.  */
-	status = write_string(fd, "WioM_04");
+	status = write_string(fd, "WioM_05");
 	if (status < 0)
 		goto error;
 
@@ -177,7 +177,7 @@ int replay_events_dump(SharedConfig *config)
 
 	/* Header.  */
 	string = consume_string(&cursor, end);
-	if (strcmp(string, "WioM_04") != 0) {
+	if (strcmp(string, "WioM_05") != 0) {
 		note(NULL, ERROR, USER, "unknown input file format");
 		status = -1;
 		goto end;
@@ -218,7 +218,7 @@ int replay_events_dump(SharedConfig *config)
 				break;
 			}
 
-			status = record_event(config, event->pid, event->action,
+			status = record_event(config, event->vpid, event->action,
 					strings[event->payload.path]);
 			break;
 
@@ -232,19 +232,20 @@ int replay_events_dump(SharedConfig *config)
 				break;
 			}
 
-			status = record_event(config, event->pid, event->action,
+			status = record_event(config, event->vpid, event->action,
 					strings[event->payload.path],
 					strings[event->payload.path2]);
 			break;
 
 		case CLONED:
-			status = record_event(config, event->pid, event->action,
-					event->payload.new_pid, event->payload.flags);
+			status = record_event(config, event->vpid, event->action,
+					(uint64_t) event->payload.new_vpid,
+					(word_t) event->payload.flags);
 			break;
 
 		case EXITED:
-			status = record_event(config, event->pid, event->action,
-					event->payload.status);
+			status = record_event(config, event->vpid, event->action,
+					(word_t) event->payload.status);
 			break;
 
 		default:

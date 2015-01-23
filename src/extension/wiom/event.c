@@ -42,7 +42,7 @@
  * @config->history.  This function return NULL if an error occurred,
  * otherwise 0.
  */
-static Event *new_event(SharedConfig *config, pid_t pid, Action action)
+static Event *new_event(SharedConfig *config, uint32_t vpid, Action action)
 {
 	size_t length;
 	Event *event;
@@ -73,7 +73,7 @@ static Event *new_event(SharedConfig *config, pid_t pid, Action action)
 
 	HISTORY.nb_events++;
 
-	event->pid = pid;
+	event->vpid   = vpid;
 	event->action = action;
 
 	return event;
@@ -160,10 +160,10 @@ static bool is_path_masked(SharedConfig *config, const char *path)
 }
 
 /**
- * Record event for given @action performed by @pid.  This function
+ * Record event for given @action performed by @vpid.  This function
  * return -errno if an error occurred, otherwise 0.
  */
-int record_event(SharedConfig *config, pid_t pid, Action action, ...)
+int record_event(SharedConfig *config, uint64_t vpid, Action action, ...)
 {
 	const char *path2;
 	const char *path;
@@ -178,6 +178,11 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 		goto end;
 	}
 
+	if ((vpid & 0x00000000) != 0) {
+		note(NULL, ERROR, INTERNAL, "wiom: internal vpid overflow detected");
+		return -ERANGE;
+	}
+
 	switch (action) {
 	case TRAVERSES:
 	case CREATES:
@@ -190,7 +195,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 		if (is_path_masked(config, path))
 			break;
 
-		event = new_event(config, pid, action);
+		event = new_event(config, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
@@ -211,7 +216,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 		if (is_path_masked(config, path) && is_path_masked(config, path2))
 			break;
 
-		event = new_event(config, pid, action);
+		event = new_event(config, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
@@ -230,26 +235,26 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 		break;
 
 	case CLONED: {
-		event = new_event(config, pid, action);
+		event = new_event(config, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
 
-		event->payload.new_pid = va_arg(ap, pid_t);
-		event->payload.flags   = va_arg(ap, word_t);
+		event->payload.new_vpid = (uint32_t) va_arg(ap, uint64_t);
+		event->payload.flags    = (uint32_t) va_arg(ap, word_t);
 
 		break;
 	}
 
 	case EXITED: {
-		event = new_event(config, pid, action);
+		event = new_event(config, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
 
-		event->payload.status = va_arg(ap, word_t);
+		event->payload.status = (int32_t) va_arg(ap, word_t);
 
 		break;
 	}
@@ -262,7 +267,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 	status = 0;
 end:
 	if (status < 0)
-		note(NULL, WARNING, INTERNAL, "wiom: can't record event: %s\n",
+		note(NULL, WARNING, INTERNAL, "wiom: can't record event: %s",
 			strerror(-status));
 
 	va_end(ap);

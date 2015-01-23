@@ -61,7 +61,7 @@ void report_events_trace(const SharedConfig *config)
 #define CASE(a) case a:							\
 				status = fprintf(config->options->output.file, \
 						"%d %s %s\n",		\
-						event->pid,		\
+						event->vpid,		\
 						#a,			\
 						strings[event->payload.path]);	\
 				break;					\
@@ -78,7 +78,7 @@ void report_events_trace(const SharedConfig *config)
 			case EXECUTES:
 				status = fprintf(config->options->output.file,
 						"%d EXECUTES %s [%s]\n",
-						event->pid,
+						event->vpid,
 						strings[event->payload.path],
 						strings[event->payload.path2]);
 				break;
@@ -86,7 +86,7 @@ void report_events_trace(const SharedConfig *config)
 			case MOVE_CREATES:
 				status = fprintf(config->options->output.file,
 						"%d MOVE_CREATES %s to %s\n",
-						event->pid,
+						event->vpid,
 						strings[event->payload.path],
 						strings[event->payload.path2]);
 				break;
@@ -94,7 +94,7 @@ void report_events_trace(const SharedConfig *config)
 			case MOVE_OVERRIDES:
 				status = fprintf(config->options->output.file,
 						"%d MOVE_OVERRIDES %s to %s\n",
-						event->pid,
+						event->vpid,
 						strings[event->payload.path],
 						strings[event->payload.path2]);
 				break;
@@ -102,16 +102,16 @@ void report_events_trace(const SharedConfig *config)
 			case CLONED:
 				status = fprintf(config->options->output.file,
 						"%d CLONED (%s) into %d\n",
-						event->pid,
+						event->vpid,
 						(event->payload.flags & CLONE_THREAD) != 0
 						? "thread" : "process",
-						event->payload.new_pid);
+						event->payload.new_vpid);
 				break;
 
 			case EXITED:
 				status = fprintf(config->options->output.file,
-						"%d EXITED (status = %ld)\n",
-						event->pid,
+						"%d EXITED (status = %d)\n",
+						event->vpid,
 						event->payload.status);
 				break;
 
