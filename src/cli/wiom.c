@@ -78,25 +78,32 @@ static int handle_option_o(Tracee *tracee, const Cli *cli, const char *value)
 static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
+	size_t i;
+
+	struct { const char *name; int value; } known_formats[] = {
+		{ "none", NONE },
+		{ "dump", DUMP },
+		{ "trace", TRACE },
+		{ "fs-state", FS_STATE },
+		{ NULL, 0 }};
 
 	if (options->output.format != UNSPECIFIED)
 		note(tracee, WARNING, USER, "\"-f %s\" overrides previous choice", value);
 
-	if (strcmp(value, "none") == 0)
-		options->output.format = NONE;
-	else if (strcmp(value, "dump") == 0)
-		options->output.format = DUMP;
-	else if (strcmp(value, "trace") == 0)
-		options->output.format = TRACE;
-	else if (  strcmp(value, "fs_state") == 0
-		|| strcmp(value, "fs-state") == 0)
-		options->output.format = FS_STATE;
-	else {
-		note(tracee, ERROR, USER, "format '%s' unknown", value);
-		return -1;
+	for (i = 0; known_formats[i].name != NULL; i++) {
+		if (strcasecmp(value, known_formats[i].name) == 0) {
+			options->output.format = known_formats[i].value;
+			return 0;
+		}
 	}
 
-	return 0;
+	note(tracee, WARNING, USER, "unknown format '%s'", value);
+
+	note(tracee, INFO, USER, "Supported formats are:");
+	for (i = 0; known_formats[i].name != NULL; i++)
+		note(tracee, INFO, USER, "\t%s", known_formats[i].name);
+
+	return -1;
 }
 
 static int handle_option_c(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
@@ -164,11 +171,12 @@ static int handle_filtered_action(const Tracee *tracee, void *private, const cha
 	#define ACTION(name) #name,
 	static const char *known_actions[] = {
 		#include "extension/wiom/actions.list"
+		"ALL",
 		NULL,
 	};
 	#undef ACTION
 
-	if (strcasecmp(value, "all") == 0) {
+	if (strcasecmp(value, "ALL") == 0) {
 		if (masked)
 			options->filtered.actions = 0;
 		else
@@ -189,7 +197,6 @@ static int handle_filtered_action(const Tracee *tracee, void *private, const cha
 	note(tracee, WARNING, USER, "unknown action '%s'", value);
 
 	note(tracee, INFO, USER, "Supported actions are:");
-	note(tracee, INFO, USER, "\tALL");
 	for (i = 0; known_actions[i] != NULL; i++)
 		note(tracee, INFO, USER, "\t%s", known_actions[i]);
 
