@@ -73,8 +73,15 @@ void report_events_trace(const SharedConfig *config)
 				CASE(SETS_METADATA_OF)
 				CASE(GETS_CONTENT_OF)
 				CASE(SETS_CONTENT_OF)
-				CASE(EXECUTES)
 #undef CASE
+
+			case EXECUTES:
+				status = fprintf(config->options->output.file,
+						"%d EXECUTES %s [%s]\n",
+						event->pid,
+						strings[event->payload.path],
+						strings[event->payload.path2]);
+				break;
 
 			case MOVE_CREATES:
 				status = fprintf(config->options->output.file,

@@ -38,11 +38,8 @@ TODO
 -f string, --format=string
     TODO
 
-    TODO:
-
-    * "binary",
-    * "raw",
-    * "fs-state",
+-c, --discard-argv
+    TODO
 
 -v value, --verbose=value
     Set the level of debug information to *value*.

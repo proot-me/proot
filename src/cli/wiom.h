@@ -12,6 +12,7 @@
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_o(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_c(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_P(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_q(Tracee *tracee, const Cli *cli, const char *value);
@@ -66,6 +67,15 @@ static Cli wiom_cli = {
 		{ .name = "--format", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_f,
+	  .description = "TODO",
+	  .detail = "",
+	},
+	{ .class = "Options",
+	  .arguments = {
+		{ .name = "-c", .separator = '\0', .value = NULL },
+		{ .name = "--discard-argv", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_c,
 	  .description = "TODO",
 	  .detail = "",
 	},

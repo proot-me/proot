@@ -56,5 +56,24 @@ Features
 
     help message -> events
 
+* If this is more CPU and RAM efficient, replace argv ^_-separated
+  strings with arrays of indexed strings.  In turn, such arrays will
+  be indexed for the sake or serialization.  The new output format
+  would be like this:
+
+      +-------------------+
+      | header            |
+      +-------------------+
+      | number of strings |
+      +-------------------+
+      | number of argvs   |
+      +-------------------+
+      | strings           |
+      +-------------------+
+      | arrays            |
+      +-------------------+
+      | events            |
+      +-------------------+
+
 * Add new options -t/-T to mask/unmask according to the file type
   (directory, symlink, ...)

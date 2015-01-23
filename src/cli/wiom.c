@@ -99,6 +99,13 @@ static int handle_option_f(Tracee *tracee, const Cli *cli, const char *value)
 	return 0;
 }
 
+static int handle_option_c(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
+{
+	Options *options = talloc_get_type_abort(cli->private, Options);
+	options->discard_argv = true;
+	return 0;
+}
+
 static int handle_filtered_path(Tracee *tracee, Options *options, const char *path, bool masked)
 {
 	FilteredPath *item;
@@ -145,7 +152,7 @@ static int handle_option_P(Tracee *tracee, const Cli *cli, const char *value)
 static int handle_option_q(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
-	options->filtered.mask_pseudo_files = true;
+	options->mask_pseudo_files = true;
 	return 0;
 }
 

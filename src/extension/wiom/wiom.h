@@ -42,11 +42,10 @@ typedef struct {
 	struct {
 		unsigned long actions;
 		FilteredPaths *paths;
-		bool mask_pseudo_files;
-
-		bool success;	/* (TODO) */
-		bool failure;	/* (TODO) */
 	} filtered;
+
+	bool mask_pseudo_files;
+	bool discard_argv;
 
 	int input_fd;
 
@@ -117,6 +116,7 @@ typedef struct {
 typedef struct {
 	SharedConfig *shared;
 	bool syscall_creates_path;
+	char *argv;
 } Config;
 
 #endif /* WIO_H */

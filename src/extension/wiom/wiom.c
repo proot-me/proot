@@ -35,6 +35,7 @@
 #include "tracee/reg.h"
 #include "syscall/sysnum.h"
 #include "syscall/syscall.h"
+#include "execve/aoxp.h"
 #include "path/path.h"
 #include "cli/note.h"
 #include "arch.h"
@@ -126,6 +127,42 @@ static void handle_sysenter_end(Extension *extension)
 
 	sysnum = get_sysnum(tracee, ORIGINAL);
 	switch (sysnum) {
+	case PR_execve: {
+		ArrayOfXPointers *argv;
+		size_t i;
+
+		if (config->shared->options->discard_argv)
+			break;
+
+		status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
+		if (status < 0)
+			return;
+
+		TALLOC_FREE(config->argv);
+
+		for (i = 0; i < argv->length - 1; i++) {
+			char *arg;
+
+			status = read_xpointee_as_string(argv, i, &arg);
+			if (status < 0)
+				return;
+
+			/* Note: arguments will be separated by a unit
+			 * separator (^_ or 0x1f in ASCII). */
+			if (config->argv == NULL)
+				config->argv = talloc_strdup(config, arg);
+			else
+				config->argv = talloc_asprintf_append_buffer(config->argv,
+									"\x1f%s", arg);
+			if (config->argv == NULL) {
+				note(tracee, ERROR, INTERNAL, "can't allocate memory");
+				return;
+			}
+		}
+
+		break;
+	}
+
 	case PR_exit:
 	case PR_exit_group:
 		record_event(config->shared, tracee->pid, EXITED,
@@ -422,7 +459,7 @@ static void handle_sysexit_start(const Extension *extension)
 
 	case PR_execve:
 		/* Note: this implies get_metadata & get_content.  */
-		record_event(config->shared, tracee->pid, EXECUTES, tracee->exe);
+		record_event(config->shared, tracee->pid, EXECUTES, tracee->new_exe, config->argv);
 		break;
 
 	case PR_openat:
@@ -485,7 +522,7 @@ static void handle_sysexit_start(const Extension *extension)
 	return;
 
 error:
-	note(tracee, ERROR, INTERNAL, "wiom: can't check syscall %s made by %d\n",
+	note(tracee, ERROR, INTERNAL, "wiom: can't check syscall %s made by %d",
 		stringify_sysnum(sysnum), tracee->pid);
 	return;
 }

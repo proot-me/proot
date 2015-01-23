@@ -361,7 +361,6 @@ static void compute_load_addresses(Tracee *tracee)
 static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
 {
 	ArrayOfXPointers *envp;
-	char *argv0;
 	int status;
 
 	/* Execution of host programs when QEMU is in use relies on
@@ -379,6 +378,7 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 	if (!is_host_elf(tracee, host_path)) {
 		ArrayOfXPointers *argv;
 		size_t nb_qemu_args;
+		char *argv0;
 		size_t i;
 
 		status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);

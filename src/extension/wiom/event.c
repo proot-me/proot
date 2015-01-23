@@ -103,6 +103,9 @@ static ssize_t get_string_index(SharedConfig *config, const char *original)
 {
 	HashedString *entry;
 
+	if (original == NULL)
+		original = "NULL";
+
 	HASH_FIND_STR(config->strings, original, entry);
 	if (entry != NULL)
 		return entry->index;
@@ -138,7 +141,7 @@ static bool is_path_masked(SharedConfig *config, const char *path)
 	bool masked = false;
 
 	if (path[0] != '/')
-		return config->options->filtered.mask_pseudo_files;
+		return config->options->mask_pseudo_files;
 
 	if (config->options->filtered.paths == NULL)
 		return false;
@@ -183,7 +186,6 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 	case SETS_METADATA_OF:
 	case GETS_CONTENT_OF:
 	case SETS_CONTENT_OF:
-	case EXECUTES:
 		path = va_arg(ap, const char *);
 		if (is_path_masked(config, path))
 			break;
@@ -201,6 +203,7 @@ int record_event(SharedConfig *config, pid_t pid, Action action, ...)
 
 		break;
 
+	case EXECUTES:
 	case MOVE_CREATES:
 	case MOVE_OVERRIDES:
 		path  = va_arg(ap, const char *);
