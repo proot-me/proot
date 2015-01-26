@@ -38,47 +38,55 @@
 #include "arch.h"
 
 /**
- * Allocate a new event, with given @pid and @action, at the end of
- * @config->history.  This function return NULL if an error occurred,
- * otherwise 0.
+ * Allocate a new event at the end of @config->history, with given
+ * @pid, @action anb @nb_payloads.  This function return NULL if an
+ * error occurred, otherwise 0.
  */
-static Event *new_event(SharedConfig *config, uint32_t vpid, Action action)
+static Event *new_event(SharedConfig *config, size_t nb_payloads, uint32_t vpid, Action action)
 {
-	size_t length;
+	size_t nb_chunks;
+	size_t needed_size;
+	size_t free_size;
 	Event *event;
 	void *tmp;
 
-#define HISTORY config->history[length - 1]
+#define HISTORY_CHUNK config->history[nb_chunks - 1]
 
-	length = (config->history == NULL ? 0 : talloc_array_length(config->history));
+	if (config->history != NULL) {
+		nb_chunks = talloc_array_length(config->history);
+		free_size = HISTORY_CHUNK_SIZE - HISTORY_CHUNK.usage;
+	}
+	else {
+		nb_chunks = 0;
+		free_size = 0;
+	}
 
-	if (length == 0 || HISTORY.nb_events == HISTORY.max_nb_events) {
-		tmp = talloc_realloc(config, config->history, HistoryChunk, length + 1);
+	needed_size = sizeof(Event) + nb_payloads * sizeof(uint32_t);
+	if (free_size < needed_size) {
+		tmp = talloc_realloc(config, config->history, HistoryChunk, nb_chunks + 1);
 		if (tmp == NULL)
 			return NULL;
 
 		config->history = tmp;
-		length++;
+		nb_chunks++;
 
-		HISTORY.nb_events = 0;
-		HISTORY.max_nb_events = 500000;
-
-		HISTORY.events = talloc_array(config->history, Event,
-					HISTORY.max_nb_events);
-		if (HISTORY.events == NULL)
+		HISTORY_CHUNK.events = talloc_size(config->history, HISTORY_CHUNK_SIZE);
+		if (HISTORY_CHUNK.events == NULL)
 			return NULL;
+
+		HISTORY_CHUNK.usage = 0;
 	}
 
-	event = &HISTORY.events[HISTORY.nb_events];
+	event = HISTORY_CHUNK.events + HISTORY_CHUNK.usage;
 
-	HISTORY.nb_events++;
+	HISTORY_CHUNK.usage += needed_size;
 
 	event->vpid   = vpid;
 	event->action = action;
 
 	return event;
 
-#undef HISTORY
+#undef HISTORY_CHUNK
 }
 
 /**
@@ -195,7 +203,7 @@ int record_event(SharedConfig *config, uint64_t vpid, Action action, ...)
 		if (is_path_masked(config, path))
 			break;
 
-		event = new_event(config, vpid, action);
+		event = new_event(config, 1, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
@@ -204,7 +212,7 @@ int record_event(SharedConfig *config, uint64_t vpid, Action action, ...)
 		status = get_string_index(config, path);
 		if (status < 0)
 			goto end;
-		event->payload.path = status;
+		event->payload[0] = status;
 
 		break;
 
@@ -216,7 +224,7 @@ int record_event(SharedConfig *config, uint64_t vpid, Action action, ...)
 		if (is_path_masked(config, path) && is_path_masked(config, path2))
 			break;
 
-		event = new_event(config, vpid, action);
+		event = new_event(config, 2, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
@@ -225,36 +233,36 @@ int record_event(SharedConfig *config, uint64_t vpid, Action action, ...)
 		status = get_string_index(config, path);
 		if (status < 0)
 			goto end;
-		event->payload.path = status;
+		event->payload[0] = status;
 
 		status = get_string_index(config, path2);
 		if (status < 0)
 			goto end;
-		event->payload.path2 = status;
+		event->payload[1] = status;
 
 		break;
 
 	case CLONED: {
-		event = new_event(config, vpid, action);
+		event = new_event(config, 2, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
 
-		event->payload.new_vpid = (uint32_t) va_arg(ap, uint64_t);
-		event->payload.flags    = (uint32_t) va_arg(ap, word_t);
+		event->payload[0] = (uint32_t) va_arg(ap, uint64_t);
+		event->payload[1] = (uint32_t) va_arg(ap, word_t);
 
 		break;
 	}
 
 	case EXITED: {
-		event = new_event(config, vpid, action);
+		event = new_event(config, 1, vpid, action);
 		if (event == NULL) {
 			status = -ENOMEM;
 			goto end;
 		}
 
-		event->payload.status = (int32_t) va_arg(ap, word_t);
+		event->payload[0] = (uint32_t) va_arg(ap, word_t);
 
 		break;
 	}

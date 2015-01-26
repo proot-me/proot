@@ -217,7 +217,8 @@ void report_events_fs_state(const SharedConfig *config)
 	FileSystemState *fs_state;
 	HashedPathState *item;
 	const char **strings;
-	ssize_t i, j;
+	ssize_t nb_chunks;
+	ssize_t i;
 
 	if (config->history == NULL)
 		return;
@@ -240,21 +241,27 @@ void report_events_fs_state(const SharedConfig *config)
 	}
 
 	/* Parse events backward, like for live range analysis.  */
-	for (i = talloc_array_length(config->history) - 1; i >= 0; i--) {
-		for (j = config->history[i].nb_events - 1; j >= 0; j--) {
-			const Event *event = &config->history[i].events[j];
+	nb_chunks = talloc_array_length(config->history);
+	for (i = nb_chunks - 1; i >= 0; i--) {
+		ssize_t offset = config->history[i].usage;
+		while (offset > (ssize_t) sizeof(Event)) {
+			offset -= sizeof(Event);
+			const Event *event = config->history[i].events + offset;
 
 			switch (event->action) {
 			case CREATES:
-				handle_action_creates(fs_state, strings[event->payload.path]);
+				offset -= 1 * sizeof(uint32_t);
+				handle_action_creates(fs_state, strings[event->payload[0]]);
 				break;
 
 			case DELETES:
-				handle_action_deletes(fs_state, strings[event->payload.path]);
+				offset -= 1 * sizeof(uint32_t);
+				handle_action_deletes(fs_state, strings[event->payload[0]]);
 				break;
 
 			case SETS_CONTENT_OF:
-				handle_action_modifies(fs_state, strings[event->payload.path]);
+				offset -= 1 * sizeof(uint32_t);
+				handle_action_modifies(fs_state, strings[event->payload[0]]);
 				break;
 
 			case GETS_METADATA_OF:
@@ -262,17 +269,20 @@ void report_events_fs_state(const SharedConfig *config)
 			case GETS_CONTENT_OF:
 			case TRAVERSES:
 			case EXECUTES:
-				handle_action_uses(fs_state, strings[event->payload.path]);
+				offset -= 1 * sizeof(uint32_t);
+				handle_action_uses(fs_state, strings[event->payload[0]]);
 				break;
 
 			case MOVE_CREATES:
-				handle_action_deletes(fs_state, strings[event->payload.path]);
-				handle_action_creates(fs_state, strings[event->payload.path2]);
+				offset -= 2 * sizeof(uint32_t);
+				handle_action_deletes(fs_state, strings[event->payload[0]]);
+				handle_action_creates(fs_state, strings[event->payload[1]]);
 				break;
 
 			case MOVE_OVERRIDES:
-				handle_action_deletes(fs_state, strings[event->payload.path]);
-				handle_action_modifies(fs_state, strings[event->payload.path2]);
+				offset -= 2 * sizeof(uint32_t);
+				handle_action_deletes(fs_state, strings[event->payload[0]]);
+				handle_action_modifies(fs_state, strings[event->payload[1]]);
 				break;
 
 			case CLONED:

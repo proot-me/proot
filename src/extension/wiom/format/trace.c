@@ -37,7 +37,8 @@ void report_events_trace(const SharedConfig *config)
 {
 	const char **strings = NULL;
 	const HashedString *entry;
-	size_t i, j;
+	size_t nb_chunks;
+	size_t i;
 	int status;
 
 	if (config->history == NULL)
@@ -54,16 +55,24 @@ void report_events_trace(const SharedConfig *config)
 		strings[i] = entry->string;
 	}
 
-	for (i = 0; i < talloc_array_length(config->history); i++) {
-		for (j = 0; j < config->history[i].nb_events; j++) {
-			const Event *event = &config->history[i].events[j];
+	nb_chunks = talloc_array_length(config->history);
+	for (i = 0; i < nb_chunks; i++) {
+		size_t chunk_size = config->history[i].usage;
+		size_t offset;
+
+		offset = 0;
+		while (offset < chunk_size) {
+			const Event *event = config->history[i].events + offset;
+			offset += sizeof(Event);
+
 			switch (event->action) {
 #define CASE(a) case a:							\
 				status = fprintf(config->options->output.file, \
 						"%d %s %s\n",		\
 						event->vpid,		\
 						#a,			\
-						strings[event->payload.path]);	\
+						strings[event->payload[0]]); \
+				offset += 1 * sizeof(uint32_t);		\
 				break;					\
 
 				CASE(TRAVERSES)
@@ -79,40 +88,45 @@ void report_events_trace(const SharedConfig *config)
 				status = fprintf(config->options->output.file,
 						"%d EXECUTES %s [%s]\n",
 						event->vpid,
-						strings[event->payload.path],
-						strings[event->payload.path2]);
+						strings[event->payload[0]],
+						strings[event->payload[1]]);
+				offset += 2 * sizeof(uint32_t);
 				break;
 
 			case MOVE_CREATES:
 				status = fprintf(config->options->output.file,
 						"%d MOVE_CREATES %s to %s\n",
 						event->vpid,
-						strings[event->payload.path],
-						strings[event->payload.path2]);
+						strings[event->payload[0]],
+						strings[event->payload[1]]);
+				offset += 2 * sizeof(uint32_t);
 				break;
 
 			case MOVE_OVERRIDES:
 				status = fprintf(config->options->output.file,
 						"%d MOVE_OVERRIDES %s to %s\n",
 						event->vpid,
-						strings[event->payload.path],
-						strings[event->payload.path2]);
+						strings[event->payload[0]],
+						strings[event->payload[1]]);
+				offset += 2 * sizeof(uint32_t);
 				break;
 
 			case CLONED:
 				status = fprintf(config->options->output.file,
 						"%d CLONED (%s) into %d\n",
 						event->vpid,
-						(event->payload.flags & CLONE_THREAD) != 0
+						(event->payload[1] & CLONE_THREAD) != 0
 						? "thread" : "process",
-						event->payload.new_vpid);
+						event->payload[0]);
+				offset += 2 * sizeof(uint32_t);
 				break;
 
 			case EXITED:
 				status = fprintf(config->options->output.file,
 						"%d EXITED (status = %d)\n",
 						event->vpid,
-						event->payload.status);
+						event->payload[0]);
+				offset += 1 * sizeof(uint32_t);
 				break;
 
 			default:

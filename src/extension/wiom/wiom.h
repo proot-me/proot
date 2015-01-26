@@ -78,17 +78,7 @@ typedef enum {
 typedef struct {
 	uint32_t vpid;
 	uint8_t action;
-	union {
-		struct {
-			uint32_t path;
-			uint32_t path2;
-		};
-		struct {
-			uint32_t new_vpid;
-			uint32_t flags;
-		};
-		int32_t status;
-	} payload;
+	uint32_t payload[];
 } PACKED Event;
 
 typedef struct
@@ -98,10 +88,11 @@ typedef struct
 	size_t index;
 } HashedString;
 
+#define HISTORY_CHUNK_SIZE (10 * 1024 * 1024)
+
 typedef struct {
-	Event *events;
-	size_t nb_events;
-	size_t max_nb_events;
+	void *events;
+	size_t usage;
 } HistoryChunk;
 
 typedef struct {

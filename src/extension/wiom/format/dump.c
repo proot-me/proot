@@ -82,7 +82,7 @@ void report_events_dump(const SharedConfig *config)
 	}
 
 	/* Header.  */
-	status = write_string(fd, "WioM_05");
+	status = write_string(fd, "WioM_06");
 	if (status < 0)
 		goto error;
 
@@ -98,8 +98,7 @@ void report_events_dump(const SharedConfig *config)
 
 	/* Events.  */
 	for (i = 0; i < talloc_array_length(config->history); i++) {
-		status = write_data(fd, config->history[i].events,
-				config->history[i].nb_events * sizeof(Event));
+		status = write_data(fd, config->history[i].events, config->history[i].usage);
 		if (status < 0)
 			goto error;
 	}
@@ -177,7 +176,7 @@ int replay_events_dump(SharedConfig *config)
 
 	/* Header.  */
 	string = consume_string(&cursor, end);
-	if (strcmp(string, "WioM_05") != 0) {
+	if (strcmp(string, "WioM_06") != 0) {
 		note(NULL, ERROR, USER, "unknown input file format");
 		status = -1;
 		goto end;
@@ -203,6 +202,7 @@ int replay_events_dump(SharedConfig *config)
 	/* Events.  */
 	while (cursor < end) {
 		const Event *event = consume_data(&cursor, end, sizeof(Event));
+		const uint32_t *payload;
 
 		switch (event->action) {
 		case TRAVERSES:
@@ -212,40 +212,44 @@ int replay_events_dump(SharedConfig *config)
 		case SETS_METADATA_OF:
 		case GETS_CONTENT_OF:
 		case SETS_CONTENT_OF:
-			if (event->payload.path > *nb_strings) {
+			payload = consume_data(&cursor, end, 1 * sizeof(uint32_t));
+			if (payload[0] > *nb_strings) {
 				note(NULL, ERROR, INTERNAL, "unexpected string index");
 				status = -1;
 				break;
 			}
 
 			status = record_event(config, event->vpid, event->action,
-					strings[event->payload.path]);
+					strings[payload[0]]);
 			break;
 
 		case EXECUTES:
 		case MOVE_CREATES:
 		case MOVE_OVERRIDES:
-			if (   event->payload.path > *nb_strings
-			    || event->payload.path2 > *nb_strings) {
+			payload = consume_data(&cursor, end, 2 * sizeof(uint32_t));
+			if (   payload[0] > *nb_strings
+			    || payload[1] > *nb_strings) {
 				note(NULL, ERROR, INTERNAL, "unexpected string index");
 				status = -1;
 				break;
 			}
 
 			status = record_event(config, event->vpid, event->action,
-					strings[event->payload.path],
-					strings[event->payload.path2]);
+					strings[payload[0]],
+					strings[payload[1]]);
 			break;
 
 		case CLONED:
+			payload = consume_data(&cursor, end, 2 * sizeof(uint32_t));
 			status = record_event(config, event->vpid, event->action,
-					(uint64_t) event->payload.new_vpid,
-					(word_t) event->payload.flags);
+					(uint64_t) payload[0],
+					(word_t) payload[1]);
 			break;
 
 		case EXITED:
+			payload = consume_data(&cursor, end, 1 * sizeof(uint32_t));
 			status = record_event(config, event->vpid, event->action,
-					(word_t) event->payload.status);
+					(word_t) payload[0]);
 			break;
 
 		default:
