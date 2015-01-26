@@ -175,6 +175,7 @@ int record_event(SharedConfig *config, uint64_t vpid, Action action, ...)
 {
 	const char *path2;
 	const char *path;
+	const char *argv;
 	ssize_t status;
 	Event *event;
 	va_list ap;
@@ -217,6 +218,32 @@ int record_event(SharedConfig *config, uint64_t vpid, Action action, ...)
 		break;
 
 	case EXECUTES:
+		path = va_arg(ap, const char *);
+		argv = va_arg(ap, const char *);
+		if (is_path_masked(config, path))
+			break;
+
+		event = new_event(config, 2, vpid, action);
+		if (event == NULL) {
+			status = -ENOMEM;
+			goto end;
+		}
+
+		status = get_string_index(config, path);
+		if (status < 0)
+			goto end;
+		event->payload[0] = status;
+
+		if (config->options->discard_argv)
+			argv = NULL;
+
+		status = get_string_index(config, argv);
+		if (status < 0)
+			goto end;
+		event->payload[1] = status;
+
+		break;
+
 	case MOVE_CREATES:
 	case MOVE_OVERRIDES:
 		path  = va_arg(ap, const char *);
