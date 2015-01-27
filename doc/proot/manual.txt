@@ -499,6 +499,11 @@ available as highly compatible static binaries:
 
 * other architectures: on demand.
 
+Such binaries are created using the following build-system:
+http://build.proot.me.  It makes sure that they can run on any distros
+powered by the Linux kernel version 2.6.0 or later, nothing more.
+Ultimately these binaries can even run on Linux systems where no
+libraries are installed.
 
 Rootfs
 ------
