@@ -66,7 +66,7 @@
 	    href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
 	    forum</a>, but please be sure that your answer isn't in
 	    the <a
-	    href="https://github.com/cedric-vincent/PRoot#proot">user
+	    href="https://github.com/cedric-vincent/PRoot/blob/master/doc/proot/manual.txt">user
 	    manual</a> first.
 	    </p>
 	  </div>

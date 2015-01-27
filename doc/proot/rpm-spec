@@ -60,7 +60,7 @@ rm -rf %{buildroot}
 %doc doc/*
 
 %changelog
-* Mon Jan 12 2015 Cédric VINCENT <cedric.vincent@st.com>
+* Tue Jan 27 2015 Cédric VINCENT <cedric.vincent@st.com>
 Release v5.1.0
 ==============
 
