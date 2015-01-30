@@ -1,6 +1,13 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <Python.h>
+
 #include "extension/extension.h"
 #include "cli/note.h"
+#include "path/temp.h"
+
+/* FIXME: need to handle error code properly */
 
 static PyObject *python_callback_func;
 
@@ -13,35 +20,89 @@ static FilteredSysnum filtered_sysnums[] = {
 /* build by swig */
 extern void init_proot(void);
 
+/* create python files */
+extern unsigned char _binary_extension_python_python_extension_py_start;
+extern unsigned char _binary_extension_python_python_extension_py_size;
+extern unsigned char _binary_extension_python_proot_py_start;
+extern unsigned char _binary_extension_python_proot_py_size;
+
+static int create_python_file(const char *tmp_dir, const char *python_file_name, unsigned char *start_file, unsigned char *size_file)
+{
+	void *start = (void *) start_file;
+	size_t size = (size_t) size_file;
+	char python_full_file_name[PATH_MAX];
+	int fd;
+	int status;
+
+	status = snprintf(python_full_file_name, PATH_MAX, "%s/%s", tmp_dir, python_file_name);
+	if (status < 0 || status >= PATH_MAX) {
+		status = -1;
+	} else {
+		fd = open(python_full_file_name, O_WRONLY | O_CREAT, S_IRWXU);
+		if (fd >= 0) {
+			status = write(fd, start, size);
+			close(fd);
+		}
+	}
+
+	return status>0?0:-1;
+}
+
+static int create_python_extension(const char *tmp_dir)
+{
+	return create_python_file(tmp_dir, "python_extension.py",
+								&_binary_extension_python_python_extension_py_start,
+								&_binary_extension_python_python_extension_py_size);
+}
+
+static int create_proot(const char *tmp_dir)
+{
+	return create_python_file(tmp_dir, "proot.py",
+								&_binary_extension_python_proot_py_start,
+								&_binary_extension_python_proot_py_size);
+}
+
 /* init python once */
 void init_python_env()
 {
 	static bool is_done = false;
 
 	if (!is_done) {
+		char path_insert[PATH_MAX];
 		PyObject *pName, *pModule;
+		const char *tmp_dir;
+		int status;
 
-		Py_Initialize();
-		init_proot();
-		PyRun_SimpleString("import sys");
-		PyRun_SimpleString("sys.path.insert(0, '/home/mike/work/PRoot/src/extension/python')");
-		pName = PyString_FromString("python_extension");
-		if (pName) {
-			pModule = PyImport_Import(pName);
-			Py_DECREF(pName);
-			if (pModule) {
-				python_callback_func = PyObject_GetAttrString(pModule, "python_callback");
-				if (python_callback_func && PyCallable_Check(python_callback_func))
-					note(NULL, INFO, USER, "python_callback find\n");
-				else
-					note(NULL, ERROR, USER, "python_callback_func error\n");
-			} else {
-				PyErr_Print();
-				note(NULL, ERROR, USER, "pModule error\n");
-			}
-		} else
-			note(NULL, ERROR, USER, "pName error\n");
-		is_done = true;
+		tmp_dir = create_temp_directory(NULL, "proot-python");
+		status = snprintf(path_insert, PATH_MAX, "sys.path.insert(0, '%s')", tmp_dir);
+		if (status < 0 || status >= PATH_MAX) {
+			note(NULL, ERROR, USER, "Unable to create tmp directory\n");
+		} else if (create_python_extension(tmp_dir) || create_proot(tmp_dir)) {
+			note(NULL, ERROR, USER, "Unable to create python file\n");
+			is_done = true;
+		} else {
+			Py_Initialize();
+			init_proot();
+			PyRun_SimpleString("import sys");
+			PyRun_SimpleString(path_insert);
+			pName = PyString_FromString("python_extension");
+			if (pName) {
+				pModule = PyImport_Import(pName);
+				Py_DECREF(pName);
+				if (pModule) {
+					python_callback_func = PyObject_GetAttrString(pModule, "python_callback");
+					if (python_callback_func && PyCallable_Check(python_callback_func))
+						;//note(NULL, INFO, USER, "python_callback find\n");
+					else
+						note(NULL, ERROR, USER, "python_callback_func error\n");
+				} else {
+					PyErr_Print();
+					note(NULL, ERROR, USER, "pModule error\n");
+				}
+			} else
+				note(NULL, ERROR, USER, "pName error\n");
+			is_done = true;
+		}
 	}
 }
 

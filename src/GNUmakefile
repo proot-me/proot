@@ -56,7 +56,9 @@ OBJECTS += \
 	extension/fake_id0/fake_id0.o \
 	extension/python/python.o \
 	extension/python/proot_wrap.o \
-	loader/loader-wrapped.o
+	loader/loader-wrapped.o \
+	extension/python/python_extension.o \
+	extension/python/proot.o
 
 define define_from_arch.h
 $2$1 := $(shell $(CC) $1 -E -dM -DNO_LIBC_HEADER $(SRC)/arch.h | grep -w $2 | cut -f 3 -d ' ')
@@ -172,8 +174,14 @@ cli/care-manual.o: manual cli/cli.o
 cli/%-licenses.o: licenses cli/cli.o
 	$(OBJIFY)
 
-extension/python/proot_wrap.c: extension/python/proot.i
+%_wrap.c %.py: %.i
 	$($(quiet)SWIG) -python extension/python/proot.i
+
+extension/python/python_extension.o: extension/python/python_extension.py cli/cli.o
+	$(OBJIFY)
+
+extension/python/proot.o: extension/python/proot.py cli/cli.o
+	$(OBJIFY)
 
 ######################################################################
 # Build rules for the loader
