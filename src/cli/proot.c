@@ -174,11 +174,13 @@ static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value UNU
 	return handle_option_i(tracee, cli, "0:0");
 }
 
+#ifdef HAVE_PYTHON_EXTENSION
 static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
 	(void) initialize_extension(tracee, python_callback, value);
 	return 0;
 }
+#endif
 
 static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {

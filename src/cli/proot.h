@@ -58,7 +58,9 @@ static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_k(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
+#ifdef HAVE_PYTHON_EXTENSION
 static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
+#endif
 static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
 
@@ -216,14 +218,16 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 \tgroup appear as if they were owned by uid and gid instead.\n\
 \tNote that the -0 option is the same as -i 0:0.",
 	},
+#ifdef HAVE_PYTHON_EXTENSION
 	{ .class = "Extension options",
 	  .arguments = {
 		{ .name = "-p", .separator = ' ', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_p,
 	  .description = "Allow to access tracee information from python.",
-	  .detail = "\tblah blah",
+	  .detail = "\tThis option allow to launch a python script as an extension.",
 	},
+#endif
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-R", .separator = ' ', .value = "path" },

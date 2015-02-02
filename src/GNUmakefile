@@ -10,11 +10,13 @@ RM       = rm
 INSTALL  = install
 CC       = gcc
 LD       = $(CC)
-SWIG     = swig
 
-CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I/usr/include/python2.7 -I/usr/include/x86_64-linux-gnu/python2.7
-CFLAGS   += -Wall -Wextra -O2 -g
-LDFLAGS  += -ltalloc -L/usr/lib/python2.7/config-x86_64-linux-gnu -L/usr/lib -lpython2.7 -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic -Wl,-O1 -Wl,-Bsymbolic-functions
+HAS_SWIG := $(shell swig -version 2>/dev/null)
+HAS_PYTHON_CONFIG := $(shell python2.7-config --ldflags 2>/dev/null)
+
+CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
+CFLAGS   += -Wall -Wextra -O2
+LDFLAGS  += -ltalloc
 
 CARE_LDFLAGS = -larchive
 
@@ -54,11 +56,7 @@ OBJECTS += \
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o \
-	extension/python/python.o \
-	extension/python/proot_wrap.o \
-	loader/loader-wrapped.o \
-	extension/python/python_extension.o \
-	extension/python/proot.o
+	loader/loader-wrapped.o
 
 define define_from_arch.h
 $2$1 := $(shell $(CC) $1 -E -dM -DNO_LIBC_HEADER $(SRC)/arch.h | grep -w $2 | cut -f 3 -d ' ')
@@ -68,6 +66,13 @@ $(eval $(call define_from_arch.h,,HAS_LOADER_32BIT))
 
 ifdef HAS_LOADER_32BIT
   OBJECTS += loader/loader-m32-wrapped.o
+endif
+
+ifneq ($(and $(HAS_SWIG),$(HAS_PYTHON_CONFIG)),)
+  OBJECTS += extension/python/python.o \
+		   extension/python/proot_wrap.o \
+		   extension/python/python_extension.o \
+		   extension/python/proot.o
 endif
 
 CARE_OBJECTS = 				\
@@ -88,7 +93,6 @@ quiet_GEN = @echo "  GEN	$@"; $(GEN)
 quiet_CC  = @echo "  CC	$@"; $(CC)
 quiet_LD  = @echo "  LD	$@"; $(LD)
 quiet_INSTALL = @echo "  INSTALL	$?"; $(INSTALL)
-quiet_SWIG = @echo "  SWIG	$@"; $(SWIG)
 
 V = 0
 ifeq ($(V), 0)
@@ -108,6 +112,10 @@ CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>
 		if [ ! -z "$${VERSION}" ]; \
 		then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
 		fi;
+
+ifneq ($(and $(HAS_SWIG),$(HAS_PYTHON_CONFIG)),)
+	CHECK_PYTHON_EXTENSION = /bin/echo -e "\#define HAVE_PYTHON_EXTENSION"
+endif
 
 CHECK_FEATURES = process_vm seccomp_filter
 CHECK_PROGRAMS = $(foreach feature,$(CHECK_FEATURES),.check_$(feature))
@@ -131,6 +139,7 @@ build.h: $(CHECK_RESULTS)
 	$(Q)echo "#ifndef BUILD_H"      >> $@
 	$(Q)echo "#define BUILD_H"      >> $@
 	$(Q)sh -c '$(CHECK_VERSION)'    >> $@
+	$(Q)sh -c '$(CHECK_PYTHON_EXTENSION)'    >> $@
 	$(Q)cat $^                      >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
@@ -174,21 +183,36 @@ cli/care-manual.o: manual cli/cli.o
 cli/%-licenses.o: licenses cli/cli.o
 	$(OBJIFY)
 
+######################################################################
+# Python extension
+
+define build_python_extension
+CPPFLAGS 	+= `python2.7-config --includes`
+LDFLAGS 	+= `python2.7-config --ldflags`
+SWIG     	= swig
+quiet_SWIG 	= @echo "  SWIG	$$@"; swig
+
 .INTERMEDIATE:python_extension.py
 python_extension.py: extension/python/python_extension.py
-	$(Q)cp $< $@
+	$$(Q)cp $$< $$@
 extension/python/python_extension.o: python_extension.py cli/cli.o
-	$(OBJIFY)
+	$$(OBJIFY)
 
 .SECONDARY: proot_wrap.c proot.py
 proot_wrap.c proot.py: extension/python/proot.i
-	$($(quiet)SWIG) -python -outcurrentdir -I$(VPATH) $(VPATH)/extension/python/proot.i
+	$$($$(quiet)SWIG) -python -outcurrentdir -I$$(VPATH) $$(VPATH)/extension/python/proot.i
 
 extension/python/proot.o: proot.py cli/cli.o
-	$(OBJIFY)
+	$$(OBJIFY)
 
 extension/python/proot_wrap.o: proot_wrap.c
-	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $< -o $@
+	$$($$(quiet)CC) $$(CPPFLAGS) $$(CFLAGS) -MD -c $$< -o $$@
+
+endef
+
+ifneq ($(and $(HAS_SWIG),$(HAS_PYTHON_CONFIG)),)
+$(eval $(build_python_extension))
+endif
 
 ######################################################################
 # Build rules for the loader
@@ -220,6 +244,7 @@ loader$1.exe: loader/loader$1
 
 loader/loader$1-wrapped.o: loader$1.exe cli/cli.o
 	$$(OBJIFY)
+
 endef
 
 $(eval $(build_loader))
@@ -245,8 +270,7 @@ DESTDIR = $(PREFIX)/bin
 
 .PHONY: clean distclean install install-care uninstall
 clean distclean:
-	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) extension/python/python_extension.pyc \
-	extension/python/proot.pyc proot_wrap.c proot.py proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
+	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses proot.py proot_wrap.c
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
