@@ -174,16 +174,21 @@ cli/care-manual.o: manual cli/cli.o
 cli/%-licenses.o: licenses cli/cli.o
 	$(OBJIFY)
 
-extension/python/python_extension.o: extension/python/python_extension.py cli/cli.o
+.INTERMEDIATE:python_extension.py
+python_extension.py: extension/python/python_extension.py
+	$(Q)cp $< $@
+extension/python/python_extension.o: python_extension.py cli/cli.o
 	$(OBJIFY)
 
-.SECONDARY: extension/python/proot_wrap.c extension/python/proot.py
+.SECONDARY: proot_wrap.c proot.py
+proot_wrap.c proot.py: extension/python/proot.i
+	$($(quiet)SWIG) -python -outcurrentdir -I$(VPATH) $(VPATH)/extension/python/proot.i
 
-extension/python/proot_wrap.c extension/python/proot.py: extension/python/proot.i
-	$($(quiet)SWIG) -python extension/python/proot.i
-
-extension/python/proot.o: extension/python/proot.py cli/cli.o
+extension/python/proot.o: proot.py cli/cli.o
 	$(OBJIFY)
+
+extension/python/proot_wrap.o: proot_wrap.c
+	$($(quiet)CC) $(CPPFLAGS) $(CFLAGS) -MD -c $< -o $@
 
 ######################################################################
 # Build rules for the loader
@@ -241,7 +246,7 @@ DESTDIR = $(PREFIX)/bin
 .PHONY: clean distclean install install-care uninstall
 clean distclean:
 	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) extension/python/python_extension.pyc \
-	extension/python/proot.pyc extension/python/proot_wrap.c extension/python/proot.py proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
+	extension/python/proot.pyc proot_wrap.c proot.py proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
 	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<

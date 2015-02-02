@@ -21,10 +21,10 @@ static FilteredSysnum filtered_sysnums[] = {
 extern void init_proot(void);
 
 /* create python files */
-extern unsigned char _binary_extension_python_python_extension_py_start;
-extern unsigned char _binary_extension_python_python_extension_py_size;
-extern unsigned char _binary_extension_python_proot_py_start;
-extern unsigned char _binary_extension_python_proot_py_size;
+extern unsigned char _binary_python_extension_py_start;
+extern unsigned char _binary_python_extension_py_size;
+extern unsigned char _binary_proot_py_start;
+extern unsigned char _binary_proot_py_size;
 
 static int create_python_file(const char *tmp_dir, const char *python_file_name, unsigned char *start_file, unsigned char *size_file)
 {
@@ -51,15 +51,15 @@ static int create_python_file(const char *tmp_dir, const char *python_file_name,
 static int create_python_extension(const char *tmp_dir)
 {
 	return create_python_file(tmp_dir, "python_extension.py",
-								&_binary_extension_python_python_extension_py_start,
-								&_binary_extension_python_python_extension_py_size);
+								&_binary_python_extension_py_start,
+								&_binary_python_extension_py_size);
 }
 
 static int create_proot(const char *tmp_dir)
 {
 	return create_python_file(tmp_dir, "proot.py",
-								&_binary_extension_python_proot_py_start,
-								&_binary_extension_python_proot_py_size);
+								&_binary_proot_py_start,
+								&_binary_proot_py_size);
 }
 
 /* init python once */
