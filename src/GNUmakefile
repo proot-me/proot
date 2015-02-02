@@ -174,11 +174,13 @@ cli/care-manual.o: manual cli/cli.o
 cli/%-licenses.o: licenses cli/cli.o
 	$(OBJIFY)
 
-%_wrap.c %.py: %.i
-	$($(quiet)SWIG) -python extension/python/proot.i
-
 extension/python/python_extension.o: extension/python/python_extension.py cli/cli.o
 	$(OBJIFY)
+
+.SECONDARY: extension/python/proot_wrap.c extension/python/proot.py
+
+extension/python/proot_wrap.c extension/python/proot.py: extension/python/proot.i
+	$($(quiet)SWIG) -python extension/python/proot.i
 
 extension/python/proot.o: extension/python/proot.py cli/cli.o
 	$(OBJIFY)
