@@ -127,6 +127,8 @@ Fixes
 Features
 --------
 
+* Support "proot [...] -- command" syntax
+
 * Write a loader for a.out programs, to be able to execute programs
   from very old Linux distros :)
 
@@ -162,6 +164,8 @@ Features
 
 Documentation
 -------------
+
+* Mention that the default command is "/bin/sh -l" in "proot --help".
 
 * Mention "container" in the documentation.
 
