@@ -45,6 +45,7 @@ OBJECTS += \
 	syscall/sysnum.o	\
 	syscall/socket.o	\
 	syscall/heap.o		\
+	syscall/rlimit.o	\
 	tracee/tracee.o		\
 	tracee/mem.o		\
 	tracee/reg.o		\

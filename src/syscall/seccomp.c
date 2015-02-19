@@ -39,7 +39,6 @@
 #include <stdint.h>        /* uint*_t, UINT*_MAX, */
 #include <assert.h>        /* assert(3), */
 
-
 #include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
