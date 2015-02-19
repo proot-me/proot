@@ -39,6 +39,7 @@
 #include <stdint.h>        /* uint*_t, UINT*_MAX, */
 #include <assert.h>        /* assert(3), */
 
+
 #include "syscall/seccomp.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
@@ -377,6 +378,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_open,		0 },
 	{ PR_openat,		0 },
 	{ PR_pivot_root,	0 },
+	{ PR_prlimit64,		FILTER_SYSEXIT },
 	{ PR_ptrace,		FILTER_SYSEXIT },
 	{ PR_readlink,		FILTER_SYSEXIT },
 	{ PR_readlinkat,	FILTER_SYSEXIT },
@@ -384,6 +386,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_rename,		FILTER_SYSEXIT },
 	{ PR_renameat,		FILTER_SYSEXIT },
 	{ PR_rmdir,		0 },
+	{ PR_setrlimit,		FILTER_SYSEXIT },
 	{ PR_setxattr,		0 },
 	{ PR_socketcall,	FILTER_SYSEXIT },
 	{ PR_stat,		0 },

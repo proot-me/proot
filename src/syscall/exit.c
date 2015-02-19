@@ -24,6 +24,8 @@
 #include <sys/utsname.h> /* struct utsname, */
 #include <linux/net.h>   /* SYS_*, */
 #include <string.h>      /* strlen(3), */
+#include <sys/time.h>		/* setrlimit, prlimit */
+#include <sys/resource.h>	/* setrlimit, prlimit */
 
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
@@ -40,6 +42,41 @@
 #include "ptrace/wait.h"
 #include "extension/extension.h"
 #include "arch.h"
+#include "cli/note.h"
+
+static int is_tracee_32_bits(Tracee *tracee)
+{
+	return sizeof_word(tracee) == 4;
+}
+
+/*
+ *  Increase proot stack size soft limit to the max value of tracee. This allow to
+ * workaround a kernel bug that prevent tracer to access tracee stack beyond current
+ * map stack. When a tracer try to access tracee stak area, the kernel is able to increase
+ * tracee stack size up to tracee stack software limit. Unfortunatly kernel use
+ * tracer stack size soft limit to check if stack increase can be done instead of the
+ * tracee stack size soft limit.
+ */
+static void update_proot_stack_limit_if_needed(Tracee *tracee, rlim_t tracee_stack_soft)
+{
+	int status;
+	struct rlimit proot_rlim;
+
+	status = prlimit(0, RLIMIT_STACK, NULL, &proot_rlim);
+	if (status < 0) {
+		VERBOSE(tracee, 1, "unable to get proot limit");
+		return ;
+	}
+	if (proot_rlim.rlim_cur < tracee_stack_soft) {
+		proot_rlim.rlim_cur = tracee_stack_soft;
+		status = prlimit(0, RLIMIT_STACK, &proot_rlim, NULL);
+		if (status < 0) {
+			note(tracee, 1, INTERNAL, "unable to set proot limit");
+			return ;
+		}
+		VERBOSE(tracee, 1, "proot stack limit increase to %ld bytes", proot_rlim.rlim_cur);
+	}
+}
 
 /**
  * Translate the output arguments of the current @tracee's syscall in
@@ -440,6 +477,60 @@ void translate_syscall_exit(Tracee *tracee)
 
 		status = translate_wait_exit(tracee);
 		break;
+
+	/* goal is to update proot stack limit size according to tracees */
+	case PR_setrlimit: {
+		/* if syscall fail then we don't care */
+		if (syscall_result == 0) {
+			int ressource = (int) peek_reg(tracee, ORIGINAL, SYSARG_1);
+			if (ressource == RLIMIT_STACK) {
+				struct rlimit tracee_rlim;
+				word_t address;
+
+				/* read tracee rlim_cur */
+				address = peek_reg(tracee, ORIGINAL, SYSARG_2);
+				if (is_tracee_32_bits(tracee)) {
+					uint32_t rlim_cur_32;
+
+					status = read_data(tracee, &rlim_cur_32, address, sizeof(rlim_cur_32));
+					tracee_rlim.rlim_cur = (rlim_cur_32 == (uint32_t)~0)?RLIM_INFINITY:rlim_cur_32;
+				} else
+					status = read_data(tracee, &tracee_rlim, address, sizeof(tracee_rlim));
+				if (status < 0) {
+					VERBOSE(tracee, 1, "unable to get tracee limit for pid %d", tracee->pid);
+					goto end;
+				}
+				/* update proot limit */
+				update_proot_stack_limit_if_needed(tracee, tracee_rlim.rlim_cur);
+			}
+		}
+	}
+	goto end;
+
+	case PR_prlimit64: {
+		/* if syscall fail then we don't care */
+		if (syscall_result == 0) {
+			int ressource = (int) peek_reg(tracee, ORIGINAL, SYSARG_2);
+
+			if (ressource == RLIMIT_STACK) {
+				struct rlimit tracee_rlim;
+				word_t address;
+
+				/* read tracee rlim_cur */
+				address = peek_reg(tracee, ORIGINAL, SYSARG_3);
+				if (address) {
+					status = read_data(tracee, &tracee_rlim, address, sizeof(tracee_rlim));
+					if (status < 0) {
+						VERBOSE(tracee, 1, "unable to get tracee limit for pid %d", tracee->pid);
+						goto end;
+					}
+					/* read proot limit */
+					update_proot_stack_limit_if_needed(tracee, tracee_rlim.rlim_cur);
+				}
+			}
+		}
+	}
+	goto end;
 
 	default:
 		goto end;
