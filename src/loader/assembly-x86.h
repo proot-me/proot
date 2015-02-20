@@ -65,3 +65,4 @@ extern word_t syscall_1(word_t number, word_t arg1);
 #define EXECVE	11
 #define EXIT	1
 #define PRCTL	172
+#define MPROTECT 125

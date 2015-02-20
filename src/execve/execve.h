@@ -49,6 +49,7 @@ typedef struct load_info {
 	char *raw_path;
 	Mapping *mappings;
 	ElfHeader elf_header;
+	bool needs_executable_stack;
 
 	struct load_info *interp;
 } LoadInfo;

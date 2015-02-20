@@ -93,3 +93,4 @@
 #define EXECVE	59
 #define EXIT	60
 #define PRCTL	157
+#define MPROTECT 10

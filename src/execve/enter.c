@@ -252,6 +252,11 @@ static int add_load_info(const ElfHeader *elf_header,
 			return status;
 		break;
 
+	case PT_GNU_STACK:
+		data->load_info->needs_executable_stack |=
+			((PROGRAM_FIELD(*elf_header, *program_header, flags) & PF_X) != 0);
+		break;
+
 	default:
 		break;
 	}

@@ -108,7 +108,8 @@ typedef union {
 typedef enum {
 	PT_LOAD    = 1,
 	PT_DYNAMIC = 2,
-	PT_INTERP  = 3
+	PT_INTERP  = 3,
+	PT_GNU_STACK = 0x6474e551,
 } SegmentType;
 
 typedef struct {

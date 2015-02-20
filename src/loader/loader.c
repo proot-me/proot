@@ -171,6 +171,14 @@ void _start(void *cursor)
 			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
 			break;
 
+		case LOAD_ACTION_MAKE_STACK_EXEC:
+			SYSCALL(MPROTECT, 3,
+				stmt->make_stack_exec.start, 1,
+				PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN);
+
+			cursor += LOAD_STATEMENT_SIZE(*stmt, make_stack_exec);
+			break;
+
 		case LOAD_ACTION_START_TRACED:
 			traced = true;
 			/* Fall through.  */

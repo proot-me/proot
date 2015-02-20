@@ -96,7 +96,7 @@ void translate_brk_enter(Tracee *tracee)
 		 * between the end of the BSS and the start of the
 		 * heap is relatively small (ie. < 1MB) even if ALSR
 		 * is enabled.  Note that bss->addr + bss->length is
-		 * naturally aligned on a page boundary according to
+		 * naturally aligned to a page boundary according to
 		 * add_mapping() in execve/enter.c, ie. no need to
 		 * align new_brk_address again.  Now, the gap between
 		 * the BSS and the heap is only "heap_offset" bytes
