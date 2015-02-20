@@ -41,6 +41,8 @@
 #    include "loader/assembly-arm.h"
 #elif defined(ARCH_X86)
 #    include "loader/assembly-x86.h"
+#elif defined(ARCH_ARM64)
+#    include "loader/assembly-arm64.h"
 #else
 #    error "Unsupported architecture"
 #endif
@@ -134,7 +136,13 @@ void _start(void *cursor)
 			/* Fall through.  */
 
 		case LOAD_ACTION_OPEN:
+#if defined(OPEN)
 			fd = SYSCALL(OPEN, 3, stmt->open.string_address, O_RDONLY, 0);
+#elif defined(OPENAT)
+			fd = SYSCALL(OPENAT, 4, AT_FDCWD, stmt->open.string_address, O_RDONLY, 0);
+#else
+#error either define OPEN syscall or OPENAT syscall
+#endif
 			if (unlikely((int) fd < 0))
 				FATAL();
 
