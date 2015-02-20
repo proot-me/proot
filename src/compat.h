@@ -243,5 +243,9 @@
 #    ifndef MAP_ANONYMOUS
 #        define MAP_ANONYMOUS			0x20
 #    endif
+/* This one should disappear once it has been put on headers */
+#    ifndef NT_ARM_SYSTEM_CALL
+#        define NT_ARM_SYSTEM_CALL		0x404
+#    endif
 
 #endif /* COMPAT_H */

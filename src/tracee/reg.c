@@ -300,16 +300,21 @@ int push_regs(Tracee *tracee)
 		}
 
 #if defined(ARCH_ARM64)
-		/* as On ARM we need to use PTRACE_SET_SYSCALL to change syscall number */
+		/* For arm64 a new subcommand has been add to PTRACE_SETREGSET/PTRACE_GETREGSET to
+		   allow write/read of current sycall number */
 		struct iovec regs;
-		word_t current_sysnum = REG(tracee, CURRENT, SYSARG_NUM);
+		unsigned int current_sysnum = (int) REG(tracee, CURRENT, SYSARG_NUM);
 
+		/* update syscall number if needed */
 		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
-			status = ptrace(PTRACE_SET_SYSCALL, tracee->pid, 0, current_sysnum);
+			regs.iov_base = &current_sysnum;
+			regs.iov_len = sizeof(current_sysnum);
+			status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_ARM_SYSTEM_CALL, &regs);
 			if (status < 0)
 				note(tracee, WARNING, SYSTEM, "can't set the syscall number");
 		}
 
+		/* update remaining of registers */
 		regs.iov_base = &tracee->_regs[CURRENT];
 		regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
 
