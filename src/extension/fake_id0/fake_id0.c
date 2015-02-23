@@ -654,10 +654,10 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		/* Override only if the file is owned by the current user.
 		 * Errors are not fatal here.  */
 		if (uid == getuid())
-			poke_uint32(tracee, address + offsetof_stat_uid(tracee), config->ruid);
+			poke_uint32(tracee, address + offsetof_stat_uid(tracee), config->suid);
 
 		if (gid == getgid())
-			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->rgid);
+			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->sgid);
 
 		return 0;
 	}
