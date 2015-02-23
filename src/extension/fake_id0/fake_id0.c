@@ -36,6 +36,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/seccomp.h"
+#include "execve/execve.h"
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
@@ -687,6 +688,31 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 		/* Force success.  */
 		poke_reg(tracee, SYSARG_RESULT, 0);
+		return 0;
+	}
+
+	case PR_execve: {
+		struct stat mode;
+		int status;
+
+		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+		if ((int) result < 0)
+			return 0;
+
+		status = stat(tracee->load_info->host_path, &mode);
+		if (status < 0)
+			return 0; /* Not fatal.  */
+
+		if ((mode.st_mode & S_ISUID) != 0) {
+			config->euid = 0;
+			config->suid = 0;
+		}
+
+		if ((mode.st_mode & S_ISGID) != 0) {
+			config->egid = 0;
+			config->sgid = 0;
+		}
+
 		return 0;
 	}
 

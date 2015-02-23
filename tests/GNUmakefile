@@ -109,7 +109,9 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat		 \
        $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd $(ROOTFS)/bin/argv \
        $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2	 \
-       $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32
+       $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32 \
+       $(ROOTFS)/bin/exec-suid $(ROOTFS)/bin/exec-sgid $(ROOTFS)/bin/getresuid	 \
+       $(ROOTFS)/bin/getresgid
 
 ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 
@@ -128,6 +130,14 @@ $(ROOTFS)/bin/rel-true:
 
 $(ROOTFS)/bin/exec-m32: exec.c
 	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true
+
+$(ROOTFS)/bin/exec-suid: exec.c
+	$(Q)$(CC) -static $^ -o $@ $(silently) || true
+	@chmod u+s $@
+
+$(ROOTFS)/bin/exec-sgid: exec.c
+	$(Q)$(CC) -static $^ -o $@ $(silently) || true
+	@chmod g+s $@
 
 .SECONDARY: $(patsubst %.c,$(ROOTFS)/bin/%, $(wildcard test-*.c))
 $(ROOTFS)/bin/%: %.c
