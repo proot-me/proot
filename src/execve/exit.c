@@ -419,7 +419,7 @@ void translate_execve_exit(Tracee *tracee)
 		poke_reg(tracee, RTLD_FINI, 0);
 		poke_reg(tracee, STATE_FLAGS, 0);
 
-		/* Restore registers with their current values.  */
+		/* Restore registers to their current values.  */
 		save_current_regs(tracee, ORIGINAL);
 		tracee->_regs_were_changed = true;
 

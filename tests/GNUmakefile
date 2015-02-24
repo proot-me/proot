@@ -110,8 +110,8 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd $(ROOTFS)/bin/argv \
        $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2	 \
        $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32 \
-       $(ROOTFS)/bin/exec-suid $(ROOTFS)/bin/exec-sgid $(ROOTFS)/bin/getresuid	 \
-       $(ROOTFS)/bin/getresgid
+       $(ROOTFS)/bin/exec-suid $(ROOTFS)/bin/exec-sgid $(ROOTFS)/bin/exec-m32-suid \
+       $(ROOTFS)/bin/exec-m32-sgid $(ROOTFS)/bin/getresuid $(ROOTFS)/bin/getresgid
 
 ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 
@@ -123,21 +123,29 @@ $(ROOTFS_DIR):
 setup: $(ROOTFS_BIN)
 
 $(ROOTFS)/bin/abs-true:
-	@ln -fs /bin/true $@
+	$(Q)ln -fs /bin/true $@
 
 $(ROOTFS)/bin/rel-true:
-	@ln -fs ./true $@
+	$(Q)ln -fs ./true $@
 
 $(ROOTFS)/bin/exec-m32: exec.c
 	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true
 
-$(ROOTFS)/bin/exec-suid: exec.c
-	$(Q)$(CC) -static $^ -o $@ $(silently) || true
-	@chmod u+s $@
+$(ROOTFS)/bin/exec-suid: $(ROOTFS)/bin/exec
+	$(Q)cp $^ $@
+	$(Q)chmod u+s $@
 
-$(ROOTFS)/bin/exec-sgid: exec.c
-	$(Q)$(CC) -static $^ -o $@ $(silently) || true
-	@chmod g+s $@
+$(ROOTFS)/bin/exec-sgid: $(ROOTFS)/bin/exec
+	$(Q)cp $^ $@
+	$(Q)chmod g+s $@
+
+$(ROOTFS)/bin/exec-m32-suid: $(ROOTFS)/bin/exec-m32
+	$(Q)cp $^ $@
+	$(Q)chmod u+s $@
+
+$(ROOTFS)/bin/exec-m32-sgid: $(ROOTFS)/bin/exec-m32
+	$(Q)cp $^ $@
+	$(Q)chmod g+s $@
 
 .SECONDARY: $(patsubst %.c,$(ROOTFS)/bin/%, $(wildcard test-*.c))
 $(ROOTFS)/bin/%: %.c
