@@ -140,12 +140,12 @@ $(ROOTFS)/bin/exec-sgid: $(ROOTFS)/bin/exec
 	$(Q)chmod g+s $@
 
 $(ROOTFS)/bin/exec-m32-suid: $(ROOTFS)/bin/exec-m32
-	$(Q)cp $^ $@
-	$(Q)chmod u+s $@
+	$(Q)cp $^     $@ $(silently) || true
+	$(Q)chmod u+s $@ $(silently) || true
 
 $(ROOTFS)/bin/exec-m32-sgid: $(ROOTFS)/bin/exec-m32
-	$(Q)cp $^ $@
-	$(Q)chmod g+s $@
+	$(Q)cp $^ $@      $(silently) || true
+	$(Q)chmod g+s $@  $(silently) || true
 
 .SECONDARY: $(patsubst %.c,$(ROOTFS)/bin/%, $(wildcard test-*.c))
 $(ROOTFS)/bin/%: %.c
