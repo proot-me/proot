@@ -76,6 +76,25 @@ static Extension *new_extension(Tracee *tracee, extension_callback_t callback)
 }
 
 /**
+ * Retrieve from @tracee->extensions the extension for the given
+ * @callback.
+ */
+Extension *get_extension(Tracee *tracee, extension_callback_t callback)
+{
+	Extension *extension;
+
+	if (tracee->extensions == NULL)
+		return NULL;
+
+	LIST_FOREACH(extension, tracee->extensions, link) {
+		if (extension->callback == callback)
+			return extension;
+	}
+
+	return NULL;
+}
+
+/**
  * Initialize a new extension for the given @callback then attach it
  * to its @tracee.  The parameter @cli is its argument that was passed
  * to the command-line interface.  This function return -1 if an error

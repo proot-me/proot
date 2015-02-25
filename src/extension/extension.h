@@ -25,7 +25,6 @@
 
 #include <sys/queue.h> /* LIST_, */
 #include <stdint.h>    /* intptr_t, */
-#include <stdbool.h>   /* bool, */
 
 #include "tracee/tracee.h"
 #include "syscall/seccomp.h"
@@ -153,6 +152,7 @@ typedef LIST_HEAD(extensions, extension) Extensions;
 
 extern int initialize_extension(Tracee *tracee, extension_callback_t callback, const char *cli);
 extern void inherit_extensions(Tracee *child, Tracee *parent, word_t clone_flags);
+extern Extension *get_extension(Tracee *tracee, extension_callback_t callback);
 
 /**
  * Notify all extensions of @tracee that the given @event occured.
