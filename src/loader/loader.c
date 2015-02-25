@@ -138,10 +138,8 @@ void _start(void *cursor)
 		case LOAD_ACTION_OPEN:
 #if defined(OPEN)
 			fd = SYSCALL(OPEN, 3, stmt->open.string_address, O_RDONLY, 0);
-#elif defined(OPENAT)
-			fd = SYSCALL(OPENAT, 4, AT_FDCWD, stmt->open.string_address, O_RDONLY, 0);
 #else
-#error either define OPEN syscall or OPENAT syscall
+			fd = SYSCALL(OPENAT, 4, AT_FDCWD, stmt->open.string_address, O_RDONLY, 0);
 #endif
 			if (unlikely((int) fd < 0))
 				FATAL();

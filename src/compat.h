@@ -255,7 +255,6 @@
 #    ifndef PROT_GROWSDOWN
 #        define PROT_GROWSDOWN		0x01000000
 #    endif
-/* This one should disappear once it has been put on headers */
 #    ifndef NT_ARM_SYSTEM_CALL
 #        define NT_ARM_SYSTEM_CALL		0x404
 #    endif

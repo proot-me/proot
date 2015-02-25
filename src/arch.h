@@ -118,7 +118,11 @@ typedef unsigned char byte_t;
 
     #define SYSTRAP_SIZE 4
 
-    #define SECCOMP_ARCHS { }
+    #ifndef AUDIT_ARCH_AARCH64
+        #define AUDIT_ARCH_AARCH64 (EM_AARCH64 | __AUDIT_ARCH_64BIT | __AUDIT_ARCH_LE)
+    #endif
+
+    #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_AARCH64, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
 
     #define HOST_ELF_MACHINE {183, 0};
     #define RED_ZONE_SIZE 0

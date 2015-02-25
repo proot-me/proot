@@ -300,12 +300,12 @@ int push_regs(Tracee *tracee)
 		}
 
 #if defined(ARCH_ARM64)
-		/* For arm64 a new subcommand has been add to PTRACE_SETREGSET/PTRACE_GETREGSET to
-		   allow write/read of current sycall number */
 		struct iovec regs;
-		unsigned int current_sysnum = (int) REG(tracee, CURRENT, SYSARG_NUM);
+		word_t current_sysnum = REG(tracee, CURRENT, SYSARG_NUM);
 
-		/* update syscall number if needed */
+		/* Update syscall number if needed.  On arm64, a new
+		 * subcommand has been added to PTRACE_{S,G}ETREGSET
+		 * to allow write/read of current sycall number.  */
 		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
 			regs.iov_base = &current_sysnum;
 			regs.iov_len = sizeof(current_sysnum);
@@ -314,7 +314,7 @@ int push_regs(Tracee *tracee)
 				note(tracee, WARNING, SYSTEM, "can't set the syscall number");
 		}
 
-		/* update remaining of registers */
+		/* Update other registers.  */
 		regs.iov_base = &tracee->_regs[CURRENT];
 		regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
 
