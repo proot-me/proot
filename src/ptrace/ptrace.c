@@ -634,6 +634,13 @@ int translate_ptrace_exit(Tracee *tracee)
 		return 0;  /* Don't restart the ptracee.  */
 #endif
 
+	case PTRACE_SET_SYSCALL:
+		status = ptrace(request, pid, address, data);
+		if (status < 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
+
 	default:
 		note(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",
 			stringify_ptrace(request));

@@ -128,6 +128,7 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(sp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
+	[USERARG_1]     = USER_REGS_OFFSET(regs[0]),
     };
 
 #elif defined(ARCH_X86)
@@ -299,8 +300,21 @@ int push_regs(Tracee *tracee)
 		}
 
 #if defined(ARCH_ARM64)
+		/* For arm64 a new subcommand has been add to PTRACE_SETREGSET/PTRACE_GETREGSET to
+		   allow write/read of current sycall number */
 		struct iovec regs;
+		unsigned int current_sysnum = (int) REG(tracee, CURRENT, SYSARG_NUM);
 
+		/* update syscall number if needed */
+		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
+			regs.iov_base = &current_sysnum;
+			regs.iov_len = sizeof(current_sysnum);
+			status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_ARM_SYSTEM_CALL, &regs);
+			if (status < 0)
+				note(tracee, WARNING, SYSTEM, "can't set the syscall number");
+		}
+
+		/* update remaining of registers */
 		regs.iov_base = &tracee->_regs[CURRENT];
 		regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
 
