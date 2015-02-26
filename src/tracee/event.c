@@ -395,7 +395,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
-		VERBOSE(tracee, (int) (last_exit_status != -1),
+		VERBOSE(tracee, (int) (tracee->vpid != 1),
 			"vpid %" PRIu64 ": terminated with signal %d",
 			tracee->vpid, WTERMSIG(tracee_status));
 		tracee->terminated = true;
