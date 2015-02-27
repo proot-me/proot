@@ -39,6 +39,7 @@
 #include "execve/elf.h"
 #include "path/path.h"
 #include "path/temp.h"
+#include "path/binding.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
@@ -510,6 +511,18 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
 		note(tracee, ERROR, INTERNAL, "can't retrieve loader path (/proc/self/fd/)");
+		goto end;
+	}
+
+	status = access(path, X_OK);
+	if (status < 0) {
+		note(tracee, ERROR, INTERNAL,
+			"it seems the current temporary directory (%s) "
+			"is mounted with no execution permission.",
+			get_temp_directory());
+		note(tracee, INFO, USER,
+			"Please set PROOT_TMP_DIR env. variable to an alternate "
+			"location ('%s/tmp' for example).", get_root(tracee));
 		goto end;
 	}
 
