@@ -180,10 +180,9 @@ define build_loader
 LOADER$1_OBJECTS = loader/loader$1.o loader/assembly$1.o
 
 $(eval $(call define_from_arch.h,$1,LOADER_ARCH_CFLAGS))
-$(eval $(call define_from_arch.h,$1,LOADER_ADDRESS))
 
 LOADER_CFLAGS$1  += -fPIC -ffreestanding $(LOADER_ARCH_CFLAGS$1)
-LOADER_LDFLAGS$1 += -static -nostdlib -Wl$(BUILD_ID_NONE),-Ttext=$(LOADER_ADDRESS$1),-z,noexecstack
+LOADER_LDFLAGS$1 += -shared -nostdlib -Wl$(BUILD_ID_NONE),-z,noexecstack
 
 loader/loader$1.o: loader/loader.c
 	@mkdir -p $$(dir $$@)
