@@ -111,7 +111,8 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2	 \
        $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32 \
        $(ROOTFS)/bin/exec-suid $(ROOTFS)/bin/exec-sgid $(ROOTFS)/bin/exec-m32-suid \
-       $(ROOTFS)/bin/exec-m32-sgid $(ROOTFS)/bin/getresuid $(ROOTFS)/bin/getresgid
+       $(ROOTFS)/bin/exec-m32-sgid $(ROOTFS)/bin/getresuid $(ROOTFS)/bin/getresgid \
+       $(ROOTFS)/bin/true-pie $(ROOTFS)/bin/false-pie
 
 ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 
@@ -127,6 +128,9 @@ $(ROOTFS)/bin/abs-true:
 
 $(ROOTFS)/bin/rel-true:
 	$(Q)ln -fs ./true $@
+
+$(ROOTFS)/bin/%-pie: %.c
+	$(Q)$(CC) -fPIE -pie $^ -o $@ $(silently) || true
 
 $(ROOTFS)/bin/exec-m32: exec.c
 	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true

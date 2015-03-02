@@ -302,58 +302,10 @@ end:
 	if (fd >= 0)
 		close(fd);
 
+	if (load_info->mappings == NULL)
+		status = -EINVAL;
+
 	return status;
-}
-
-/**
- * Add @load_base to each adresses of @load_info.
- */
-static void add_load_base(LoadInfo *load_info, word_t load_base)
-{
-	size_t nb_mappings;
-	size_t i;
-
-	nb_mappings = talloc_array_length(load_info->mappings);
-	for (i = 0; i < nb_mappings; i++)
-		load_info->mappings[i].addr += load_base;
-
-	if (IS_CLASS64(load_info->elf_header))
-		load_info->elf_header.class64.e_entry += load_base;
-	else
-		load_info->elf_header.class32.e_entry += load_base;
-}
-
-/**
- * Compute the final load address for each position independant
- * objects of @tracee.
- *
- * TODO: support for ASLR.
- */
-static void compute_load_addresses(Tracee *tracee)
-{
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->elf_header)
-	    && tracee->load_info->mappings[0].addr == 0) {
-#if defined(HAS_LOADER_32BIT)
-		if (IS_CLASS32(tracee->load_info->elf_header))
-			add_load_base(tracee->load_info, EXEC_PIC_ADDRESS_32);
-		else
-#endif
-		add_load_base(tracee->load_info, EXEC_PIC_ADDRESS);
-	}
-
-	/* Nothing more to do?  */
-	if (tracee->load_info->interp == NULL)
-		return;
-
-	if (IS_POSITION_INDENPENDANT(tracee->load_info->interp->elf_header)
-	    && tracee->load_info->interp->mappings[0].addr == 0) {
-#if defined(HAS_LOADER_32BIT)
-		if (IS_CLASS32(tracee->load_info->elf_header))
-			add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS_32);
-		else
-#endif
-		add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS);
-	}
 }
 
 /**
@@ -666,8 +618,6 @@ int translate_execve_enter(Tracee *tracee)
 		if (tracee->load_info->interp->interp != NULL)
 			return -EINVAL;
 	}
-
-	compute_load_addresses(tracee);
 
 	/* Execute the loader instead of the program.  */
 	loader_path = get_loader_path(tracee);

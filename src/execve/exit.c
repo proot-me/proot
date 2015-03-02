@@ -141,25 +141,37 @@ static int bind_proc_pid_auxv(const Tracee *ptracee)
  * Convert @mappings into load @script statements at the given @cursor
  * position.  This function returns the new cursor position.
  */
-static void *transcript_mappings(void *cursor, const Mapping *mappings)
+static void *transcript_mappings(void *cursor, const LoadInfo *load_info)
 {
 	size_t nb_mappings;
+	bool is_position_indenpendant;
 	size_t i;
 
-	nb_mappings = talloc_array_length(mappings);
+	is_position_indenpendant = (IS_POSITION_INDENPENDANT(load_info->elf_header)
+				    && load_info->mappings[0].addr == 0);
+
+	nb_mappings = talloc_array_length(load_info->mappings);
 	for (i = 0; i < nb_mappings; i++) {
 		LoadStatement *statement = cursor;
 
-		if ((mappings[i].flags & MAP_ANONYMOUS) != 0)
-			statement->action = LOAD_ACTION_MMAP_ANON;
-		else
-			statement->action = LOAD_ACTION_MMAP_FILE;
+		if ((load_info->mappings[i].flags & MAP_ANONYMOUS) != 0) {
+			if (is_position_indenpendant)
+				statement->action = LOAD_ACTION_MMAP_ANON_PI;
+			else
+				statement->action = LOAD_ACTION_MMAP_ANON;
+		}
+		else {
+			if (is_position_indenpendant)
+				statement->action = LOAD_ACTION_MMAP_FILE_PI;
+			else
+				statement->action = LOAD_ACTION_MMAP_FILE;
+		}
 
-		statement->mmap.addr   = mappings[i].addr;
-		statement->mmap.length = mappings[i].length;
-		statement->mmap.prot   = mappings[i].prot;
-		statement->mmap.offset = mappings[i].offset;
-		statement->mmap.clear_length = mappings[i].clear_length;
+		statement->mmap.addr   = load_info->mappings[i].addr;
+		statement->mmap.length = load_info->mappings[i].length;
+		statement->mmap.prot   = load_info->mappings[i].prot;
+		statement->mmap.offset = load_info->mappings[i].offset;
+		statement->mmap.clear_length = load_info->mappings[i].clear_length;
 
 		cursor += LOAD_STATEMENT_SIZE(*statement, mmap);
 	}
@@ -197,6 +209,8 @@ static int transfer_load_script(Tracee *tracee)
 	LoadStatement *statement;
 	void *cursor;
 	int status;
+
+	assert(tracee->load_info != NULL && tracee->load_info->mappings != NULL);
 
 	if (page_size == 0) {
 		page_size = sysconf(_SC_PAGE_SIZE);
@@ -264,7 +278,7 @@ static int transfer_load_script(Tracee *tracee)
 	cursor += LOAD_STATEMENT_SIZE(*statement, open);
 
 	/* Load script statements: mmap.  */
-	cursor = transcript_mappings(cursor, tracee->load_info->mappings);
+	cursor = transcript_mappings(cursor, tracee->load_info);
 
 	if (tracee->load_info->interp != NULL) {
 		/* Load script statement: open.  */
@@ -275,7 +289,7 @@ static int transfer_load_script(Tracee *tracee)
 		cursor += LOAD_STATEMENT_SIZE(*statement, open);
 
 		/* Load script statements: mmap.  */
-		cursor = transcript_mappings(cursor, tracee->load_info->interp->mappings);
+		cursor = transcript_mappings(cursor, tracee->load_info->interp);
 
 		entry_point = ELF_FIELD(tracee->load_info->interp->elf_header, entry);
 	}
@@ -306,8 +320,7 @@ static int transfer_load_script(Tracee *tracee)
 	statement->start.at_phent = ELF_FIELD(tracee->load_info->elf_header, phentsize);
 	statement->start.at_phnum = ELF_FIELD(tracee->load_info->elf_header, phnum);
 	statement->start.at_entry = ELF_FIELD(tracee->load_info->elf_header, entry);
-	statement->start.at_phdr  = ELF_FIELD(tracee->load_info->elf_header, phoff)
-				  + tracee->load_info->mappings[0].addr;
+	statement->start.at_phdr  = ELF_FIELD(tracee->load_info->elf_header, phoff);
 	statement->start.at_execfn = string3_address;
 
 	cursor += LOAD_STATEMENT_SIZE(*statement, start);

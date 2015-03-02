@@ -79,11 +79,6 @@ typedef unsigned char byte_t;
 
     #define HAS_LOADER_32BIT true
 
-    #define EXEC_PIC_ADDRESS   0x500000000000
-    #define INTERP_PIC_ADDRESS 0x6f0000000000
-    #define EXEC_PIC_ADDRESS_32   0x0f000000
-    #define INTERP_PIC_ADDRESS_32 0xaf000000
-
 #elif defined(ARCH_ARM_EABI)
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm.h"
@@ -99,9 +94,6 @@ typedef unsigned char byte_t;
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
     #define EM_ARM 40
-
-    #define EXEC_PIC_ADDRESS   0x0f000000
-    #define INTERP_PIC_ADDRESS 0x1f000000
 
     /* The syscall number has to be valid on ARM, so use tuxcall(2) as
      * the "void" syscall since it has no side effects.  */
@@ -126,9 +118,6 @@ typedef unsigned char byte_t;
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
 
-    #define EXEC_PIC_ADDRESS   0x3000000000
-    #define INTERP_PIC_ADDRESS 0x3f00000000
-
 #elif defined(ARCH_X86)
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-i386.h"
@@ -146,9 +135,6 @@ typedef unsigned char byte_t;
     #define OFFSETOF_STAT_GID_32 0
 
     #define LOADER_ARCH_CFLAGS -mregparm=3
-
-    #define EXEC_PIC_ADDRESS   0x0f000000
-    #define INTERP_PIC_ADDRESS 0xaf000000
 
 #elif defined(ARCH_SH4)
 
