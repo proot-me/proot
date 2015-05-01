@@ -18,16 +18,6 @@
 	    <xsl:value-of select="//section[@names='description']/paragraph[1]" />
 	  </xsl:attribute>
 	</meta>
-	<script type="text/javascript">
-	  var _gaq = _gaq || [];
-	  _gaq.push(['_setAccount', 'UA-20176046-1']);
-	  _gaq.push(['_trackPageview']);
-	  (function() {
-	  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-	  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-	  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-	  })();
-	</script>
       </head>
 
       <body>
@@ -66,18 +56,10 @@
 	    href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
 	    forum</a>, but please be sure that your answer isn't in
 	    the <a
-	    href="https://github.com/cedric-vincent/PRoot/blob/master/doc/proot/manual.txt">user
+	    href="https://github.com/proot-me/PRoot/blob/master/doc/proot/manual.txt">user
 	    manual</a> first.
 	    </p>
 	  </div>
-
-	  <script type="text/javascript">
-	    (function() {
-	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
-	    po.src = 'https://apis.google.com/js/plusone.js';
-	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-	    })();
-	  </script>
 
       </body>
     </html>
