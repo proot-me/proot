@@ -62,6 +62,7 @@ OBJECTS += \
 	extension/link2symlink/link2symlink.o \
 	extension/portmap/portmap.o \
 	extension/portmap/map.o \
+	extension/cow/cow.o \
 	loader/loader-wrapped.o
 
 define define_from_arch.h

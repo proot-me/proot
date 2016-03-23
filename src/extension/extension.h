@@ -202,5 +202,5 @@ extern int link2symlink_callback(Extension *extension, ExtensionEvent event, int
  */
 extern Extension *global_portmap_extension;
 extern int portmap_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
-
+extern int cow_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 #endif /* EXTENSION_H */
