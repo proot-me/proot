@@ -57,6 +57,7 @@ static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_k(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_c(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
@@ -205,15 +206,28 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	},
 	{ .class = "Extension options",
 	  .arguments = {
-		{ .name = "-i", .separator = ' ', .value = "string" },
-		{ .name = "--change-id", .separator = '=', .value = "string" },
+		{ .name = "-0", .separator = '\0', .value = NULL },
+		{ .name = "--root-id", .separator = '\0', .value = NULL },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_i,
-	  .description = "Make current user and group appear as *string* \"uid:gid\".",
-	  .detail = "\tThis option makes the current user and group appear as uid and\n\
-\tgid.  Likewise, files actually owned by the current user and\n\
-\tgroup appear as if they were owned by uid and gid instead.\n\
-\tNote that the -0 option is the same as -i 0:0.",
+	  .handler = handle_option_0,
+	  .description = "Make current user appear as \"root\" and fake its privileges.",
+	  .detail = "\tSome programs will refuse to work if they are not run with \"root\"\n\
+\tprivileges, even if there is no technical reason for that.  This\n\
+\tis typically the case with package managers.  This option allows\n\
+\tusers to bypass this kind of limitation by faking the user/group\n\
+\tidentity, and by faking the success of some operations like\n\
+\tchanging the ownership of files, changing the root directory to\n\
+\t/, ...  Note that this option is quite limited compared to\n\
+\tfakeroot.",
+	},
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-c", .separator = '\0', .value = NULL },
+		{ .name = "--cow", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_c,
+	  .description = "Implement Copy-on-Write semantics",
+	  .detail = "\tThis option implments Copy-on-Write (COW) semantics",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
