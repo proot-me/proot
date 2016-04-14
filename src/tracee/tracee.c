@@ -336,6 +336,22 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
 }
 
 /**
+ * Mark tracee as terminated and optionally take action.
+ */
+void terminate_tracee(Tracee *tracee)
+{
+        tracee->terminated = true;
+
+        /* Case where the terminated tracee is marked
+           to kill all tracees on exit.
+        */
+        if (tracee->killall_on_exit) {
+                VERBOSE(tracee, 1, "terminating all tracees on exit");
+                kill_all_tracees();
+        }
+}
+
+/**
  * Free all tracees marked as terminated.
  */
 void free_terminated_tracees()

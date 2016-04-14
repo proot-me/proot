@@ -89,6 +89,10 @@ typedef struct tracee {
 	 * dedicated to terminated tracees instead.  */
 	bool terminated;
 
+        /* Whether termination of this tracee implies an immediate kill
+         * of all tracees. */
+        bool killall_on_exit;
+
 	/* Parent of this tracee, NULL if none.  */
 	struct tracee *parent;
 
@@ -266,6 +270,7 @@ extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
+extern void terminate_tracee(Tracee *tracee);
 extern void free_terminated_tracees();
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern void kill_all_tracees();
