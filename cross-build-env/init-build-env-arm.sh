@@ -23,7 +23,7 @@ echo PKGS "$PKGS"
 
 # Get Slackware/ARM packages:
 for DIR in a ap d e l n tcl; do
-	wget -r -np -N --accept="$PKGS" http://ftp.arm.slackware.com/slackwarearm/slackwarearm-14.1/slackware/$DIR/ || exit 1
+	wget -r -np -N --accept="$PKGS" http://slackware.uk/slackwarearm/slackwarearm-14.1/slackware/$DIR/ || exit 1
 done
 
 rm -rf slackwarearm-14.1
@@ -31,7 +31,7 @@ mkdir slackwarearm-14.1 || exit 1
 
 # Extract only a minimal subset (ignore errors):
 for DIR in a l; do
-	ls ftp.arm.slackware.com/slackwarearm/slackwarearm-14.1/slackware/$DIR/*.t?z | xargs -n 1 tar -C slackwarearm-14.1 -x --exclude="dev/*" --exclude="lib/udev/devices/*" -f || exit 1
+	ls slackware.uk/slackwarearm/slackwarearm-14.1/slackware/$DIR/*.t?z | xargs -n 1 tar -C slackwarearm-14.1 -x --exclude="dev/*" --exclude="lib/udev/devices/*" -f || exit 1
 done
 
 # Do a minimal post-installation setup:
@@ -41,4 +41,4 @@ proot -q qemu-arm -S slackwarearm-14.1 /sbin/ldconfig || exit 1
 proot -q qemu-arm -r slackwarearm-14.1 ln -s /bin/bash /bin/sh || exit 1
 
 # Install all package correcty (ignore warnings):
-ls ftp.arm.slackware.com/slackwarearm/slackwarearm-14.1/slackware/*/*.t?z | xargs -n 1 proot -q qemu-arm -S slackwarearm-14.1 -b ftp.arm.slackware.com /sbin/installpkg || exit 1
+ls slackware.uk/slackwarearm/slackwarearm-14.1/slackware/*/*.t?z | xargs -n 1 proot -q qemu-arm -S slackwarearm-14.1 -b slackware.uk /sbin/installpkg || exit 1
