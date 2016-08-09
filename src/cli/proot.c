@@ -257,6 +257,36 @@ static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value)
 	return 0;
 }
 
+
+static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+{
+	int status;
+	char *port_in;
+	char *port_out;
+
+	port_in = talloc_strdup(tracee->ctx, value);
+	if (port_in == NULL) {
+		note(tracee, ERROR, INTERNAL, "can't allocate memory");
+		return -1;
+	}
+
+	port_out = strchr(port_in, ':');
+	if (port_out != NULL) {
+		*port_out = '\0';
+		port_out++;
+	}
+
+	if(global_portmap_extension == NULL)
+		status = initialize_extension(tracee, portmap_callback, value);
+
+	status = add_portmap_entry(atoi(port_in), atoi(port_out));
+
+	//new_binding(tracee, port_in, port_out, true);
+
+	return status;
+}
+
+
 /**
  * Initialize @tracee->qemu.
  */

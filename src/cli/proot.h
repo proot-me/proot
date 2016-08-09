@@ -58,6 +58,7 @@ static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_k(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
 
@@ -214,6 +215,23 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 \tgid.  Likewise, files actually owned by the current user and\n\
 \tgroup appear as if they were owned by uid and gid instead.\n\
 \tNote that the -0 option is the same as -i 0:0.",
+	},
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-p", .separator = ' ', .value = "string" },
+		{ .name = "--port", .separator = '=', .value = "string" },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_p,
+	  .description = "Map ports to others with the syntax as *string* \"port_in:port_out\".",
+	  .detail = "\tThis option makes PRoot intercept bind and connect system calls,\n\
+\tand change the port they use. The port map is specified\n\
+\twith the syntax: -b *port_in*:*port_out*. For example,\n\
+\tan application that runs a MySQL server binding to 5432 wants\n\
+\tto cohabit with other similar application, but doesn't have an\n\
+\toption to change its port. PRoot can be used here to modify\n\
+\tthis port: proot -p 5432:5433 myapplication. With this command,\n\
+\tthe MySQL server will be bound to the port 5433.\n\
+\tThis command can be repeated multiple times to map multiple ports.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {

@@ -55,6 +55,7 @@ OBJECTS += \
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o \
+	extension/portmap/portmap.o \
 	loader/loader-wrapped.o
 
 define define_from_arch.h
