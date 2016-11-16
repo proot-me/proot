@@ -454,10 +454,10 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 }
 
 extern unsigned char _binary_loader_exe_start;
-extern unsigned char _binary_loader_exe_size;
+extern unsigned char _binary_loader_exe_end;
 
 extern unsigned char WEAK _binary_loader_m32_exe_start;
-extern unsigned char WEAK _binary_loader_m32_exe_size;
+extern unsigned char WEAK _binary_loader_m32_exe_end;
 
 /**
  * Extract the built-in loader.  This function returns NULL if an
@@ -481,14 +481,14 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 		goto end;
 	fd = fileno(file);
 
-	if (wants_32bit_version) {
-		start = (void *) &_binary_loader_m32_exe_start;
-		size  = (size_t) &_binary_loader_m32_exe_size;
-	}
-	else {
-		start = (void *) &_binary_loader_exe_start;
-		size  = (size_t) &_binary_loader_exe_size;
-	}
+        if (wants_32bit_version) {
+                start = (void *) &_binary_loader_m32_exe_start;
+                size = &_binary_loader_m32_exe_end - &_binary_loader_m32_exe_start;
+        }
+        else {
+                start = (void *) &_binary_loader_exe_start;
+                size = &_binary_loader_exe_end - &_binary_loader_exe_start;
+        }
 
 	status2 = write(fd, start, size);
 	if (status2 != size) {
