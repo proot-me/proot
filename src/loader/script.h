@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -43,6 +43,10 @@ struct load_statement {
 		} mmap;
 
 		struct {
+			word_t start;
+		} make_stack_exec;
+
+		struct {
 			word_t stack_pointer;
 			word_t entry_point;
 			word_t at_phdr;
@@ -67,7 +71,8 @@ typedef struct load_statement LoadStatement;
 #define LOAD_ACTION_OPEN		1
 #define LOAD_ACTION_MMAP_FILE		2
 #define LOAD_ACTION_MMAP_ANON		3
-#define LOAD_ACTION_START_TRACED	4
-#define LOAD_ACTION_START		5
+#define LOAD_ACTION_MAKE_STACK_EXEC	4
+#define LOAD_ACTION_START_TRACED	5
+#define LOAD_ACTION_START		6
 
 #endif /* SCRIPT */

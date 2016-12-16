@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -49,15 +49,16 @@ typedef struct load_info {
 	char *raw_path;
 	Mapping *mappings;
 	ElfHeader elf_header;
+	bool needs_executable_stack;
 
 	struct load_info *interp;
 } LoadInfo;
 
 #define IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee) (			\
 		(tracee)->as_ptracee.ptracer != NULL			\
-		&& peek_reg((tracee), CURRENT, SYSARG_1) == (word_t) 1	\
-		&& peek_reg((tracee), CURRENT, SYSARG_4) == (word_t) 2	\
-		&& peek_reg((tracee), CURRENT, SYSARG_5) == (word_t) 3	\
-		&& peek_reg((tracee), CURRENT, SYSARG_6) == (word_t) 4)
+		&& peek_reg((tracee), ORIGINAL, SYSARG_1) == (word_t) 1	\
+		&& peek_reg((tracee), ORIGINAL, SYSARG_4) == (word_t) 2	\
+		&& peek_reg((tracee), ORIGINAL, SYSARG_5) == (word_t) 3	\
+		&& peek_reg((tracee), ORIGINAL, SYSARG_6) == (word_t) 4)
 
 #endif /* EXECVE_H */

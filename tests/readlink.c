@@ -3,6 +3,7 @@
 #include <limits.h> /* PATH_MAX, */
 #include <stdlib.h> /* exit(3), */
 #include <sys/syscall.h> /* SYS_readlink, */
+#include <fcntl.h> /* AT_FDCWD */
 
 int main(int argc, char *argv[])
 {
@@ -14,7 +15,13 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+#if defined(SYS_readlink)
 	status = syscall(SYS_readlink, argv[1], path, PATH_MAX);
+#elif defined(SYS_readlinkat)
+	status = syscall(SYS_readlinkat, AT_FDCWD, argv[1], path, PATH_MAX);
+#else
+#error "SYS_readlink and SYS_readlinkat doesn't exists"
+#endif
 	if (status < 0) {
 		perror("readlink()");
 		exit(EXIT_FAILURE);

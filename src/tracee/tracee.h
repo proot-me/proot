@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -29,6 +29,7 @@
 #include <sys/queue.h> /* LIST_*, */
 #include <sys/ptrace.h>/* enum __ptrace_request */
 #include <talloc.h>    /* talloc_*, */
+#include <stdint.h>    /* *int*_t, */
 
 #include "arch.h" /* word_t, user_regs_struct, */
 #include "compat.h"
@@ -66,7 +67,6 @@ typedef struct {
 typedef struct {
 	word_t base;
 	size_t size;
-	size_t prealloc_size;
 	bool disabled;
 } Heap;
 
@@ -81,6 +81,9 @@ typedef struct tracee {
 
 	/* Process identifier. */
 	pid_t pid;
+
+	/* Unique tracee identifier. */
+	uint64_t vpid;
 
 	/* Is it currently running or not?  */
 	bool running;

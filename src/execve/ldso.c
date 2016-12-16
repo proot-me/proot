@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -515,6 +515,8 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 		status = add_host_ldso_paths(host_ldso_paths,
 #if defined(ARCH_X86_64)
 					"/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:"
+#elif defined(ARCH_ARM64)
+					"/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu:"
 #endif
 					"/lib64:/usr/lib64:/usr/local/lib64"
 					":/lib:/usr/lib:/usr/local/lib");

@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -31,6 +31,7 @@
 #include <stdio.h>     /* snprintf(3), */
 #include <errno.h>     /* E*, */
 #include <stddef.h>    /* ptrdiff_t, */
+#include <inttypes.h>  /* PRI*, */
 
 #include "path/path.h"
 #include "path/binding.h"
@@ -351,8 +352,8 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 			return status;
 	}
 
-	VERBOSE(tracee, 2, "pid %d: translate(\"%s\" + \"%s\")",
-		tracee != NULL ? tracee->pid : 0, result, user_path);
+	VERBOSE(tracee, 2, "vpid %" PRIu64 ": translate(\"%s\" + \"%s\")",
+		tracee != NULL ? tracee->vpid : 0, result, user_path);
 
 	status = notify_extensions(tracee, GUEST_PATH, (intptr_t) result, (intptr_t) user_path);
 	if (status < 0)
@@ -381,8 +382,8 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 		return status;
 
 skip:
-	VERBOSE(tracee, 2, "pid %d:          -> \"%s\"",
-		tracee != NULL ? tracee->pid : 0, result);
+	VERBOSE(tracee, 2, "vpid %" PRIu64 ":          -> \"%s\"",
+		tracee != NULL ? tracee->vpid : 0, result);
 	return 0;
 }
 
