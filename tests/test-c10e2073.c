@@ -4,13 +4,20 @@
 #include <stdlib.h> /* exit(3), */
 #include <string.h> /* strlen(3), */
 #include <sys/syscall.h> /* SYS_readlink, SYS_getcwd, */
+#include <fcntl.h> /* AT_FDCWD */
 
 int main(void)
 {
 	char path[PATH_MAX];
 	int status;
 
+#if defined(SYS_readlink)
 	status = syscall(SYS_readlink, "/proc/self/cwd", path, PATH_MAX);
+#elif defined(SYS_readlinkat)
+	status = syscall(SYS_readlinkat, AT_FDCWD, "/proc/self/cwd", path, PATH_MAX);
+#else
+#error "SYS_readlink and SYS_readlinkat doesn't exists"
+#endif
 	if (status < 0) {
 		perror("readlink()");
 		exit(EXIT_FAILURE);

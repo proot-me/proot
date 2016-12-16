@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -118,12 +118,20 @@ typedef unsigned char byte_t;
 
     #define SYSTRAP_SIZE 4
 
-    #define SECCOMP_ARCHS { }
+    #ifndef AUDIT_ARCH_AARCH64
+        #define AUDIT_ARCH_AARCH64 (EM_AARCH64 | __AUDIT_ARCH_64BIT | __AUDIT_ARCH_LE)
+    #endif
+
+    #define SECCOMP_ARCHS { { .value = AUDIT_ARCH_AARCH64, .nb_abis = 1, .abis = { ABI_DEFAULT } } }
 
     #define HOST_ELF_MACHINE {183, 0};
     #define RED_ZONE_SIZE 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
+
+    #define LOADER_ADDRESS     0x2000000000
+    #define EXEC_PIC_ADDRESS   0x3000000000
+    #define INTERP_PIC_ADDRESS 0x3f00000000
 
 #elif defined(ARCH_X86)
 

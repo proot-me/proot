@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -30,6 +30,7 @@
 #include "syscall/socket.h"
 #include "syscall/chain.h"
 #include "syscall/heap.h"
+#include "syscall/rlimit.h"
 #include "execve/execve.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -440,6 +441,19 @@ void translate_syscall_exit(Tracee *tracee)
 
 		status = translate_wait_exit(tracee);
 		break;
+
+	case PR_setrlimit:
+	case PR_prlimit64:
+		/* Error reported by the kernel.  */
+		if ((int) syscall_result < 0)
+			goto end;
+
+		status = translate_setrlimit_exit(tracee, syscall_number == PR_prlimit64);
+		if (status < 0)
+			break;
+
+		/* Don't overwrite the syscall result.  */
+		goto end;
 
 	default:
 		goto end;

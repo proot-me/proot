@@ -18,16 +18,6 @@
 	    <xsl:value-of select="//section[@names='description']/paragraph[1]" />
 	  </xsl:attribute>
 	</meta>
-	<script type="text/javascript">
-	  var _gaq = _gaq || [];
-	  _gaq.push(['_setAccount', 'UA-20176046-1']);
-	  _gaq.push(['_trackPageview']);
-	  (function() {
-	  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
-	  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
-	  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
-	  })();
-	</script>
       </head>
 
       <body>
@@ -46,6 +36,7 @@
 	      <li><a href="#description">Description</a></li>
 	      <li><a href="#examples">Examples</a></li>
 	      <li><a href="#downloads">Downloads</a></li>
+	      <li><a href="#ecosystem">Ecosystem</a></li>
 	      <li><a href="#support">Support</a></li>
 	      <li><a href="https://plus.google.com/107605112469213359575/posts">News+</a></li>
 	    </ul>
@@ -54,6 +45,7 @@
 	  <xsl:apply-templates select="//section[@names='description']" />
 	  <xsl:apply-templates select="//section[@names='examples']" />
 	  <xsl:apply-templates select="//section[@names='downloads']" />
+	  <xsl:apply-templates select="//section[@names='ecosystem']" />
 
 	  <div class="section" id="support">
 	    <h2>Support</h2>
@@ -64,26 +56,10 @@
 	    href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
 	    forum</a>, but please be sure that your answer isn't in
 	    the <a
-	    href="https://github.com/cedric-vincent/PRoot#proot">user
+	    href="https://github.com/proot-me/PRoot/blob/master/doc/proot/manual.txt">user
 	    manual</a> first.
 	    </p>
-	    <p>Also, Rémi Duraffort has written interesting articles
-	    on <a
-	    href="http://ivoire.dinauz.org/blog/post/2012/04/16/PRoot-sorcery">how
-	    to use a foreign Debian rootfs with PRoot</a> in order to
-	    <a
-	    href="http://ivoire.dinauz.org/blog/post/2012/05/04/Making-VLC-at-home">build
-	    and test VLC on this guest Linux distribution</a>.
-	    </p>
 	  </div>
-
-	  <script type="text/javascript">
-	    (function() {
-	    var po = document.createElement('script'); po.type = 'text/javascript'; po.async = true;
-	    po.src = 'https://apis.google.com/js/plusone.js';
-	    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(po, s);
-	    })();
-	  </script>
 
       </body>
     </html>
