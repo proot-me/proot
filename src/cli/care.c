@@ -149,7 +149,7 @@ static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, const c
 	if (size != 0)
 		write(1, &_binary_manual_start, size);
 	else
-		printf("No manual found, please visit http://reproducible.io instead.\n");
+		printf("No manual found, please visit https://proot-me.github.io instead.\n");
 
 	exit_failure = false;
 	return -1;

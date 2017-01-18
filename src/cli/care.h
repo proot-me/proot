@@ -72,7 +72,7 @@ static Cli care_cli = {
 	.name     = "care",
 	.subtitle = "Comprehensive Archiver for Reproducible Execution",
 	.synopsis = "care [option] ... command",
-	.colophon = "Visit http://reproducible.io for help, bug reports, suggestions, patches, ...\n\
+	.colophon = "Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...\n\
 Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	.logo = "\
   _____ ____ _____ ____\n\

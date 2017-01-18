@@ -15,7 +15,7 @@
   <graph edgedefault="directed" id="G">
     <data key="d7"/>
     <node id="n0">
-      <data key="d4"><![CDATA[http://reproducible.io]]></data>
+      <data key="d4"><![CDATA[https://proot-me.github.io]]></data>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="30.0" width="49.53125" x="-24.765625" y="-15.0"/>
@@ -251,7 +251,7 @@
     </node>
     <node id="n13">
       <data key="d4"/>
-      <data key="d5"><![CDATA[About 100 domains references http://reproducible.io according to Google]]></data>
+      <data key="d5"><![CDATA[About 100 domains references https://proot-me.github.io according to Google]]></data>
       <data key="d6">
         <y:ShapeNode>
           <y:Geometry height="30.0" width="127.6953125" x="-413.5669895377619" y="-0.9861523926047937"/>
