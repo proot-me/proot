@@ -24,11 +24,6 @@ typedef struct Config {
 	word_t sockfd;
 } Config;
 
-
-int valid_port_to_change(uint16_t port) {
-	return htons(port) > 1024;
-}
-
 /**
  * Change the port of the socket address, if it maps with an entry.
  * Return 0 if no relevant entry is found, and 1 if the port has been changed.
@@ -40,7 +35,7 @@ int change_inet_socket_port(Tracee *tracee, Config *config, struct sockaddr_in *
 	port_out = get_port(&config->portmap, port_in);
 
 	if(port_out == PORTMAP_DEFAULT_VALUE) {
-		if (bind_mode && config->netcoop_mode && !config->need_to_check_new_port && valid_port_to_change(port_in)) {
+		if (bind_mode && config->netcoop_mode && !config->need_to_check_new_port) {
 			VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv4 netcoop mode with: %d", htons(port_in));
 			sockaddr->sin_port = 0; // the system will assign an available port
 			config->old_port = port_in; // we keep this one for adding a new entry
@@ -54,7 +49,7 @@ int change_inet_socket_port(Tracee *tracee, Config *config, struct sockaddr_in *
 	}
 
 	sockaddr->sin_port = port_out;
-	VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv4 port translation: %d -> %d", htons(port_in), htons(port_out));
+	VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv4 port translation: %d -> %d (NOT GUARANTEED: bind might still fail on target port)", htons(port_in), htons(port_out));
 
 	return 1;
 }
@@ -70,7 +65,7 @@ int change_inet6_socket_port(Tracee *tracee, Config *config, struct sockaddr_in6
 	port_out = get_port(&config->portmap, port_in);
 
 	if(port_out == PORTMAP_DEFAULT_VALUE) {
-		if (bind_mode && config->netcoop_mode && !config->need_to_check_new_port && valid_port_to_change(port_in)) {
+		if (bind_mode && config->netcoop_mode && !config->need_to_check_new_port) {
 			VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv6 netcoop mode with: %d", htons(port_in));
 			sockaddr->sin6_port = 0; // the system will assign an available port
 			config->old_port = port_in; // we keep this one for adding a new entry
@@ -84,7 +79,7 @@ int change_inet6_socket_port(Tracee *tracee, Config *config, struct sockaddr_in6
 	}
 
 	sockaddr->sin6_port = port_out;
-	VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv6 port translation: %d -> %d", htons(port_in), htons(port_out));
+	VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv6 port translation: %d -> %d (NOT GUARANTEED: bind might still fail on target port)", htons(port_in), htons(port_out));
 
 	return 1;
 }
