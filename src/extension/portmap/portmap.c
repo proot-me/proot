@@ -10,6 +10,7 @@
 
 #define PORTMAP_SIZE 4096  /* must be a power of 2 */
 #define PORTMAP_DEFAULT_VALUE 0  /* default value that indicates an unused entry */
+#define PORTMAP_VERBOSITY 2
 
 /**
  * We use a global variable in order to support multiple port mapping options,
@@ -104,6 +105,7 @@ uint16_t get_index(PortMap *portmap, uint16_t key) {
 int add_entry(PortMap *portmap, uint16_t port_in, uint16_t port_out)
 {
 	uint16_t index = get_index(portmap, port_in);
+	Tracee *tracee = TRACEE(global_portmap_extension);
 
 	/* no available entry has been found */
 	if(index == PORTMAP_SIZE)
@@ -112,7 +114,7 @@ int add_entry(PortMap *portmap, uint16_t port_in, uint16_t port_out)
 	portmap->map[index].port_in = port_in;
 	portmap->map[index].port_out = port_out;
 
-	note(NULL, INFO, INTERNAL, "new port map entry: %d -> %d", htons(port_in), htons(port_out));
+	VERBOSE(tracee, PORTMAP_VERBOSITY, "new port map entry: %d -> %d", htons(port_in), htons(port_out));
 
 	return 0;
 }
@@ -154,12 +156,33 @@ int change_inet_socket_port(Tracee *tracee, Config *config, struct sockaddr_in *
 	port_out = get_port(&config->portmap, port_in);
 
 	if(port_out == PORTMAP_DEFAULT_VALUE) {
-		note(tracee, INFO, INTERNAL, "port ignored: %d ", htons(port_in));
+		VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv4 port ignored: %d ", htons(port_in));
 		return 0;
 	}
 
 	sockaddr->sin_port = port_out;
-	note(tracee, INFO, INTERNAL, "port translation: %d -> %d", htons(port_in), htons(port_out));
+	VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv4 port translation: %d -> %d", htons(port_in), htons(port_out));
+
+	return 1;
+}
+
+/**
+ * Change the port of the socket address, if it maps with an entry.
+ * Return 0 if no relevant entry is found, and 1 if the port has been changed.
+ */
+int change_inet6_socket_port(Tracee *tracee, Config *config, struct sockaddr_in6 *sockaddr) {
+	uint16_t port_in, port_out;
+
+	port_in = sockaddr->sin6_port;
+	port_out = get_port(&config->portmap, port_in);
+
+	if(port_out == PORTMAP_DEFAULT_VALUE) {
+		VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv6 port ignored: %d ", htons(port_in));
+		return 0;
+	}
+
+	sockaddr->sin6_port = port_out;
+	VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv6 port translation: %d -> %d", htons(port_in), htons(port_out));
 
 	return 1;
 }
@@ -215,6 +238,9 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		status = 0;
 		if (sockaddr.sun_family == AF_INET) {
 			status = change_inet_socket_port(tracee, config, (struct sockaddr_in *) &sockaddr);
+		}
+		else if (sockaddr.sun_family == AF_INET6) {
+			status = change_inet6_socket_port(tracee, config, (struct sockaddr_in6 *) &sockaddr);
 		}
 
 		if(status <= 0) {
