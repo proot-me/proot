@@ -389,13 +389,13 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	if (WIFEXITED(tracee_status)) {
 		last_exit_status = WEXITSTATUS(tracee_status);
 		VERBOSE(tracee, 1, "pid %d: exited with status %d", pid, last_exit_status);
-		tracee->terminated = true;
+		terminate_tracee(tracee);
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
 		VERBOSE(tracee, (int) (last_exit_status != -1),
 			"pid %d: terminated with signal %d", pid, WTERMSIG(tracee_status));
-		tracee->terminated = true;
+                terminate_tracee(tracee);
 	}
 	else if (WIFSTOPPED(tracee_status)) {
 		/* Don't use WSTOPSIG() to extract the signal
