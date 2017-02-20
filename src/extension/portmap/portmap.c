@@ -7,10 +7,11 @@
 #include "cli/note.h"
 #include "extension/extension.h"
 #include "tracee/mem.h"     /* read_data */
+#include "syscall/chain.h"  /* register_chained_syscall */
 
 #define PORTMAP_SIZE 4096  /* must be a power of 2 */
 #define PORTMAP_DEFAULT_VALUE 0  /* default value that indicates an unused entry */
-#define PORTMAP_VERBOSITY 2
+#define PORTMAP_VERBOSITY 1
 
 /**
  * We use a global variable in order to support multiple port mapping options,
@@ -114,7 +115,7 @@ int add_entry(PortMap *portmap, uint16_t port_in, uint16_t port_out)
 	portmap->map[index].port_in = port_in;
 	portmap->map[index].port_out = port_out;
 
-	VERBOSE(tracee, PORTMAP_VERBOSITY, "new port map entry: %d -> %d", htons(port_in), htons(port_out));
+	VERBOSE(tracee, PORTMAP_VERBOSITY, "new port mapping entry: %d -> %d", ntohs(port_in), ntohs(port_out));
 
 	return 0;
 }
@@ -140,22 +141,37 @@ uint16_t get_port(PortMap *portmap, uint16_t port_in)
 
 typedef struct Config {
 	PortMap portmap;
+	bool netcoop_mode;
+	bool need_to_check_new_port;
+	uint16_t old_port;
+	word_t sockfd;
 } Config;
 
 
-#define LOCALHOST_IN_ADDR_T 16777343
+int valid_port_to_change(uint16_t port) {
+	return htons(port) > 1024;
+}
 
 /**
  * Change the port of the socket address, if it maps with an entry.
  * Return 0 if no relevant entry is found, and 1 if the port has been changed.
  */
-int change_inet_socket_port(Tracee *tracee, Config *config, struct sockaddr_in *sockaddr) {
+int change_inet_socket_port(Tracee *tracee, Config *config, struct sockaddr_in *sockaddr, bool bind_mode) {
 	uint16_t port_in, port_out;
 
 	port_in = sockaddr->sin_port;
 	port_out = get_port(&config->portmap, port_in);
 
 	if(port_out == PORTMAP_DEFAULT_VALUE) {
+		if (bind_mode && config->netcoop_mode && !config->need_to_check_new_port && valid_port_to_change(port_in)) {
+			VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv4 netcoop mode with: %d", htons(port_in));
+			sockaddr->sin_port = 0; // the system will assign an available port
+			config->old_port = port_in; // we keep this one for adding a new entry
+			config->need_to_check_new_port = true;
+			config->sockfd = peek_reg(tracee, CURRENT, SYSARG_1);
+			return 1;
+		}
+
 		VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv4 port ignored: %d ", htons(port_in));
 		return 0;
 	}
@@ -170,13 +186,22 @@ int change_inet_socket_port(Tracee *tracee, Config *config, struct sockaddr_in *
  * Change the port of the socket address, if it maps with an entry.
  * Return 0 if no relevant entry is found, and 1 if the port has been changed.
  */
-int change_inet6_socket_port(Tracee *tracee, Config *config, struct sockaddr_in6 *sockaddr) {
+int change_inet6_socket_port(Tracee *tracee, Config *config, struct sockaddr_in6 *sockaddr, bool bind_mode) {
 	uint16_t port_in, port_out;
 
 	port_in = sockaddr->sin6_port;
 	port_out = get_port(&config->portmap, port_in);
 
 	if(port_out == PORTMAP_DEFAULT_VALUE) {
+		if (bind_mode && config->netcoop_mode && !config->need_to_check_new_port && valid_port_to_change(port_in)) {
+			VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv6 netcoop mode with: %d", htons(port_in));
+			sockaddr->sin6_port = 0; // the system will assign an available port
+			config->old_port = port_in; // we keep this one for adding a new entry
+			config->need_to_check_new_port = true;
+			config->sockfd = peek_reg(tracee, CURRENT, SYSARG_1);
+			return 1;
+		}
+
 		VERBOSE(tracee, PORTMAP_VERBOSITY, "ipv6 port ignored: %d ", htons(port_in));
 		return 0;
 	}
@@ -187,60 +212,106 @@ int change_inet6_socket_port(Tracee *tracee, Config *config, struct sockaddr_in6
 	return 1;
 }
 
+int prepare_getsockname_chained_syscall(Tracee *tracee, Config *config) {
+	int status = 0;
+	word_t sockfd, sock_addr, size_addr;
+	struct sockaddr_un sockaddr;
+	socklen_t size;
+
+	/* we retrieve this one from the listen() system call */
+	sockfd = peek_reg(tracee, CURRENT, SYSARG_1);
+	size = sizeof(sockaddr);
+
+	/* we check that it's the correct socket */
+	if(sockfd != config->sockfd)
+		return 0;
+
+	/* we allocate a memory place to store the socket address.
+	 * This is a buffer that will be filled by the getsockname() syscall.
+	 */
+	sock_addr = alloc_mem(tracee, sizeof(sockaddr));
+	if (sock_addr == 0)
+		return -EFAULT;
+	size_addr = alloc_mem(tracee, sizeof(socklen_t));
+	if(size_addr == 0)
+		return -EFAULT;
+
+	bzero(&sockaddr, sizeof(sockaddr));
+
+	/* we write the modified socket in this new address */
+	status = write_data(tracee, sock_addr, &sockaddr, sizeof(sockaddr));
+	if (status < 0)
+		return status;
+	status = write_data(tracee, size_addr, &size, sizeof(size));
+	if (status < 0)
+		return status;
+
+	/* Only by using getsockname can we retrieve the port automatically
+	 * assigned by the system to the socket.
+	 */
+	status = register_chained_syscall(
+			tracee, PR_getsockname,
+			sockfd,  // SYS_ARG1, socket file descriptor.
+			sock_addr,
+			size_addr,
+			0, 0, 0
+			);
+	if (status < 0)
+		return status;
+	//status = restart_original_syscall(tracee);
+	//if (status < 0)
+	//    return status;
+
+	sockfd = peek_reg(tracee, CURRENT, SYSARG_1);
+	return 0;
+}
+
+
 static int handle_sysenter_end(Tracee *tracee, Config *config)
 {
 	int status;
 	int sysnum;
 
-	sysnum = get_sysnum(tracee, ORIGINAL);
+	sysnum = get_sysnum(tracee, CURRENT);
 
 	switch(sysnum) {
 	  case PR_connect:
-	  case PR_bind: {
+	  case PR_bind:
+	  {
 		struct sockaddr_un sockaddr;
 		int size;
 		word_t sock_addr;
 
-		/* Get the reg address of the socket, and the size of the structure*/
+		/* Get the reg address of the socket, and the size of the structure.
+		 * Note that the sockaddr and addrlen are at the same position for all 4 of these syscalls.
+		 */
 		sock_addr = peek_reg(tracee, CURRENT, SYSARG_2);
 		size = (int) peek_reg(tracee, CURRENT, SYSARG_3);
+
 		if (sock_addr == 0)
 			return 0;
 
-		/* Essential step, we clean the structure before adding data to it,
-		 * otherwise we will have a hell of a time with char arrays filled with rubbish */
-		bzero(&sockaddr, sizeof(struct sockaddr_un));
+		/* Essential step, we clean the structure before adding data to it */
+		bzero(&sockaddr, sizeof(sockaddr));
 
 		/* Next, we read the socket address structure from the tracee's memory */
-		status = read_data(tracee, &sockaddr, sock_addr, size);
+		status = read_data(tracee, &sockaddr, sock_addr, sizeof(sockaddr));
 
 		if (status < 0)
 			return status;
 
-		//TODO: Remove comments?
-		/* Here is where Unix Domain Socket and IP Socket are dealt with separately.
-		 * Although there is still a little detail concerning IP Socket connections:
-		 * when an IP socket binds/connects to a (HOST, PORT) couple,
-		 * PRoot will actually receive 3 bind/connect system calls (not one!):
-		 *
-		 * 1) A first one in the AF_FILE domain. What's tricky is that AF_FILE and AF_UNIX
-		 * have the same value, so these syscall will still be intercepted by the first 'if' below.
-		 * But because their paths do not start with '\0', they will simply be ignored.
-		 * Their path is always '/var/run/nscd/socket' by the way.
-		 * The NSCD is the Name Service Cache Daemon.
-		 *
-		 * 2) A second one identical to the first.
-		 *
-		 * 3) And finally, a bind/connect system call in the domain AF_INET,
-		 * that will be captured by the second 'if'.
+		//if(sysnum == PR_connect || sysnum == PR_bind) {
+		/* Before binding to a socket, the system does some connect() to the NSCD (Name Service Cache Daemon) on its own.
+		 * These connect calls are for sockets in the AF_FILE domain; remember that AF_FILE and AF_UNIX have the same value.
+		 * Their path is always '/var/run/nscd/socket'.
 		 */
 
 		status = 0;
 		if (sockaddr.sun_family == AF_INET) {
-			status = change_inet_socket_port(tracee, config, (struct sockaddr_in *) &sockaddr);
+			status = change_inet_socket_port(tracee, config, (struct sockaddr_in *) &sockaddr, sysnum == PR_bind);
 		}
 		else if (sockaddr.sun_family == AF_INET6) {
-			status = change_inet6_socket_port(tracee, config, (struct sockaddr_in6 *) &sockaddr);
+			status = change_inet6_socket_port(tracee, config, (struct sockaddr_in6 *) &sockaddr, sysnum == PR_bind);
 		}
 
 		if(status <= 0) {
@@ -249,31 +320,109 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		}
 
 		/* we allocate a new memory place for the modified socket address */
-		sock_addr = alloc_mem(tracee, sizeof(sockaddr));
+		sock_addr = alloc_mem(tracee, size);
 		if (sock_addr == 0)
 			return -EFAULT;
 
 		/* we write the modified socket in this new address */
-		status = write_data(tracee, sock_addr, &sockaddr, sizeof(struct sockaddr_un));
+		status = write_data(tracee, sock_addr, &sockaddr, sizeof(sockaddr));
 		if (status < 0)
 			return status;
 
 		/* then we modify the syscall argument so that it uses the modified socket address */
 		poke_reg(tracee, SYSARG_2, sock_addr);
-		poke_reg(tracee, SYSARG_3, sizeof(struct sockaddr_un));
+		poke_reg(tracee, SYSARG_3, size);
 
 		return 0;
 	  }
 
+	  case PR_listen: {
+		if(!config->netcoop_mode || !config->need_to_check_new_port)
+			return 0;
+
+		status = prepare_getsockname_chained_syscall(tracee, config);
+		return status;
+	  }
+
 	  default:
-		return 0;
+			  return 0;
 	}
 }
 
-/* List of syscalls handled by this extensions.  */
+int add_changed_port_as_entry(Tracee *tracee, Config *config) {
+	int status;
+	struct sockaddr_un sockaddr;
+	word_t sockfd, sock_addr;
+	struct sockaddr_in *sockaddr_in;
+	struct sockaddr_in6 *sockaddr_in6;
+	int result;
+	uint16_t port_in, port_out;
+
+	if(!config->need_to_check_new_port)
+		return 0;
+
+	sockfd = peek_reg(tracee, CURRENT, SYSARG_1);
+	sock_addr = peek_reg(tracee, CURRENT, SYSARG_2);
+	result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+
+	if (sock_addr == 0)
+		return 0;
+
+	if (sockfd != config->sockfd)
+		return 0;
+
+	if (result < 0)
+		return -result;
+
+	/* Essential step, we clean the structure before adding data to it */
+	bzero(&sockaddr, sizeof(sockaddr));
+
+	/* Next, we read the socket address structure from the tracee's memory */
+	status = read_data(tracee, &sockaddr, sock_addr, sizeof(sockaddr));
+	if (status < 0)
+		return status;
+
+	port_in = config->old_port;
+
+	if (sockaddr.sun_family == AF_INET) {
+		sockaddr_in = (struct sockaddr_in *) &sockaddr;
+		port_out = sockaddr_in->sin_port;
+	}
+	else if (sockaddr.sun_family == AF_INET6) {
+		sockaddr_in6 = (struct sockaddr_in6 *) &sockaddr;
+		port_out = sockaddr_in6->sin6_port;
+	}
+	else
+		return 0;
+
+	add_portmap_entry(htons(port_in), htons(port_out));
+	config->need_to_check_new_port = false;
+	config->sockfd = 0;
+
+	return 0;
+}
+
+static int handle_syschained_exit(Tracee *tracee, Config *config)
+{
+	int sysnum;
+
+	sysnum = get_sysnum(tracee, CURRENT);
+
+	switch(sysnum) {
+	  case PR_getsockname: {
+		return add_changed_port_as_entry(tracee, config);
+			       }
+	  default:
+			       return 0;
+	}
+}
+
+/* List of syscalls handled by this extension.  */
 static FilteredSysnum filtered_sysnums[] = {
 	{ PR_bind,         0 },
 	{ PR_connect,      0 },
+	{ PR_listen,       FILTER_SYSEXIT },  /* the exit stage is required to chain syscalls */
+//      { PR_getsockname,  FILTER_SYSEXIT },  /* not needed here, see CHAINED EXIT event */
 	FILTERED_SYSNUM_END,
 };
 
@@ -285,6 +434,15 @@ int add_portmap_entry(uint16_t port_in, uint16_t port_out) {
 		/* careful with little/big endian numbers */
 		return add_entry(&config->portmap, ntohs(port_in), ntohs(port_out));
 	}
+}
+
+int activate_netcoop_mode() {
+	if(global_portmap_extension != NULL) {
+		Config *config = talloc_get_type_abort(global_portmap_extension->config, Config);
+		config->netcoop_mode = true;
+	}
+
+	return 0;
 }
 
 /**
@@ -307,6 +465,9 @@ int portmap_callback(Extension *extension, ExtensionEvent event,
 
 		config = talloc_get_type_abort(extension->config, Config);
 		initialize_portmap(&config->portmap);
+		config->netcoop_mode = false;
+		config->need_to_check_new_port = false;
+		config->sockfd = 0;
 
 		extension->filtered_sysnums = filtered_sysnums;
 
@@ -317,10 +478,16 @@ int portmap_callback(Extension *extension, ExtensionEvent event,
 	  case SYSCALL_ENTER_END: {
 		/* As PRoot only translate unix sockets,
 		 * it doesn't actually matter whether we do this
-		 * on the ENTER_START or ENTER_END. */
+		 * on the ENTER_START or ENTER_END stage. */
 		Tracee *tracee = TRACEE(extension);
 		Config *config = talloc_get_type_abort(extension->config, Config);
 		return handle_sysenter_end(tracee, config);
+	  }
+
+	  case SYSCALL_CHAINED_EXIT: {
+		Tracee *tracee = TRACEE(extension);
+		Config *config = talloc_get_type_abort(extension->config, Config);
+		return handle_syschained_exit(tracee, config);
 	  }
 
 	  case INHERIT_PARENT: {

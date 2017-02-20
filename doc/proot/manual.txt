@@ -181,6 +181,14 @@ the sources for further details.
     the MySQL server will be bound to the port 5433.
     This command can be repeated multiple times to map multiple ports.
 
+-n, --netcoop
+    Activates the network cooperation mode.
+
+    This option makes PRoot intercept bind() system calls and
+    change the port they are binding to to 0. With this, the system will
+    allocate an available port. Each time this is done, a new entry is added
+    to the port mapping entries, so that corresponding connect() system calls
+    use the same resulting port.
 
 Alias options
 -------------

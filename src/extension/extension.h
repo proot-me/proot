@@ -183,6 +183,7 @@ extern int care_callback(Extension *extension, ExtensionEvent event, intptr_t d1
 /* Added extensions.  */
 extern int portmap_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern Extension *global_portmap_extension;
-extern int add_portmap_entry(uint16_t port_in, uint16_t port_out);
+int add_portmap_entry(uint16_t port_in, uint16_t port_out);
+int activate_netcoop_mode();
 
 #endif /* EXTENSION_H */

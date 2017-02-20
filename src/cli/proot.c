@@ -260,7 +260,7 @@ static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value)
 
 static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
-	int status;
+	int status = 0;
 	char *port_in;
 	char *port_out;
 
@@ -278,14 +278,27 @@ static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *va
 
 	if(global_portmap_extension == NULL)
 		status = initialize_extension(tracee, portmap_callback, value);
+	if(status < 0)
+		return status;
 
 	status = add_portmap_entry(atoi(port_in), atoi(port_out));
-
-	//new_binding(tracee, port_in, port_out, true);
 
 	return status;
 }
 
+static int handle_option_n(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+{
+	int status = 0;
+
+	if(global_portmap_extension == NULL)
+		status = initialize_extension(tracee, portmap_callback, value);
+	if(status < 0)
+		return status;
+
+	status = activate_netcoop_mode();
+
+	return status;
+}
 
 /**
  * Initialize @tracee->qemu.

@@ -67,6 +67,9 @@ else:
 
     try:
         # send Syscall
-        sock.send("test " + sys.argv[4])
+        if len(sys.argv) > 4:
+            sock.send("test " + sys.argv[4])
+        else:
+            sock.send("test")
     finally:
         sock.close()
