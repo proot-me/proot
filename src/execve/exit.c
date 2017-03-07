@@ -433,8 +433,17 @@ void translate_execve_exit(Tracee *tracee)
 		talloc_set_name_const(tracee->exe, "$exe");
 	}
 
-	/* New processes have no heap.  */
-	bzero(tracee->heap, sizeof(Heap));
+	/* New processes have no heap. The process could've been cloned with
+	 * CLONE_VM so it has been sharing the heap with its parent. execve()
+	 * discards the VM so make sure to reallocate new heap. */
+	if (talloc_reference_count(tracee->heap) > 0) {
+		talloc_unlink(tracee, tracee->heap);
+		tracee->heap = talloc_zero(tracee, Heap);
+		if (!tracee->heap)
+			note(tracee, ERROR, INTERNAL, "can't allocate heap");
+	} else {
+		bzero(tracee->heap, sizeof(Heap));
+	}
 
 	/* Transfer the load script to the loader.  */
 	status = transfer_load_script(tracee);
