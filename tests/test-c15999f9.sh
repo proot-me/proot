@@ -5,7 +5,7 @@ fi
 TMP=/tmp/$(mcookie)
 mkdir ${TMP}
 
-${PROOT} -b /bin/true:${TMP}/true /bin/true
+${PROOT} -b `which true`:${TMP}/true `which true`
 ! test -e ${TMP}/true
 [ $? -eq 0 ]
 

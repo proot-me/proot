@@ -121,7 +121,7 @@ $(ROOTFS_DIR):
 setup: $(ROOTFS_BIN)
 
 $(ROOTFS)/bin/abs-true:
-	@ln -fs /bin/true $@
+	@ln -fs `which true`  $@
 
 $(ROOTFS)/bin/rel-true:
 	@ln -fs ./true $@
