@@ -318,7 +318,7 @@ Release v3.2
 
 This release was mostly driven by the requirements of "CARE", a new
 project based on PRoot that will be released publicly soon on
-http://reproducible.io.  For information, "CARE" is the short for
+https://proot-me.github.io.  For information, "CARE" is the short for
 "Comprehensive Archiver for Reproducible Execution".
 
 Highlights

@@ -59,7 +59,7 @@ requests before sending them to the host kernel.  This means that
 guest programs can use host resources (devices, network, ...) just as
 if they were "normal" host programs.
 
-.. _CARE: http://reproducible.io
+.. _CARE: https://proot-me.github.io
 
 
 Options

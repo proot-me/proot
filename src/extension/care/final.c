@@ -320,7 +320,7 @@ static int archive_readme_txt(const Care *care)
 		return -1;
 	}
 
-	N("This archive was created with CARE: http://reproducible.io. It contains:");
+	N("This archive was created with CARE: https://proot-me.github.io. It contains:");
 	N("");
 	N("re-execute.sh");
 	N("    start the re-execution of the initial command as originally");
