@@ -417,10 +417,8 @@ static int handle_syschained_exit(Tracee *tracee, Config *config)
 	case PR_socketcall:	{
 		word_t args_addr;
 		word_t call;
-		int is_bind_syscall = sysnum == PR_bind;
-		
+
 		call = peek_reg(tracee, CURRENT, SYSARG_1);
-		is_bind_syscall = call == SYS_BIND;
 		args_addr = peek_reg(tracee, CURRENT, SYSARG_2);
 	
 		switch(call) {
@@ -432,7 +430,8 @@ static int handle_syschained_exit(Tracee *tracee, Config *config)
 				sock_addr = PEEK_WORD(SYSARG_ADDR(2), 0);
 				result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 		
-				return add_changed_port_as_entry(tracee, config, sockfd, sock_addr, result);
+				status = add_changed_port_as_entry(tracee, config, sockfd, sock_addr, result);
+				return status;
 			}
 			default:
 				return 0;
