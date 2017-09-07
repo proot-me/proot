@@ -62,6 +62,7 @@ static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_n(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_kill_on_exit(Tracee *tracee, const Cli *cli, const char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
 static int post_initialize_exe(Tracee *, const Cli *, size_t, char *const *, size_t);
@@ -144,6 +145,16 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	  .detail = "\tSome programs expect to be launched from a given directory but do\n\
 \tnot perform any chdir by themselves.  This option avoids the\n\
 \tneed for running a shell and then entering the directory manually.",
+	},
+	{ .class = "Regular options",
+	  .arguments = {
+		{ .name = "--kill-on-exit", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_kill_on_exit,
+	  .description = "Kill all processes on command exit.",
+	  .detail = "\tWhen the executed command leaves orphean or detached processes\n\
+\taround, proot waits until all processes possibly terminate. This option forces\n\
+\tthe immediate termination of all tracee processes when the main command exits.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
