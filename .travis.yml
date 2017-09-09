@@ -1,4 +1,9 @@
+sudo: required
+
 language: c
+
+services:
+    - docker
 
 compiler: gcc
 
@@ -6,7 +11,17 @@ before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq libtalloc-dev libarchive-dev uthash-dev
 
-script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src proot care CARE_BUILD_ENV=ok&& env PATH=/bin:/usr/bin:/sbin:/usr/sbin make -C tests; fi
+script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src loader.exe loader-m32.exe build.h && env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot care && env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C tests; fi
+
+after_success:
+- coveralls --build-root src --exclude tests --gcov-options '\-lp'
+- cd ..
+- tar cfz proot-latest.tar.gz PRoot --transform='s/PRoot/proot-latest/g'
+- tar cfz care-latest.tar.gz PRoot --transform='s/PRoot/care-latest/g'
+- wget https://raw.githubusercontent.com/proot-me/proot-static-build/build_environment/build.sh
+- chmod +x ./build.sh
+- ./build.sh make -f GNUmakefile_tools care proot
+- ls $TRAVIS_BUILD_DIR/target
 
 env:
   global:
@@ -18,8 +33,6 @@ addons:
   coverity_scan:
     project:
       name: "cedric-vincent/PRoot"
-      description: "PRoot"
-    notification_email: cedric.vincent@gmail.com
     build_command_prepend:
     build_command: make -C src proot care CARE_BUILD_ENV=ok
     branch_pattern: coverity_scan
