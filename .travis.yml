@@ -12,7 +12,7 @@ before_install:
  - sudo apt-get install -qq libtalloc-dev libarchive-dev uthash-dev gdb strace realpath
  - sudo pip install cpp-coveralls
 
-script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src loader.exe loader-m32.exe build.h && env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot care && env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C tests; fi
+script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src loader.exe loader-m32.exe build.h && env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot care && env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src PROOT_NO_SECCOMP=1 make -C tests; fi
 
 after_success:
 - coveralls --build-root src --exclude tests --gcov-options '\-lp'
