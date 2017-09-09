@@ -35,14 +35,14 @@
 
 #include "extension/care/archive.h"
 #include "tracee/tracee.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 typedef struct {
 	int (*set_format)(struct archive *);
 	int (*add_filter)(struct archive *);
 	int hardlink_resolver_strategy;
 	const char *options;
-	bool self_extracting;
+	enum { NOT_SPECIAL = 0, SELF_EXTRACTING, RAW } special;
 } Format;
 
 /**
@@ -63,10 +63,11 @@ static bool slurp_suffix(const char *string, const char **cursor, const char *su
 
 /**
  * Detect the expected format for the given @string.  This function
- * always updates the @format structure and @suffix_length with the
- * number of characters that describes the parsed format.
+ * returns -1 if an error occurred, otherwise it returns 0 and updates
+ * the @format structure and @suffix_length with the number of
+ * characters that describes the parsed format.
  */
-static void parse_suffix(const Tracee* tracee, Format *format,
+static int parse_suffix(const Tracee* tracee, Format *format,
 			const char *string, size_t *suffix_length)
 {
 	const char *cursor;
@@ -85,10 +86,22 @@ static void parse_suffix(const Tracee* tracee, Format *format,
 	if (found)
 		goto end;
 
+	found = slurp_suffix(string, &cursor, ".raw");
+	if (found) {
+		format->special = SELF_EXTRACTING;
+		goto parse_filter;
+	}
+
 	found = slurp_suffix(string, &cursor, ".bin");
 	if (found) {
-		format->self_extracting = true;
+#if defined(CARE_BINARY_IS_PORTABLE)
+		format->special = SELF_EXTRACTING;
 		goto parse_filter;
+#else
+		note(tracee, ERROR, USER, "This version of CARE was built "
+					    "without self-extracting (.bin) support");
+		return -1;
+#endif
 	}
 
 	no_wrapper_found = true;
@@ -154,11 +167,18 @@ sanity_checks:
 		format->options	  = "lzop:compression-level=1";
 		format->set_format = archive_write_set_format_gnutar;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
-		format->self_extracting = true;
 
+#if defined(CARE_BINARY_IS_PORTABLE)
+		format->special = SELF_EXTRACTING;
 		if (no_wrapper_found)
-			notice(tracee, WARNING, USER,
+			note(tracee, WARNING, USER,
 				"unknown suffix, assuming self-extracting format.");
+#else
+		format->special = RAW;
+		if (no_wrapper_found)
+			note(tracee, WARNING, USER,
+				"unknown suffix, assuming raw format.");
+#endif
 
 		no_wrapper_found = false;
 		no_filter_found  = false;
@@ -166,7 +186,7 @@ sanity_checks:
 	}
 
 	if (no_format_found) {
-		notice(tracee, WARNING, USER, "unknown format, assuming tar format.");
+		note(tracee, WARNING, USER, "unknown format, assuming tar format.");
 		format->set_format = archive_write_set_format_gnutar;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
 
@@ -175,6 +195,7 @@ sanity_checks:
 
 end:
 	*suffix_length = strlen(cursor);
+	return 0;
 }
 
 /**
@@ -190,13 +211,13 @@ static int copy_self_exe(const Tracee *tracee, const char *destination)
 
 	input_fd = open("/proc/self/exe", O_RDONLY);
 	if (input_fd < 0) {
-		notice(tracee, ERROR, SYSTEM, "can't open '/proc/self/exe'");
+		note(tracee, ERROR, SYSTEM, "can't open '/proc/self/exe'");
 		return -1;
 	}
 
 	output_fd = open(destination, O_RDWR|O_CREAT|O_TRUNC, S_IRWXU|S_IRGRP|S_IXGRP);
 	if (output_fd < 0) {
-		notice(tracee, ERROR, SYSTEM, "can't open/create '%s'", destination);
+		note(tracee, ERROR, SYSTEM, "can't open/create '%s'", destination);
 		status = -1;
 		goto end;
 	}
@@ -207,7 +228,7 @@ static int copy_self_exe(const Tracee *tracee, const char *destination)
 
 		status = read(input_fd, buffer, sizeof(buffer));
 		if (status < 0) {
-			notice(tracee, ERROR, SYSTEM, "can't read '/proc/self/exe'");
+			note(tracee, ERROR, SYSTEM, "can't read '/proc/self/exe'");
 			goto end;
 		}
 
@@ -217,11 +238,11 @@ static int copy_self_exe(const Tracee *tracee, const char *destination)
 		size = status;
 		status = write(output_fd, buffer, size);
 		if (status < 0) {
-			notice(tracee, ERROR, SYSTEM, "can't write '%s'", destination);
+			note(tracee, ERROR, SYSTEM, "can't write '%s'", destination);
 			goto end;
 		}
 		if (status != size)
-			notice(tracee, WARNING, INTERNAL,
+			note(tracee, WARNING, INTERNAL,
 				"wrote %zd bytes instead of %zd", (size_t) status, size);
 	}
 
@@ -251,11 +272,13 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 
 	assert(output != NULL);
 
-	parse_suffix(tracee, &format, output, suffix_length);
+	status = parse_suffix(tracee, &format, output, suffix_length);
+	if (status < 0)
+		return NULL;
 
 	archive = talloc_zero(context, Archive);
 	if (archive == NULL) {
-		notice(tracee, ERROR, INTERNAL, "can't allocate archive structure");
+		note(tracee, ERROR, INTERNAL, "can't allocate archive structure");
 		return NULL;
 	}
 	archive->fd = -1;
@@ -272,20 +295,20 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 
 		archive->handle = archive_write_disk_new();
 		if (archive->handle == NULL) {
-			notice(tracee, WARNING, INTERNAL, "can't initialize archive structure");
+			note(tracee, WARNING, INTERNAL, "can't initialize archive structure");
 			return NULL;
 		}
 
 		status = archive_write_disk_set_options(archive->handle, flags);
 		if (status != ARCHIVE_OK) {
-			notice(tracee, ERROR, INTERNAL, "can't set archive options: %s",
+			note(tracee, ERROR, INTERNAL, "can't set archive options: %s",
 				archive_error_string(archive->handle));
 			return NULL;
 		}
 
 		status = archive_write_disk_set_standard_lookup(archive->handle);
 		if (status != ARCHIVE_OK) {
-			notice(tracee, ERROR, INTERNAL, "can't set archive lookup: %s",
+			note(tracee, ERROR, INTERNAL, "can't set archive lookup: %s",
 				archive_error_string(archive->handle));
 			return NULL;
 		}
@@ -300,14 +323,14 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 
 	archive->handle = archive_write_new();
 	if (archive->handle == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't initialize archive structure");
+		note(tracee, WARNING, INTERNAL, "can't initialize archive structure");
 		return NULL;
 	}
 
 	assert(format.set_format != NULL);
 	status = format.set_format(archive->handle);
 	if (status != ARCHIVE_OK) {
-		notice(tracee, ERROR, INTERNAL, "can't set archive format: %s",
+		note(tracee, ERROR, INTERNAL, "can't set archive format: %s",
 			archive_error_string(archive->handle));
 		return NULL;
 	}
@@ -322,7 +345,7 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 	if (format.add_filter != NULL) {
 		status = format.add_filter(archive->handle);
 		if (status != ARCHIVE_OK) {
-			notice(tracee, ERROR, INTERNAL, "can't add archive filter: %s",
+			note(tracee, ERROR, INTERNAL, "can't add archive filter: %s",
 				archive_error_string(archive->handle));
 			return NULL;
 		}
@@ -331,13 +354,14 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 	if (format.options != NULL) {
 		status = archive_write_set_options(archive->handle, format.options);
 		if (status != ARCHIVE_OK) {
-			notice(tracee, ERROR, INTERNAL, "can't set archive options: %s",
+			note(tracee, ERROR, INTERNAL, "can't set archive options: %s",
 				archive_error_string(archive->handle));
 			return NULL;
 		}
 	}
 
-	if (format.self_extracting) {
+	switch (format.special) {
+	case SELF_EXTRACTING:
 		archive->fd = copy_self_exe(tracee, output);
 		if (archive->fd < 0)
 			return NULL;
@@ -346,11 +370,34 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		archive->offset = lseek(archive->fd, 0, SEEK_CUR);
 
 		status = archive_write_open_fd(archive->handle, archive->fd);
-	}
-	else
+		break;
+
+	case RAW:
+		archive->fd = open(output, O_RDWR|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP);
+		if (archive->fd < 0) {
+			note(tracee, ERROR, SYSTEM, "can't open/create '%s'", output);
+			return NULL;
+		}
+
+		status = write(archive->fd, "RAW", strlen("RAW"));
+		if (status != strlen("RAW")) {
+			note(tracee, ERROR, SYSTEM, "can't write '%s'", output);
+			(void) close(archive->fd);
+			return NULL;
+		}
+
+		/* Remember where the "RAW" string ends.  */
+		archive->offset = lseek(archive->fd, 0, SEEK_CUR);
+
+		status = archive_write_open_fd(archive->handle, archive->fd);
+		break;
+
+	default:
 		status = archive_write_open_filename(archive->handle, output);
+		break;
+	}
 	if (status != ARCHIVE_OK) {
-		notice(tracee, ERROR, INTERNAL, "can't open archive '%s': %s",
+		note(tracee, ERROR, INTERNAL, "can't open archive '%s': %s",
 			output, archive_error_string(archive->handle));
 		return NULL;
 	}
@@ -403,7 +450,7 @@ int archive(const Tracee* tracee, Archive *archive,
 
 	entry = archive_entry_new();
 	if (entry == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't create archive entry for '%s': %s",
+		note(tracee, WARNING, INTERNAL, "can't create archive entry for '%s': %s",
 			path, archive_error_string(archive->handle));
 		status = -1;
 		goto end;
@@ -429,7 +476,7 @@ int archive(const Tracee* tracee, Archive *archive,
 			errno = ENAMETOOLONG;
 		}
 		if (status < 0) {
-			notice(tracee, WARNING, SYSTEM, "can't readlink '%s'", path);
+			note(tracee, WARNING, SYSTEM, "can't readlink '%s'", path);
 			status = -1;
 			goto end;
 		}
@@ -441,7 +488,7 @@ int archive(const Tracee* tracee, Archive *archive,
 
 	status = archive_write_header(archive->handle, entry);
 	if (status != ARCHIVE_OK) {
-		notice(tracee, WARNING, INTERNAL, "can't write header for '%s': %s",
+		note(tracee, WARNING, INTERNAL, "can't write header for '%s': %s",
 			path, archive_error_string(archive->handle));
 		status = -1;
 		goto end;
@@ -456,7 +503,7 @@ int archive(const Tracee* tracee, Archive *archive,
 	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		if (errno != EACCES)
-			notice(tracee, WARNING, SYSTEM, "can't open '%s'", path);
+			note(tracee, WARNING, SYSTEM, "can't open '%s'", path);
 		status = -1;
 		goto end;
 	}
@@ -467,14 +514,14 @@ int archive(const Tracee* tracee, Archive *archive,
 
 		status = read(fd, buffer, sizeof(buffer));
 		if (status < 0) {
-			notice(tracee, WARNING, SYSTEM, "can't read '%s'", path);
+			note(tracee, WARNING, SYSTEM, "can't read '%s'", path);
 			status = -1;
 			goto end;
 		}
 
 		size = archive_write_data(archive->handle, buffer, status);
 		if ((size_t) status != size) {
-			notice(tracee, WARNING, INTERNAL, "can't archive '%s' content: %s",
+			note(tracee, WARNING, INTERNAL, "can't archive '%s' content: %s",
 				path, archive_error_string(archive->handle));
 			status = -1;
 			goto end;

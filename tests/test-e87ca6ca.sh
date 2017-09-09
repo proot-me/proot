@@ -2,6 +2,10 @@ if [ -z `which mcookie` ] || [ -z `which cp` ] || [ -z `which true` ] || [ -z `w
     exit 125;
 fi
 
+if [ `id -u` -eq 0 ]; then
+    exit 125;
+fi
+
 TMP=/tmp/$(mcookie)
 
 cp $(which true) ${TMP}

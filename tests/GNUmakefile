@@ -29,11 +29,12 @@ check-%.c: $(ROOTFS)/bin/% setup
 
 # Special cases.
 check-test-bdc90417.c: test-bdc90417
-	$(call check_c,$<,$(PROOT) -w . / ./$<)
+	$(call check_c,$<,$(PROOT) -w . ./$<)
 
-check-test-af062114.c: test-af062114
-	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true -b . -b /lib -b /lib64 -b /proc $(ROOTFS) ./$< | grep -- --inhibit-rpath)
-#	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<') deprecated
+# Not supported anymore.
+# check-test-af062114.c: test-af062114
+# 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true -b . -b /lib -b /lib64 -b /proc -r $(ROOTFS) ./$< | grep -- --inhibit-rpath)
+# 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<') deprecated
 
 check-test-5bed7141.c: test-5bed7141
 	$(call check_c,$<,$(PROOT) ./$<)
@@ -66,6 +67,26 @@ check-test-c5a7a0f0.c: test-c5a7a0f0
 	$(call check_c,$<,$(PROOT) -0 ./$<)
 	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
+check-test-a3e68988.c: test-a3e68988
+	@which gdb >/dev/null 2>&1 || rm -f $<
+	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
+
+check-test-c47aeb7d.c: test-c47aeb7d
+	@which gdb >/dev/null 2>&1 || rm -f $<
+	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
+
+check-test-fdf487a0.c: test-fdf487a0
+	$(call check_c,$<,echo test | $(PROOT) ./$<)
+
+check-test-iiiiiiii.c: test-iiiiiiii
+	$(call check_c,$<,echo test | env PROOT_DONT_POLLUTE_ROOTFS=1 $(PROOT) -b /bin:/this_shall_not_exist_outside_proot ./$<)
+
+check-test-9c07fad8.c: test-9c07fad8
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-fa205b56.c: test-fa205b56
+	$(call check_c,$<,$(PROOT) ./$<)
+
 check_c = $(Q)if [ -e $< ]; then			\
 		$(2) $(silently); $(call check,$(1))	\
 	else						\
@@ -82,14 +103,22 @@ check = case "$$?" in					\
 ######################################################################
 # Build a clean rootfs
 
-setup: $(ROOTFS)/bin/true $(ROOTFS)/bin/false    \
-       $(ROOTFS)/bin/pwd  $(ROOTFS)/bin/readlink $(ROOTFS)/bin/symlink \
-       $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true $(ROOTFS)/bin/echo \
-       $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat $(ROOTFS)/tmp \
-       $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd
+ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
+       $(ROOTFS)/bin/pwd  $(ROOTFS)/bin/readlink $(ROOTFS)/bin/symlink		 \
+       $(ROOTFS)/bin/abs-true $(ROOTFS)/bin/rel-true $(ROOTFS)/bin/echo		 \
+       $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat		 \
+       $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd $(ROOTFS)/bin/argv \
+       $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2	 \
+       $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32
 
-$(ROOTFS)/tmp:
-	@mkdir $@
+ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
+
+$(ROOTFS_BIN): | $(ROOTFS_DIR)
+
+$(ROOTFS_DIR):
+	@mkdir -p $@
+
+setup: $(ROOTFS_BIN)
 
 $(ROOTFS)/bin/abs-true:
 	@ln -fs /bin/true $@
@@ -97,17 +126,20 @@ $(ROOTFS)/bin/abs-true:
 $(ROOTFS)/bin/rel-true:
 	@ln -fs ./true $@
 
+$(ROOTFS)/bin/exec-m32: exec.c
+	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true
+
 .SECONDARY: $(patsubst %.c,$(ROOTFS)/bin/%, $(wildcard test-*.c))
 $(ROOTFS)/bin/%: %.c
-	@test -e $(dir $@) || mkdir -p $(dir $@)
 	$(Q)$(CC) -static $*.c -o $@ $(silently) || true
 
 # Special cases.
 test-bdc90417: test-bdc90417.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-af062114: test-af062114.c
-	$(Q)$(CC) $< -Wl,-rpath=foo -o $@ $(silently) || true
+# Not supported anymore.
+# test-af062114: test-af062114.c
+# 	$(Q)$(CC) $< -Wl,-rpath=foo -o $@ $(silently) || true
 
 test-5bed7141: test-5bed7141.c
 	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
@@ -135,6 +167,24 @@ test-1ffc8309: test-1ffc8309.c
 
 test-c5a7a0f0: test-c5a7a0f0.c
 	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
+
+test-a3e68988: test-a3e68988.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-fdf487a0: test-fdf487a0.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-iiiiiiii: test-iiiiiiii.c
+	$(Q)$(CC) $< -o $@ $(silently) || true
+
+test-9c07fad8: test-9c07fad8.c
+	$(Q)$(CC) -fPIE -pie $< -o $@ $(silently) || true
+
+test-fa205b56: test-fa205b56.c
+	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
+
+test-c47aeb7d: test-c47aeb7d.c
+	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
 
 ######################################################################
 # Beautified output

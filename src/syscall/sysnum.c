@@ -27,7 +27,7 @@
 #include "tracee/abi.h"
 #include "tracee/reg.h"
 #include "arch.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #include SYSNUMS_HEADER1
 

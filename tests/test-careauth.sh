@@ -11,16 +11,16 @@ TMP=$(mcookie)
 
 cd /tmp
 env ICEAUTHORITY= ${CARE} -o ${TMP} true
-./${TMP}
+${CARE} -x ./${TMP}
 ./${TMP}/re-execute.sh
 rm -fr ${TMP}
 
 env XAUTHORITY= ${CARE} -o ${TMP} true
-./${TMP}
+${CARE} -x ./${TMP}
 ./${TMP}/re-execute.sh
 rm -fr ${TMP}
 
 ${CARE} -o ${TMP} -p ../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../ true
-./${TMP}
+${CARE} -x ./${TMP}
 ./${TMP}/re-execute.sh
 rm -fr ${TMP}

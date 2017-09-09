@@ -3,11 +3,13 @@
 #ifndef PROOT_CLI_H
 #define PROOT_CLI_H
 
+#include "cli/cli.h"
+
 #ifndef VERSION
-#define VERSION "3.2.2"
+#define VERSION "5.1.0"
 #endif
 
-static char *recommended_bindings[] = {
+static const char *recommended_bindings[] = {
 	"/etc/host.conf",
 	"/etc/hosts",
 	"/etc/hosts.equiv",
@@ -23,28 +25,45 @@ static char *recommended_bindings[] = {
 	"/sys/",
 	"/proc/",
 	"/tmp/",
+	"/run/",
+	"/var/run/dbus/system_bus_socket",
+/*	"/var/tmp/kdecache-$LOGNAME", */
 	"$HOME",
 	"*path*",
 	NULL,
 };
 
-static int handle_option_r(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_b(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_q(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_w(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_k(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_0(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_i(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_R(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_B(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_Q(Tracee *tracee, const Cli *cli, char *value);
+static const char *recommended_su_bindings[] = {
+	"/etc/host.conf",
+	"/etc/hosts",
+	"/etc/nsswitch.conf",
+	"/etc/resolv.conf",
+	"/dev/",
+	"/sys/",
+	"/proc/",
+	"/tmp/",
+	"/run/shm",
+	"$HOME",
+	"*path*",
+	NULL,
+};
+
+static int handle_option_r(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_b(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_q(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_w(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_k(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_kill_on_exit(Tracee *tracee, const Cli *cli, const char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
-static int post_initialize_command(Tracee *, const Cli *, size_t, char *const *, size_t);
+static int post_initialize_exe(Tracee *, const Cli *, size_t, char *const *, size_t);
 
 static Cli proot_cli = {
 	.version  = VERSION,
@@ -60,7 +79,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 |__|  |__|__\\_____/\\_____/\\____|",
 
 	.pre_initialize_bindings = pre_initialize_bindings,
-	.post_initialize_command = post_initialize_command,
+	.post_initialize_exe = post_initialize_exe,
 
 	.options = {
 	{ .class = "Regular options",
@@ -76,7 +95,7 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 \tis used to relocate host files and directories, see the -b\n\
 \toption and the Examples section for details.\n\
 \t\n\
-\tIt is recommended to use the -R option instead.",
+\tIt is recommended to use the -R or -S options instead.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
@@ -127,12 +146,22 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
+		{ .name = "--kill-on-exit", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_kill_on_exit,
+	  .description = "Kill all processes on command exit.",
+	  .detail = "\tWhen the executed command leaves orphean or detached processes\n\
+\taround, proot waits until all processes possibly terminate. This option forces\n\
+\tthe immediate termination of all tracee processes when the main command exits.",
+	},
+	{ .class = "Regular options",
+	  .arguments = {
 		{ .name = "-v", .separator = ' ', .value = "value" },
 		{ .name = "--verbose", .separator = '=', .value = "value" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_v,
 	  .description = "Set the level of debug information to *value*.",
-	  .detail = "\tThe higher the integer value is, the more detailled debug\n\
+	  .detail = "\tThe higher the integer value is, the more detailed debug\n\
 \tinformation is printed to the standard error stream.  A negative\n\
 \tvalue makes PRoot quiet except on fatal errors.",
 	},
@@ -187,11 +216,11 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	},
 	{ .class = "Extension options",
 	  .arguments = {
-		{ .name = "-i", .separator = ' ', .value = "uid:gid" },
-		{ .name = "--change-id", .separator = '=', .value = "uid:gid" },
+		{ .name = "-i", .separator = ' ', .value = "string" },
+		{ .name = "--change-id", .separator = '=', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
 	  .handler = handle_option_i,
-	  .description = "Make current user and group appear as *uid* and *gid*.",
+	  .description = "Make current user and group appear as *string* \"uid:gid\".",
 	  .detail = "\tThis option makes the current user and group appear as uid and\n\
 \tgid.  Likewise, files actually owned by the current user and\n\
 \tgroup appear as if they were owned by uid and gid instead.\n\
@@ -230,20 +259,23 @@ Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	},
 	{ .class = "Alias options",
 	  .arguments = {
-		{ .name = "-B", .separator = '\0', .value = NULL },
-		{ .name = "-M", .separator = '\0', .value = NULL },
+		{ .name = "-S", .separator = ' ', .value = "path" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_B,
-	  .description = "obsolete, use -R instead.",
-	  .detail = "",
-	},
-	{ .class = "Alias options",
-	  .arguments = {
-		{ .name = "-Q", .separator = ' ', .value = "command" },
-		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_Q,
-	  .description = "obsolete, use -q and -R instead.",
-	  .detail = "",
+	  .handler = handle_option_S,
+	  .description = "Alias: -0 -r *path* + a couple of recommended -b.",
+	  .detail = "\tThis option is useful to safely create and install packages into\n\
+\tthe guest rootfs.  It is similar to the -R option expect it\n\
+\tenables the -0 option and binds only the following minimal set\n\
+\tof paths to avoid unexpected changes on host files:\n\
+\t\n\
+\t    * /etc/host.conf\n\
+\t    * /etc/hosts\n\
+\t    * /etc/nsswitch.conf\n\
+\t    * /dev/\n\
+\t    * /sys/\n\
+\t    * /proc/\n\
+\t    * /tmp/\n\
+\t    * $HOME",
 	},
 	END_OF_OPTIONS,
 	},

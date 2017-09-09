@@ -25,13 +25,14 @@
 #include <linux/version.h> /* KERNEL_VERSION, */
 #include <assert.h>        /* assert(3), */
 #include <sys/utsname.h>   /* uname(2), utsname, */
-#include <string.h>        /* strncpy(3), */
+#include <string.h>        /* str*(3), memcpy(3), */
 #include <talloc.h>        /* talloc_*, */
 #include <fcntl.h>         /* AT_*,  */
 #include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
 #include <errno.h>         /* errno,  */
 #include <linux/auxvec.h>  /* AT_,  */
 #include <linux/futex.h>   /* FUTEX_PRIVATE_FLAG */
+#include <sys/param.h>     /* MIN, */
 
 #include "extension/extension.h"
 #include "syscall/seccomp.h"
@@ -41,7 +42,8 @@
 #include "tracee/reg.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
-#include "cli/notice.h"
+#include "execve/auxv.h"
+#include "cli/note.h"
 #include "arch.h"
 
 #include "attribute.h"
@@ -61,19 +63,20 @@ typedef struct {
 #define NONE {{0, 0, 0}}
 
 typedef struct {
-	const char *release;
-	int emulated_release;
 	int actual_release;
+	int virtual_release;
+	struct utsname utsname;
+	word_t hwcap;
 } Config;
 
 /**
  * Return whether the @expected_release is newer than
- * @config->actual_release and older than @config->emulated_release.
+ * @config->actual_release and older than @config->virtual_release.
  */
 static bool needs_kompat(const Config *config, int expected_release)
 {
 	return (expected_release > config->actual_release
-		&& expected_release <= config->emulated_release);
+		&& expected_release <= config->virtual_release);
 }
 
 /**
@@ -84,10 +87,16 @@ static bool needs_kompat(const Config *config, int expected_release)
 static bool modify_syscall(Tracee *tracee, const Config *config, const Modif *modif)
 {
 	size_t i, j;
+	word_t syscall;
 
 	assert(config != NULL);
 
 	if (!needs_kompat(config, modif->expected_release))
+		return false;
+
+	/* Check if this syscall is supported on this architecture.  */
+	syscall = detranslate_sysnum(get_abi(tracee), modif->new_sysarg_num);
+	if (syscall == SYSCALL_AVOIDER)
 		return false;
 
 	set_sysnum(tracee, modif->new_sysarg_num);
@@ -152,8 +161,8 @@ static void discard_fd_flags(Tracee *tracee, const Config *config,
 /**
  * Replace current @tracee's syscall with an older and compatible one
  * whenever it's required, i.e. when the syscall is supported by the
- * kernel as specified by @config->release but it isn't supported by
- * the actual kernel.
+ * kernel as specified by @config->virtual_release but it isn't
+ * supported by the actual kernel.
  */
 static int handle_sysenter_end(Tracee *tracee, Config *config)
 {
@@ -337,7 +346,7 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 
 		if (!warned) {
 			warned = true;
-			notice(tracee, WARNING, USER,
+			note(tracee, WARNING, USER,
 				"kompat: this kernel doesn't support private futexes "
 				"and PRoot can't emulate them.  Expect some troubles...");
 		}
@@ -572,98 +581,93 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
  */
 static void adjust_elf_auxv(Tracee *tracee, Config *config)
 {
+	ElfAuxVector *vectors;
+	ElfAuxVector *vector;
+	word_t vectors_address;
 	word_t stack_pointer;
-	word_t pointer;
-	word_t data;
-
-	void *buffer;
-	size_t length;
+	void *argv_envp;
 	size_t size;
 	int status;
-	size_t i;
 
-	/* Right after execve, the stack layout is:
-	 *
-	 *     argc, argv[0], ..., 0, envp[0], ..., 0, auxv[0], 0, 0
-	 */
-	stack_pointer = pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
-
-	/* Read: argc */
-	data = peek_mem(tracee, pointer);
-	if (errno != 0)
+	vectors_address = get_elf_aux_vectors_address(tracee);
+	if (vectors_address == 0)
 		return;
 
-	/* Skip: argc, argv, 0 */
-	i = 1 + data + 1;
-	pointer += i * sizeof_word(tracee);
+	vectors = fetch_elf_aux_vectors(tracee, vectors_address);
+	if (vectors == NULL)
+		return;
 
-	/* Skip: envp, 0 */
-	do {
-		data = peek_mem(tracee, pointer);
-		if (errno != 0)
-			return;
-		pointer += sizeof_word(tracee);
-	} while (data != 0);
-
-	/* Read: auxv[] */
-	do {
-		data = peek_mem(tracee, pointer);
-		if (errno != 0)
-			return;
-
-		/* Discard AT_SYSINFO* vector: it can be used to get
-		 * the OS release number from memory instead of from
-		 * the uname syscall, and only this latter is
+	for (vector = vectors; vector->type != AT_NULL; vector++) {
+		switch (vector->type) {
+		/* Discard AT_SYSINFO* vectors: they can be used to
+		 * get the OS release number from memory instead of
+		 * from the uname syscall, and only this latter is
 		 * currently hooked by PRoot.  */
-		if (data == AT_SYSINFO_EHDR || data == AT_SYSINFO)
-			poke_mem(tracee, pointer, AT_IGNORE);
+		case AT_SYSINFO_EHDR:
+		case AT_SYSINFO:
+			vector->type  = AT_IGNORE;
+			vector->value = 0;
+			break;
 
-		pointer += 2 * sizeof_word(tracee);
-	} while (data != 0);
+		case AT_HWCAP:
+			if (config->hwcap != (word_t) -1)
+				vector->value = config->hwcap;
+			break;
+
+		case AT_RANDOM:
+			/* Skip only if not in forced mode.  */
+			if (config->actual_release != 0)
+				goto end;
+			break;
+
+		default:
+			break;
+		}
+	}
 
 	/* Add the AT_RANDOM vector only if needed.  */
 	if (!needs_kompat(config, KERNEL_VERSION(2,6,29)))
-		return;
+		goto end;
 
-	/* Allocate enough room for the whole "argv, envp, auxv" stuff
-	 * plus a new auxiliary vector.  */
-	size = pointer - stack_pointer + 2 * sizeof_word(tracee);
-	buffer = talloc_size(tracee->ctx, size);
-	if (buffer == NULL)
-		return;
+	status = add_elf_aux_vector(&vectors, AT_RANDOM, vectors_address);
+	if (status < 0)
+		goto end; /* Not fatal.  */
 
-	/* Slurp the whole "argv, envp, auxv" stuff at once.  */
-	status = read_data(tracee, buffer, stack_pointer, size - 2 * sizeof_word(tracee));
+	/* Since a new vector needs to be added, the ELF auxiliary
+	 * vectors array can't be pushed in place.  As a consequence,
+	 * argv[] and envp[] arrays are moved one vector downward to
+	 * make room for the new ELF auxiliary vectors array.
+	 * Remember, the stack layout is as follow right after execve:
+	 *
+	 *     argv[], envp[], auxv[]
+	 */
+	stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
+	size = vectors_address - stack_pointer;
+	argv_envp = talloc_size(tracee->ctx, size);
+	if (argv_envp == NULL)
+		goto end;
+
+	status = read_data(tracee, argv_envp, stack_pointer, size);
+	if (status < 0)
+		goto end;
+
+	/* Allocate enough room in tracee's stack for the new ELF
+	 * auxiliary vector.  */
+	stack_pointer   -= 2 * sizeof_word(tracee);
+	vectors_address -= 2 * sizeof_word(tracee);
+
+	/* Note that it is safe to update the stack pointer manually
+	 * since we are in execve sysexit.  However it should be done
+	 * before transfering data since the kernel might not allow
+	 * page faults below the stack pointer.  */
+	poke_reg(tracee, STACK_POINTER, stack_pointer);
+
+	status = write_data(tracee, stack_pointer, argv_envp, size);
 	if (status < 0)
 		return;
 
-	/* Insert the new auxiliary vector at the end.  */
-	length = size / sizeof_word(tracee);
-	if (length < 4) /* Sanity check.  */
-		return;
-
-	if (is_32on64_mode(tracee)) {
-		((uint32_t *) buffer)[length - 4] = AT_RANDOM;
-		((uint32_t *) buffer)[length - 3] = stack_pointer;
-		((uint32_t *) buffer)[length - 2] = AT_NULL;
-		((uint32_t *) buffer)[length - 1] = 0;
-	}
-	else {
-		((word_t *) buffer)[length - 4] = AT_RANDOM;
-		((word_t *) buffer)[length - 3] = stack_pointer;
-		((word_t *) buffer)[length - 2] = AT_NULL;
-		((word_t *) buffer)[length - 1] = 0;
-	}
-
-	/* Overwrite the whole "argv, envp, auxv" stuff.  */
-	pointer = stack_pointer - 2 * sizeof_word(tracee);
-	status = write_data(tracee, pointer, buffer, size);
-	if (status < 0)
-		return;
-
-	/* Update the stack pointer.  */
-	poke_reg(tracee, STACK_POINTER, pointer);
-
+end:
+	push_elf_aux_vectors(tracee, vectors, vectors_address);
 	return;
 }
 
@@ -686,7 +690,7 @@ static void emulate_fd_flags(Tracee *tracee, word_t fd, Reg sysarg, int emulated
 	if ((emulated_flags & flags & O_NONBLOCK) != 0)
 		register_chained_syscall(tracee, PR_fcntl, fd, F_SETFL, O_NONBLOCK, 0, 0, 0);
 
-	tracee->chain.final_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+	force_chain_final_result(tracee, peek_reg(tracee, CURRENT, SYSARG_RESULT));
 }
 
 /**
@@ -709,31 +713,47 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		return 0;
 
 	switch (sysnum) {
-	case PR_execve:
-		adjust_elf_auxv(tracee, config);
-		return 0;
-
 	case PR_uname: {
-		struct utsname utsname;
 		word_t address;
-		size_t size;
 
 		address = peek_reg(tracee, ORIGINAL, SYSARG_1);
-		status = read_data(tracee, &utsname, address, sizeof(utsname));
+
+		/* The layout of struct utsname does not depend on the
+		 * architecture, it only depends on the kernel
+		 * version.  In this regards, this structure is stable
+		 * since < 2.6.0.  */
+		status = write_data(tracee, address, &config->utsname, sizeof(config->utsname));
+		if (status < 0)
+			return status;
+		return 0;
+	}
+
+	case PR_setdomainname:
+	case PR_sethostname: {
+		word_t address;
+		word_t length;
+		char *name;
+
+		name = (sysnum == PR_setdomainname
+			? config->utsname.domainname
+			: config->utsname.nodename);
+
+		length = peek_reg(tracee, ORIGINAL, SYSARG_2);
+		if (length > sizeof(config->utsname.domainname) - 1)
+			return -EINVAL;
+
+		/* Because of the test above.  */
+		assert(sizeof(config->utsname.domainname) == sizeof(config->utsname.nodename));
+
+		address = peek_reg(tracee, ORIGINAL, SYSARG_1);
+		status  = read_data(tracee, name, address, length);
 		if (status < 0)
 			return status;
 
-		assert(config->release != NULL);
-		/* Note: on x86_64, we can handle the two modes (32/64) with
-		 * the same code since struct utsname has always the same
-		 * layout.  */
-		size = sizeof(utsname.release);
-		strncpy(utsname.release, config->release, size);
-		utsname.release[size - 1] = '\0';
+		/* "name does not require a terminating null byte." --
+		 * man 2 set{domain,host}name.  */
+		name[length] = '\0';
 
-		status = write_data(tracee, address, &utsname, sizeof(utsname));
-		if (status < 0)
-			return status;
 		return 0;
 	}
 
@@ -769,7 +789,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 			return 0;
 
 		register_chained_syscall(tracee, PR_fcntl, result, F_SETFD, FD_CLOEXEC, 0, 0, 0);
-		tracee->chain.final_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+		force_chain_final_result(tracee, peek_reg(tracee, CURRENT, SYSARG_RESULT));
 		return 0;
 	}
 
@@ -838,6 +858,90 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	return 0;
 }
 
+/**
+ * Fill @config->utsname and @config->hwcap according to the content
+ * of @string.  This function returns -1 if there is a parsing error,
+ * otherwise 0.
+ */
+static int parse_utsname(Config *config, const char *string)
+{
+	struct utsname utsname;
+	int status;
+
+	assert(string != NULL);
+
+	status = uname(&utsname);
+	if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL)
+		config->actual_release = 0;
+	else
+		config->actual_release = parse_kernel_release(utsname.release);
+
+	/* Check whether it is the simple format (ie. release number),
+	 * or the complex one:
+	 *
+	 *     '\sysname\nodename\release\version\machine\domainname\hwcap\'
+	 *
+	 * This complex format is ugly on purpose: it ain't to be used
+	 * directly by users.  */
+	if (string[0] == '\\') {
+		const char *start;
+		const char *end;
+		char *end2;
+
+		/* Initial state of the parser.  */
+		end = string;
+
+#define PARSE(field) do {						\
+			size_t length;					\
+									\
+			start = end + 1;				\
+			end   = strchr(start, '\\');			\
+			if (end == NULL) {				\
+				note(NULL, ERROR, USER,			\
+					"can't find %s field in '%s'", #field, string);	\
+				return -1;				\
+			}						\
+									\
+			length = end - start;				\
+			length = MIN(length, sizeof(config->utsname.field) - 1); \
+			strncpy(config->utsname.field, start, length);	\
+			config->utsname.field[length] = '\0';		\
+		} while(0)
+
+		PARSE(sysname);
+		PARSE(nodename);
+		PARSE(release);
+		PARSE(version);
+		PARSE(machine);
+		PARSE(domainname);
+
+#undef PARSE
+
+		/* The hwcap field is parsed as an hexadecimal value.  */
+		errno = 0;
+		config->hwcap = strtol(end + 1, &end2, 16);
+		if (errno != 0 || end2[0] != '\\') {
+			note(NULL, ERROR, USER, "can't find hwcap field in '%s'", string);
+			return -1;
+		}
+	}
+	else {
+		size_t length;
+
+		memcpy(&config->utsname, &utsname, sizeof(config->utsname));
+
+		length = MIN(strlen(string), sizeof(config->utsname.release) - 1);
+		strncpy(config->utsname.release, string, length);
+		config->utsname.release[length] = '\0';
+
+		config->hwcap = (word_t) -1;
+	}
+
+	config->virtual_release = parse_kernel_release(config->utsname.release);
+
+	return 0;
+}
+
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
 	{ PR_accept4,		FILTER_SYSEXIT },
@@ -864,6 +968,8 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_pselect6, 		0 },
 	{ PR_readlinkat, 	0 },
 	{ PR_renameat, 		0 },
+	{ PR_setdomainname,	FILTER_SYSEXIT },
+	{ PR_sethostname,	FILTER_SYSEXIT },
 	{ PR_signalfd4, 	FILTER_SYSEXIT },
 	{ PR_socket,		FILTER_SYSEXIT },
 	{ PR_socketpair,	FILTER_SYSEXIT },
@@ -885,8 +991,6 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 
 	switch (event) {
 	case INITIALIZATION: {
-		struct utsname utsname;
-		const char *release;
 		Config *config;
 
 		extension->config = talloc_zero(extension, Config);
@@ -894,20 +998,9 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 			return -1;
 		config = extension->config;
 
-		release = (const char *) data1;
-
-		status = uname(&utsname);
-		if (status < 0 || getenv("PROOT_FORCE_KOMPAT") != NULL || release == NULL)
-			config->actual_release = 0;
-		else
-			config->actual_release = parse_kernel_release(utsname.release);
-
-		config->release = talloc_strdup(config, release ?: utsname.release);
-		if (config->release == NULL)
+		status = parse_utsname(config, (const char *) data1);
+		if (status < 0)
 			return -1;
-		talloc_set_name_const(config->release, "$release");
-
-		config->emulated_release = parse_kernel_release(config->release);
 
 		extension->filtered_sysnums = filtered_sysnums;
 		return 0;
@@ -930,6 +1023,19 @@ int kompat_callback(Extension *extension, ExtensionEvent event,
 		Config *config = talloc_get_type_abort(extension->config, Config);
 
 		return handle_sysexit_end(tracee, config);
+	}
+
+	case SYSCALL_EXIT_START: {
+		Tracee *tracee = TRACEE(extension);
+		Config *config = talloc_get_type_abort(extension->config, Config);
+		word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);;
+		word_t sysnum = get_sysnum(tracee, ORIGINAL);
+
+		/* Note: this can be done only before PRoot pushes the
+		 * load script into tracee's stack.  */
+		if ((int) result >= 0 && sysnum == PR_execve)
+			adjust_elf_auxv(tracee, config);
+		return 0;
 	}
 
 	default:

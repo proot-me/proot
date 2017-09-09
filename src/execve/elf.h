@@ -94,6 +94,17 @@ typedef union {
 	ProgramHeader64 class64;
 } ProgramHeader;
 
+/* Object type:  */
+#define ET_REL          1
+#define ET_EXEC         2
+#define ET_DYN          3
+#define ET_CORE         4
+
+/* Segment flags:  */
+#define PF_X 1
+#define PF_W 2
+#define PF_R 4
+
 typedef enum {
 	PT_LOAD    = 1,
 	PT_DYNAMIC = 2,
@@ -149,6 +160,8 @@ typedef enum {
 	(   (IS_CLASS32(header) && (size) == sizeof(ProgramHeader32)) \
 	 || (IS_CLASS64(header) && (size) == sizeof(ProgramHeader64)))
 
+#define IS_POSITION_INDENPENDANT(elf_header)	\
+	(ELF_FIELD((elf_header), type) == ET_DYN)
 
 #include "tracee/tracee.h"
 
@@ -156,10 +169,10 @@ extern int open_elf(const char *t_path, ElfHeader *elf_header);
 
 extern bool is_host_elf(const Tracee *tracee, const char *t_path);
 
-extern int find_program_header(const Tracee *tracee, int fd, const ElfHeader *elf_header,
-			ProgramHeader *program_header, SegmentType type, uint64_t address);
+typedef int (* program_headers_iterator_t)(const ElfHeader *elf_header,
+					const ProgramHeader *program_header, void *data);
 
-extern int read_ldso_rpaths(const Tracee *tracee, int fd, const ElfHeader *elf_header,
-			char **rpath, char **runpath);
+extern int iterate_program_headers(const Tracee *tracee, int fd, const ElfHeader *elf_header,
+				program_headers_iterator_t callback, void *data);
 
 #endif /* ELF_H */

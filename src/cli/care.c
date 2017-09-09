@@ -31,7 +31,7 @@
 #include <errno.h>     /* errno(3), */
 
 #include "cli/cli.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "path/binding.h"
 #include "path/temp.h"
 #include "extension/extension.h"
@@ -43,55 +43,55 @@
 #include "build.h"
 #include "cli/care.h"
 
-static int handle_option_o(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_o(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	options->output = value;
 	return 0;
 }
 
-static int handle_option_c(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_c(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->concealed_paths, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_r(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_r(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->revealed_paths, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_p(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_p(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->volatile_paths, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_e(Tracee *tracee UNUSED, const Cli *cli, char *value)
+static int handle_option_e(Tracee *tracee UNUSED, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	Item *item = queue_item(options, &options->volatile_envars, value);
 	return (item != NULL ? 0 : -1);
 }
 
-static int handle_option_m(Tracee *tracee, const Cli *cli, char *value)
+static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	return parse_integer_option(tracee, &options->max_size, value, "-m");
 }
 
-static int handle_option_d(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
+static int handle_option_d(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	options->ignore_default_config = true;
 	return 0;
 }
 
-static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
+static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
 	int status;
 
@@ -103,14 +103,23 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, char *value)
 	return 0;
 }
 
-extern char WEAK _binary_licenses_start;
-extern char WEAK _binary_licenses_end;
+extern unsigned char WEAK _binary_licenses_start;
+extern unsigned char WEAK _binary_licenses_end;
 
-static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UNUSED)
+static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
 {
 	size_t size;
 
 	print_version(cli);
+
+	printf("suitable for self-extracting archives (.bin): %s\n",
+#if defined(CARE_BINARY_IS_PORTABLE)
+		"yes"
+#else
+		"no"
+#endif
+	);
+
 	printf("\n%s\n", cli->colophon);
 	fflush(stdout);
 
@@ -122,17 +131,17 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, char *value UN
 	return -1;
 }
 
-static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *value)
+static int handle_option_x(Tracee *tracee UNUSED, const Cli *cli UNUSED, const char *value)
 {
 	int status = extract_archive_from_file(value);
 	exit_failure = (status < 0);
 	return -1;
 }
 
-extern char WEAK _binary_manual_start;
-extern char WEAK _binary_manual_end;
+extern unsigned char WEAK _binary_manual_start;
+extern unsigned char WEAK _binary_manual_end;
 
-static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *value UNUSED)
+static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, const char *value UNUSED)
 {
 	size_t size;
 
@@ -140,7 +149,7 @@ static int handle_option_h(Tracee *tracee UNUSED, const Cli *cli UNUSED, char *v
 	if (size != 0)
 		write(1, &_binary_manual_start, size);
 	else
-		printf("No manual found, please visit http://reproducible.io instead.\n");
+		printf("No manual found, please visit https://proot-me.github.io instead.\n");
 
 	exit_failure = false;
 	return -1;
@@ -161,16 +170,16 @@ static Binding *new_concealing_binding(Tracee *tracee, const char *path, bool mu
 	status = stat(path, &statl);
 	if (status < 0) {
 		if (must_exist)
-			notice(tracee, WARNING, SYSTEM, "can't conceal %s", path);
+			note(tracee, WARNING, SYSTEM, "can't conceal %s", path);
 		return NULL;
 	}
 
 	if (S_ISDIR(statl.st_mode))
-		temp = create_temp_directory(tracee, tracee->tool_name);
+		temp = create_temp_directory(NULL, tracee->tool_name);
 	else
-		temp = create_temp_file(tracee, tracee->tool_name);
+		temp = create_temp_file(NULL, tracee->tool_name);
 	if (temp == NULL) {
-		notice(tracee, WARNING, INTERNAL, "can't conceal %s", path);
+		note(tracee, WARNING, INTERNAL, "can't conceal %s", path);
 		return NULL;
 	}
 
@@ -186,7 +195,7 @@ static Binding *new_concealing_binding(Tracee *tracee, const char *path, bool mu
  * that are not specifiable on the command line.
  */
 static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
-				size_t argc, char *const *argv, size_t cursor)
+				size_t argc, char *const argv[], size_t cursor)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	char path[PATH_MAX];
@@ -197,7 +206,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	size_t i;
 
 	if (cursor >= argc) {
-		notice(tracee, ERROR, USER, "no command specified");
+		note(tracee, ERROR, USER, "no command specified");
 		return -1;
 	}
 	options->command = &argv[cursor];
@@ -251,7 +260,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 		/* Sanity check.  Note: it is assumed $HOME and $PWD
 		 * are canonicalized.  */
 		if (home != NULL && pwd != NULL && strcmp(home, pwd) == 0)
-			notice(tracee, WARNING, USER,
+			note(tracee, WARNING, USER,
 				"$HOME is implicitely revealed since it is the same as $PWD, "
 				"change your current working directory to be sure "
 				"your personal data will be not archivable.");
@@ -314,7 +323,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	/* Initialize @tracee->fs->cwd with a path already canonicalized
 	 * as required by care.c:handle_initialization().  */
 	if (getcwd(path, PATH_MAX) == NULL) {
-		notice(tracee, ERROR, SYSTEM, "can't get current working directory");
+		note(tracee, ERROR, SYSTEM, "can't get current working directory");
 		return -1;
 	}
 
@@ -335,20 +344,14 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
  * Initialize CARE extensions.
  */
 static int post_initialize_bindings(Tracee *tracee, const Cli *cli,
-				size_t argc UNUSED, char *const *argv UNUSED, size_t cursor)
+			       size_t argc UNUSED, char *const argv[] UNUSED, size_t cursor)
 {
 	Options *options = talloc_get_type_abort(cli->private, Options);
 	int status;
 
 	status = initialize_extension(tracee, care_callback, (void *) options);
 	if (status < 0) {
-		notice(tracee, WARNING, INTERNAL, "can't initialize the care extension");
-		return -1;
-	}
-
-	status = initialize_extension(tracee, kompat_callback, NULL);
-	if (status < 0) {
-		notice(tracee, WARNING, INTERNAL, "can't initialize the kompat extension");
+		note(tracee, WARNING, INTERNAL, "can't initialize the care extension");
 		return -1;
 	}
 

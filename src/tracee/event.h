@@ -27,7 +27,9 @@
 
 #include "tracee/tracee.h"
 
-extern int launch_process(Tracee *tracee);
+extern int launch_process(Tracee *tracee, char *const argv[]);
 extern int event_loop();
+extern int handle_tracee_event(Tracee *tracee, int tracee_status);
+extern bool restart_tracee(Tracee *tracee, int signal);
 
 #endif /* TRACEE_EVENT_H */

@@ -6,8 +6,8 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2014-01-09
-:Version: 3.2.2
+:Date: 2014-12-12
+:Version: 5.1.0
 :Manual section: 1
 
 
@@ -59,7 +59,7 @@ requests before sending them to the host kernel.  This means that
 guest programs can use host resources (devices, network, ...) just as
 if they were "normal" host programs.
 
-.. _CARE: http://reproducible.io
+.. _CARE: https://proot-me.github.io
 
 
 Options
@@ -83,7 +83,7 @@ Regular options
     is used to relocate host files and directories, see the ``-b``
     option and the ``Examples`` section for details.
 
-    It is recommended to use the ``-R`` option instead.
+    It is recommended to use the ``-R`` or ``-S`` options instead.
 
 -b path, --bind=path, -m path, --mount=path
     Make the content of *path* accessible in the guest rootfs.
@@ -160,8 +160,8 @@ the sources for further details.
     ``/``, ...  Note that this option is quite limited compared to
     ``fakeroot``.
 
--i uid:gid, --change-id=uid:gid
-    Make current user and group appear as *uid* and *gid*.
+-i string, --change-id=string
+    Make current user and group appear as *string* "uid:gid".
 
     This option makes the current user and group appear as *uid* and
     *gid*.  Likewise, files actually owned by the current user and
@@ -200,14 +200,30 @@ The following options are aliases for handy sets of options.
     * /sys/
     * /proc/
     * /tmp/
+    * /run/
+    * /var/run/dbus/system_bus_socket
     * $HOME
     * *path*
 
--B, -M
-    obsolete, use ``-R`` instead.
+-S path
+    Alias: ``-0 -r *path*`` + a couple of recommended ``-b``.
 
--Q command
-    obsolete, use ``-q`` and ``-R`` instead.
+    This option is useful to safely create and install packages into
+    the guest rootfs.  It is similar to the ``-R`` option expect it
+    enables the ``-0`` option and binds only the following minimal set
+    of paths to avoid unexpected changes on host files:
+
+    * /etc/host.conf
+    * /etc/hosts
+    * /etc/nsswitch.conf
+    * /etc/resolv.conf
+    * /dev/
+    * /sys/
+    * /proc/
+    * /tmp/
+    * /run/shm
+    * $HOME
+    * *path*
 
 
 Exit Status
@@ -344,10 +360,10 @@ works better with::
     
     $ ps -o tty,command
     TT       COMMAND
-    ?        -bash
+    ?        bash
     ?        proot -b /proc /mnt/slackware-8.0/
-    ?        /lib/ld-linux.so.2 /bin/sh
-    ?        /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
+    ?        sh
+    ?        ps -o tty,command
 
 Actually there's a bunch of such specific files, that's why PRoot
 provides the option ``-R`` to bind automatically a pre-defined list of
@@ -357,10 +373,42 @@ recommended paths::
     
     $ ps -o tty,command
     TT       COMMAND
-    pts/6    -bash
+    pts/6    bash
     pts/6    proot -R /mnt/slackware-8.0/
-    pts/6    /lib/ld-linux.so.2 /bin/sh
-    pts/6    /lib/ld-linux.so.2 /usr/bin/ps -o tty,command
+    pts/6    sh
+    pts/6    ps -o tty,command
+
+
+``chroot`` + ``mount --bind`` + ``su`` equivalent
+-------------------------------------------------
+
+Some programs will not work correctly if they are not run by the
+"root" user, this is typically the case with package managers.  PRoot
+can fake the root identity and its privileges when the ``-0`` (zero)
+option is specified::
+
+    proot -r /mnt/slackware-8.0/ -0
+    
+    # id
+    uid=0(root) gid=0(root) [...]
+    
+    # mkdir /tmp/foo
+    # chmod a-rwx /tmp/foo
+    # echo 'I bypass file-system permissions.' > /tmp/foo/bar
+    # cat /tmp/foo/bar
+    I bypass file-system permissions.
+
+This option is typically required to create or install packages into
+the guest rootfs.  Note it is *not* recommended to use the ``-R``
+option when installing packages since they may try to update bound
+system files, like ``/etc/group``.  Instead, it is recommended to use
+the ``-S`` option.  This latter enables the ``-0`` option and binds
+only paths that are known to not be updated by packages::
+
+    proot -S /mnt/slackware-8.0/
+    
+    # installpkg perl.tgz
+    Installing package perl...
 
 
 ``chroot`` + ``mount --bind`` + ``binfmt_misc`` equivalent
@@ -458,27 +506,19 @@ Rootfs
 ------
 
 Here follows a couple of URLs where some rootfs archives can be freely
-downloaded.  Note that the errors reported by ``tar`` when extracting
-these archives can be safely ignored.  Obviously these files are not
-required when PRoot is used as a ``mount --bind`` equivalent only.
+downloaded.  Note that ``mknod`` errors reported by ``tar`` when
+extracting these archives can be safely ignored since special files
+are typically bound (see ``-R`` option for details).
 
-* Slackware, Arch, Fedora for ARM:
+* http://download.openvz.org/template/precreated/
 
-  * ftp://ftp.armedslack.org/slackwarearm/slackwarearm-devtools/minirootfs/roots/
-  * http://archlinuxarm.org/developers/downloads
-  * http://ftp.linux.org.uk/pub/linux/arm/fedora/rootfs/
+* https://images.linuxcontainers.org/images/
 
-* CentOS, Debian, Fedora, Scientific, Suse, Ubuntu, ALT, Arch, CERN,
-  Gentoo, OpenSuse, Openwall, Slackware, SLES, and etc. for x86 and
-  x86_64 CPUs:
+* http://distfiles.gentoo.org/releases/
 
-  * http://download.openvz.org/template/precreated/
-  * http://cdimage.ubuntu.com/ubuntu-core/releases/
-  * https://images.linuxcontainers.org/images/
+* http://cdimage.ubuntu.com/ubuntu-core/releases/
 
-* Gentoo for a lot of architectures:
-
-  * http://distfiles.gentoo.org/releases/
+* http://archlinuxarm.org/developers/downloads
 
 Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution::

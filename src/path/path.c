@@ -37,103 +37,10 @@
 #include "path/canon.h"
 #include "path/proc.h"
 #include "extension/extension.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "build.h"
 
 #include "compat.h"
-
-/**
- * Copy in @component the first path component pointed to by @cursor,
- * this later is updated to point to the next component for a further
- * call. This function returns:
- *
- *     - -errno if an error occured.
- *
- *     - FINAL_SLASH if it the last component of the path but we
- *       really expect a directory.
- *
- *     - FINAL_NORMAL if it the last component of the path.
- *
- *     - 0 otherwise.
- */
-Finality next_component(char component[NAME_MAX], const char **cursor)
-{
-	const char *start;
-	ptrdiff_t length;
-	bool want_dir;
-
-	/* Sanity checks. */
-	assert(component != NULL);
-	assert(cursor    != NULL);
-
-	/* Skip leading path separators. */
-	while (**cursor != '\0' && **cursor == '/')
-		(*cursor)++;
-
-	/* Find the next component. */
-	start = *cursor;
-	while (**cursor != '\0' && **cursor != '/')
-		(*cursor)++;
-	length = *cursor - start;
-
-	if (length >= NAME_MAX)
-		return -ENAMETOOLONG;
-
-	/* Extract the component. */
-	strncpy(component, start, length);
-	component[length] = '\0';
-
-	/* Check if a [link to a] directory is expected. */
-	want_dir = (**cursor == '/');
-
-	/* Skip trailing path separators. */
-	while (**cursor != '\0' && **cursor == '/')
-		(*cursor)++;
-
-	if (**cursor == '\0')
-		return (want_dir
-			? FINAL_SLASH
-			: FINAL_NORMAL);
-
-	return NOT_FINAL;
-}
-
-/**
- * Put an end-of-string ('\0') right before the last component of
- * @path and return a pointer to this latter.  Note: as for now, it is
- * assumed @path[0] is '/'.
- */
-char *pop_component(char *path)
-{
-	size_t offset;
-	size_t length;
-
-	/* Sanity checks. */
-	assert(path != NULL);
-	assert(path[0] == '/');
-
-	length = strlen(path);
-	offset = length - 1;
-
-	/* Don't pop over "/", it doesn't mean anything. */
-	if (offset == 0)
-		return &path[1];  /* Empty string.  */
-
-	/* Skip trailing path separators. */
-	while (offset > 1 && path[offset] == '/')
-		offset--;
-
-	/* Search for the previous path separator. */
-	while (offset > 1 && path[offset] != '/')
-		offset--;
-
-	/* Cut the end of the string before last component. */
-	path[offset] = '\0';
-
-	/* Return pointer to last component.  */
-	assert(offset + 1 < length);
-	return &path[offset + 1];
-}
 
 /**
  * Copy in @result the concatenation of several paths (@number_paths)
@@ -208,7 +115,7 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
  * (relatively to the @tracee's file-system name-space).  This
  * function always returns -1 on error, otherwise 0.
  */
-int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *const command)
+int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], const char *command)
 {
 	char path[PATH_MAX];
 	const char *cursor;
@@ -223,8 +130,25 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 
 	/* Is the command available without any $PATH look-up?  */
 	status = realpath2(tracee, host_path, command, true);
-	found = (   status == 0 && stat(host_path, &statr) == 0
-	       && S_ISREG(statr.st_mode) && (statr.st_mode & S_IXUSR) != 0);
+	if (status == 0 && stat(host_path, &statr) == 0) {
+		if (is_explicit && !S_ISREG(statr.st_mode)) {
+			note(tracee, ERROR, USER, "'%s' is not a regular file", command);
+			return -EACCES;
+		}
+
+		if (is_explicit && (statr.st_mode & S_IXUSR) == 0) {
+			note(tracee, ERROR, USER, "'%s' is not executable", command);
+			return -EACCES;
+		}
+
+		found = true;
+
+		/* Don't dereference the final component to preserve
+		 * argv0 in case it is a symlink to script.  */
+		(void) realpath2(tracee, host_path, command, false);
+	}
+	else
+		found = false;
 
 	/* Is the the explicit command was found?  */
 	if (is_explicit) {
@@ -266,8 +190,12 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], char *con
 		if (status == 0
 		    && stat(host_path, &statr) == 0
 		    && S_ISREG(statr.st_mode)
-		    && (statr.st_mode & S_IXUSR) != 0)
-				return 0;
+		    && (statr.st_mode & S_IXUSR) != 0) {
+			/* Don't dereference the final component to preserve
+			 * argv0 in case it is a symlink to script.  */
+			(void) realpath2(tracee, host_path, path, false);
+			return 0;
+		}
 	} while (*(cursor - 1) != '\0');
 
 not_found:
@@ -275,13 +203,13 @@ not_found:
 	if (status < 0)
 		strcpy(path, "<unknown>");
 
-	notice(tracee, WARNING, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
+	note(tracee, ERROR, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
 		command, get_root(tracee), path, paths);
 
 	/* Check if the command was found without any $PATH look-up
 	 * but it didn't contain "/".  */
 	if (found && !is_explicit)
-		notice(tracee, INFO, USER,
+		note(tracee, ERROR, USER,
 			"to execute a local program, use the './' prefix, for example: ./%s", command);
 
 	return -1;
@@ -403,6 +331,12 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 		status = readlink_proc_pid_fd(tracee->pid, dir_fd, result);
 		if (status < 0)
 			return status;
+
+		/* Named file descriptors may reference special
+		 * objects like pipes, sockets, inodes, ...  Such
+		 * objects do not belong to the file-system.  */
+		if (result[0] != '/')
+			return -ENOTDIR;
 
 		/* Remove the leading "root" part of the base
 		 * (required!). */
@@ -575,8 +509,8 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 }
 
 /**
- * Check if the translated @t_path belongs to the guest rootfs, that
- * is, isn't from a binding.
+ * Check if the translated @host_path belongs to the guest rootfs,
+ * that is, isn't from a binding.
  */
 bool belongs_to_guestfs(const Tracee *tracee, const char *host_path)
 {

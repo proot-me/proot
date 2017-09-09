@@ -40,7 +40,7 @@
 #include "syscall/sysnum.h"
 #include "tracee/reg.h"
 #include "tracee/abi.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "compat.h"
 
 /**
@@ -68,6 +68,9 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
+	[RTLD_FINI]     = USER_REGS_OFFSET(rdx),
+	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
+	[USERARG_1]     = USER_REGS_OFFSET(rdi),
     };
 
     static off_t reg_offset_x86[] = {
@@ -81,6 +84,9 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
+	[RTLD_FINI]     = USER_REGS_OFFSET(rdx),
+	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
+	[USERARG_1]     = USER_REGS_OFFSET(rax),
     };
 
     #undef  REG
@@ -102,6 +108,7 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(uregs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(uregs[13]),
 	[INSTR_POINTER] = USER_REGS_OFFSET(uregs[15]),
+	[USERARG_1]     = USER_REGS_OFFSET(uregs[0]),
     };
 
 #elif defined(ARCH_ARM64)
@@ -135,6 +142,9 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(eax),
 	[STACK_POINTER] = USER_REGS_OFFSET(esp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(eip),
+	[RTLD_FINI]     = USER_REGS_OFFSET(edx),
+	[STATE_FLAGS]   = USER_REGS_OFFSET(eflags),
+	[USERARG_1]     = USER_REGS_OFFSET(eax),
     };
 
 #elif defined(ARCH_SH4)
@@ -150,6 +160,7 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(regs[15]),
 	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
+	[RTLD_FINI]     = USER_REGS_OFFSET(r4),
     };
 
 #else
@@ -198,7 +209,7 @@ void print_current_regs(Tracee *tracee, int verbose_level, const char *message)
 	if (tracee->verbose < verbose_level)
 		return;
 
-	notice(tracee, INFO, INTERNAL,
+	note(tracee, INFO, INTERNAL,
 		"pid %d: %s: %s(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx, %d]",
 		tracee->pid, message,
 		stringify_sysnum(get_sysnum(tracee, CURRENT)),
@@ -302,7 +313,7 @@ int push_regs(Tracee *tracee)
 		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
 			status = ptrace(PTRACE_SET_SYSCALL, tracee->pid, 0, current_sysnum);
 			if (status < 0)
-				notice(tracee, WARNING, SYSTEM, "can't set the syscall number");
+				note(tracee, WARNING, SYSTEM, "can't set the syscall number");
 		}
 #    endif
 

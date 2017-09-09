@@ -8,6 +8,6 @@ mkdir -p ${ROOTFS}/${TMP}/run/dbus
 mkdir -p ${ROOTFS}/${TMP}/var
 ln -s ../run ${ROOTFS}/${TMP}/var/run
 
-${PROOT} -b /bin:${TMP}/var/run/dbus ${ROOTFS} readdir ${TMP}/var/run/dbus/ | grep true
+${PROOT} -b /bin:${TMP}/var/run/dbus -r ${ROOTFS} readdir ${TMP}/var/run/dbus/ | grep true
 
 rm -fr ${TMP}

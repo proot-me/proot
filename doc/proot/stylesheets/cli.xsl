@@ -20,6 +20,7 @@
 </xsl:text>
 
     <xsl:apply-templates select="//option_string[.='-R']" />
+    <xsl:apply-templates select="//option_string[.='-S']" />
 
     <xsl:apply-templates select="//option_group" mode="handlers" />
     <xsl:text>
@@ -78,10 +79,22 @@ static Cli proot_cli = {
 </xsl:text>
   </xsl:template>
 
-  <!-- Recommanded bindings declarations -->
+  <!-- Recommended bindings declarations -->
 
   <xsl:template match="option_string[.='-R']">
-    <xsl:text>static char *recommended_bindings[] = {
+    <xsl:text>static const char *recommended_bindings[] = {
+</xsl:text>
+    <xsl:apply-templates select="ancestor-or-self::option_list_item//list_item" />
+    <xsl:text>	NULL,
+};
+
+</xsl:text>
+  </xsl:template>
+
+  <!-- Recommended "su" bindings declarations -->
+
+  <xsl:template match="option_string[.='-S']">
+    <xsl:text>static const char *recommended_su_bindings[] = {
 </xsl:text>
     <xsl:apply-templates select="ancestor-or-self::option_list_item//list_item" />
     <xsl:text>	NULL,
@@ -164,7 +177,7 @@ static Cli proot_cli = {
   <xsl:template match="option_group" mode="handlers">
     <xsl:text>static int handle_option_</xsl:text>
     <xsl:value-of select="substring(option[1]/option_string, 2, 1)" />
-    <xsl:text>(Tracee *tracee, const Cli *cli, char *value);
+    <xsl:text>(Tracee *tracee, const Cli *cli, const char *value);
 </xsl:text>
   </xsl:template>
 

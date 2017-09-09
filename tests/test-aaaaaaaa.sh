@@ -8,7 +8,7 @@ fi
 
 DONT_EXIST=/$(mcookie)
 
-${PROOT} ${ROOTFS} true
+${PROOT} -r ${ROOTFS} true
 
 ! ${PROOT} ${DONT_EXIST} true
 [ $? -eq 0 ]

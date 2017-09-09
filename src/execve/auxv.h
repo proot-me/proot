@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2013 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,20 +20,20 @@
  * 02110-1301 USA.
  */
 
-#ifndef INTERP_H
-#define INTERP_H
-
-#include <linux/limits.h> /* PATH_MAX, ARG_MAX, */
+#ifndef AUXV
+#define AUXV
 
 #include "tracee/tracee.h"
+#include "arch.h"
 
-typedef int (* extract_interp_t)(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
+typedef struct elf_aux_vector {
+	word_t type;
+	word_t value;
+} ElfAuxVector;
 
-extern int extract_script_interp(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
+extern word_t get_elf_aux_vectors_address(const Tracee *tracee);
+extern ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address);
+extern int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value);
+extern int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t address);
 
-extern int extract_elf_interp(const Tracee *tracee, const char *t_path,
-				 char u_interp[PATH_MAX], char argument[ARG_MAX]);
-
-#endif /* INTERP_H */
+#endif /* AUXV */

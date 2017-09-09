@@ -2,6 +2,13 @@ if [ -z `which mcookie` ] || [ -z `which rm` ] || [ -z `which ln` ] || [ -z `whi
     exit 125;
 fi
 
+CHECK1=$(realpath -e /proc/self/exe)
+CHECK2=$(realpath /proc/self/exe)
+
+if [ "${CHECK1}" != "${CHECK2}" ]; then
+    exit 125;
+fi
+
 TMP="/tmp/$(mcookie)"
 TMP2="/tmp/$(mcookie)"
 

@@ -1,90 +1,33 @@
-How to Make a Release of PRoot?
+How to make a release of PRoot?
 ===============================
 
-This document summarizes the required checks that shall be done before
-releasing PRoot.
+This document summarizes checks that must be performed before
+releasing PRoot or CARE.
 
-Sanity checks
--------------
+Checks
+------
 
-* arm (`make -C test` on STLinux)
-* sh4 (`make -C test` on STLinux)
-* x86 (`make -C test` on *all* OBS distros)
-* x86_64 (with *and* without seccomp):
-  - `make -C tests` on *all* OBS distros
-  - `make -C tests memcheck`
-  - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
-  - `make -C tests V=1 2>&1 | grep talloc`
++ Sanity checks:
+  * on ARM and *all* OBS distros (x86 and x86_64): `make -C test`
+  * on x86_64, with *and* without seccomp:
+    - `make -C tests` on *all* OBS distros
+    - `make -C tests memcheck`
+    - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
+    - `make -C tests V=1 2>&1 | grep talloc`
 
-LTP
----
++ Fonctional checks: no regressions must appear with respect to
+  tests/validation.mk and to the configurations tested in the previous
+  release (`git show tags/...`).
 
-The "syscalls" testsuite from the Linux Test Project (`./configure
---prefix=$PWD; make; make install; ./runltp -f syscalls`) shall suffer no
-regression on (with *and* without seccomp):
++ Performance checks: the following command must not suffer from
+  unexpected performance regression::
 
-- x86_64
-- x86_64 with a x86_64 rootfs
-- x86_64 with a x86 rootfs
-- x86_64 & the "kompat" extension enabled
-- x86_64 with a x86_64 rootfs & the "kompat" extension enabled
-- x86_64 with a x86 rootfs & the "kompat" extension enabled
+    time proot -R / perl -e 'system("/usr/bin/true") for (1..10000)'
 
-Libuv
------
+  where "/usr/bin/true" is a symlink to "/bin/true".
 
-The testsuite from the libuv package (`make test -j 4`) shall suffer
-no regression on (with *and* without seccomp):
-
-- x86_64
-- x86_64 with a x86_64 rootfs
-- x86_64 with a x86 rootfs
-- x86_64 & the "kompat" extension enabled
-- x86_64 with a x86_64 rootfs & the "kompat" extension enabled
-- x86_64 with a x86 rootfs & the "kompat" extension enabled
-
-CoreUtils
----------
-
-The GNU CoreUtils package (`./configure; make; make check`) shall
-suffer no regression on:
-
-- x86_64
-- x86_64 with the "kompat" extension enabled
-- x86_64 with a ARM rootfs (QEMU)
-
-Perl
-----
-
-The Perl package (`./configure.gnu; make; make check`) shall suffer no
-regression on:
-
-- x86_64
-- x86_64 with the "kompat" extension enabled
-- x86_64 with a x86 rootfs
-- x86_64 with a x86 rootfs and the "kompat" extension enabled
-- x86_64 with a ARM rootfs (QEMU)
-- x86_64 with a ARM rootfs (QEMU) under a x86 rootfs (sub-reconf')
-
-Open POSIX
-----------
-
-The Open POSIX Test Suite package (`make`) shall suffer no regression
-on:
-
-- x86_64
-- x86_64 with the "kompat" extension enabled
-
-
-Performance
------------
-
-The following command shall suffer no non-undestood performance
-regression::
-
-    time proot -B perl -e 'system("/usr/bin/true") for (1..10000)'
-
-where "/usr/bin/true" is a symlink to "/bin/true".
++ Static analysis: Coverity Scan and Clang Scan Build must not report
+  new issues.
 
 
 Documentation Update
@@ -92,7 +35,7 @@ Documentation Update
 
 0. update "doc/changelog.txt"
 
-1. update the release number in "doc/proot-manual.txt"
+1. update the release number in "doc/proot/manual.txt"
 
 2. regenerate the documentation: `make -C doc`
 

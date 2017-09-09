@@ -6,7 +6,7 @@
 #include "cli/cli.h"
 
 #ifndef VERSION
-#define VERSION "2.1"
+#define VERSION "2.2"
 #endif
 
 #define CARE_MAX_SIZE 1024
@@ -52,17 +52,17 @@ static char const *default_volatile_envars[] = {
 	NULL,
 };
 
-static int handle_option_o(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_c(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_r(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_p(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_e(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_m(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_d(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_v(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_V(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_x(Tracee *tracee, const Cli *cli, char *value);
-static int handle_option_h(Tracee *tracee, const Cli *cli, char *value);
+static int handle_option_o(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_c(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_r(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_e(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_m(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_d(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_x(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value);
 
 static int pre_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
 static int post_initialize_bindings(Tracee *, const Cli *, size_t, char *const *, size_t);
@@ -72,7 +72,7 @@ static Cli care_cli = {
 	.name     = "care",
 	.subtitle = "Comprehensive Archiver for Reproducible Execution",
 	.synopsis = "care [option] ... command",
-	.colophon = "Visit http://reproducible.io for help, bug reports, suggestions, patches, ...\n\
+	.colophon = "Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...\n\
 Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.",
 	.logo = "\
   _____ ____ _____ ____\n\

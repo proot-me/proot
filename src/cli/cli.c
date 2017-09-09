@@ -20,18 +20,21 @@
  * 02110-1301 USA.
  */
 
+#include <stdio.h>         /* printf(3), */
 #include <stdbool.h>       /* bool, true, false,  */
 #include <linux/limits.h>  /* ARG_MAX, PATH_MAX, */
 #include <string.h>        /* str*(3), basename(3),  */
 #include <talloc.h>        /* talloc*,  */
-#include <stdlib.h>        /* exit(3), EXIT_*, strtol(3), getenv(3), */
+#include <stdlib.h>        /* exit(3), EXIT_*, strtol(3), {g,s}etenv(3), */
 #include <assert.h>        /* assert(3),  */
 #include <sys/types.h>     /* getpid(2),  */
 #include <unistd.h>        /* getpid(2),  */
 #include <errno.h>         /* errno(3), */
+#include <execinfo.h>      /* backtrace_symbols(3), */
+#include <limits.h>        /* INT_MAX, */
 
 #include "cli/cli.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 #include "extension/care/extract.h"
 #include "extension/extension.h"
 #include "tracee/tracee.h"
@@ -119,34 +122,34 @@ void print_version(const Cli *cli)
 
 static void print_execve_help(const Tracee *tracee, const char *argv0, int status)
 {
-	notice(tracee, WARNING, SYSTEM, "execve(\"%s\")", argv0);
+	note(tracee, ERROR, SYSTEM, "execve(\"%s\")", argv0);
 
 	/* Ubuntu kernel bug?  */
 	if (status == -EPERM && getenv("PROOT_NO_SECCOMP") == NULL) {
-		notice(tracee, INFO, USER,
+		note(tracee, INFO, USER,
 "It seems your kernel contains this bug: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1202161\n"
 "To workaround it, set the env. variable PROOT_NO_SECCOMP to 1.");
 		return;
 	}
 
-	notice(tracee, INFO, USER, "possible causes:\n"
-"  * <program> is a script but its interpreter (eg. /bin/sh) was not found;\n"
-"  * <program> is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
-"  * <program> is a foreign binary but no <qemu> was specified;\n"
-"  * <qemu> does not work correctly (if specified).");
+	note(tracee, INFO, USER, "possible causes:\n"
+"  * the program is a script but its interpreter (eg. /bin/sh) was not found;\n"
+"  * the program is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
+"  * the program is a foreign binary but qemu was not specified;\n"
+"  * qemu does not work correctly (if specified);\n"
+"  * the loader was not found or doesn't work.");
 }
 
 static void print_error_separator(const Tracee *tracee, const Argument *argument)
 {
 	if (argument->separator == '\0')
-		notice(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
+		note(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
 	else
-		notice(tracee, ERROR, USER,
-			"option '%s' and its value must be separated by '%c'.",
+		note(tracee, ERROR, USER, "option '%s' and its value must be separated by '%c'.",
 			argument->name, argument->separator);
 }
 
-static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
+static void print_argv(const Tracee *tracee, const char *prompt, char *const argv[])
 {
 	char string[ARG_MAX] = "";
 	size_t i;
@@ -172,10 +175,10 @@ static void print_argv(const Tracee *tracee, const char *prompt, char **argv)
 
 #undef APPEND
 
-	notice(tracee, INFO, USER, "%s", string);
+	note(tracee, INFO, USER, "%s", string);
 }
 
-static void print_config(Tracee *tracee)
+static void print_config(Tracee *tracee, char *const argv[])
 {
 	assert(tracee != NULL);
 
@@ -183,16 +186,16 @@ static void print_config(Tracee *tracee)
 		return;
 
 	if (tracee->qemu)
-		notice(tracee, INFO, USER, "host rootfs = %s", HOST_ROOTFS);
+		note(tracee, INFO, USER, "host rootfs = %s", HOST_ROOTFS);
 
 	if (tracee->glue)
-		notice(tracee, INFO, USER, "glue rootfs = %s", tracee->glue);
+		note(tracee, INFO, USER, "glue rootfs = %s", tracee->glue);
 
-	notice(tracee, INFO, USER, "exe = %s", tracee->exe);
-	print_argv(tracee, "command", tracee->cmdline);
+	note(tracee, INFO, USER, "exe = %s", tracee->exe);
+	print_argv(tracee, "argv", argv);
 	print_argv(tracee, "qemu", tracee->qemu);
-	notice(tracee, INFO, USER, "initial cwd = %s", tracee->fs->cwd);
-	notice(tracee, INFO, USER, "verbose level = %d", tracee->verbose);
+	note(tracee, INFO, USER, "initial cwd = %s", tracee->fs->cwd);
+	note(tracee, INFO, USER, "verbose level = %d", tracee->verbose);
 
 	notify_extensions(tracee, PRINT_CONFIG, 0, 0);
 }
@@ -211,7 +214,7 @@ static int initialize_cwd(Tracee *tracee)
 	if (tracee->fs->cwd[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, path);
 		if (status < 0) {
-			notice(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+			note(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
 			return -1;
 		}
 	}
@@ -223,7 +226,7 @@ static int initialize_cwd(Tracee *tracee)
 	 * directory.  */
 	status = join_paths(3, path2, path, tracee->fs->cwd, ".");
 	if (status < 0) {
-		notice(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+		note(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
 		return -1;
 	}
 
@@ -232,9 +235,9 @@ static int initialize_cwd(Tracee *tracee)
 
 	status = canonicalize(tracee, path2, true, path, 0);
 	if (status < 0) {
-		notice(tracee, WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
+		note(tracee, WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
 			path2, strerror(-status));
-		notice(tracee, INFO, USER, "default working directory is now \"/\"");
+		note(tracee, INFO, USER, "default working directory is now \"/\"");
 		strcpy(path, "/");
 	}
 	chop_finality(path);
@@ -246,34 +249,22 @@ static int initialize_cwd(Tracee *tracee)
 		return -1;
 	talloc_set_name_const(tracee->fs->cwd, "$cwd");
 
+	/* Keep this special environment variable consistent.  */
+	setenv("PWD", path, 1);
+
 	return 0;
 }
 
 /**
- * Initialize @tracee->exe and @tracee->cmdline from @cmdline.
+ * Initialize @tracee->exe from @exe, i.e. canonicalize it from a
+ * guest point-of-view.
  */
-static int initialize_command(Tracee *tracee, char *const *cmdline)
+static int initialize_exe(Tracee *tracee, const char *exe)
 {
 	char path[PATH_MAX];
 	int status;
-	int i;
 
-	/* How many arguments?  */
-	for (i = 0; cmdline[i] != NULL; i++)
-		;
-
-	tracee->cmdline = talloc_zero_array(tracee, char *, i + 1);
-	if (tracee->cmdline == NULL) {
-		notice(tracee, ERROR, INTERNAL, "talloc_zero_array() failed");
-		return -1;
-	}
-	talloc_set_name_const(tracee->cmdline, "@cmdline");
-
-	for (i = 0; cmdline[i] != NULL; i++)
-		tracee->cmdline[i] = cmdline[i];
-
-	/* Resolve the full guest path to tracee->cmdline[0].  */
-	status = which(tracee, tracee->reconf.paths, path, tracee->cmdline[0]);
+	status = which(tracee, tracee->reconf.paths, path, exe ?: "/bin/sh");
 	if (status < 0)
 		return -1;
 
@@ -291,15 +282,15 @@ static int initialize_command(Tracee *tracee, char *const *cmdline)
 
 /**
  * Configure @tracee according to the command-line arguments stored in
- * @argv[].  This function returns -1 if an error occured, otherwise
- * 0.
+ * @argv[].  This function returns the index in @argv[] of the command
+ * to launch, otherwise -1 if an error occured.
  */
-int parse_config(Tracee *tracee, size_t argc, char *argv[])
+static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 {
-	char *const default_command[] = { "/bin/sh", NULL };
 	option_handler_t handler = NULL;
 	const Option *options;
 	const Cli *cli = NULL;
+	size_t argc_offset;
 	size_t i, j, k;
 	int status;
 
@@ -328,13 +319,13 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 	}
 
 	for (i = 1; i < argc; i++) {
-		char *arg = argv[i];
+		const char *arg = argv[i];
 
 		/* The current argument is the value of a short option.  */
 		if (handler != NULL) {
 			status = handler(tracee, cli, arg);
 			if (status < 0)
-				return status;
+				return -1;
 			handler = NULL;
 			continue;
 		}
@@ -397,15 +388,16 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 			}
 		}
 
-		notice(tracee, ERROR, USER, "unknown option '%s'.", arg);
+		note(tracee, ERROR, USER, "unknown option '%s'.", arg);
 		return -1;
 
 	known_option:
 		if (handler != NULL && i == argc - 1) {
-			notice(tracee, ERROR, USER, "missing value for option '%s'.", arg);
+			note(tracee, ERROR, USER, "missing value for option '%s'.", arg);
 			return -1;
 		}
 	}
+	argc_offset = i;
 
 #define HOOK_CONFIG(callback)						\
 	do {								\
@@ -436,26 +428,26 @@ int parse_config(Tracee *tracee, size_t argc, char *argv[])
 		return -1;
 
 	HOOK_CONFIG(post_initialize_cwd);
-	HOOK_CONFIG(pre_initialize_command);
+	HOOK_CONFIG(pre_initialize_exe);
 
 	/* Bindings are now installed and the current working
 	 * directory is canonicalized: resolve path to @tracee->exe
 	 * and configure @tracee->cmdline.  */
-	status = initialize_command(tracee, i < argc ? &argv[i] : default_command);
+	status = initialize_exe(tracee, argv[argc_offset]);
 	if (status < 0)
 		return -1;
 
-	HOOK_CONFIG(post_initialize_command);
+	HOOK_CONFIG(post_initialize_exe);
 #undef HOOK_CONFIG
 
-	print_config(tracee);
+	print_config(tracee, &argv[argc_offset]);
 
-	return 0;
+	return argc_offset;
 }
 
 bool exit_failure = true;
 
-int main(int argc, char *argv[])
+int main(int argc, char *const argv[])
 {
 	Tracee *tracee;
 	int status;
@@ -479,7 +471,7 @@ int main(int argc, char *argv[])
 		goto error;
 
 	/* Start the first tracee.  */
-	status = launch_process(tracee);
+	status = launch_process(tracee, &argv[status]);
 	if (status < 0) {
 		print_execve_help(tracee, tracee->exe, status);
 		goto error;
@@ -511,7 +503,7 @@ int parse_integer_option(const Tracee *tracee, int *variable, const char *value,
 	errno = 0;
 	*variable = strtol(value, &end_ptr, 10);
 	if (errno != 0 || end_ptr == value) {
-		notice(tracee, ERROR, USER, "option `%s` expects an integer value.", option);
+		note(tracee, ERROR, USER, "option `%s` expects an integer value.", option);
 		return -1;
 	}
 
@@ -552,4 +544,37 @@ const char *expand_front_variable(TALLOC_CTX *context, const char *string)
 		return string;
 
 	return expanded;
+}
+
+/* Here follows the support for GCC function instrumentation.  Build
+ * with CFLAGS='-finstrument-functions -O0 -g' and LDFLAGS='-rdynamic'
+ * to enable this mechanism.  */
+
+static int indent_level = 0;
+
+void __cyg_profile_func_enter(void *this_function, void *call_site) DONT_INSTRUMENT;
+void __cyg_profile_func_enter(void *this_function, void *call_site)
+{
+	void *const pointers[] = { this_function, call_site };
+	char **symbols = NULL;
+
+	symbols = backtrace_symbols(pointers, 2);
+	if (symbols == NULL)
+		goto end;
+
+	fprintf(stderr, "%*s from %s\n", (int) strlen(symbols[0]) + indent_level, symbols[0], symbols[1]);
+
+end:
+	if (symbols != NULL)
+		free(symbols);
+
+	if (indent_level < INT_MAX)
+		indent_level++;
+}
+
+void __cyg_profile_func_exit(void *this_function UNUSED, void *call_site UNUSED) DONT_INSTRUMENT;
+void __cyg_profile_func_exit(void *this_function UNUSED, void *call_site UNUSED)
+{
+	if (indent_level > 0)
+		indent_level--;
 }

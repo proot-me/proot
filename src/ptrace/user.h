@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2013 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -20,35 +20,37 @@
  * 02110-1301 USA.
  */
 
-#ifndef NOTICE_H
-#define NOTICE_H
+#include <stdint.h>
+#include <stdbool.h>
+#include <assert.h>
 
-#include "tracee/tracee.h"
+#include "arch.h"
 #include "attribute.h"
 
-/* Specify where a notice is coming from. */
-typedef enum {
-	SYSTEM,
-	INTERNAL,
-	USER,
-	TALLOC,
-} Origin;
+#if defined(ARCH_X86_64)
 
-/* Specify the severity of a notice. */
-typedef enum {
-	ERROR,
-	WARNING,
-	INFO,
-} Severity;
+#define USER32_NB_REGS   17
+#define USER32_NB_FPREGS 27
 
-#define VERBOSE(tracee, level, message, args...) do {			\
-		if (tracee == NULL || tracee->verbose >= (level))	\
-			notice(tracee, INFO, INTERNAL, (message), ## args); \
-	} while (0)
+extern word_t convert_user_offset(word_t offset);
+extern void convert_user_regs_struct(bool reverse, uint64_t *user_regs64,
+				uint32_t user_regs32[USER32_NB_REGS]);
 
-extern void notice(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(printf, 4, 5);
+#else
 
-extern int global_verbose_level;
-extern const char *global_tool_name;
+#define USER32_NB_REGS   0
+#define USER32_NB_FPREGS 0
 
-#endif /* NOTICE_H */
+static inline word_t convert_user_offset(word_t offset UNUSED)
+{
+	assert(0);
+}
+
+static inline void convert_user_regs_struct(bool reverse UNUSED,
+					uint64_t *user_regs64 UNUSED,
+					uint32_t user_regs32[USER32_NB_REGS] UNUSED)
+{
+	assert(0);
+}
+
+#endif

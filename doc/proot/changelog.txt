@@ -1,3 +1,293 @@
+Release v5.1.0
+==============
+
+New features
+------------
+
++ Processes under PRoot now appear with their real names, that is,
+  they are not renamed "ld-linux.so" or "prooted-..." anymore:
+
+  before:
+
+      $ proot-v4.0.3 ps
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       8131 pts/11   00:00:00 proot-v4.0.3
+       8132 pts/11   00:00:00 ld-2.17.so
+
+      $ proot-v5.0.0 ps
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       7916 pts/11   00:00:00 proot-v5.0.0
+       7917 pts/11   00:00:00 prooted-7916-Jb
+
+  now:
+
+      $ proot-v5.1.0 ps
+        PID TTY          TIME CMD
+       7885 pts/11   00:00:00 bash
+       8585 pts/11   00:00:00 proot-v5.1.0
+       8586 pts/11   00:00:00 ps
+
+Fixes
+-----
+
++ It is now possible to use GDB against multi-threaded programs under
+  PRoot x86_64 and x86.
+
++ It is possible to execute x86_64 programs from x86 programs again.
+
++ It is possible to use x86 ptrace-based programs (strace, gdb, ...)
+  under PRoot x86_64 again.
+
++ The loader is now built with the "build-id" linker option explicitly
+  disabled.  This special section might interfere with loaded
+  programs.
+
++ The loader can now load relocatable objects that have a predefined
+  base address.
+
+Acknowledgements
+----------------
+
+Thanks to Erwan Gouriou, Sébastien Gandon, Christian milkylainen,
+Henrik Wallin, and Frank Teo for their bug reports and tests.
+
+Thanks to Jérôme Audu, Yann Droneaud, and Christophe Monat for their
+precious help.
+
+
+Release v5.0.0
+==============
+
+Highlight
+---------
+
+PRoot used to rely on the ELF loader embedded in the ELF interpreter
+from the GNU libc.  Sadly this latter suffers from many issues:
+
++ programs that use constructors or destructors might crash: a typical
+  example is C++ programs.
+
++ programs that rely on the "rpath" mechanism and that are invoked
+  through a symlink might not start: a typical example is the JVM on
+  Debian.
+
++ programs that read processes command-line migth be confused because
+  initial argv[0] is replaced: typical examples are ps and top.
+
+Moreover not all ELF interpreters provide this feature.  For instance,
+ELF interpreters shipped with Bionic (Android) and some versions of
+the uClibC can't be used as ELF loaders.  As a consequence it was not
+possible to proot into a rootfs that uses such C library.
+
+Now PRoot has its own loader, that means all the limitations above
+doesn't exist anymore.
+
+Fixes
+-----
+
++ Most bugs related to shebang support -- ie. "#!" at the beginning of
+  a program -- were fixed.
+
+Command-line interface changes
+------------------------------
+
++ PRoot now starts a login shell when no command is specified; this
+  makes the shell read profile files from the guest rootfs, as
+  expected by some guest programs.  To get the old behavior, launch
+  "/bin/sh" explicitly:
+
+      proot -r whatever /bin/sh
+
++ The -R option now binds "/run" and "/var/run/dbus/system_bus_socket"
+  too.  This is useful for guest programs that need to communicate
+  with host services.
+
+
+Release v4.0.3
+==============
+
++ Heap emulation is disabled when a "suspicious" call to brk(2) is
+  actually legit, as it might be the case when launching the very
+  first program.
+
++ The "-0" and "-S" options ("root" identity emulation) now fake
+  success of mknodat(2), as it was the case for mknod(2) previously.
+  This missing feature was revealed by the AArch64 port.
+
++ The "-k" option (kernel compatibility emulation) now works on
+  Linux/AArch64.
+
+Thanks to Rémi Duraffort for the bug reports and for his LAVA testing
+platform!
+
+
+Release v4.0.2
+==============
+
++ Fix how the very first program is launched by PRoot.  Previously,
+  argv[0] was not preserved when the very first program was launched
+  through a symbolic link.  This old behavior used to bug programs
+  like Busybox and python-exec.  Thanks to "hhm", Ivailo "fluxer"
+  Monev, and Joakim Tjernlund for the bug reports.
+
++ Fix renameat(2) sysexit support.  There was a bug in PRoot that was
+  exposed by the Aarch64 (a.k.a arm64) port only but that might affect
+  other architectures.
+
++ Fix build for AArch64.  Thanks to Rémi Duraffort for the patches and
+  for the Debian/arm64 testing platform.
+
++ Fix support for "long" socket paths.  These can only be 108 bytes
+  long; this limit might be easily reached with PRoot since the path
+  to the rootfs is always prepended.  The solution was to
+  automatically bind this long path to a shorter path.  This bug was
+  exposed by LibreOffice and Yocto's pseudo.  Thanks to Christophe
+  Guillon for the bug report.
+
+
+Release v4.0.1
+==============
+
++ Fix a couple of portability issues in the testsuite.  Thanks to Rémi
+  Duraffort for all the tests he made on his instance of Linaro LAVA.
+
++ Set $PWD to the value specified by the -w option, otherwise Bash pwd
+  builtin might be confused under some specific circumstances.  Thanks
+  to Jérémy Bobbio for the bug report.
+
++ Fix support for accessat and fchmodat syscalls: they have only three
+  parameters, not four.  This bug was exposed by Gentoo's sandbox:
+
+      proot -S gentoo-amd64-hardened+nomultilib-rootfs emerge util-linux
+
+
+Release v4.0.0
+==============
+
+Highlights
+----------
+
++ It is now possible to use GDB, Strace, or any other program based on
+  "ptrace" under PRoot.  This was not the case previously because it
+  is not possible to stack ptracers on Linux, so an emulation layer
+  was developed in order to bypass this limitation.  This has required
+  a lot of changes in PRoot, hence the major number version bumping.
+  It was mostly tested on x86_64, and partially tested on x86 and ARM.
+  This ptrace emulation support is still experimental, and there are a
+  couple of known issues, but feel free to report unexpected behaviors
+  if you need a fix.
+
++ A new command-line option is available: "-S".  It is similar to the
+  "-R" option expect it enables the "-0" option and binds only a
+  minimal set of paths that are known to not be updated by package
+  installations, to avoid unexpected changes on host files.  This
+  option is useful to safely create and install packages into the
+  guest rootfs.  For example:
+
+      $ proot -S ubuntu-14.04-rootfs/ apt-get install samba
+
+  or:
+
+      $ proot -S ubuntu-14.04-rootfs/
+      # apt-get install samba
+
+  If "-0 -R" is used instead of "-S", the same command fails since it
+  tries to update "/etc/group", which is bound to the host system and
+  is not writable (assuming PRoot is ran without privileges):
+
+      $ proot -0 -R ubuntu-14.04-rootfs/
+      # apt-get install samba
+      [...]
+      Adding group `sambashare' (GID 105) ...
+      Permission denied
+
++ The fake_id0 extension can now fake any user and group identifiers.
+  That means, when "-0" is specified, PRoot-ed processes can change
+  their real, effective and saved identifiers, with respect to the
+  rules described in setuid, setfsuid, setreuid, setresuid, and
+  setfsuid manuals.  Also, the new command-line option "-i" was added
+  to change explicitly the identifiers to the specified values.  This
+  option will be used by CARE to re-execute with the same initial
+  identifiers, but it could also be useful to threaten your teammates
+  ;).  Note that the "-0" option is actually the same as "-i 0:0".
+
++ The old command-line interface is not supported anymore.  That means
+  it is now impossible to specify the path to the guest rootfs without
+  using -r or -R.  Also, -Q and -B options are definitively gone,
+  instead the -R option must be specified, respectively with and
+  without -q.  See PRoot v3.1 release notes for details.
+
+Fixes
+-----
+
++ getcwd(2) and chdir(2) now return the correct error code when,
+  respectively, the current directory does not exist anymore and the
+  target directory doesn't have the "search" permission.
+
++ Named file descriptors (ie. links in /proc/<pid>/fd/*) are not
+  dereferenced anymore since they may point to special objects like
+  pipes, sockets, inodes, ...  Such objects do not exist on the
+  file-system name-space, so dereferencing them used to cause
+  unexpected errors.
+
++ Extensions now see every component of canonicalized paths.  An
+  optimization in the canonicalization loop used to skip the first
+  part of a path if it was known to be already canonicalized, sadly
+  this short-cut may confuse some extensions, like -0.
+
++ Temporary files and directories created by PRoot for its own purpose
+  are now automatically deleted when PRoot exits.
+
+
+Miscellaneous
+-------------
+
++ PRoot does not rely on GCC C extensions anymore, like nested
+  functions.  That means its stack does not have to be executable
+  (this is required for hardened Linux systems), and it can now be
+  compiled with Clang.
+
++ The ASLR (Address Space Layout Randomization) is not disabled
+  anymore, and the heap is now emulated on all architectures.
+
+
+Internal changes
+----------------
+
+This section is dedicated to developers.
+
++ PRoot now remembers the parent of all tracees, it is similar to a
+  traced process tree.  This was required for the ptrace emulation
+  support, but this could be useful to some extensions.
+
++ It is now possible to restart a tracee with any ptrace restart mode:
+  single-step, single-block, ...
+
++ Functions {peek,poke}_mem were replaced with functions
+  {peek,poke}_{,u}int{8,16,32,64}.  These new functions performs type
+  conversion and fetch only the necessary amount of data in target
+  tracee's memory to avoid invalid accesses.
+
++ There is a new interface to handle ELF auxiliary vectors.  See
+  ptrace emulation, kompat and fake_id0 extensions for usage examples.
+
++ There is a new interface to create temporary files and directories
+  that are automatically deleted on exit.  See CARE extension, glue
+  and auxv support for usage examples.
+
++ When built with GCC function instrumentation support, PRoot prints
+  the currently called function on standard error stream (stderr).
+
+Thanks
+------
+
+Thanks go to Stephen McCamant, Oren Tirosh, Jérôme Audu, and Carlos
+Hernan Prada Rojas for their bug reports and tests; and to Rémi
+Duraffort for his contributions.
+
+
 Release v3.2.2
 ==============
 
@@ -28,7 +318,7 @@ Release v3.2
 
 This release was mostly driven by the requirements of "CARE", a new
 project based on PRoot that will be released publicly soon on
-http://reproducible.io.  For information, "CARE" is the short for
+https://proot-me.github.io.  For information, "CARE" is the short for
 "Comprehensive Archiver for Reproducible Execution".
 
 Highlights

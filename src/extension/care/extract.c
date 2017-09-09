@@ -37,7 +37,7 @@
 #include <archive_entry.h> /* archive_entry*(3), */
 
 #include "extension/care/extract.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 /**
  * Extract the given @archive into the current working directory.
@@ -64,12 +64,12 @@ static int extract_archive(struct archive *archive)
 		status = archive_read_extract(archive, entry, flags);
 		switch (status) {
 		case ARCHIVE_OK:
-			notice(NULL, INFO, USER, "extracted: %s", archive_entry_pathname(entry));
+			note(NULL, INFO, USER, "extracted: %s", archive_entry_pathname(entry));
 			break;
 
 		default:
 			result = -1;
-			notice(NULL, ERROR, INTERNAL, "%s: %s",
+			note(NULL, ERROR, INTERNAL, "%s: %s",
 				archive_error_string(archive),
 				strerror(archive_errno(archive)));
 			break;
@@ -142,7 +142,7 @@ static int open_callback(struct archive *archive, void *data_)
 		data->size = be64toh(info.size);
 		offset = statf.st_size - data->size - sizeof(AutoExtractInfo);
 
-		notice(NULL, INFO, USER,
+		note(NULL, INFO, USER,
 			"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
 			(uint64_t) offset, data->size);
 	}
@@ -229,14 +229,14 @@ int extract_archive_from_file(const char *path)
 
 	archive = archive_read_new();
 	if (archive == NULL) {
-		notice(NULL, ERROR, INTERNAL, "can't initialize archive structure");
+		note(NULL, ERROR, INTERNAL, "can't initialize archive structure");
 		status = -1;
 		goto end;
 	}
 
 	status = archive_read_support_format_cpio(archive);
 	if (status != ARCHIVE_OK) {
-		notice(NULL, ERROR, INTERNAL, "can't set archive format: %s",
+		note(NULL, ERROR, INTERNAL, "can't set archive format: %s",
 			archive_error_string(archive));
 		status = -1;
 		goto end;
@@ -244,7 +244,7 @@ int extract_archive_from_file(const char *path)
 
 	status = archive_read_support_format_gnutar(archive);
 	if (status != ARCHIVE_OK) {
-		notice(NULL, ERROR, INTERNAL, "can't set archive format: %s",
+		note(NULL, ERROR, INTERNAL, "can't set archive format: %s",
 			archive_error_string(archive));
 		status = -1;
 		goto end;
@@ -252,7 +252,7 @@ int extract_archive_from_file(const char *path)
 
 	status = archive_read_support_filter_gzip(archive);
 	if (status != ARCHIVE_OK) {
-		notice(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
+		note(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
 			archive_error_string(archive));
 		status = -1;
 		goto end;
@@ -260,7 +260,7 @@ int extract_archive_from_file(const char *path)
 
 	status = archive_read_support_filter_lzop(archive);
 	if (status != ARCHIVE_OK) {
-		notice(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
+		note(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
 			archive_error_string(archive));
 		status = -1;
 		goto end;
@@ -268,7 +268,7 @@ int extract_archive_from_file(const char *path)
 
 	data = talloc_zero(NULL, CallbackData);
 	if (data == NULL) {
-		notice(NULL, ERROR, INTERNAL, "can't allocate callback data");
+		note(NULL, ERROR, INTERNAL, "can't allocate callback data");
 		status = -1;
 		goto end;
 
@@ -276,7 +276,7 @@ int extract_archive_from_file(const char *path)
 
 	data->path = talloc_strdup(data, path);
 	if (data->path == NULL) {
-		notice(NULL, ERROR, INTERNAL, "can't allocate callback data path");
+		note(NULL, ERROR, INTERNAL, "can't allocate callback data path");
 		status = -1;
 		goto end;
 
@@ -287,7 +287,7 @@ int extract_archive_from_file(const char *path)
 		/* Don't complain if no error message were registered,
 		 * ie. when testing for a self-extracting archive.  */
 		if (archive_error_string(archive) != NULL)
-			notice(NULL, ERROR, INTERNAL, "can't read archive: %s",
+			note(NULL, ERROR, INTERNAL, "can't read archive: %s",
 				archive_error_string(archive));
 		status = -1;
 		goto end;
@@ -298,13 +298,13 @@ end:
 	if (archive != NULL) {
 		status2 = archive_read_close(archive);
 		if (status2 != ARCHIVE_OK) {
-			notice(NULL, WARNING, INTERNAL, "can't close archive: %s",
+			note(NULL, WARNING, INTERNAL, "can't close archive: %s",
 				archive_error_string(archive));
 		}
 
 		status2 = archive_read_free(archive);
 		if (status2 != ARCHIVE_OK) {
-			notice(NULL, WARNING, INTERNAL, "can't free archive: %s",
+			note(NULL, WARNING, INTERNAL, "can't free archive: %s",
 				archive_error_string(archive));
 		}
 	}

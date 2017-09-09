@@ -20,10 +20,10 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h> /* mkdir(2), */
-#include <sys/stat.h> /* mkdir(2), */
+#include <sys/types.h> /* mkdir(2), lstat(2), */
+#include <sys/stat.h> /* mkdir(2), lstat(2), */
 #include <fcntl.h>    /* mknod(2), */
-#include <unistd.h>   /* mknod(2), */
+#include <unistd.h>   /* mknod(2), lstat(2), unlink(2), rmdir(2), */
 #include <string.h>   /* string(3),  */
 #include <assert.h>   /* assert(3), */
 #include <limits.h>   /* PATH_MAX, */
@@ -33,9 +33,56 @@
 #include "path/binding.h"
 #include "path/path.h"
 #include "path/temp.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #include "compat.h"
+
+/**
+ * Remove @path if it is empty only.
+ *
+ * Note: this is a Talloc destructor.
+ */
+static int remove_placeholder(char *path)
+{
+	struct stat statl;
+	int status;
+
+	status = lstat(path, &statl);
+	if (status)
+		return 0; /* Not fatal.  */
+
+	if (!S_ISDIR(statl.st_mode)) {
+		if (statl.st_size != 0)
+			return 0; /* Not fatal.  */
+		status = unlink(path);
+	}
+	else
+		status = rmdir(path);
+	if (status)
+		return 0; /* Not fatal.  */
+
+	return 0;
+}
+
+/**
+ * Attach a copy of @path to the autofree context, and set its
+ * destructor to remove_placeholder().
+ */
+static void set_placeholder_destructor(const char *path)
+{
+	TALLOC_CTX *autofreed;
+	char *placeholder;
+
+	autofreed = talloc_autofree_context();
+	if (autofreed == NULL)
+		return;
+
+	placeholder = talloc_strdup(autofreed, path);
+	if (placeholder == NULL)
+		return;
+
+	talloc_set_destructor(placeholder, remove_placeholder);
+}
 
 /**
  * Build in a temporary filesystem the glue between the guest part and
@@ -71,9 +118,9 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* Create the temporary directory where the "glue" rootfs will
 	 * lie.  */
 	if (tracee->glue == NULL) {
-		tracee->glue = create_temp_directory(tracee, tracee->tool_name);
+		tracee->glue = create_temp_directory(NULL, tracee->tool_name);
 		if (tracee->glue == NULL) {
-			notice(tracee, ERROR, INTERNAL, "can't create glue rootfs");
+			note(tracee, ERROR, INTERNAL, "can't create glue rootfs");
 			return 0;
 		}
 		talloc_set_name_const(tracee->glue, "$glue");
@@ -105,6 +152,11 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	else /* S_IFREG, S_IFCHR, S_IFBLK, S_IFIFO or S_IFSOCK.  */
 		status = mknod(host_path, mode | type, 0);
 
+	/* Remove placeholders from the guest rootfs once PRoot is
+	 * terminated.  */
+	if (status >= 0 && !belongs_to_gluefs)
+		set_placeholder_destructor(host_path);
+
 	/* Nothing else to do if the path already exists or if it is
 	 * the final component since it will be pointed to by the
 	 * binding being initialized (from the example,
@@ -115,7 +167,7 @@ mode_t build_glue(Tracee *tracee, const char *guest_path, char host_path[PATH_MA
 	/* mkdir/mknod are supposed to always succeed in
 	 * tracee->glue.  */
 	if (belongs_to_gluefs) {
-		notice(tracee, WARNING, SYSTEM, "mkdir/mknod");
+		note(tracee, WARNING, SYSTEM, "mkdir/mknod");
 		return 0;
 	}
 
@@ -123,23 +175,15 @@ create_binding:
 	/* Sanity checks.  */
 	if (   strnlen(tracee->glue, PATH_MAX) >= PATH_MAX
 	    || strnlen(guest_path, PATH_MAX) >= PATH_MAX) {
-		notice(tracee, WARNING, INTERNAL, "installing the binding: guest path too long");
+		note(tracee, WARNING, INTERNAL, "installing the binding: guest path too long");
 		return 0;
 	}
 
 	/* From the example, create the binding "/black" ->
 	 * "$GLUE/black".  */
-	binding = talloc_zero(tracee->glue, Binding);
+	binding = insort_binding3(tracee, tracee->glue, tracee->glue, guest_path);
 	if (binding == NULL)
 		return 0;
-
-	strcpy(binding->host.path, tracee->glue);
-	strcpy(binding->guest.path, guest_path);
-
-	binding->host.length = strlen(binding->host.path);
-	binding->guest.length = strlen(binding->guest.path);
-
-	insort_binding2(tracee, binding);
 
 	/* TODO: emulation of getdents(parent(guest_path)) to finalize
 	 * the glue, "black" in getdents("/") from the example.  */

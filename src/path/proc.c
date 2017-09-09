@@ -77,10 +77,6 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 	if (pid == 0)
 		return DEFAULT;
 
-	known_tracee = get_tracee(tracee, pid, false);
-	if (!known_tracee)
-		return DEFAULT;
-
 	/* Handle links in "/proc/<PID>/".  */
 	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d", pid);
 	if (status < 0 || (size_t) status >= sizeof(proc_path))
@@ -89,6 +85,10 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 	comparison = compare_paths(proc_path, base);
 	switch (comparison) {
 	case PATHS_ARE_EQUAL:
+		known_tracee = get_tracee(tracee, pid, false);
+		if (known_tracee == NULL)
+			return DEFAULT;
+
 #define SUBSTITUTE(name, string)				\
 		do {						\
 			if (strcmp(component, #name) != 0)	\

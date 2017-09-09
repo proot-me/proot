@@ -37,7 +37,6 @@
 #include <string.h>        /* memcpy(3), */
 #include <stddef.h>        /* offsetof(3), */
 #include <stdint.h>        /* uint*_t, UINT*_MAX, */
-#include <talloc.h>        /* talloc_*, */
 #include <assert.h>        /* assert(3), */
 
 #include "syscall/seccomp.h"
@@ -45,7 +44,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "extension/extension.h"
-#include "cli/notice.h"
+#include "cli/note.h"
 
 #include "compat.h"
 #include "attribute.h"
@@ -378,15 +377,14 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_open,		0 },
 	{ PR_openat,		0 },
 	{ PR_pivot_root,	0 },
+	{ PR_ptrace,		FILTER_SYSEXIT },
 	{ PR_readlink,		FILTER_SYSEXIT },
 	{ PR_readlinkat,	FILTER_SYSEXIT },
 	{ PR_removexattr,	0 },
 	{ PR_rename,		FILTER_SYSEXIT },
 	{ PR_renameat,		FILTER_SYSEXIT },
 	{ PR_rmdir,		0 },
-	{ PR_rt_sigreturn,	FILTER_SYSEXIT },
 	{ PR_setxattr,		0 },
-	{ PR_sigreturn,		FILTER_SYSEXIT },
 	{ PR_socketcall,	FILTER_SYSEXIT },
 	{ PR_stat,		0 },
 	{ PR_stat64,		0 },
@@ -407,6 +405,8 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_utime,		0 },
 	{ PR_utimensat,		0 },
 	{ PR_utimes,		0 },
+	{ PR_wait4,		FILTER_SYSEXIT },
+	{ PR_waitpid,		FILTER_SYSEXIT },
 	FILTERED_SYSNUM_END,
 };
 

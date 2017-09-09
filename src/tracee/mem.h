@@ -25,6 +25,7 @@
 
 #include <limits.h>    /* PATH_MAX, */
 #include <sys/types.h> /* pid_t, size_t, */
+#include <stdint.h>    /* pid_t, size_t, */
 #include <sys/uio.h>   /* struct iovec, */
 #include <errno.h>     /* ENAMETOOLONG, */
 
@@ -35,8 +36,8 @@ extern int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_
 extern int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *src_tracer, int src_tracer_count);
 extern int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t size);
 extern int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word_t max_size);
-extern word_t peek_mem(const Tracee *tracee, word_t address);
-extern void poke_mem(const Tracee *tracee, word_t address, word_t value);
+extern word_t peek_word(const Tracee *tracee, word_t address);
+extern void poke_word(const Tracee *tracee, word_t address, word_t value);
 extern word_t alloc_mem(Tracee *tracee, ssize_t size);
 extern int clear_mem(const Tracee *tracee, word_t address, size_t size);
 
@@ -59,5 +60,53 @@ static inline int read_path(const Tracee *tracee, char dest_tracer[PATH_MAX], wo
 
 	return status;
 }
+
+/**
+ * Generate a function that returns the value of the @type at the
+ * given @address in the @tracee's memory space.  The caller must test
+ * errno to check if an error occured.
+ */
+#define GENERATE_peek(type)							\
+static inline type ## _t peek_ ## type(const Tracee *tracee, word_t address) 	\
+{										\
+	type ## _t result;							\
+	errno = -read_data(tracee, &result, address, sizeof(type ## _t));	\
+	return result;								\
+}
+
+GENERATE_peek(uint8);
+GENERATE_peek(uint16);
+GENERATE_peek(uint32);
+GENERATE_peek(uint64);
+
+GENERATE_peek(int8);
+GENERATE_peek(int16);
+GENERATE_peek(int32);
+GENERATE_peek(int64);
+
+#undef GENERATE_peek
+
+/**
+ * Generate a function that set the @type at the given @address in the
+ * @tracee's memory space to the given @value.  The caller must test
+ * errno to check if an error occured.
+ */
+#define GENERATE_poke(type)							\
+static inline void poke_ ## type(const Tracee *tracee, word_t address, type ## _t value) \
+{										\
+	errno = -write_data(tracee, address, &value, sizeof(type ## _t));	\
+}
+
+GENERATE_poke(uint8);
+GENERATE_poke(uint16);
+GENERATE_poke(uint32);
+GENERATE_poke(uint64);
+
+GENERATE_poke(int8);
+GENERATE_poke(int16);
+GENERATE_poke(int32);
+GENERATE_poke(int64);
+
+#undef GENERATE_poke
 
 #endif /* TRACEE_MEM_H */

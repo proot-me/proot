@@ -30,6 +30,7 @@
 #include <linux/audit.h> /* AUDIT_ARCH_*,  */
 #include <string.h>      /* memcpy(3), */
 #include <stdlib.h>      /* strtol(3), */
+#include <linux/auxvec.h>/* AT_,  */
 
 #include "extension/extension.h"
 #include "syscall/syscall.h"
@@ -38,6 +39,7 @@
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
+#include "execve/auxv.h"
 #include "path/binding.h"
 #include "arch.h"
 
@@ -65,6 +67,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_chown,		FILTER_SYSEXIT },
 	{ PR_chown32,		FILTER_SYSEXIT },
 	{ PR_chroot,		FILTER_SYSEXIT },
+	{ PR_execve,		FILTER_SYSEXIT },
 	{ PR_fchmod,		FILTER_SYSEXIT },
 	{ PR_fchmodat,		FILTER_SYSEXIT },
 	{ PR_fchown,		FILTER_SYSEXIT },
@@ -93,6 +96,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_lstat,		FILTER_SYSEXIT },
 	{ PR_lstat64,		FILTER_SYSEXIT },
 	{ PR_mknod,		FILTER_SYSEXIT },
+	{ PR_mknodat,		FILTER_SYSEXIT },
 	{ PR_newfstatat,	FILTER_SYSEXIT },
 	{ PR_oldlstat,		FILTER_SYSEXIT },
 	{ PR_oldstat,		FILTER_SYSEXIT },
@@ -115,6 +119,10 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_setuid,		FILTER_SYSEXIT },
 	{ PR_setuid32,		FILTER_SYSEXIT },
 	{ PR_setxattr,		FILTER_SYSEXIT },
+	{ PR_setdomainname,	FILTER_SYSEXIT },
+	{ PR_sethostname,	FILTER_SYSEXIT },
+	{ PR_lsetxattr,		FILTER_SYSEXIT },
+	{ PR_fsetxattr,		FILTER_SYSEXIT },
 	{ PR_stat,		FILTER_SYSEXIT },
 	{ PR_stat64,		FILTER_SYSEXIT },
 	{ PR_statfs,		FILTER_SYSEXIT },
@@ -304,11 +312,9 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
  * Copy config->@field to the tracee's memory location pointed to by @sysarg.
  */
 #define POKE_MEM_ID(sysarg, field) do {					\
-	int status = write_data(tracee,					\
-			peek_reg(tracee, ORIGINAL, sysarg),		\
-			&config->field, sizeof(config->field));		\
-	if (status < 0)							\
-		return status;						\
+	poke_uint16(tracee, peek_reg(tracee, ORIGINAL, sysarg), config->field);	\
+	if (errno != 0)							\
+		return -errno;						\
 } while (0)
 
 /**
@@ -570,11 +576,16 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		POKE_MEM_ID(SYSARG_3, sgid);
 		return 0;
 
+	case PR_setdomainname:
+	case PR_sethostname:
 	case PR_setgroups:
 	case PR_setgroups32:
 	case PR_mknod:
+	case PR_mknodat:
 	case PR_capset:
 	case PR_setxattr:
+	case PR_lsetxattr:
+	case PR_fsetxattr:
 	case PR_chmod:
 	case PR_chown:
 	case PR_fchmod:
@@ -609,8 +620,9 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	case PR_lstat:
 	case PR_fstat: {
 		word_t address;
-		word_t uid, gid;
 		Reg sysarg;
+		uid_t uid;
+		gid_t gid;
 
 		/* Override only if it succeed.  */
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
@@ -625,25 +637,26 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 		address = peek_reg(tracee, ORIGINAL, sysarg);
 
+		/* Sanity checks.  */
+		assert(__builtin_types_compatible_p(uid_t, uint32_t));
+		assert(__builtin_types_compatible_p(gid_t, uint32_t));
+
 		/* Get the uid & gid values from the 'stat' structure.  */
-		uid = peek_mem(tracee, address + offsetof_stat_uid(tracee));
+		uid = peek_uint32(tracee, address + offsetof_stat_uid(tracee));
 		if (errno != 0)
 			uid = 0; /* Not fatal.  */
 
-		gid = peek_mem(tracee, address + offsetof_stat_gid(tracee));
+		gid = peek_uint32(tracee, address + offsetof_stat_gid(tracee));
 		if (errno != 0)
 			gid = 0; /* Not fatal.  */
-
-		/* These values are 32-bit width, even on 64-bit architecture.  */
-		uid &= 0xFFFFFFFF;
-		gid &= 0xFFFFFFFF;
 
 		/* Override only if the file is owned by the current user.
 		 * Errors are not fatal here.  */
 		if (uid == getuid())
-			poke_mem(tracee, address + offsetof_stat_uid(tracee), config->ruid);
+			poke_uint32(tracee, address + offsetof_stat_uid(tracee), config->ruid);
+
 		if (gid == getgid())
-			poke_mem(tracee, address + offsetof_stat_gid(tracee), config->rgid);
+			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->rgid);
 
 		return 0;
 	}
@@ -690,6 +703,53 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 #undef EQUALS_ANY_ID
 #undef SETRESXID
 #undef SETFSXID
+
+/**
+ * Adjust some ELF auxiliary vectors.  This function assumes the
+ * "argv, envp, auxv" stuff is pointed to by @tracee's stack pointer,
+ * as expected right after a successful call to execve(2).
+ */
+static int adjust_elf_auxv(Tracee *tracee, Config *config)
+{
+	ElfAuxVector *vectors;
+	ElfAuxVector *vector;
+	word_t vectors_address;
+
+	vectors_address = get_elf_aux_vectors_address(tracee);
+	if (vectors_address == 0)
+		return 0;
+
+	vectors = fetch_elf_aux_vectors(tracee, vectors_address);
+	if (vectors == NULL)
+		return 0;
+
+	for (vector = vectors; vector->type != AT_NULL; vector++) {
+		switch (vector->type) {
+		case AT_UID:
+			vector->value = config->ruid;
+			break;
+
+		case AT_EUID:
+			vector->value = config->euid;
+			break;
+
+		case AT_GID:
+			vector->value = config->rgid;
+			break;
+
+		case AT_EGID:
+			vector->value = config->egid;
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	push_elf_aux_vectors(tracee, vectors, vectors_address);
+
+	return 0;
+}
 
 /**
  * Handler for this @extension.  It is triggered each time an @event
@@ -787,6 +847,19 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		Config *config = talloc_get_type_abort(extension->config, Config);
 
 		return handle_sysexit_end(tracee, config);
+	}
+
+	case SYSCALL_EXIT_START: {
+		Tracee *tracee = TRACEE(extension);
+		Config *config = talloc_get_type_abort(extension->config, Config);
+		word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);;
+		word_t sysnum = get_sysnum(tracee, ORIGINAL);
+
+		/* Note: this can be done only before PRoot pushes the
+		 * load script into tracee's stack.  */
+		if ((int) result >= 0 && sysnum == PR_execve)
+			adjust_elf_auxv(tracee, config);
+		return 0;
 	}
 
 	default:

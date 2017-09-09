@@ -63,7 +63,7 @@
 	    href="https://groups.google.com/forum/?fromgroups#!forum/reproducible">the
 	    forum</a>, but please be sure that your answer isn't in
 	    the <a
-	    href="https://raw.github.com/cedric-vincent/PRoot/next/doc/care-manual.txt">user
+	    href="https://raw.github.com/cedric-vincent/PRoot/next/doc/care/manual.txt">user
 	    manual</a> first.
 	    </p>
 	  </div>

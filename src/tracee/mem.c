@@ -29,7 +29,7 @@
 #include <assert.h>     /* assert(3), */
 #include <sys/wait.h>   /* waitpid(2), */
 #include <string.h>     /* memcpy(3), */
-#include <stdint.h>     /* uint8_t, */
+#include <stdint.h>     /* uint*_t, */
 #include <sys/uio.h>    /* process_vm_*, struct iovec, */
 #include <unistd.h>     /* sysconf(3), */
 #include <sys/mman.h>   /* mmap(2), munmap(2), MAP_*, */
@@ -39,7 +39,7 @@
 #include "syscall/heap.h"
 #include "arch.h"            /* word_t, NO_MISALIGNED_ACCESS */
 #include "build.h"           /* HAVE_PROCESS_VM,  */
-#include "cli/notice.h"
+#include "cli/note.h"
 
 /**
  * Load the word at the given @address, potentially *not* aligned.
@@ -120,7 +120,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 	for (i = 0; i < nb_full_words; i++) {
 		status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, load_word(&src[i]));
 		if (status < 0) {
-			notice(tracee, WARNING, SYSTEM, "ptrace(POKEDATA)");
+			note(tracee, WARNING, SYSTEM, "ptrace(POKEDATA)");
 			return -EFAULT;
 		}
 	}
@@ -133,7 +133,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 
 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, dest + i, NULL);
 	if (errno != 0) {
-		notice(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
+		note(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 
@@ -145,7 +145,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 
 	status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, word);
 	if (status < 0) {
-		notice(tracee, WARNING, SYSTEM, "ptrace(POKEDATA)");
+		note(tracee, WARNING, SYSTEM, "ptrace(POKEDATA)");
 		return -EFAULT;
 	}
 
@@ -240,7 +240,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 	for (i = 0; i < nb_full_words; i++) {
 		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0) {
-			notice(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
+			note(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
 			return -EFAULT;
 		}
 		store_word(&dest[i], word);
@@ -254,7 +254,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 
 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0) {
-		notice(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
+		note(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
 		return -EFAULT;
 	}
 
@@ -405,7 +405,7 @@ fallback:
  * memory space.  The caller must test errno to check if an error
  * occured.
  */
-word_t peek_mem(const Tracee *tracee, word_t address)
+word_t peek_word(const Tracee *tracee, word_t address)
 {
 	word_t result = 0;
 
@@ -453,7 +453,7 @@ word_t peek_mem(const Tracee *tracee, word_t address)
  * the given @value.  The caller must test errno to check if an error
  * occured.
  */
-void poke_mem(const Tracee *tracee, word_t address, word_t value)
+void poke_word(const Tracee *tracee, word_t address, word_t value)
 {
 	word_t tmp;
 
@@ -513,6 +513,13 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 {
 	word_t stack_pointer;
 
+	/* This function should be called in sysenter only since the
+	 * stack pointer is systematically restored at the end of
+	 * sysexit (except for execve, but in this case the stack
+	 * pointer should be handled with care since it is used by the
+	 * process to retrieve argc, argv, envp, and auxv).  */
+	assert(IS_IN_SYSENTER(tracee));
+
 	/* Get the current value of the stack pointer from the tracee's
 	 * USER area. */
 	stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
@@ -526,7 +533,7 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= (word_t) size)
 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-		notice(tracee, WARNING, INTERNAL, "integer under/overflow detected in %s",
+		note(tracee, WARNING, INTERNAL, "integer under/overflow detected in %s",
 			__FUNCTION__);
 		return 0;
 	}

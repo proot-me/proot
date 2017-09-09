@@ -28,6 +28,7 @@
 #include <unistd.h>    /* access(2), lstat(2), */
 #include <string.h>    /* string(3), */
 #include <assert.h>    /* assert(3), */
+#include <stdio.h>     /* sscanf(3), */
 
 #include "path/canon.h"
 #include "path/path.h"
@@ -35,6 +36,94 @@
 #include "path/glue.h"
 #include "path/proc.h"
 #include "extension/extension.h"
+
+/**
+ * Put an end-of-string ('\0') right before the last component of @path.
+ */
+static inline void pop_component(char *path)
+{
+	int offset;
+
+	/* Sanity checks. */
+	assert(path != NULL);
+
+	offset = strlen(path) - 1;
+	assert(offset >= 0);
+
+	/* Don't pop over "/", it doesn't mean anything. */
+	if (offset == 0) {
+		assert(path[0] == '/' && path[1] == '\0');
+		return;
+	}
+
+	/* Skip trailing path separators. */
+	while (offset > 1 && path[offset] == '/')
+		offset--;
+
+	/* Search for the previous path separator. */
+	while (offset > 1 && path[offset] != '/')
+		offset--;
+
+	/* Cut the end of the string before the last component. */
+	path[offset] = '\0';
+	assert(path[0] == '/');
+}
+
+/**
+ * Copy in @component the first path component pointed to by @cursor,
+ * this later is updated to point to the next component for a further
+ * call. This function returns:
+ *
+ *     - -errno if an error occured.
+ *
+ *     - FINAL_SLASH if it the last component of the path but we
+ *       really expect a directory.
+ *
+ *     - FINAL_NORMAL if it the last component of the path.
+ *
+ *     - 0 otherwise.
+ */
+static inline Finality next_component(char component[NAME_MAX], const char **cursor)
+{
+	const char *start;
+	ptrdiff_t length;
+	bool want_dir;
+
+	/* Sanity checks. */
+	assert(component != NULL);
+	assert(cursor    != NULL);
+
+	/* Skip leading path separators. */
+	while (**cursor != '\0' && **cursor == '/')
+		(*cursor)++;
+
+	/* Find the next component. */
+	start = *cursor;
+	while (**cursor != '\0' && **cursor != '/')
+		(*cursor)++;
+	length = *cursor - start;
+
+	if (length >= NAME_MAX)
+		return -ENAMETOOLONG;
+
+	/* Extract the component. */
+	strncpy(component, start, length);
+	component[length] = '\0';
+
+	/* Check if a [link to a] directory is expected. */
+	want_dir = (**cursor == '/');
+
+	/* Skip trailing path separators. */
+	while (**cursor != '\0' && **cursor == '/')
+		(*cursor)++;
+
+	if (**cursor == '\0')
+		return (want_dir
+			? FINAL_SLASH
+			: FINAL_NORMAL);
+
+	return NOT_FINAL;
+}
 
 /**
  * Resolve bindings (if any) in @guest_path and copy the translated
@@ -195,7 +284,7 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 			case DONT_CANONICALIZE:
 				/* If and only very final, this symlink
 				 * shouldn't be dereferenced nor canonicalized.  */
-				if (finality == FINAL_NORMAL && recursion_level == 0) {
+				if (finality == FINAL_NORMAL) {
 					strcpy(guest_path, scratch_path);
 					return 0;
 				}
@@ -238,8 +327,9 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		if (status < 0)
 			return status;
 
-		/* Here, 'guest_path' shouldn't be a symlink anymore.  */
-		assert(status != 1);
+		/* Here, 'guest_path' shouldn't be a symlink anymore,
+		 * unless it is a named file descriptor.  */
+		assert(status != 1 || sscanf(guest_path, "/proc/%*d/fd/%d", &status) == 1);
 	}
 
 	/* At the exit stage of the first level of recursion,

@@ -28,12 +28,16 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/socket.h"
+#include "syscall/chain.h"
 #include "syscall/heap.h"
+#include "execve/execve.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "path/path.h"
+#include "ptrace/ptrace.h"
+#include "ptrace/wait.h"
 #include "extension/extension.h"
 #include "arch.h"
 
@@ -71,11 +75,9 @@ void translate_syscall_exit(Tracee *tracee)
 	syscall_number = get_sysnum(tracee, ORIGINAL);
 	syscall_result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	switch (syscall_number) {
-#if !defined(ARCH_X86)
 	case PR_brk:
 		translate_brk_exit(tracee);
 		goto end;
-#endif
 
 	case PR_getcwd: {
 		char path[PATH_MAX];
@@ -142,16 +144,18 @@ void translate_syscall_exit(Tracee *tracee)
 
 #define SYSARG_ADDR(n) (args_addr + ((n) - 1) * sizeof_word(tracee))
 
-#define POKE_MEM(addr, value) poke_mem(tracee, addr, value);	\
-	if (errno != 0) {					\
-		status = -errno;				\
-		break;						\
+#define POKE_WORD(addr, value)			\
+	poke_word(tracee, addr, value);		\
+	if (errno != 0)	{			\
+		status = -errno;		\
+		break;				\
 	}
 
-#define PEEK_MEM(addr) peek_mem(tracee, addr);			\
-	if (errno != 0) {					\
-		status = -errno;				\
-		break;						\
+#define PEEK_WORD(addr)				\
+	peek_word(tracee, addr);		\
+	if (errno != 0) {			\
+		status = -errno;		\
+		break;				\
 	}
 
 	case PR_socketcall: {
@@ -166,7 +170,7 @@ void translate_syscall_exit(Tracee *tracee)
 		case SYS_ACCEPT:
 		case SYS_ACCEPT4:
 			/* Nothing special to do if no sockaddr was specified.  */
-			sock_addr = PEEK_MEM(SYSARG_ADDR(2));
+			sock_addr = PEEK_WORD(SYSARG_ADDR(2));
 			if (sock_addr == 0)
 				goto end;
 			/* Fall through.  */
@@ -179,11 +183,11 @@ void translate_syscall_exit(Tracee *tracee)
 		case SYS_BIND:
 		case SYS_CONNECT:
 			/* Restore the initial parameters: this memory was
-			 * overwritten at the enter stage.  Remember: POKE_MEM
+			 * overwritten at the enter stage.  Remember: POKE_WORD
 			 * puts -errno in status and breaks if an error
 			 * occured.  */
-			POKE_MEM(SYSARG_ADDR(2), peek_reg(tracee, MODIFIED, SYSARG_5));
-			POKE_MEM(SYSARG_ADDR(3), peek_reg(tracee, MODIFIED, SYSARG_6));
+			POKE_WORD(SYSARG_ADDR(2), peek_reg(tracee, MODIFIED, SYSARG_5));
+			POKE_WORD(SYSARG_ADDR(3), peek_reg(tracee, MODIFIED, SYSARG_6));
 
 			status = 0;
 			break;
@@ -201,10 +205,10 @@ void translate_syscall_exit(Tracee *tracee)
 		if (status < 0)
 			break;
 
-		/* Remember: PEEK_MEM puts -errno in status and breaks if an
+		/* Remember: PEEK_WORD puts -errno in status and breaks if an
 		 * error occured.  */
-		sock_addr = PEEK_MEM(SYSARG_ADDR(2));
-		size_addr = PEEK_MEM(SYSARG_ADDR(3));
+		sock_addr = PEEK_WORD(SYSARG_ADDR(2));
+		size_addr = PEEK_WORD(SYSARG_ADDR(3));
 		max_size  = peek_reg(tracee, MODIFIED, SYSARG_6);
 
 		status = translate_socketcall_exit(tracee, sock_addr, size_addr, max_size);
@@ -216,8 +220,8 @@ void translate_syscall_exit(Tracee *tracee)
 	}
 
 #undef SYSARG_ADDR
-#undef PEEK_MEM
-#undef POKE_MEM
+#undef PEEK_WORD
+#undef POKE_WORD
 
 	case PR_fchdir:
 	case PR_chdir:
@@ -247,7 +251,7 @@ void translate_syscall_exit(Tracee *tracee)
 		}
 		else {
 			old_reg = SYSARG_2;
-			new_reg = SYSARG_3;
+			new_reg = SYSARG_4;
 		}
 
 		/* Get the old path, then convert it to the same
@@ -422,21 +426,25 @@ void translate_syscall_exit(Tracee *tracee)
 #endif
 
 	case PR_execve:
-		if ((int) syscall_result >= 0) {
-			/* New processes have no heap.  */
-			bzero(tracee->heap, sizeof(Heap));
-	case PR_rt_sigreturn:
-	case PR_sigreturn:
-			tracee->restore_original_regs = false;
-		}
+		translate_execve_exit(tracee);
 		goto end;
+
+	case PR_ptrace:
+		status = translate_ptrace_exit(tracee);
+		break;
+
+	case PR_wait4:
+	case PR_waitpid:
+		if (tracee->as_ptracer.waits_in != WAITS_IN_PROOT)
+			goto end;
+
+		status = translate_wait_exit(tracee);
+		break;
 
 	default:
 		goto end;
 	}
 
-
-	/* "status" was updated in syscall/exit.c.  */
 	poke_reg(tracee, SYSARG_RESULT, (word_t) status);
 
 end:

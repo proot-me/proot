@@ -20,13 +20,16 @@
  * 02110-1301 USA.
  */
 
-#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
-#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
-
 #ifndef ARCH_H
 #define ARCH_H
 
+#ifndef NO_LIBC_HEADER
+#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
+#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
+#endif
+
 typedef unsigned long word_t;
+typedef unsigned char byte_t;
 
 #define SYSCALL_AVOIDER ((word_t) -2)
 #define SYSTRAP_NUM SYSARG_NUM
@@ -74,6 +77,14 @@ typedef unsigned long word_t;
     #define OFFSETOF_STAT_UID_32 24
     #define OFFSETOF_STAT_GID_32 28
 
+    #define LOADER_ADDRESS 0x600000000000
+    #define HAS_LOADER_32BIT true
+
+    #define EXEC_PIC_ADDRESS   0x500000000000
+    #define INTERP_PIC_ADDRESS 0x6f0000000000
+    #define EXEC_PIC_ADDRESS_32   0x0f000000
+    #define INTERP_PIC_ADDRESS_32 0xaf000000
+
 #elif defined(ARCH_ARM_EABI)
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-arm.h"
@@ -90,6 +101,11 @@ typedef unsigned long word_t;
     #define OFFSETOF_STAT_GID_32 0
     #define EM_ARM 40
 
+    #define LOADER_ADDRESS 0x10000000
+
+    #define EXEC_PIC_ADDRESS   0x0f000000
+    #define INTERP_PIC_ADDRESS 0x1f000000
+
     /* The syscall number has to be valid on ARM, so use tuxcall(2) as
      * the "void" syscall since it has no side effects.  */
     #undef SYSCALL_AVOIDER
@@ -102,7 +118,8 @@ typedef unsigned long word_t;
 
     #define SYSTRAP_SIZE 4
 
-    #define user_regs_struct user_pt_regs
+    #define SECCOMP_ARCHS { }
+
     #define HOST_ELF_MACHINE {183, 0};
     #define RED_ZONE_SIZE 0
     #define OFFSETOF_STAT_UID_32 0
@@ -124,12 +141,20 @@ typedef unsigned long word_t;
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
 
+    #define LOADER_ADDRESS 0xa0000000
+    #define LOADER_ARCH_CFLAGS -mregparm=3
+
+    #define EXEC_PIC_ADDRESS   0x0f000000
+    #define INTERP_PIC_ADDRESS 0xaf000000
+
 #elif defined(ARCH_SH4)
 
     #define SYSNUMS_HEADER1 "syscall/sysnums-sh4.h"
     #define SYSNUMS_ABI1    sysnums_sh4
 
     #define SYSTRAP_SIZE 2
+
+    #define SECCOMP_ARCHS { }
 
     #define user_regs_struct pt_regs
     #define HOST_ELF_MACHINE {42, 0};

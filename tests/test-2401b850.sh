@@ -1,4 +1,4 @@
-if [ -z `which mcookie` ] || [ -z `which echo` ] || [ -z `which rm` ] || [ -z `which realpath` ] || [ -z `which touch` ] || [ -z `which chmod` ] || [ -z `which grep` ]; then
+if [ -z `which mcookie` ] || [ -z `which echo` ] || [ -z `which rm` ] || [ -z `which touch` ] || [ -z `which chmod` ] || [ -z `which grep` ]; then
     exit 125;
 fi
 
@@ -12,16 +12,16 @@ chmod +x ${TMP}
 # Valgrind prepends "/bin/sh" in front of foreign binaries and uses
 # LD_PRELOAD.
 if $(echo ${PROOT} | grep -q valgrind); then
-    ENV=$(realpath $(which env))
+    ENV=$(which env)
     PROOT="env PROOT_FORCE_FOREIGN_BINARY=1 ${PROOT}"
     COMMAND1="-E LD_PRELOAD=.* -0 /bin/sh /bin/sh ${TMP}"
     TEST1="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env ${ENV} LD_LIBRARY_PATH=test1 ${TMP}"
     TEST2="-- -E LD_PRELOAD=.* -E LD_LIBRARY_PATH=test2 -0 /bin/sh /bin/sh ${TMP}"
     TEST3="-- -E LD_PRELOAD=.* -E LD_LIBRARY_PATH=test2 -0 env ${ENV} LD_LIBRARY_PATH=test1 ${TMP}"
     TEST4="-- -U LD_LIBRARY_PATH -E LD_PRELOAD=.* -0 env ${ENV} LD_TRACE_LOADED_OBJECTS=1 ${TMP}"
-    TEST5="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 sh /bin/bash -c ${TMP}"
-    TEST52="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 sh /bin/bash -c sh -c ${TMP}"
-    TEST6="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 env /bin/env LD_LIBRARY_PATH=test6 ${TMP}"
+    TEST5="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 sh /bin/sh -c ${TMP}"
+    TEST52="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 sh /bin/sh -c sh -c ${TMP}"
+    TEST6="-- -E LD_PRELOAD= -E LD_LIBRARY_PATH=test5 -0 env ${ENV} LD_LIBRARY_PATH=test6 ${TMP}"
     COMMAND2="-E LD_PRELOAD=.* -0 ${TMP} ${TMP} ${TMP2}"
 else
     COMMAND1="-0 ${TMP} ${TMP}"
@@ -35,25 +35,25 @@ else
     COMMAND2="-0 ${TMP} ${TMP} ${TMP2}"
 fi
 
-  ${PROOT} -q true / ${TMP}
-! ${PROOT} -q false / ${TMP}
+  ${PROOT} -q true ${TMP}
+! ${PROOT} -q false ${TMP}
 [ $? -eq 0 ]
 
-  (cd /; ${PROOT} -q ./$(which true) / ${TMP})
-! (cd /; ${PROOT} -q ./$(which false) / ${TMP})
+  (cd /; ${PROOT} -q ./$(which true) ${TMP})
+! (cd /; ${PROOT} -q ./$(which false) ${TMP})
 [ $? -eq 0 ]
 
-HOST_LD_LIBRARY_PATH=$(${PROOT} -q 'echo --' / env | grep LD_LIBRARY_PATH)
+HOST_LD_LIBRARY_PATH=$(${PROOT} -q 'echo --' env | grep LD_LIBRARY_PATH)
 test ! -z "${HOST_LD_LIBRARY_PATH}"
 
 unset LD_LIBRARY_PATH
-${PROOT} -q 'echo --' / ${TMP} | grep -- "^-- -U LD_LIBRARY_PATH ${COMMAND1}$"
-${PROOT} -q 'echo --' / env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST1}$"
-env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' / ${TMP} | grep -- "^${TEST2}$"
+${PROOT} -q 'echo --' ${TMP} | grep -- "^-- -U LD_LIBRARY_PATH ${COMMAND1}$"
+${PROOT} -q 'echo --' env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST1}$"
+env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' ${TMP} | grep -- "^${TEST2}$"
 
-env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' / env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST3}$"
+env LD_LIBRARY_PATH=test2 ${PROOT} -q 'echo --' env LD_LIBRARY_PATH=test1 ${TMP} | grep -- "^${TEST3}$"
 
-${PROOT} -q 'echo --' / env LD_TRACE_LOADED_OBJECTS=1 ${TMP} | grep -E -- "^${TEST4}$"
+${PROOT} -q 'echo --' env LD_TRACE_LOADED_OBJECTS=1 ${TMP} | grep -E -- "^${TEST4}$"
 
 env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c ${TMP} | grep -- "^${TEST5}$"
 env LD_LIBRARY_PATH=test5 ${PROOT} -q 'echo --' sh -c "sh -c ${TMP}" | grep -- "^${TEST52}$"
