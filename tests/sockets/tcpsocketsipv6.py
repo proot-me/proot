@@ -4,7 +4,7 @@ import os
 import time
 
 HOST = '::1'
-PORT = 5432
+PORT = 6432
 
 pid = os.fork()
 addrs = socket.getaddrinfo(HOST, PORT, socket.AF_INET6, 0, socket.SOL_TCP)[0][-1]

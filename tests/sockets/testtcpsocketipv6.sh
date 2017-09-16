@@ -11,8 +11,8 @@ start_ips_program() {
 #  Instance 1:  bind                         connect send&close
 #  Instance 2:       bind connect send&close
 
-start_ips_program 5432:54320 1 3 1 &
-start_ips_program 5432:54321 2 3 1
+start_ips_program 6432:56320 1 3 1 &
+start_ips_program 6432:56321 2 3 1
 #start_ips_program 10 0 1 0
 
 # If PRoot allows these two processes to proceed without errors, the test passes.
