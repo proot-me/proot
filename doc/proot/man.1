@@ -650,18 +650,24 @@ checking whether the C compiler is a cross\-compiler... no
 .SS PRoot
 .sp
 The latest release of PRoot is packaged on \fI\%http://packages.proot.me\fP
-and sources are hosted on \fI\%http://github.proot.me\fP\&.  It is also
-available as highly compatible static binaries:
+and sources are hosted on \fI\%http://scm.proot.me\fP\&.  It is also available
+as highly compatible static binaries:
 .INDENT 0.0
 .IP \(bu 2
-for x86_64: \fI\%http://static.proot.me/proot\-x86_64\fP
+for x86_64: \fI\%http://portable.proot.me/proot\-x86_64\fP
 .IP \(bu 2
-for x86: \fI\%http://static.proot.me/proot\-x86\fP
+for x86: \fI\%http://portable.proot.me/proot\-x86\fP
 .IP \(bu 2
-for ARM: \fI\%http://static.proot.me/proot\-arm\fP
+for ARM: \fI\%http://portable.proot.me/proot\-arm\fP
 .IP \(bu 2
 other architectures: on demand.
 .UNINDENT
+.sp
+Such binaries are created using the following build\-system:
+\fI\%http://build.proot.me\fP\&.  It makes sure that they can run on any distros
+powered by the Linux kernel version 2.6.0 or later, nothing more.
+Ultimately these binaries can even run on Linux systems where no
+libraries are installed.
 .SS Rootfs
 .sp
 Here follows a couple of URLs where some rootfs archives can be freely
@@ -693,15 +699,109 @@ tar \-\-one\-file\-system \-\-create \-\-gzip \-\-file my_rootfs.tar.gz /
 .fi
 .UNINDENT
 .UNINDENT
-.SS QEMU user\-mode
+.SH ECOSYSTEM
 .sp
-QEMU user\-mode is required only if the guest rootfs was made for a CPU
-architecture incompatible with the host one, for instance when using a
-ARM rootfs on a x86_64 computer.  This package can be installed either
-from \fI\%http://qemu.proot.me\fP or from the host package manager under the
-name of "qemu\-user" on most Linux distro.  In case one would like to
-build QEMU user\-mode from sources, the \fB\-\-enable\-linux\-user\fP option
-has to be specified to the \fB\&./configure\fP script.
+The following ecosystem has developed around PRoot since it has been
+made publicly available.
+.SS Projects using PRoot or CARE
+.INDENT 0.0
+.IP \(bu 2
+\fI\%CARE\fP: archive material used during an execution to make it
+reproducible on any Linux system.
+.IP \(bu 2
+\fI\%GNURoot\fP:
+use several Linux distros on Android without root access.
+.IP \(bu 2
+\fI\%Debian noroot\fP:
+use Debian Linux on Android without root access.
+.IP \(bu 2
+\fI\%Polysquare Travis Container\fP:
+use several Linux distros on Travis\-CI without root access.
+.IP \(bu 2
+\fI\%JuJu\fP:
+use Arch Linux on any Linux distros without root access.
+.IP \(bu 2
+\fI\%Brickstrap\fP:
+create ev3dev file system images.
+.IP \(bu 2
+\fI\%Portable PyPy\fP:
+portable 32 and 64 bit x86 PyPy binaries.
+.IP \(bu 2
+\fI\%OpenMOLE\fP:
+execute programs on distributed computing environments.
+.IP \(bu 2
+\fI\%ATOS\fP:
+find automatically C/C++ compiler options that provide best
+optimizations.
+.IP \(bu 2
+\fI\%OPAM2Debian\fP:
+create Debian packages which contains a fully compiled OPAM
+installation.
+.IP \(bu 2
+\fI\%SIO Workers\fP:
+batch long\-term computations with Python.
+.UNINDENT
+.SS Third party packages
+.sp
+Binaries from the \fI\%Downloads\fP section are likely more up\-to\-date.
+.INDENT 0.0
+.IP \(bu 2
+\fI\%Arch Linux (PRoot)\fP
+.IP \(bu 2
+\fI\%Arch Linux (CARE)\fP
+.IP \(bu 2
+\fI\%Gentoo\fP
+.IP \(bu 2
+\fI\%Debian\fP
+.IP \(bu 2
+\fI\%Ubuntu\fP
+.IP \(bu 2
+\fI\%NixOS\fP
+.IP \(bu 2
+\fI\%KaOS\fP
+.IP \(bu 2
+\fI\%University of Chicago RCC\fP
+.UNINDENT
+.SS Public material about PRoot or CARE
+.INDENT 0.0
+.IP \(bu 2
+articles on \fI\%Rémi\(aqs blog\fP\&.  Rémi (a.k.a Ivoire)
+is one of the PRoot developers.
+.IP \(bu 2
+presentation "\fI\%Software engineering tools based on syscall
+instrumentation\fP" during
+FOSDEM 2014.
+.IP \(bu 2
+presentation "\fI\%SW testing & Reproducing a LAVA failures locally
+using CARE\fP"
+during Linaro Connect USA 2014
+.IP \(bu 2
+presentation and essay "\fI\%CARE: the Comprehensive Archiver for
+Reproducible Execution\fP"
+(\fI\%essay\fP)
+during TRUST 2014
+.IP \(bu 2
+presentation "\fI\%An Introduction to the CARE tool\fP"
+during HiPEAC CSW 2013
+.IP \(bu 2
+presentation and essay "\fI\%PRoot: a Step Forward for QEMU User\-Mode\fP" (\fI\%proceedings\fP) during
+QUF\(aq11
+.IP \(bu 2
+tutorial "\fI\%How to install nix in home (on another distribution)\fP"
+.UNINDENT
+.SS Companies using PRoot or CARE internally
+.INDENT 0.0
+.IP \(bu 2
+STMicroelectronics (main sponsor)
+.IP \(bu 2
+Sony
+.IP \(bu 2
+Ericsson
+.IP \(bu 2
+Cisco
+.IP \(bu 2
+Gogo
+.UNINDENT
 .SH SEE ALSO
 .sp
 chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1),
@@ -709,7 +809,7 @@ bindfs(1), fakeroot(1), fakechroot(1)
 .SH COLOPHON
 .sp
 Visit \fI\%http://proot.me\fP for help, bug reports, suggestions, patches, ...
-Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.
+Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
 .INDENT 0.0
 .INDENT 3.5
 .sp

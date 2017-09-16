@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -132,7 +132,7 @@ static inline Finality next_component(char component[NAME_MAX], const char **cur
  * (returned value is 1), otherwise it returns -errno (-ENOENT or
  * -ENOTDIR).
  */
-static inline int substitute_binding_stat(Tracee *tracee, Finality finality,
+static inline int substitute_binding_stat(Tracee *tracee, Finality finality, unsigned int recursion_level,
 					const char guest_path[PATH_MAX], char host_path[PATH_MAX])
 {
 	struct stat statl;
@@ -145,7 +145,8 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality finality,
 
 	/* Don't notify extensions during the initialization of a binding.  */
 	if (tracee->glue_type == 0) {
-		status = notify_extensions(tracee, HOST_PATH, (intptr_t)host_path, finality);
+		status = notify_extensions(tracee, HOST_PATH, (intptr_t)host_path,
+					IS_FINAL(finality) && recursion_level == 0);
 		if (status < 0)
 			return status;
 	}
@@ -245,7 +246,7 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		 * symlink.  For this latter case, we check that the
 		 * symlink points to a directory once it is
 		 * canonicalized, at the end of this loop.  */
-		status = substitute_binding_stat(tracee, finality, scratch_path, host_path);
+		status = substitute_binding_stat(tracee, finality, recursion_level, scratch_path, host_path);
 		if (status < 0)
 			return status;
 
@@ -323,7 +324,7 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 
 		/* Check that a non-final canonicalized/dereferenced
 		 * symlink exists and is a directory.  */
-		status = substitute_binding_stat(tracee, finality, guest_path, host_path);
+		status = substitute_binding_stat(tracee, finality, recursion_level, guest_path, host_path);
 		if (status < 0)
 			return status;
 

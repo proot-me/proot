@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -25,7 +25,6 @@
 
 #include <sys/queue.h> /* LIST_, */
 #include <stdint.h>    /* intptr_t, */
-#include <stdbool.h>   /* bool, */
 
 #include "tracee/tracee.h"
 #include "syscall/seccomp.h"
@@ -43,7 +42,7 @@ typedef enum {
 	/* A canonicalized host path is being accessed during the
 	 * translation of a guest path: "(char *) data1" is the
 	 * canonicalized host path and "(bool) data2" is true if it is
-	 * the final path.  Note that several host paths are accessed
+	 * the last iteration.  Note that several host paths are accessed
 	 * for a given guest path since PRoot has to walk along all
 	 * parent directories and symlinks in order to translate it.
 	 * If the extension returns < 0, then PRoot reports this errno
@@ -153,6 +152,7 @@ typedef LIST_HEAD(extensions, extension) Extensions;
 
 extern int initialize_extension(Tracee *tracee, extension_callback_t callback, const char *cli);
 extern void inherit_extensions(Tracee *child, Tracee *parent, word_t clone_flags);
+extern Extension *get_extension(Tracee *tracee, extension_callback_t callback);
 
 /**
  * Notify all extensions of @tracee that the given @event occured.

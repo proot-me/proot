@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -242,6 +242,21 @@
 #    endif
 #    ifndef MAP_ANONYMOUS
 #        define MAP_ANONYMOUS			0x20
+#    endif
+#    ifndef PROT_READ
+#        define PROT_READ		0x1
+#    endif
+#    ifndef PROT_WRITE
+#        define PROT_WRITE		0x2
+#    endif
+#    ifndef PROT_EXEC
+#        define PROT_EXEC		0x4
+#    endif
+#    ifndef PROT_GROWSDOWN
+#        define PROT_GROWSDOWN		0x01000000
+#    endif
+#    ifndef NT_ARM_SYSTEM_CALL
+#        define NT_ARM_SYSTEM_CALL		0x404
 #    endif
 
 #endif /* COMPAT_H */

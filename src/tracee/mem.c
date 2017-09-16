@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -93,9 +93,6 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 	uint8_t *last_dest_word;
 	uint8_t *last_src_word;
 
-	if (belongs_to_heap_prealloc(tracee, dest_tracee))
-		return -EFAULT;
-
 #if defined(HAVE_PROCESS_VM)
 	struct iovec local;
 	struct iovec remote;
@@ -164,9 +161,6 @@ int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *sr
 	int status;
 	int i;
 
-	if (belongs_to_heap_prealloc(tracee, dest_tracee))
-		return -EFAULT;
-
 #if defined(HAVE_PROCESS_VM)
 	struct iovec remote;
 
@@ -211,9 +205,6 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 
 	uint8_t *last_src_word;
 	uint8_t *last_dest_word;
-
-	if (belongs_to_heap_prealloc(tracee, src_tracee))
-		return -EFAULT;
 
 #if defined(HAVE_PROCESS_VM)
 	long status;
@@ -286,9 +277,6 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word
 	uint8_t *src_word;
 	uint8_t *dest_word;
 
-	if (belongs_to_heap_prealloc(tracee, src_tracee))
-		return -EFAULT;
-
 #if defined(HAVE_PROCESS_VM)
 	/* [process_vm] system calls do not check the memory regions
 	 * in the remote process until just before doing the
@@ -322,7 +310,7 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word
 
 	/* A chunk shall not cross a page boundary.  */
 	if (chunk_size == 0) {
-		chunk_size = sysconf(_SC_PAGESIZE);
+		chunk_size = sysconf(_SC_PAGE_SIZE);
 		chunk_size = (chunk_size > 0 && chunk_size < 1024 ? chunk_size : 1024);
 		chunk_mask = ~(chunk_size - 1);
 	}
@@ -409,11 +397,6 @@ word_t peek_word(const Tracee *tracee, word_t address)
 {
 	word_t result = 0;
 
-	if (belongs_to_heap_prealloc(tracee, address)) {
-		errno = EFAULT;
-		return 0;
-	}
-
 #if defined(HAVE_PROCESS_VM)
 	int status;
 	struct iovec local;
@@ -456,11 +439,6 @@ word_t peek_word(const Tracee *tracee, word_t address)
 void poke_word(const Tracee *tracee, word_t address, word_t value)
 {
 	word_t tmp;
-
-	if (belongs_to_heap_prealloc(tracee, address)) {
-		errno = EFAULT;
-		return;
-	}
 
 #if defined(HAVE_PROCESS_VM)
 	int status;
@@ -556,9 +534,6 @@ int clear_mem(const Tracee *tracee, word_t address, size_t size)
 {
 	int status;
 	void *zeros;
-
-	if (belongs_to_heap_prealloc(tracee, address))
-		return -EFAULT;
 
 	zeros = mmap(NULL, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 	if (zeros == MAP_FAILED)

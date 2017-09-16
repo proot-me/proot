@@ -451,8 +451,8 @@ highly compatible static binaries:
 Colophon
 ========
 
-Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
-Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.
+Visit http://reproducible.io for help, bug reports, suggestions, patches, ...
+Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
 
 ::
 
