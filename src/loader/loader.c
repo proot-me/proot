@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -41,6 +41,8 @@
 #    include "loader/assembly-arm.h"
 #elif defined(ARCH_X86)
 #    include "loader/assembly-x86.h"
+#elif defined(ARCH_ARM64)
+#    include "loader/assembly-arm64.h"
 #else
 #    error "Unsupported architecture"
 #endif
@@ -134,7 +136,11 @@ void _start(void *cursor)
 			/* Fall through.  */
 
 		case LOAD_ACTION_OPEN:
+#if defined(OPEN)
 			fd = SYSCALL(OPEN, 3, stmt->open.string_address, O_RDONLY, 0);
+#else
+			fd = SYSCALL(OPENAT, 4, AT_FDCWD, stmt->open.string_address, O_RDONLY, 0);
+#endif
 			if (unlikely((int) fd < 0))
 				FATAL();
 
@@ -169,6 +175,14 @@ void _start(void *cursor)
 				FATAL();
 
 			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
+			break;
+
+		case LOAD_ACTION_MAKE_STACK_EXEC:
+			SYSCALL(MPROTECT, 3,
+				stmt->make_stack_exec.start, 1,
+				PROT_READ | PROT_WRITE | PROT_EXEC | PROT_GROWSDOWN);
+
+			cursor += LOAD_STATEMENT_SIZE(*stmt, make_stack_exec);
 			break;
 
 		case LOAD_ACTION_START_TRACED:

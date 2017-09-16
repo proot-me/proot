@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -154,7 +154,15 @@ static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED, const char *va
 
 static int handle_option_k(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
+	void *extension;
 	int status;
+
+	extension = get_extension(tracee, kompat_callback);
+	if (extension != NULL) {
+		note(tracee, WARNING, USER, "option -k was already specified");
+		note(tracee, INFO, USER, "only the last -k option is enabled");
+		TALLOC_FREE(extension);
+	}
 
 	status = initialize_extension(tracee, kompat_callback, value);
 	if (status < 0)
@@ -165,6 +173,15 @@ static int handle_option_k(Tracee *tracee, const Cli *cli UNUSED, const char *va
 
 static int handle_option_i(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
+	void *extension;
+
+	extension = get_extension(tracee, fake_id0_callback);
+	if (extension != NULL) {
+		note(tracee, WARNING, USER, "option -i/-0/-S was already specified");
+		note(tracee, INFO, USER, "only the last -i/-0/-S option is enabled");
+		TALLOC_FREE(extension);
+	}
+
 	(void) initialize_extension(tracee, fake_id0_callback, value);
 	return 0;
 }

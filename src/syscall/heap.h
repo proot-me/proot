@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -25,18 +25,7 @@
 
 #include "tracee/tracee.h"
 
-extern int translate_brk_enter(Tracee *tracee);
+extern void translate_brk_enter(Tracee *tracee);
 extern void translate_brk_exit(Tracee *tracee);
-
-/**
- * Check if the @address is in the @tracee's preallocated heap space.
- * This space is not supposed to be accessible.
- */
-static inline bool belongs_to_heap_prealloc(const Tracee *tracee, word_t address)
-{
-	return (tracee->heap != NULL && !tracee->heap->disabled
-		&& address >= tracee->heap->base + tracee->heap->size
-		&& address < tracee->heap->base + tracee->heap->prealloc_size);
-}
 
 #endif /* HEAP_H */

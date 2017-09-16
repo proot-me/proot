@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -31,6 +31,7 @@
 #include <signal.h>     /* kill(2), SIGKILL, */
 #include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
 #include <errno.h>      /* E*, */
+#include <inttypes.h>   /* PRI*, */
 
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -203,6 +204,8 @@ no_mem:
 	return NULL;
 }
 
+static uint64_t next_vpid = 1;
+
 /**
  * Allocate a new entry for the tracee @pid, then set its destructor
  * and add it to the list of tracees.  This function returns NULL if
@@ -220,6 +223,8 @@ static Tracee *new_tracee(pid_t pid)
 	talloc_set_destructor(tracee, remove_tracee);
 
 	tracee->pid = pid;
+	tracee->vpid = next_vpid++;
+
 	LIST_INSERT_HEAD(&tracees, tracee, link);
 
 	tracee->life_context = talloc_new(tracee);
@@ -566,6 +571,8 @@ int new_child(Tracee *parent, word_t clone_flags)
 		if (!keep_stopped)
 			(void) restart_tracee(child, 0);
 	}
+
+	VERBOSE(child, 1, "vpid %" PRIu64 ": pid %d", child->vpid, child->pid);
 
 	return 0;
 }

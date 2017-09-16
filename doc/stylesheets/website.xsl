@@ -72,9 +72,17 @@
     </li>
   </xsl:template>
 
-  <xsl:template match="reference">
+  <xsl:template match="reference[@refuri]">
     <a>
       <xsl:attribute name="href"><xsl:value-of select="@refuri" />
+      </xsl:attribute>
+      <xsl:apply-templates/>
+    </a>
+  </xsl:template>
+
+  <xsl:template match="reference[@refid]">
+    <a>
+      <xsl:attribute name="href"><xsl:text>#</xsl:text><xsl:value-of select="@refid" />
       </xsl:attribute>
       <xsl:apply-templates/>
     </a>
@@ -91,7 +99,7 @@
   </xsl:template>
 
   <xsl:template match="footnote/label">
-    [<xsl:apply-templates/>] 
+    [<xsl:apply-templates/>]
   </xsl:template>
 
   <xsl:template match="footnote/paragraph">
