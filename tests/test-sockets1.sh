@@ -1,0 +1,1 @@
+cd sockets && ./testtcpsocket.sh
