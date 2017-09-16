@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -93,3 +93,4 @@
 #define EXECVE	59
 #define EXIT	60
 #define PRCTL	157
+#define MPROTECT 10

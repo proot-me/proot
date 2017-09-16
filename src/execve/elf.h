@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -108,7 +108,8 @@ typedef union {
 typedef enum {
 	PT_LOAD    = 1,
 	PT_DYNAMIC = 2,
-	PT_INTERP  = 3
+	PT_INTERP  = 3,
+	PT_GNU_STACK = 0x6474e551,
 } SegmentType;
 
 typedef struct {

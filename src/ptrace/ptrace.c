@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -633,6 +633,13 @@ int translate_ptrace_exit(Tracee *tracee)
 
 		return 0;  /* Don't restart the ptracee.  */
 #endif
+
+	case PTRACE_SET_SYSCALL:
+		status = ptrace(request, pid, address, data);
+		if (status < 0)
+			return -errno;
+
+		return 0;  /* Don't restart the ptracee.  */
 
 	default:
 		note(ptracer, WARNING, INTERNAL, "ptrace request '%s' not supported yet",

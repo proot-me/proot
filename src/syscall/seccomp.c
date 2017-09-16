@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -377,6 +377,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_open,		0 },
 	{ PR_openat,		0 },
 	{ PR_pivot_root,	0 },
+	{ PR_prlimit64,		FILTER_SYSEXIT },
 	{ PR_ptrace,		FILTER_SYSEXIT },
 	{ PR_readlink,		FILTER_SYSEXIT },
 	{ PR_readlinkat,	FILTER_SYSEXIT },
@@ -384,6 +385,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_rename,		FILTER_SYSEXIT },
 	{ PR_renameat,		FILTER_SYSEXIT },
 	{ PR_rmdir,		0 },
+	{ PR_setrlimit,		FILTER_SYSEXIT },
 	{ PR_setxattr,		0 },
 	{ PR_socketcall,	FILTER_SYSEXIT },
 	{ PR_stat,		0 },

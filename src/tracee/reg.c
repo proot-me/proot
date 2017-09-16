@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -26,7 +26,8 @@
 #include <assert.h>     /* assert(3), */
 #include <errno.h>      /* errno(3), */
 #include <stddef.h>     /* offsetof(), */
-#include <stdint.h>     /* *int*_t(), */
+#include <stdint.h>     /* *int*_t, */
+#include <inttypes.h>   /* PRI*, */
 #include <limits.h>     /* ULONG_MAX, */
 #include <string.h>     /* memcpy(3), */
 #include <sys/uio.h>    /* struct iovec, */
@@ -127,6 +128,7 @@
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(sp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
+	[USERARG_1]     = USER_REGS_OFFSET(regs[0]),
     };
 
 #elif defined(ARCH_X86)
@@ -210,8 +212,8 @@ void print_current_regs(Tracee *tracee, int verbose_level, const char *message)
 		return;
 
 	note(tracee, INFO, INTERNAL,
-		"pid %d: %s: %s(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx, %d]",
-		tracee->pid, message,
+		"vpid %" PRIu64 ": %s: %s(0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx) = 0x%lx [0x%lx, %d]",
+		tracee->vpid, message,
 		stringify_sysnum(get_sysnum(tracee, CURRENT)),
 		peek_reg(tracee, CURRENT, SYSARG_1), peek_reg(tracee, CURRENT, SYSARG_2),
 		peek_reg(tracee, CURRENT, SYSARG_3), peek_reg(tracee, CURRENT, SYSARG_4),
@@ -299,7 +301,20 @@ int push_regs(Tracee *tracee)
 
 #if defined(ARCH_ARM64)
 		struct iovec regs;
+		word_t current_sysnum = REG(tracee, CURRENT, SYSARG_NUM);
 
+		/* Update syscall number if needed.  On arm64, a new
+		 * subcommand has been added to PTRACE_{S,G}ETREGSET
+		 * to allow write/read of current sycall number.  */
+		if (current_sysnum != REG(tracee, ORIGINAL, SYSARG_NUM)) {
+			regs.iov_base = &current_sysnum;
+			regs.iov_len = sizeof(current_sysnum);
+			status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_ARM_SYSTEM_CALL, &regs);
+			if (status < 0)
+				note(tracee, WARNING, SYSTEM, "can't set the syscall number");
+		}
+
+		/* Update other registers.  */
 		regs.iov_base = &tracee->_regs[CURRENT];
 		regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
 
