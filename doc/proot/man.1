@@ -174,6 +174,18 @@ This option makes the current user and group appear as \fIuid\fP and
 \fIgid\fP\&.  Likewise, files actually owned by the current user and
 group appear as if they were owned by \fIuid\fP and \fIgid\fP instead.
 Note that the \fB\-0\fP option is the same as \fB\-i 0:0\fP\&.
+.TP
+.BI \-p \ string\fP,\fB \ \-\-port\fB= string
+Map ports to others with the syntax as \fIstring\fP "port_in:port_out ...".
+.sp
+This option makes PRoot intercept bind and connect system calls,
+and change the port they use. The port map is specified
+with the syntax: \fB\-b *port_in*:*port_out*\fP\&. For example,
+an application that runs a MySQL server binding to 5432 wants
+to cohabit with other similar application, but doesn\(aqt have an
+option to change its port. PRoot can be used here to modify
+this port: \fBproot \-p 5432:5433 myapplication\fP\&. With this command,
+the MySQL server will be bound to the port 5433.
 .UNINDENT
 .SS Alias options
 .sp

@@ -6,7 +6,7 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2014-12-12
+:Date: 2016-08-09
 :Version: 5.1.0
 :Manual section: 1
 
@@ -168,6 +168,27 @@ the sources for further details.
     group appear as if they were owned by *uid* and *gid* instead.
     Note that the ``-0`` option is the same as ``-i 0:0``.
 
+-p string, --port=string
+    Map ports to others with the syntax as *string* "port_in:port_out ...".
+
+    This option makes PRoot intercept bind and connect system calls,
+    and change the port they use. The port map is specified
+    with the syntax: ``-b *port_in*:*port_out*``. For example,
+    an application that runs a MySQL server binding to 5432 wants
+    to cohabit with other similar application, but doesn't have an
+    option to change its port. PRoot can be used here to modify
+    this port: ``proot -p 5432:5433 myapplication``. With this command,
+    the MySQL server will be bound to the port 5433.
+    This command can be repeated multiple times to map multiple ports.
+
+-n, --netcoop
+    Activates the network cooperation mode.
+
+    This option makes PRoot intercept bind() system calls and
+    change the port they are binding to to 0. With this, the system will
+    allocate an available port. Each time this is done, a new entry is added
+    to the port mapping entries, so that corresponding connect() system calls
+    use the same resulting port.
 
 Alias options
 -------------

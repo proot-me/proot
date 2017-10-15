@@ -30,6 +30,7 @@
 #include "build.h"
 
 #include "compat.h"
+#include "extension/portmap/portmap.h"
 
 /**
  * Remove an @extension from its tracee's list, then send it the

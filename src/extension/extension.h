@@ -28,6 +28,7 @@
 
 #include "tracee/tracee.h"
 #include "syscall/seccomp.h"
+#include "extension/portmap/portmap.h"
 
 /* List of possible events.  */
 typedef enum {
@@ -179,5 +180,15 @@ static inline int notify_extensions(Tracee *tracee, ExtensionEvent event,
 extern int kompat_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern int care_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
+
+/* Added extensions.  */
+/**
+ * We use a global variable in order to support multiple port mapping options,
+ * otherwise we would have a different extension instance for each (port_in, port_out) pair,
+ * which would be a waste of memory and performance.
+ * This variable is modified only once, in the INITIALIZATION event.
+ */
+extern Extension *global_portmap_extension;
+extern int portmap_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 
 #endif /* EXTENSION_H */
