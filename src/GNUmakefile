@@ -16,9 +16,9 @@ OBJDUMP  = $(CROSS_COMPILE)objdump
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -Wall -Wextra -O2
-LDFLAGS  += -ltalloc -Wl,-z,noexecstack
+LDFLAGS  += -L. -ltalloc -Wl,-z,noexecstack -static
 
-CARE_LDFLAGS = -larchive
+CARE_LDFLAGS = -larchive -static
 
 OBJECTS += \
 	cli/cli.o		\

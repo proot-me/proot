@@ -48,6 +48,28 @@ const char *get_temp_directory()
 }
 
 /**
+ * Handle the return of d_type = DT_UNKNOWN by readdir(3)
+ * Not all filesystems support returning d_type in readdir(3)
+ */
+static int get_dtype(struct dirent *de)
+{
+	int dtype = de ? de->d_type : DT_UNKNOWN;
+	struct stat st;
+
+	if (dtype != DT_UNKNOWN)
+		return dtype;
+	if (lstat(de->d_name, &st))
+		return dtype;
+	if (S_ISREG(st.st_mode))
+		return DT_REG;
+	if (S_ISDIR(st.st_mode))
+		return DT_DIR;
+	if (S_ISLNK(st.st_mode))
+		return DT_LNK;
+	return dtype;
+}
+
+/**
  * Remove recursively the content of the current working directory.
  * This latter has to lie in temp_directory (ie. "/tmp" on most
  * systems).  This function returns -1 if a fatal error occured
@@ -117,7 +139,7 @@ static int clean_temp_cwd()
 			continue;
 		}
 
-		if (entry->d_type == DT_DIR) {
+		if (get_dtype(entry) == DT_DIR) {
 			status = chdir(entry->d_name);
 			if (status < 0) {
 				note(NULL, WARNING, SYSTEM, "can't chdir '%s'", entry->d_name);
