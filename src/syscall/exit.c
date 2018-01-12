@@ -143,6 +143,30 @@ void translate_syscall_exit(Tracee *tracee)
 		goto end;
 	}
 
+	case PR_recvfrom: {
+		/* Nothing special to do if no sockaddr was specified.  */
+		if (peek_reg(tracee, ORIGINAL, SYSARG_2) != 0) {
+			word_t sock_addr;
+			word_t size_addr;
+			word_t max_size;
+
+			/* Error reported by the kernel.  */
+			if ((int) syscall_result < 0)
+				goto end;
+
+			sock_addr = peek_reg(tracee, ORIGINAL, SYSARG_5);
+			size_addr = peek_reg(tracee, MODIFIED, SYSARG_6);
+			/* max_size  =  peek_reg(tracee, MODIFIED, SYSARG_7); FIXME: SYSARG_7 doesn't exist */
+			max_size = size_addr;
+			status = translate_socketcall_exit(tracee, sock_addr, size_addr, max_size);
+			if (status < 0)
+				break;
+		}
+		/* Don't overwrite the syscall result.  */
+		goto end;
+	}
+
+
 #define SYSARG_ADDR(n) (args_addr + ((n) - 1) * sizeof_word(tracee))
 
 #define POKE_WORD(addr, value)			\

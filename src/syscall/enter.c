@@ -277,6 +277,42 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 	}
 
+	case PR_sendto: {
+		word_t address;
+		word_t size;
+
+		address = peek_reg(tracee, CURRENT, SYSARG_5);
+		size    = peek_reg(tracee, CURRENT, SYSARG_6);
+
+		status = translate_socketcall_enter(tracee, &address, size);
+		if (status <= 0)
+			break;
+
+		poke_reg(tracee, SYSARG_5, address);
+		poke_reg(tracee, SYSARG_6, sizeof(struct sockaddr_un));
+
+		status = 0;
+		break;
+	}
+
+	case PR_recvfrom: {
+		/* Nothing special to do if no sockaddr was specified.  */
+		if (peek_reg(tracee, ORIGINAL, SYSARG_5) != 0) {
+			/* Remember: PEEK_WORD puts -errno in status and breaks if an
+			 * error occured.  */
+			int size = (int) PEEK_WORD(peek_reg(tracee, ORIGINAL, SYSARG_6), -EINVAL);
+			/* The "size" argument is both used as an input parameter
+			 * (max. size) and as an output parameter (actual size).  The
+			 * exit stage needs to know the max. size to not overwrite
+			 * anything, that's why it is copied in the 6th argument
+			 * (unused) before the kernel updates it.  */
+			/* poke_reg(tracee, SYSARG_7, size); FIXME: SYSARG_7 doesn't exist */
+
+		}
+		status = 0;
+		break;
+	}
+
 	case PR_socketcall: {
 		word_t args_addr;
 		word_t sock_addr_saved;
@@ -573,4 +609,3 @@ end:
 
 	return status;
 }
-
