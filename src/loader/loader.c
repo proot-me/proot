@@ -119,8 +119,12 @@ static inline word_t basename(word_t string_)
 void _start(void *cursor)
 {
 	bool traced = false;
-	bool reset_at_base = true;
-	word_t at_base = 0;
+	bool reset_current_base_address = true;
+	word_t current_base_address = 0;
+	word_t program_base_address = 0;
+
+	const word_t default_mmap_flags = MAP_PRIVATE | MAP_FIXED;
+	word_t mmap_flags = default_mmap_flags;
 
 	word_t fd = -1;
 	word_t status;
@@ -144,33 +148,50 @@ void _start(void *cursor)
 			if (unlikely((int) fd < 0))
 				FATAL();
 
-			reset_at_base = true;
+			reset_current_base_address = true;
 
 			cursor += LOAD_STATEMENT_SIZE(*stmt, open);
 			break;
 
+		case LOAD_ACTION_MMAP_FILE_PI:
+			if (reset_current_base_address)
+				mmap_flags = default_mmap_flags & ~MAP_FIXED;
+			else
+				stmt->mmap.addr += current_base_address;
+			/* Fall through.  */
+
 		case LOAD_ACTION_MMAP_FILE:
 			status = SYSCALL(MMAP, 6, stmt->mmap.addr, stmt->mmap.length,
-					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED, fd,
+					stmt->mmap.prot, mmap_flags, fd,
 					stmt->mmap.offset >> MMAP_OFFSET_SHIFT);
-			if (unlikely(status != stmt->mmap.addr))
+			if (unlikely(status != stmt->mmap.addr && stmt->mmap.addr != 0))
 				FATAL();
+			stmt->mmap.addr = status;
+
+			mmap_flags = default_mmap_flags;
 
 			if (stmt->mmap.clear_length != 0)
 				clear(stmt->mmap.addr + stmt->mmap.length - stmt->mmap.clear_length,
 					stmt->mmap.addr + stmt->mmap.length);
 
-			if (reset_at_base) {
-				at_base = stmt->mmap.addr;
-				reset_at_base = false;
+			if (reset_current_base_address) {
+				current_base_address = stmt->mmap.addr;
+				reset_current_base_address = false;
+
+				if (program_base_address == 0)
+					program_base_address = current_base_address;
 			}
 
 			cursor += LOAD_STATEMENT_SIZE(*stmt, mmap);
 			break;
 
+		case LOAD_ACTION_MMAP_ANON_PI:
+			stmt->mmap.addr += current_base_address;
+			/* Fall through.  */
+
 		case LOAD_ACTION_MMAP_ANON:
 			status = SYSCALL(MMAP, 6, stmt->mmap.addr, stmt->mmap.length,
-					stmt->mmap.prot, MAP_PRIVATE | MAP_FIXED | MAP_ANONYMOUS, -1, 0);
+					stmt->mmap.prot, default_mmap_flags | MAP_ANONYMOUS, -1, 0);
 			if (unlikely(status != stmt->mmap.addr))
 				FATAL();
 
@@ -217,7 +238,7 @@ void _start(void *cursor)
 			do {
 				switch (cursor2[0]) {
 				case AT_PHDR:
-					cursor2[1] = stmt->start.at_phdr;
+					cursor2[1] = stmt->start.at_phdr + program_base_address;
 					break;
 
 				case AT_PHENT:
@@ -233,7 +254,7 @@ void _start(void *cursor)
 					break;
 
 				case AT_BASE:
-					cursor2[1] = at_base;
+					cursor2[1] = current_base_address;
 					break;
 
 				case AT_EXECFN:
