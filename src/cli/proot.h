@@ -300,7 +300,7 @@ Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.",
 	  .handler = handle_option_S,
 	  .description = "Alias: -0 -r *path* + a couple of recommended -b.",
 	  .detail = "\tThis option is useful to safely create and install packages into\n\
-\tthe guest rootfs.  It is similar to the -R option expect it\n\
+\tthe guest rootfs.  It is similar to the -R option except it\n\
 \tenables the -0 option and binds only the following minimal set\n\
 \tof paths to avoid unexpected changes on host files:\n\
 \t\n\

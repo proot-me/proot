@@ -230,7 +230,7 @@ The following options are aliases for handy sets of options.
     Alias: ``-0 -r *path*`` + a couple of recommended ``-b``.
 
     This option is useful to safely create and install packages into
-    the guest rootfs.  It is similar to the ``-R`` option expect it
+    the guest rootfs.  It is similar to the ``-R`` option except it
     enables the ``-0`` option and binds only the following minimal set
     of paths to avoid unexpected changes on host files:
 

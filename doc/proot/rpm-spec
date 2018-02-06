@@ -243,7 +243,7 @@ Highlights
   if you need a fix.
 
 + A new command-line option is available: "-S".  It is similar to the
-  "-R" option expect it enables the "-0" option and binds only a
+  "-R" option except it enables the "-0" option and binds only a
   minimal set of paths that are known to not be updated by package
   installations, to avoid unexpected changes on host files.  This
   option is useful to safely create and install packages into the
