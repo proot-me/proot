@@ -44,6 +44,81 @@
 #include "path/binding.h"
 #include "arch.h"
 
+#if defined(PERSISTENT_CHOWN)
+#include <unistd.h>
+#include <attr/xattr.h>
+#include "path/path.h"
+#include "rootlesscontainers/rootlesscontainers.pb-c.h"
+#define XATTR_USER_ROOTLESSCONTAINERS "user.rootlesscontainers"
+
+// return 0 on success.
+int rootlesscontainers_get_xattr (int fd, const char *path, uid_t *uid, gid_t *gid) {
+	Rootlesscontainers__Resource *msg;
+	void *buf;
+	assert(fd >= 0 || path != NULL);
+	ssize_t bufsz = (path != NULL) ?
+	lgetxattr(path, XATTR_USER_ROOTLESSCONTAINERS, NULL, 0) :
+	fgetxattr(fd, XATTR_USER_ROOTLESSCONTAINERS, NULL, 0);
+	// errno can be ENOATTR, EBADF... Typically not critical.
+	if (bufsz <= 0)
+		return bufsz;
+	buf = malloc(bufsz);
+	if (buf == NULL)
+		return -1;
+	bufsz = (path != NULL) ?
+		lgetxattr(path, XATTR_USER_ROOTLESSCONTAINERS, buf, bufsz) :
+		fgetxattr(fd, XATTR_USER_ROOTLESSCONTAINERS, buf, bufsz);
+	if (bufsz <= 0)
+		return bufsz;
+	msg = rootlesscontainers__resource__unpack(NULL, bufsz, buf);
+	if (msg == NULL) {
+		free(buf);
+		return -1;
+	}
+	if (!msg->has_uid)
+		msg->uid = (uid_t)-1;
+	if (!msg->has_gid)
+		msg->gid = (gid_t)-1;
+	*uid = (uid_t)msg->uid;
+	*gid = (gid_t)msg->gid;
+	free(buf);
+	rootlesscontainers__resource__free_unpacked(msg, NULL);
+	return 0;
+}
+
+int rootlesscontainers_set_xattr (int fd, const char *path, uid_t uid, gid_t gid) {
+	int rc;
+	Rootlesscontainers__Resource msg = ROOTLESSCONTAINERS__RESOURCE__INIT;
+	void *buf;
+	size_t bufsz;
+	assert(fd >= 0 || path != NULL);
+	msg.has_uid = true;
+	msg.uid = (uint32_t)uid;
+	msg.has_gid = true;
+	msg.gid = (uint32_t)gid;
+	bufsz = rootlesscontainers__resource__get_packed_size(&msg);
+	buf = malloc(bufsz);
+	if (buf == NULL)
+		return -1;
+	rootlesscontainers__resource__pack(&msg, buf);
+	rc = (path != NULL) ?
+		lsetxattr(path, XATTR_USER_ROOTLESSCONTAINERS, buf, bufsz, 0):
+		fsetxattr(fd, XATTR_USER_ROOTLESSCONTAINERS, buf, bufsz, 0);
+	free(buf);
+	return rc;
+}
+
+// ENOATTR is ignored
+int rootlesscontainers_remove_xattr (int fd, const char *path) {
+	assert(fd >= 0 || path != NULL);
+	int rc = (path != NULL) ?
+		lremovexattr(path, XATTR_USER_ROOTLESSCONTAINERS):
+		fremovexattr(fd, XATTR_USER_ROOTLESSCONTAINERS);
+	return ( rc < 0 && errno == ENOATTR) ? 0 : rc;
+}
+
+#endif /* if defined(PERSISTENT_CHOWN) */
+
 typedef struct {
 	uid_t ruid;
 	uid_t euid;
@@ -231,7 +306,7 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
 
 /**
  * Adjust current @tracee's syscall parameters according to @config.
- * This function always returns 0.
+ * This function returns 0 unless there is an error.
  */
 static int handle_sysenter_end(Tracee *tracee, const Config *config)
 {
@@ -270,6 +345,12 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
 		Reg gid_sysarg;
 		uid_t uid;
 		gid_t gid;
+#if defined(PERSISTENT_CHOWN)
+		int status;
+		int fd = -1; // shut up gcc uninitialization warning
+		char path[PATH_MAX];
+		bool with_path = (sysnum == PR_chown || sysnum == PR_chown32 || sysnum == PR_lchown || sysnum == PR_lchown32 || sysnum == PR_fchownat);
+#endif
 
 		if (sysnum == PR_fchownat) {
 			uid_sysarg = SYSARG_3;
@@ -283,6 +364,41 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
 		uid = peek_reg(tracee, ORIGINAL, uid_sysarg);
 		gid = peek_reg(tracee, ORIGINAL, gid_sysarg);
 
+#if defined(PERSISTENT_CHOWN)
+		if (with_path) {
+			word_t input;
+			char guestpath[PATH_MAX];
+			int dirfd = AT_FDCWD;
+			if (sysnum == PR_fchownat) {
+				dirfd = peek_reg(tracee, ORIGINAL, SYSARG_1);
+				input = peek_reg(tracee, ORIGINAL, SYSARG_2);
+				status = read_path(tracee, guestpath, input);
+			} else {
+				input = peek_reg(tracee, ORIGINAL, SYSARG_1);
+				status = read_path(tracee, guestpath, input);
+			}
+			if (status < 0)
+				return status;
+			status = translate_path(tracee, path, dirfd, guestpath, false);
+			if (status < 0)
+				return status;
+		} else {
+			fd = peek_reg(tracee, ORIGINAL, SYSARG_1);
+		}
+
+		// TODO: we can also remove xattr when [ug]id == -1 && the recoded one == config->r[ug]id
+		if (uid != config->ruid || gid != config->rgid)
+			status = rootlesscontainers_set_xattr(fd, with_path ? path : NULL, uid, gid);
+		else
+			status = rootlesscontainers_remove_xattr(fd, with_path ? path : NULL);
+
+		if (status < 0)
+			return status;
+
+		/* this should always succeed */
+		poke_reg(tracee, uid_sysarg, getuid());
+		poke_reg(tracee, gid_sysarg, getgid());
+#else
 		/* Swap actual and emulated ids to get a chance of
 		 * success.  */
 		if (uid == config->ruid)
@@ -290,6 +406,7 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
 		if (gid == config->rgid)
 			poke_reg(tracee, gid_sysarg, getgid());
 
+#endif
 		return 0;
 	}
 
@@ -624,6 +741,14 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		Reg sysarg;
 		uid_t uid;
 		gid_t gid;
+#if defined(PERSISTENT_CHOWN)
+		int status;
+		char path[PATH_MAX];
+		bool with_path = !(sysnum == PR_fstat64 || sysnum == PR_fstat);
+		int fd = -1;
+		uid_t uid_xattr;
+		gid_t gid_xattr;
+#endif
 
 		/* Override only if it succeed.  */
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
@@ -658,6 +783,37 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 		if (gid == getgid())
 			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->sgid);
+
+#if defined(PERSISTENT_CHOWN)
+		if (with_path) {
+			word_t input;
+			char guestpath[PATH_MAX];
+			int dirfd = AT_FDCWD;
+			if (sysnum == PR_fstatat64 || sysnum == PR_newfstatat) {
+				dirfd = peek_reg(tracee, ORIGINAL, SYSARG_1);
+				input = peek_reg(tracee, ORIGINAL, SYSARG_2);
+				status = read_path(tracee, guestpath, input);
+			} else {
+				input = peek_reg(tracee, ORIGINAL, SYSARG_1);
+				status = read_path(tracee, guestpath, input);
+			}
+			if (status < 0)
+				return status;
+			status = translate_path(tracee, path, dirfd, guestpath, false);
+			if (status < 0)
+				return status;
+		} else {
+			fd = peek_reg(tracee, ORIGINAL, SYSARG_1);
+		}
+		status = rootlesscontainers_get_xattr(fd, with_path ? path: NULL, &uid_xattr, &gid_xattr);
+		// error is not critical, typically. e.g. ENOATTR
+		if (status >= 0) {
+			if (uid_xattr != (uid_t)-1)
+				poke_uint32(tracee, address + offsetof_stat_uid(tracee), uid_xattr);
+			if (gid_xattr != (gid_t)-1)
+				poke_uint32(tracee, address + offsetof_stat_gid(tracee), gid_xattr);
+		}
+#endif
 
 		return 0;
 	}

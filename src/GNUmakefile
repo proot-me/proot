@@ -1,6 +1,8 @@
 # If you want to build outside of the source tree, use the -f option:
 #     make -f ${SOMEWHERE}/proot/src/GNUmakefile
 
+PERSISTENT_CHOWN := 1
+
 # the VPATH variable must point to the actual makefile directory
 VPATH := $(dir $(lastword $(MAKEFILE_LIST)))
 SRC    = $(dir $(firstword $(MAKEFILE_LIST)))
@@ -18,8 +20,15 @@ HAS_SWIG := $(shell swig -version 2>/dev/null)
 HAS_PYTHON_CONFIG := $(shell python2.7-config --ldflags 2>/dev/null)
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
+ifdef PERSISTENT_CHOWN
+	CPPFLAGS += -DPERSISTENT_CHOWN
+	CPPFLAGS += $(shell pkg-config --cflags libprotobuf-c)
+endif
 CFLAGS   += -Wall -Wextra -O2
 LDFLAGS  += -L. -ltalloc -Wl,-z,noexecstack -static
+ifdef PERSISTENT_CHOWN
+	LDFLAGS += $(shell pkg-config --libs libprotobuf-c)
+endif
 
 CARE_LDFLAGS = -larchive -static
 
@@ -63,6 +72,10 @@ OBJECTS += \
 	extension/portmap/portmap.o \
 	extension/portmap/map.o \
 	loader/loader-wrapped.o
+
+ifdef PERSISTENT_CHOWN
+	OBJECTS += rootlesscontainers/rootlesscontainers.pb-c.o
+endif
 
 define define_from_arch.h
 $2$1 := $(shell $(CC) $1 -E -dM -DNO_LIBC_HEADER $(SRC)/arch.h | grep -w $2 | cut -f 3 -d ' ')
