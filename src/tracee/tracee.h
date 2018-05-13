@@ -30,7 +30,7 @@
 #include <sys/ptrace.h>/* enum __ptrace_request */
 #include <talloc.h>    /* talloc_*, */
 #include <stdint.h>    /* *int*_t, */
-
+#include <sys/wait.h>  /* __WAIT_* */
 #include "arch.h" /* word_t, user_regs_struct, */
 #include "compat.h"
 
