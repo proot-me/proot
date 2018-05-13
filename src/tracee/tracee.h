@@ -35,7 +35,7 @@
 #include "compat.h"
 
 #if defined(__GLIBC__)
-#define PRACE_REQUEST_TYPE	enum __ptrace_request
+#define PTRACE_REQUEST_TYPE	enum __ptrace_request
 #else
 #define PTRACE_REQUEST_TYPE	int
 #endif
