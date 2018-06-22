@@ -338,7 +338,7 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
 									\
 	/* "If the effective UID of the caller is root, the real UID	\
 	 * and saved set-user-ID are also set." -- man setuid */	\
-	if (config->e ## id == 0) {					\
+	if (config->euid == 0) {					\
 		config->r ## id = id;					\
 		config->s ## id = id;					\
 	}								\
