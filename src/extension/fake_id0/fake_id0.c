@@ -51,6 +51,10 @@
 #include "rootlesscontainers/rootlesscontainers.pb-c.h"
 #define XATTR_USER_ROOTLESSCONTAINERS "user.rootlesscontainers"
 
+#ifndef ENOATTR 
+# define ENOATTR ENODATA
+#endif
+
 // return 0 on success.
 int rootlesscontainers_get_xattr (int fd, const char *path, uid_t *uid, gid_t *gid) {
 	Rootlesscontainers__Resource *msg;
