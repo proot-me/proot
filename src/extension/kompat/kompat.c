@@ -986,7 +986,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_pselect6, 		0 },
 	{ PR_readlinkat, 	0 },
 	{ PR_renameat, 		0 },
-	{ PR_renameat2,	    0 },
+	{ PR_renameat2,		0 },
 	{ PR_setdomainname,	FILTER_SYSEXIT },
 	{ PR_sethostname,	FILTER_SYSEXIT },
 	{ PR_signalfd4, 	FILTER_SYSEXIT },
