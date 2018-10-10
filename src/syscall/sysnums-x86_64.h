@@ -314,4 +314,8 @@ static const Sysnum sysnums_x86_64[] = {
 	[ 310 ] = PR_process_vm_readv,
 	[ 311 ] = PR_process_vm_writev,
 	[ 312 ] = PR_kcmp,
+	[ 313 ] = PR_finit_module,
+	[ 314 ] = PR_sched_setattr,
+	[ 315 ] = PR_sched_getattr,
+	[ 316 ] = PR_renameat2,
 };
