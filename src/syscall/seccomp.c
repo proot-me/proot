@@ -384,6 +384,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_removexattr,	0 },
 	{ PR_rename,		FILTER_SYSEXIT },
 	{ PR_renameat,		FILTER_SYSEXIT },
+	{ PR_renameat2,		FILTER_SYSEXIT },
 	{ PR_rmdir,		0 },
 	{ PR_setrlimit,		FILTER_SYSEXIT },
 	{ PR_setxattr,		0 },

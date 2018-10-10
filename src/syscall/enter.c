@@ -533,6 +533,7 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_renameat:
+	case PR_renameat2:
 		olddirfd = peek_reg(tracee, CURRENT, SYSARG_1);
 		newdirfd = peek_reg(tracee, CURRENT, SYSARG_3);
 
