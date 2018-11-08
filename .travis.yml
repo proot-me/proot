@@ -21,7 +21,7 @@ env:
 addons:
   coverity_scan:
     project:
-      name: "cedric-vincent/PRoot"
+      name: "proot-me/PRoot"
       description: "PRoot"
     notification_email: cedric.vincent@gmail.com
     build_command_prepend:
