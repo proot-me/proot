@@ -58,7 +58,7 @@
 #define user_fpregs_struct user_fpsimd_struct
 #endif
 
-static const char *stringify_ptrace(enum __ptrace_request request)
+static const char *stringify_ptrace(PTRACE_REQUEST_TYPE request)
 {
 #define CASE_STR(a) case a: return #a; break;
 	switch ((int) request) {

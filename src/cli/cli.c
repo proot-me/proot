@@ -30,8 +30,12 @@
 #include <sys/types.h>     /* getpid(2),  */
 #include <unistd.h>        /* getpid(2),  */
 #include <errno.h>         /* errno(3), */
-#include <execinfo.h>      /* backtrace_symbols(3), */
 #include <limits.h>        /* INT_MAX, */
+
+/* execinfo.h is GNU extension, disable it not using glibc */
+#if defined(__GLIBC__)
+#include <execinfo.h>      /* backtrace_symbols(3), */
+#endif
 
 #include "cli/cli.h"
 #include "cli/note.h"
@@ -550,6 +554,9 @@ const char *expand_front_variable(TALLOC_CTX *context, const char *string)
  * with CFLAGS='-finstrument-functions -O0 -g' and LDFLAGS='-rdynamic'
  * to enable this mechanism.  */
 
+/* since we rely on GLIBC extensions, disable all of this code if
+ * __GLIBC__ is not defined */
+#if defined(__GLIBC__)
 static int indent_level = 0;
 
 void __cyg_profile_func_enter(void *this_function, void *call_site) DONT_INSTRUMENT;
@@ -578,3 +585,4 @@ void __cyg_profile_func_exit(void *this_function UNUSED, void *call_site UNUSED)
 	if (indent_level > 0)
 		indent_level--;
 }
+#endif
