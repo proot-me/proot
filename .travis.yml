@@ -2,7 +2,7 @@ sudo: required
 
 language: c
 
-dist: bionic
+dist: xenial
 
 services:
     - docker
