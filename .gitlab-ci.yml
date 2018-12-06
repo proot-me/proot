@@ -8,7 +8,7 @@ test:
   script: 
     - make -C src loader.exe loader-m32.exe build.h
     - make -C src proot 
-    - env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C tests
+    - make -C tests
   artifacts:
     paths:
       - src
