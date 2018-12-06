@@ -1,10 +1,11 @@
 image: gcc
 
-build:
-  stage: build
+test:
+  stage: test
   before_script: 
     - apt-get update -qq
-    - apt-get install -qq libtalloc-dev uthash-dev libarchive-dev gdb strace realpath
-    - pip install cpp-coveralls
+    - apt-get install -qq libtalloc-dev uthash-dev libarchive-dev gdb strace realpath 
   script: 
-    - if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make -C src loader.exe loader-m32.exe build.h && env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot && env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C tests; fi
+    - make -C src loader.exe loader-m32.exe build.h
+    - make -C src proot 
+    - env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C tests
