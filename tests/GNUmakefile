@@ -123,7 +123,7 @@ $(ROOTFS_DIR):
 setup: $(ROOTFS_BIN)
 
 $(ROOTFS)/bin/abs-true:
-	$(Q)ln -fs /bin/true $@
+	$(Q)ln -fs $$(which true) $@
 
 $(ROOTFS)/bin/rel-true:
 	$(Q)ln -fs ./true $@

@@ -1,4 +1,4 @@
-if [ -z `which mcookie` ] || [ -z `which grep` ] || [ ! -x ${ROOTFS}/bin/readlink ] || [ ! -x ${ROOTFS}/bin/chdir_getcwd ] || [ ! -x ${ROOTFS}/bin/fchdir_getcwd ]; then
+if [ -z $(which mcookie) ] || [ -z $(which grep) ] || [ ! -x ${ROOTFS}/bin/readlink ] || [ ! -x ${ROOTFS}/bin/chdir_getcwd ] || [ ! -x ${ROOTFS}/bin/fchdir_getcwd ]; then
     exit 125;
 fi
 

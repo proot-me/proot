@@ -80,7 +80,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 
 	case 0: /* child */
-		status = chdir("/usr");
+		status = chdir("/etc");
 		if (status < 0) {
 			perror("chdir");
 			exit(EXIT_FAILURE);

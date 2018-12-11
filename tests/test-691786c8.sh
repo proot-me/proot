@@ -1,27 +1,34 @@
-if [ ! -x /usr/bin/echo ] || [ -z `which mcookie` ] || [ -z `which chmod` ] || [ -z `which env` ] || [ -z `which rm` ]; then
+#!/bin/sh
+set -eu
+
+if [ ! -x "/usr/bin/echo" ] || \
+   [ -z "$(command -v mcookie)" ] || \
+   [ -z "$(command -v chmod)" ] || \
+   [ -z "$(command -v env)" ] || \
+   [ -z "$(command -v rm)" ]; then
     exit 125;
 fi
 
-TMP=/tmp/$(mcookie)
+TMP="/tmp/$(mcookie)"
 
-echo '#!/usr/bin/echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' > ${TMP}
+echo '#!/usr/bin/echo XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX' > "${TMP}"
 
-chmod +x ${TMP}
+chmod +x "${TMP}"
 
-RESULT=$(${PROOT} ${TMP})
-EXPECTED=$(${TMP})
+RESULT="$(${PROOT} ${TMP})"
+EXPECTED="$(${TMP})"
 
 [ "${RESULT}" = "${EXPECTED}" ]
 
-echo '#!//../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../usr/bin/echo XXXXXXXXX' > ${TMP}
+echo '#!//../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../usr/bin/echo XXXXXXXXX' > "${TMP}"
 
-RESULT=$(${PROOT} ${TMP})
-EXPECTED=$(${TMP})
+RESULT="$(${PROOT} ${TMP})"
+EXPECTED="$(${TMP})"
 
 [ "${RESULT}" = "${EXPECTED}" ]
 [ "${RESULT}" = "${TMP}" ]
 
-echo '#!/../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../usr/bin/echo XXXXXXXXX' > ${TMP}
+echo '#!/../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../usr/bin/echo XXXXXXXXX' > "${TMP}"
 
 ! ${PROOT} ${TMP}
 [ $? -eq 0 ]
@@ -42,4 +49,4 @@ ${PROOT} ${TMP}
 env LANG=C ${PROOT} ${TMP} 2>&1 | grep 'Too many levels of symbolic links'
 [ $? -eq 0 ]
 
-rm -f ${TMP}
+rm -f "${TMP}"
