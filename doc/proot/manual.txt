@@ -510,23 +510,17 @@ Downloads
 PRoot
 -----
 
-The latest release of PRoot is packaged on http://packages.proot.me
-and sources are hosted on http://github.proot.me.  It is also
+The latest release of PRoot is packaged on https://github.com/proot-me/proot-static-build/releases
+and sources are hosted on https://github.com/proot-me/PRoot.  It is also
 available as highly compatible static binaries:
 
-* for x86_64: http://static.proot.me/proot-x86_64
+* for x86_64: https://github.com/proot-me/proot-static-build/blob/master/static/proot-x86_64?raw=true
 
-* for x86: http://static.proot.me/proot-x86
+* for x86: https://github.com/proot-me/proot-static-build/blob/master/static/proot-x86?raw=true
 
-* for ARM: http://static.proot.me/proot-arm
+* for ARM: https://github.com/proot-me/proot-static-build/blob/master/static/proot-arm?raw=true
 
 * other architectures: on demand.
-
-Such binaries are created using the following build-system:
-http://build.proot.me.  It makes sure that they can run on any distros
-powered by the Linux kernel version 2.6.0 or later, nothing more.
-Ultimately these binaries can even run on Linux systems where no
-libraries are installed.
 
 Rootfs
 ------
@@ -536,15 +530,17 @@ downloaded.  Note that ``mknod`` errors reported by ``tar`` when
 extracting these archives can be safely ignored since special files
 are typically bound (see ``-R`` option for details).
 
-* http://download.openvz.org/template/precreated/
+* http://download.openvz.org/template/precreated
 
-* https://images.linuxcontainers.org/images/
+* https://images.linuxcontainers.org/images
 
-* http://distfiles.gentoo.org/releases/
+* http://distfiles.gentoo.org/releases
 
-* http://cdimage.ubuntu.com/ubuntu-core/releases/
+* http://cdimage.ubuntu.com/ubuntu-core
 
 * http://archlinuxarm.org/developers/downloads
+
+* https://alpinelinux.org/downloads
 
 Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution::
@@ -576,7 +572,7 @@ Projects using PRoot or CARE
   <https://github.com/polysquare/polysquare-travis-container>`_:
   use several Linux distros on Travis-CI without root access.
 
-* `JuJu <https://github.com/fsquillace/juju>`_:
+* `JuNest <http://fsquillace.github.io/junest-site>`_:
   use Arch Linux on any Linux distros without root access.
 
 * `Brickstrap <https://github.com/ev3dev/brickstrap>`_:
@@ -585,11 +581,11 @@ Projects using PRoot or CARE
 * `Portable PyPy <https://github.com/squeaky-pl/portable-pypy>`_:
   portable 32 and 64 bit x86 PyPy binaries.
 
-* `OpenMOLE <http://www.openmole.org/documentation/console/task>`_:
+* `OpenMOLE <https://www.openmole.org>`_:
   execute programs on distributed computing environments.
 
 * `ATOS
-  <http://compilation.gforge.inria.fr/2013_12_Dammarie/pdf/17-Francois_DeFerriere.pdf>`_:
+  <http://compilfr.ens-lyon.fr/wp-content/uploads/2013/12/17-Francois_DeFerriere.pdf>`_:
   find automatically C/C++ compiler options that provide best
   optimizations.
 
@@ -610,8 +606,6 @@ Binaries from the Downloads_ section are likely more up-to-date.
 
 * `Arch Linux (PRoot) <https://aur.archlinux.org/packages/proot/>`_
 
-* `Arch Linux (CARE) <https://aur.archlinux.org/packages/care-static>`_
-
 * `Gentoo <http://packages.gentoo.org/package/sys-apps/proot>`_
 
 * `Debian <https://packages.debian.org/sid/proot>`_
@@ -620,16 +614,14 @@ Binaries from the Downloads_ section are likely more up-to-date.
 
 * `NixOS <https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/system/proot>`_
 
-* `KaOS <https://github.com/KaOS-Community-Packages/proot>`_
-
-* `University of Chicago RCC <https://rcc.uchicago.edu/docs/software/modules/proot/current.html>`_
+* `University of Chicago RCC <https://rcc.uchicago.edu/docs/software/modules/proot/midway1/current.html>`_
 
 
 Public material about PRoot or CARE
 -----------------------------------
 
 * articles on `Rémi's blog
-  <http://ivoire.dinauz.org/blog/tag/PRoot>`_.  Rémi (a.k.a Ivoire)
+  <https://blog.duraffort.fr/tag/proot.html>`_.  Rémi (a.k.a Ivoire)
   is one of the PRoot developers.
 
 * presentation "`Software engineering tools based on syscall
@@ -638,7 +630,7 @@ Public material about PRoot or CARE
   FOSDEM 2014.
 
 * presentation "`SW testing & Reproducing a LAVA failures locally
-  using CARE <https://lcu14.zerista.com/event/member/137797>`_"
+  using CARE <https://connect.linaro.org/resources/lcu14/lcu14-211-lava-use-cases-sw-testing-reproducing-a-lava-failures-locally-using-care>`_"
   during Linaro Connect USA 2014
 
 * presentation and essay "`CARE: the Comprehensive Archiver for
@@ -647,8 +639,8 @@ Public material about PRoot or CARE
   (`essay <http://dl.acm.org/citation.cfm?doid=2618137.2618138>`_)
   during TRUST 2014
 
-* presentation "`An Introduction to the CARE tool
-  <http://www.hipeac.net/system/files/bertin_care_comprehensive_archiving_for_reproducible_execution.pdf>`_"
+* presentation "`An Introduction to the CARE tool (dead link)
+  <#>`_"
   during HiPEAC CSW 2013
 
 * presentation and essay "`PRoot: a Step Forward for QEMU User-Mode
@@ -657,7 +649,7 @@ Public material about PRoot or CARE
   QUF'11
 
 * tutorial "`How to install nix in home (on another distribution)
-  <https://nixos.org/wiki/How_to_install_nix_in_home_%28on_another_distribution%29#PRoot_Installation>`_"
+  <https://nixos.wiki/wiki/Nix_Installation_Guide#PRoot>`_"
 
 
 Companies using PRoot or CARE internally
@@ -680,7 +672,7 @@ bindfs(1), fakeroot(1), fakechroot(1)
 Colophon
 ========
 
-Visit http://proot.me for help, bug reports, suggestions, patches, ...
+Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
 Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
 
 ::
