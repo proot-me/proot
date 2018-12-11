@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -36,6 +36,7 @@
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/seccomp.h"
+#include "execve/execve.h"
 #include "tracee/tracee.h"
 #include "tracee/abi.h"
 #include "tracee/mem.h"
@@ -653,10 +654,10 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		/* Override only if the file is owned by the current user.
 		 * Errors are not fatal here.  */
 		if (uid == getuid())
-			poke_uint32(tracee, address + offsetof_stat_uid(tracee), config->ruid);
+			poke_uint32(tracee, address + offsetof_stat_uid(tracee), config->suid);
 
 		if (gid == getgid())
-			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->rgid);
+			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->sgid);
 
 		return 0;
 	}
@@ -852,13 +853,32 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 	case SYSCALL_EXIT_START: {
 		Tracee *tracee = TRACEE(extension);
 		Config *config = talloc_get_type_abort(extension->config, Config);
-		word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);;
+		word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 		word_t sysnum = get_sysnum(tracee, ORIGINAL);
+		struct stat mode;
+		int status;
 
-		/* Note: this can be done only before PRoot pushes the
-		 * load script into tracee's stack.  */
-		if ((int) result >= 0 && sysnum == PR_execve)
-			adjust_elf_auxv(tracee, config);
+		if ((int) result < 0 || sysnum != PR_execve)
+			return 0;
+
+		/* This has to be done before PRoot pushes the load
+		 * script into tracee's stack.  */
+		adjust_elf_auxv(tracee, config);
+
+		status = stat(tracee->load_info->host_path, &mode);
+		if (status < 0)
+			return 0; /* Not fatal.  */
+
+		if ((mode.st_mode & S_ISUID) != 0) {
+			config->euid = 0;
+			config->suid = 0;
+		}
+
+		if ((mode.st_mode & S_ISGID) != 0) {
+			config->egid = 0;
+			config->sgid = 0;
+		}
+
 		return 0;
 	}
 

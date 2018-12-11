@@ -6,7 +6,7 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2014-12-12
+:Date: 2016-08-09
 :Version: 5.1.0
 :Manual section: 1
 
@@ -168,6 +168,27 @@ the sources for further details.
     group appear as if they were owned by *uid* and *gid* instead.
     Note that the ``-0`` option is the same as ``-i 0:0``.
 
+-p string, --port=string
+    Map ports to others with the syntax as *string* "port_in:port_out ...".
+
+    This option makes PRoot intercept bind and connect system calls,
+    and change the port they use. The port map is specified
+    with the syntax: ``-b *port_in*:*port_out*``. For example,
+    an application that runs a MySQL server binding to 5432 wants
+    to cohabit with other similar application, but doesn't have an
+    option to change its port. PRoot can be used here to modify
+    this port: ``proot -p 5432:5433 myapplication``. With this command,
+    the MySQL server will be bound to the port 5433.
+    This command can be repeated multiple times to map multiple ports.
+
+-n, --netcoop
+    Activates the network cooperation mode.
+
+    This option makes PRoot intercept bind() system calls and
+    change the port they are binding to to 0. With this, the system will
+    allocate an available port. Each time this is done, a new entry is added
+    to the port mapping entries, so that corresponding connect() system calls
+    use the same resulting port.
 
 Alias options
 -------------
@@ -209,7 +230,7 @@ The following options are aliases for handy sets of options.
     Alias: ``-0 -r *path*`` + a couple of recommended ``-b``.
 
     This option is useful to safely create and install packages into
-    the guest rootfs.  It is similar to the ``-R`` option expect it
+    the guest rootfs.  It is similar to the ``-R`` option except it
     enables the ``-0`` option and binds only the following minimal set
     of paths to avoid unexpected changes on host files:
 
@@ -489,18 +510,17 @@ Downloads
 PRoot
 -----
 
-The latest release of PRoot is packaged on http://packages.proot.me
-and sources are hosted on http://github.proot.me.  It is also
+The latest release of PRoot is packaged on https://github.com/proot-me/proot-static-build/releases
+and sources are hosted on https://github.com/proot-me/PRoot.  It is also
 available as highly compatible static binaries:
 
-* for x86_64: http://static.proot.me/proot-x86_64
+* for x86_64: https://github.com/proot-me/proot-static-build/blob/master/static/proot-x86_64?raw=true
 
-* for x86: http://static.proot.me/proot-x86
+* for x86: https://github.com/proot-me/proot-static-build/blob/master/static/proot-x86?raw=true
 
-* for ARM: http://static.proot.me/proot-arm
+* for ARM: https://github.com/proot-me/proot-static-build/blob/master/static/proot-arm?raw=true
 
 * other architectures: on demand.
-
 
 Rootfs
 ------
@@ -510,15 +530,17 @@ downloaded.  Note that ``mknod`` errors reported by ``tar`` when
 extracting these archives can be safely ignored since special files
 are typically bound (see ``-R`` option for details).
 
-* http://download.openvz.org/template/precreated/
+* http://download.openvz.org/template/precreated
 
-* https://images.linuxcontainers.org/images/
+* https://images.linuxcontainers.org/images
 
-* http://distfiles.gentoo.org/releases/
+* http://distfiles.gentoo.org/releases
 
-* http://cdimage.ubuntu.com/ubuntu-core/releases/
+* http://cdimage.ubuntu.com/ubuntu-core
 
 * http://archlinuxarm.org/developers/downloads
+
+* https://alpinelinux.org/downloads
 
 Technically such rootfs archive can be created by running the
 following command on the expected Linux distribution::
@@ -526,16 +548,118 @@ following command on the expected Linux distribution::
     tar --one-file-system --create --gzip --file my_rootfs.tar.gz /
 
 
-QEMU user-mode
---------------
+Ecosystem
+=========
 
-QEMU user-mode is required only if the guest rootfs was made for a CPU
-architecture incompatible with the host one, for instance when using a
-ARM rootfs on a x86_64 computer.  This package can be installed either
-from http://qemu.proot.me or from the host package manager under the
-name of "qemu-user" on most Linux distro.  In case one would like to
-build QEMU user-mode from sources, the ``--enable-linux-user`` option
-has to be specified to the ``./configure`` script.
+The following ecosystem has developed around PRoot since it has been
+made publicly available.
+
+Projects using PRoot or CARE
+----------------------------
+
+* CARE_: archive material used during an execution to make it
+  reproducible on any Linux system.
+
+* `GNURoot
+  <https://play.google.com/store/apps/details?id=champion.gnuroot>`_:
+  use several Linux distros on Android without root access.
+
+* `Debian noroot
+  <https://play.google.com/store/apps/details?id=com.cuntubuntu>`_:
+  use Debian Linux on Android without root access.
+
+* `Polysquare Travis Container
+  <https://github.com/polysquare/polysquare-travis-container>`_:
+  use several Linux distros on Travis-CI without root access.
+
+* `JuNest <http://fsquillace.github.io/junest-site>`_:
+  use Arch Linux on any Linux distros without root access.
+
+* `Brickstrap <https://github.com/ev3dev/brickstrap>`_:
+  create ev3dev file system images.
+
+* `Portable PyPy <https://github.com/squeaky-pl/portable-pypy>`_:
+  portable 32 and 64 bit x86 PyPy binaries.
+
+* `OpenMOLE <https://www.openmole.org>`_:
+  execute programs on distributed computing environments.
+
+* `ATOS
+  <http://compilfr.ens-lyon.fr/wp-content/uploads/2013/12/17-Francois_DeFerriere.pdf>`_:
+  find automatically C/C++ compiler options that provide best
+  optimizations.
+
+* `OPAM2Debian <https://forge.ocamlcore.org/projects/opam2debian>`_:
+  create Debian packages which contains a fully compiled OPAM
+  installation.
+
+* `SIO Workers <http://sioworkers.readthedocs.org/en/latest>`_:
+  batch long-term computations with Python.
+
+.. _CARE: http://reproducible.io
+
+
+Third party packages
+--------------------
+
+Binaries from the Downloads_ section are likely more up-to-date.
+
+* `Arch Linux (PRoot) <https://aur.archlinux.org/packages/proot/>`_
+
+* `Gentoo <http://packages.gentoo.org/package/sys-apps/proot>`_
+
+* `Debian <https://packages.debian.org/sid/proot>`_
+
+* `Ubuntu <https://launchpad.net/ubuntu/+source/proot>`_
+
+* `NixOS <https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/system/proot>`_
+
+* `University of Chicago RCC <https://rcc.uchicago.edu/docs/software/modules/proot/midway1/current.html>`_
+
+
+Public material about PRoot or CARE
+-----------------------------------
+
+* articles on `Rémi's blog
+  <https://blog.duraffort.fr/tag/proot.html>`_.  Rémi (a.k.a Ivoire)
+  is one of the PRoot developers.
+
+* presentation "`Software engineering tools based on syscall
+  instrumentation
+  <https://archive.fosdem.org/2014/schedule/event/syscall>`_" during
+  FOSDEM 2014.
+
+* presentation "`SW testing & Reproducing a LAVA failures locally
+  using CARE <https://connect.linaro.org/resources/lcu14/lcu14-211-lava-use-cases-sw-testing-reproducing-a-lava-failures-locally-using-care>`_"
+  during Linaro Connect USA 2014
+
+* presentation and essay "`CARE: the Comprehensive Archiver for
+  Reproducible Execution
+  <http://c-mind.org/events/trust2014/presentations/trust14_care.pdf>`_"
+  (`essay <http://dl.acm.org/citation.cfm?doid=2618137.2618138>`_)
+  during TRUST 2014
+
+* presentation "`An Introduction to the CARE tool (dead link)
+  <#>`_"
+  during HiPEAC CSW 2013
+
+* presentation and essay "`PRoot: a Step Forward for QEMU User-Mode
+  <http://adt.cs.upb.de/quf/quf11/quf2011_13.pdf>`_" (`proceedings
+  <http://adt.cs.upb.de/quf/quf2011_proceedings.pdf>`_) during
+  QUF'11
+
+* tutorial "`How to install nix in home (on another distribution)
+  <https://nixos.wiki/wiki/Nix_Installation_Guide#PRoot>`_"
+
+
+Companies using PRoot or CARE internally
+----------------------------------------
+
+* STMicroelectronics (main sponsor)
+* Sony
+* Ericsson
+* Cisco
+* Gogo
 
 
 See Also
@@ -548,8 +672,8 @@ bindfs(1), fakeroot(1), fakechroot(1)
 Colophon
 ========
 
-Visit http://proot.me for help, bug reports, suggestions, patches, ...
-Copyright (C) 2014 STMicroelectronics, licensed under GPL v2 or later.
+Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
+Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
 
 ::
 

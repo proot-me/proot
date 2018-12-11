@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -174,6 +174,9 @@ static void *transcript_mappings(void *cursor, const Mapping *mappings)
 static int transfer_load_script(Tracee *tracee)
 {
 	const word_t stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
+	static word_t page_size = 0;
+	static word_t page_mask = 0;
+
 	word_t entry_point;
 
 	size_t script_size;
@@ -190,9 +193,21 @@ static int transfer_load_script(Tracee *tracee)
 	void *buffer;
 	size_t buffer_size;
 
+	bool needs_executable_stack;
 	LoadStatement *statement;
 	void *cursor;
 	int status;
+
+	if (page_size == 0) {
+		page_size = sysconf(_SC_PAGE_SIZE);
+		if ((int) page_size <= 0)
+			page_size = 0x1000;
+		page_mask = ~(page_size - 1);
+	}
+
+	needs_executable_stack = (tracee->load_info->needs_executable_stack
+				|| (   tracee->load_info->interp != NULL
+				    && tracee->load_info->interp->needs_executable_stack));
 
 	/* Strings addresses are required to generate the load script,
 	 * for "open" actions.  Since I want to generate it in one
@@ -208,7 +223,7 @@ static int transfer_load_script(Tracee *tracee)
 			: strlen(tracee->load_info->raw_path) + 1);
 
 	/* A padding will be appended at the end of the load script
-	 * (a.k.a "strings area") to ensure this latter is aligned on
+	 * (a.k.a "strings area") to ensure this latter is aligned to
 	 * a word boundary, for sake of performance.  */
 	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
 			% sizeof_word(tracee);
@@ -229,6 +244,7 @@ static int transfer_load_script(Tracee *tracee)
 			: LOAD_STATEMENT_SIZE(*statement, open)
 			+ (LOAD_STATEMENT_SIZE(*statement, mmap)
 				* talloc_array_length(tracee->load_info->interp->mappings)))
+		+ (needs_executable_stack ? LOAD_STATEMENT_SIZE(*statement, make_stack_exec) : 0)
 		+ LOAD_STATEMENT_SIZE(*statement, start);
 
 	/* Allocate enough room for both the load script and the
@@ -265,6 +281,16 @@ static int transfer_load_script(Tracee *tracee)
 	}
 	else
 		entry_point = ELF_FIELD(tracee->load_info->elf_header, entry);
+
+	if (needs_executable_stack) {
+		/* Load script statement: stack_exec.  */
+		statement = cursor;
+
+		statement->action = LOAD_ACTION_MAKE_STACK_EXEC;
+		statement->make_stack_exec.start = stack_pointer & page_mask;
+
+		cursor += LOAD_STATEMENT_SIZE(*statement, make_stack_exec);
+	}
 
 	/* Load script statement: start.  */
 	statement = cursor;
@@ -352,7 +378,7 @@ static int transfer_load_script(Tracee *tracee)
 	 *   | mmap file  |
 	 *   +------------+
 	 *   |   open     |
-	 *   +------------+ <- stack pointer, sysarg1 (word aligned)
+	 *   +------------+ <- stack pointer, userarg1 (word aligned)
 	 */
 
 	/* Remember we are in the sysexit stage, so be sure the
@@ -393,7 +419,7 @@ void translate_execve_exit(Tracee *tracee)
 		poke_reg(tracee, RTLD_FINI, 0);
 		poke_reg(tracee, STATE_FLAGS, 0);
 
-		/* Restore registers with their current values.  */
+		/* Restore registers to their current values.  */
 		save_current_regs(tracee, ORIGINAL);
 		tracee->_regs_were_changed = true;
 
@@ -433,8 +459,17 @@ void translate_execve_exit(Tracee *tracee)
 		talloc_set_name_const(tracee->exe, "$exe");
 	}
 
-	/* New processes have no heap.  */
-	bzero(tracee->heap, sizeof(Heap));
+	/* New processes have no heap. The process could've been cloned with
+	 * CLONE_VM so it has been sharing the heap with its parent. execve()
+	 * discards the VM so make sure to reallocate new heap. */
+	if (talloc_reference_count(tracee->heap) > 0) {
+		talloc_unlink(tracee, tracee->heap);
+		tracee->heap = talloc_zero(tracee, Heap);
+		if (!tracee->heap)
+			note(tracee, ERROR, INTERNAL, "can't allocate heap");
+	} else {
+		bzero(tracee->heap, sizeof(Heap));
+	}
 
 	/* Transfer the load script to the loader.  */
 	status = transfer_load_script(tracee);

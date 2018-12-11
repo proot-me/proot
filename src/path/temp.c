@@ -4,17 +4,76 @@
 #include <errno.h>      /* errno(2), */
 #include <dirent.h>     /* readdir(3), opendir(3), */
 #include <string.h>     /* strcmp(3), */
-#include <stdlib.h>     /* free(3), */
+#include <stdlib.h>     /* free(3), getenv(3), */
 #include <stdio.h>      /* P_tmpdir, */
 #include <talloc.h>     /* talloc(3), */
 
 #include "cli/note.h"
 
 /**
+ * Return the path to a directory where temporary files should be
+ * created.
+ */
+const char *get_temp_directory()
+{
+	static const char *temp_directory = NULL;
+	char *tmp;
+
+	if (temp_directory != NULL)
+		return temp_directory;
+
+	temp_directory = getenv("PROOT_TMP_DIR");
+	if (temp_directory == NULL) {
+		temp_directory = P_tmpdir;
+		return temp_directory;
+	}
+
+	tmp = realpath(temp_directory, NULL);
+	if (tmp == NULL) {
+		note(NULL, WARNING, SYSTEM,
+			"can't canonicalize %s, using %s instead of PROOT_TMP_DIR",
+			temp_directory, P_tmpdir);
+
+		temp_directory = P_tmpdir;
+		return temp_directory;
+	}
+
+	temp_directory = talloc_strdup(talloc_autofree_context(), tmp);
+	if (temp_directory == NULL)
+		temp_directory = tmp;
+	else
+		free(tmp);
+
+	return temp_directory;
+}
+
+/**
+ * Handle the return of d_type = DT_UNKNOWN by readdir(3)
+ * Not all filesystems support returning d_type in readdir(3)
+ */
+static int get_dtype(struct dirent *de)
+{
+	int dtype = de ? de->d_type : DT_UNKNOWN;
+	struct stat st;
+
+	if (dtype != DT_UNKNOWN)
+		return dtype;
+	if (lstat(de->d_name, &st))
+		return dtype;
+	if (S_ISREG(st.st_mode))
+		return DT_REG;
+	if (S_ISDIR(st.st_mode))
+		return DT_DIR;
+	if (S_ISLNK(st.st_mode))
+		return DT_LNK;
+	return dtype;
+}
+
+/**
  * Remove recursively the content of the current working directory.
- * This latter has to lie in P_tmpdir (ie. "/tmp" on most systems).
- * This function returns -1 if a fatal error occured (ie. the
- * recursion must be stopped), the number of non-fatal errors
+ * This latter has to lie in temp_directory (ie. "/tmp" on most
+ * systems).  This function returns -1 if a fatal error occured
+ * (ie. the recursion must be stopped), the number of non-fatal errors
  * otherwise.
  *
  * WARNING: this function changes the current working directory for
@@ -22,30 +81,43 @@
  */
 static int clean_temp_cwd()
 {
-	const size_t length_tmpdir = strlen(P_tmpdir);
-	char prefix[length_tmpdir];
+	const char *temp_directory = get_temp_directory();
+	const size_t length_temp_directory = strlen(temp_directory);
+	char *prefix = NULL;
 	int nb_errors = 0;
+	DIR *dir = NULL;
 	int status;
-	DIR *dir;
+
+	prefix = talloc_size(NULL, length_temp_directory + 1);
+	if (prefix == NULL) {
+		note(NULL, WARNING, INTERNAL, "can't allocate memory");
+		nb_errors++;
+		goto end;
+	}
 
 	/* Sanity check: ensure the current directory lies in
 	 * "/tmp".  */
-	status = readlink("/proc/self/cwd", prefix, length_tmpdir);
+	status = readlink("/proc/self/cwd", prefix, length_temp_directory);
 	if (status < 0) {
 		note(NULL, WARNING, SYSTEM, "can't readlink '/proc/self/cwd'");
-		return ++nb_errors;
+		nb_errors++;
+		goto end;
 	}
-	if (strncmp(prefix, P_tmpdir, length_tmpdir) != 0) {
+	prefix[status] = '\0';
+
+	if (strncmp(prefix, temp_directory, length_temp_directory) != 0) {
 		note(NULL, ERROR, INTERNAL,
 			"trying to remove a directory outside of '%s', "
-			"please report this error.\n", P_tmpdir);
-		return ++nb_errors;
+			"please report this error.\n", temp_directory);
+		nb_errors++;
+		goto end;
 	}
 
 	dir = opendir(".");
 	if (dir == NULL) {
 		note(NULL, WARNING, SYSTEM, "can't open '.'");
-		return ++nb_errors;
+		nb_errors++;
+		goto end;
 	}
 
 	while (1) {
@@ -67,7 +139,7 @@ static int clean_temp_cwd()
 			continue;
 		}
 
-		if (entry->d_type == DT_DIR) {
+		if (get_dtype(entry) == DT_DIR) {
 			status = chdir(entry->d_name);
 			if (status < 0) {
 				note(NULL, WARNING, SYSTEM, "can't chdir '%s'", entry->d_name);
@@ -107,14 +179,18 @@ static int clean_temp_cwd()
 	}
 
 end:
-	(void) closedir(dir);
+	TALLOC_FREE(prefix);
+
+	if (dir != NULL)
+		(void) closedir(dir);
+
 	return nb_errors;
 }
 
 /**
  * Remove recursively @path.  This latter has to be a directory lying
- * in P_tmpdir (ie. "/tmp" on most systems).  This function returns -1
- * on error, otherwise 0.
+ * in temp_directory (ie. "/tmp" on most systems).  This function
+ * returns -1 on error, otherwise 0.
  */
 static int remove_temp_directory2(const char *path)
 {
@@ -204,12 +280,13 @@ static int remove_temp_file(char *path)
  */
 char *create_temp_name(TALLOC_CTX *context, const char *prefix)
 {
+	const char *temp_directory = get_temp_directory();
 	char *name;
 
 	if (context == NULL)
 		context = talloc_autofree_context();
 
-	name = talloc_asprintf(context, "%s/%s-%d-XXXXXX", P_tmpdir, prefix, getpid());
+	name = talloc_asprintf(context, "%s/%s-%d-XXXXXX", temp_directory, prefix, getpid());
 	if (name == NULL) {
 		note(NULL, ERROR, INTERNAL, "can't allocate memory");
 		return NULL;
@@ -236,6 +313,8 @@ const char *create_temp_directory(TALLOC_CTX *context, const char *prefix)
 	name = mkdtemp(name);
 	if (name == NULL) {
 		note(NULL, ERROR, SYSTEM, "can't create temporary directory");
+		note(NULL, INFO, USER, "Please set PROOT_TMP_DIR env. variable "
+			"to an alternate location (with write permission).");
 		return NULL;
 	}
 
@@ -262,6 +341,8 @@ const char *create_temp_file(TALLOC_CTX *context, const char *prefix)
 	fd = mkstemp(name);
 	if (fd < 0) {
 		note(NULL, ERROR, SYSTEM, "can't create temporary file");
+		note(NULL, INFO, USER, "Please set PROOT_TMP_DIR env. variable "
+			"to an alternate location (with write permission).");
 		return NULL;
 	}
 	close(fd);
@@ -301,5 +382,7 @@ error:
 	if (fd >= 0)
 		close(fd);
 	note(NULL, ERROR, SYSTEM, "can't create temporary file");
+	note(NULL, INFO, USER, "Please set PROOT_TMP_DIR env. variable "
+		"to an alternate location (with write permission).");
 	return NULL;
 }

@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -26,7 +26,7 @@
 #include <linux/net.h>   /* SYS_*, */
 #include <fcntl.h>       /* AT_FDCWD, */
 #include <limits.h>      /* PATH_MAX, */
-
+#include <string.h>	 /* strcpy */
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/socket.h"
@@ -134,7 +134,8 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_brk:
-		status = translate_brk_enter(tracee);
+		translate_brk_enter(tracee);
+		status = 0;
 		break;
 
 	case PR_getcwd:

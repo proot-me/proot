@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -29,9 +29,16 @@
 #include <sys/queue.h> /* LIST_*, */
 #include <sys/ptrace.h>/* enum __ptrace_request */
 #include <talloc.h>    /* talloc_*, */
-
+#include <stdint.h>    /* *int*_t, */
+#include <sys/wait.h>  /* __WAIT_* */
 #include "arch.h" /* word_t, user_regs_struct, */
 #include "compat.h"
+
+#if defined(__GLIBC__)
+#define PTRACE_REQUEST_TYPE	enum __ptrace_request
+#else
+#define PTRACE_REQUEST_TYPE	int
+#endif
 
 typedef enum {
 	CURRENT  = 0,
@@ -66,7 +73,6 @@ typedef struct {
 typedef struct {
 	word_t base;
 	size_t size;
-	size_t prealloc_size;
 	bool disabled;
 } Heap;
 
@@ -82,12 +88,19 @@ typedef struct tracee {
 	/* Process identifier. */
 	pid_t pid;
 
+	/* Unique tracee identifier. */
+	uint64_t vpid;
+
 	/* Is it currently running or not?  */
 	bool running;
 
 	/* Is this tracee ready to be freed?  TODO: move to a list
 	 * dedicated to terminated tracees instead.  */
 	bool terminated;
+
+        /* Whether termination of this tracee implies an immediate kill
+         * of all tracees. */
+        bool killall_on_exit;
 
 	/* Parent of this tracee, NULL if none.  */
 	struct tracee *parent;
@@ -140,7 +153,7 @@ typedef struct tracee {
 				     && get_sysnum((tracee), ORIGINAL) == sysnum)
 
 	/* How this tracee is restarted.  */
-	enum __ptrace_request restart_how;
+	PTRACE_REQUEST_TYPE restart_how;
 
 	/* Value of the tracee's general purpose registers.  */
 	struct user_regs_struct _regs[NB_REG_VERSION];
@@ -266,6 +279,7 @@ extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
 extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);
 extern int new_child(Tracee *parent, word_t clone_flags);
 extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
+extern void terminate_tracee(Tracee *tracee);
 extern void free_terminated_tracees();
 extern int swap_config(Tracee *tracee1, Tracee *tracee2);
 extern void kill_all_tracees();

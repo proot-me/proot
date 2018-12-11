@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2013 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -31,6 +31,8 @@
 #include <stdlib.h>     /* exit, EXIT_*, */
 #include <stdio.h>      /* fprintf(3), stderr, */
 #include <stdint.h>     /* *int*_t, */
+#include <sys/uio.h>    /* struct iovec */
+#include <elf.h>        /* NT_PRSTATUS */
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
@@ -178,6 +180,24 @@ typedef enum {
 
 #endif
 
+#if defined(PTRACE_GETREGS)
+static long read_regs(pid_t pid, struct user_regs_struct *regs)
+{
+	return ptrace(PTRACE_GETREGS, pid, NULL, regs);
+}
+#elif defined(PTRACE_GETREGSET)
+static long read_regs(pid_t pid, struct user_regs_struct *regs)
+{
+	struct iovec data;
+
+	data.iov_base = regs;
+	data.iov_len = sizeof(struct user_regs_struct);
+	return ptrace(PTRACE_GETREGSET, pid, NT_PRSTATUS, &data);
+}
+#else
+#error "PTRACE_GETREGS and PTRACE_GETREGSET not defined"
+#endif
+
 int main(int argc, char *argv[])
 {
 	enum __ptrace_request restart_how;
@@ -289,7 +309,7 @@ int main(int argc, char *argv[])
 			case SIGTRAP:
 				fprintf(stderr, "sid %d: SIGTRAP\n", sid);
 
-				status = ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+				status = read_regs(pid, &regs);
 				if (status < 0) {
 					fprintf(stderr,
 						"sigtrap: ?, ?\n");
@@ -341,7 +361,7 @@ int main(int argc, char *argv[])
 				fprintf(stderr, "sid %d: PTRACE_EVENT_SYSGOOD\n", sid);
 				signal = 0;
 
-				status = ptrace(PTRACE_GETREGS, pid, NULL, &regs);
+				status = read_regs(pid, &regs);
 				if (status < 0) {
 					fprintf(stderr,
 						"syscall(?) = ?\n");

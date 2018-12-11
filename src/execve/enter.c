@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -39,6 +39,7 @@
 #include "execve/elf.h"
 #include "path/path.h"
 #include "path/temp.h"
+#include "path/binding.h"
 #include "tracee/tracee.h"
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
@@ -250,6 +251,11 @@ static int add_load_info(const ElfHeader *elf_header,
 		status = add_interp(data->tracee, data->fd, data->load_info, program_header);
 		if (status < 0)
 			return status;
+		break;
+
+	case PT_GNU_STACK:
+		data->load_info->needs_executable_stack |=
+			((PROGRAM_FIELD(*elf_header, *program_header, flags) & PF_X) != 0);
 		break;
 
 	default:
@@ -505,6 +511,18 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
 		note(tracee, ERROR, INTERNAL, "can't retrieve loader path (/proc/self/fd/)");
+		goto end;
+	}
+
+	status = access(path, X_OK);
+	if (status < 0) {
+		note(tracee, ERROR, INTERNAL,
+			"it seems the current temporary directory (%s) "
+			"is mounted with no execution permission.",
+			get_temp_directory());
+		note(tracee, INFO, USER,
+			"Please set PROOT_TMP_DIR env. variable to an alternate "
+			"location ('%s/tmp' for example).", get_root(tracee));
 		goto end;
 	}
 

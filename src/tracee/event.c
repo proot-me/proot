@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -33,6 +33,7 @@
 #include <assert.h>     /* assert(3), */
 #include <stdlib.h>     /* atexit(3), getenv(3), */
 #include <talloc.h>     /* talloc_*, */
+#include <inttypes.h>   /* PRI*, */
 
 #include "tracee/event.h"
 #include "cli/note.h"
@@ -241,8 +242,7 @@ static void check_architecture(Tracee *tracee)
 		return;
 
 	note(tracee, INFO, USER,
-		"Get a 64-bit version that supports 32-bit binaries here: "
-		"http://static.proot.me/proot-x86_64");
+		"A 64-bit version that supports 32-bit binaries is required");
 }
 
 /**
@@ -362,7 +362,6 @@ int event_loop()
 int handle_tracee_event(Tracee *tracee, int tracee_status)
 {
 	static bool seccomp_detected = false;
-	pid_t pid = tracee->pid;
 	long status;
 	int signal;
 
@@ -388,14 +387,17 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 
 	if (WIFEXITED(tracee_status)) {
 		last_exit_status = WEXITSTATUS(tracee_status);
-		VERBOSE(tracee, 1, "pid %d: exited with status %d", pid, last_exit_status);
-		tracee->terminated = true;
+		VERBOSE(tracee, 1,
+			"vpid %" PRIu64 ": exited with status %d",
+			tracee->vpid, last_exit_status);
+		terminate_tracee(tracee);
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
 		VERBOSE(tracee, (int) (last_exit_status != -1),
-			"pid %d: terminated with signal %d", pid, WTERMSIG(tracee_status));
-		tracee->terminated = true;
+			"vpid %" PRIu64 ": terminated with signal %d",
+			tracee->vpid, WTERMSIG(tracee_status));
+		terminate_tracee(tracee);
 	}
 	else if (WIFSTOPPED(tracee_status)) {
 		/* Don't use WSTOPSIG() to extract the signal

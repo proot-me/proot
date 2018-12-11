@@ -16,7 +16,7 @@ OBJDUMP  = $(CROSS_COMPILE)objdump
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -Wall -Wextra -O2
-LDFLAGS  += -ltalloc
+LDFLAGS  += -ltalloc -Wl,-z,noexecstack
 
 CARE_LDFLAGS = -larchive
 
@@ -45,6 +45,7 @@ OBJECTS += \
 	syscall/sysnum.o	\
 	syscall/socket.o	\
 	syscall/heap.o		\
+	syscall/rlimit.o	\
 	tracee/tracee.o		\
 	tracee/mem.o		\
 	tracee/reg.o		\
@@ -55,6 +56,8 @@ OBJECTS += \
 	extension/extension.o	\
 	extension/kompat/kompat.o \
 	extension/fake_id0/fake_id0.o \
+	extension/portmap/portmap.o \
+	extension/portmap/map.o \
 	loader/loader-wrapped.o
 
 define define_from_arch.h
@@ -140,8 +143,8 @@ LINK    = $($(quiet)LD) -o $@ $^ $(LDFLAGS)
 
 OBJIFY = $($(quiet)GEN)									\
 	$(OBJCOPY)									\
-		--input binary								\
-		--output `env LC_ALL=C $(OBJDUMP) -f cli/cli.o |			\
+		--input-target binary							\
+		--output-target `env LC_ALL=C $(OBJDUMP) -f cli/cli.o |			\
 			grep 'file format' | awk '{print $$4}'`				\
 		--binary-architecture `env LC_ALL=C $(OBJDUMP) -f cli/cli.o |		\
 				grep architecture | cut -f 1 -d , | awk '{print $$2}'`	\
@@ -182,7 +185,7 @@ $(eval $(call define_from_arch.h,$1,LOADER_ARCH_CFLAGS))
 $(eval $(call define_from_arch.h,$1,LOADER_ADDRESS))
 
 LOADER_CFLAGS$1  += -fPIC -ffreestanding $(LOADER_ARCH_CFLAGS$1)
-LOADER_LDFLAGS$1 += -static -nostdlib -Wl$(BUILD_ID_NONE),-Ttext=$(LOADER_ADDRESS$1)
+LOADER_LDFLAGS$1 += -static -nostdlib -Wl$(BUILD_ID_NONE),-Ttext=$(LOADER_ADDRESS$1),-z,noexecstack
 
 loader/loader$1.o: loader/loader.c
 	@mkdir -p $$(dir $$@)
@@ -222,21 +225,21 @@ DEPS = $(OBJECTS:.o=.d) $(CARE_OBJECTS:.o=.d) $(LOADER_OBJECTS:.o=.d) $(LOADER-m
 ######################################################################
 # PHONY targets
 
-PREFIX = /usr/local
-DESTDIR = $(PREFIX)/bin
+PREFIX ?= /usr/local
+BINDIR ?= $(PREFIX)/bin
 
 .PHONY: clean distclean install install-care uninstall
 clean distclean:
 	-$(RM) -f $(CHECK_OBJECTS) $(CHECK_PROGRAMS) $(CHECK_RESULTS) $(OBJECTS) $(CARE_OBJECTS) $(LOADER_OBJECTS) $(LOADER-m32_OBJECTS) proot care loader/loader loader/loader-m32 cli/care-manual.o $(DEPS) build.h licenses
 
 install: proot
-	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
+	$($(quiet)INSTALL) -D $< $(DESTDIR)$(BINDIR)/$<
 
 install-care: care
-	$($(quiet)INSTALL) -D $< $(DESTDIR)/$<
+	$($(quiet)INSTALL) -D $< $(DESTDIR)$(BINDIR)/$<
 
 uninstall:
-	-$(RM) -f $(DESTDIR)/proot
+	-$(RM) -f $(DESTDIR)$(BINDIR)/proot
 
 uninstall-care:
-	-$(RM) -f $(DESTDIR)/care
+	-$(RM) -f $(DESTDIR)$(BINDIR)/care

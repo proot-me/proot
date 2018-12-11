@@ -2,7 +2,7 @@
  *
  * This file is part of PRoot.
  *
- * Copyright (C) 2014 STMicroelectronics
+ * Copyright (C) 2015 STMicroelectronics
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
@@ -30,6 +30,7 @@
 #include "build.h"
 
 #include "compat.h"
+#include "extension/portmap/portmap.h"
 
 /**
  * Remove an @extension from its tracee's list, then send it the
@@ -73,6 +74,25 @@ static Extension *new_extension(Tracee *tracee, extension_callback_t callback)
 	talloc_set_destructor(extension, remove_extension);
 
 	return extension;
+}
+
+/**
+ * Retrieve from @tracee->extensions the extension for the given
+ * @callback.
+ */
+Extension *get_extension(Tracee *tracee, extension_callback_t callback)
+{
+	Extension *extension;
+
+	if (tracee->extensions == NULL)
+		return NULL;
+
+	LIST_FOREACH(extension, tracee->extensions, link) {
+		if (extension->callback == callback)
+			return extension;
+	}
+
+	return NULL;
 }
 
 /**
