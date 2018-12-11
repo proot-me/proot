@@ -661,25 +661,20 @@ checking whether the C compiler is a cross\-compiler... no
 .SH DOWNLOADS
 .SS PRoot
 .sp
-The latest release of PRoot is packaged on \fI\%http://packages.proot.me\fP
-and sources are hosted on \fI\%http://scm.proot.me\fP\&.  It is also available
+The latest release of PRoot is packaged on \fI\%https://github.com/proot\-me/proot\-static\-build/releases\fP
+and sources are hosted on \fI\%https://github.com/proot\-me/PRoot\fP\&.  It is also available
 as highly compatible static binaries:
 .INDENT 0.0
 .IP \(bu 2
-for x86_64: \fI\%http://portable.proot.me/proot\-x86_64\fP
+for x86_64: \fI\%https://github.com/proot\-me/proot\-static\-build/blob/master/static/proot\-x86_64?raw=true\fP
 .IP \(bu 2
-for x86: \fI\%http://portable.proot.me/proot\-x86\fP
+for x86: \fI\%https://github.com/proot\-me/proot\-static\-build/blob/master/static/proot\-x86?raw=true\fP
 .IP \(bu 2
-for ARM: \fI\%http://portable.proot.me/proot\-arm\fP
+for ARM: \fI\%https://github.com/proot\-me/proot\-static\-build/blob/master/static/proot\-arm?raw=true\fP
 .IP \(bu 2
 other architectures: on demand.
 .UNINDENT
 .sp
-Such binaries are created using the following build\-system:
-\fI\%http://build.proot.me\fP\&.  It makes sure that they can run on any distros
-powered by the Linux kernel version 2.6.0 or later, nothing more.
-Ultimately these binaries can even run on Linux systems where no
-libraries are installed.
 .SS Rootfs
 .sp
 Here follows a couple of URLs where some rootfs archives can be freely
@@ -694,9 +689,11 @@ are typically bound (see \fB\-R\fP option for details).
 .IP \(bu 2
 \fI\%http://distfiles.gentoo.org/releases/\fP
 .IP \(bu 2
-\fI\%http://cdimage.ubuntu.com/ubuntu\-core/releases/\fP
+\fI\%http://cdimage.ubuntu.com/ubuntu\-core\fP
 .IP \(bu 2
 \fI\%http://archlinuxarm.org/developers/downloads\fP
+.IP \(bu 2
+\fI\%https://alpinelinux.org/downloads\fP
 .UNINDENT
 .sp
 Technically such rootfs archive can be created by running the
@@ -770,8 +767,6 @@ Binaries from the \fI\%Downloads\fP section are likely more up\-to\-date.
 .IP \(bu 2
 \fI\%NixOS\fP
 .IP \(bu 2
-\fI\%KaOS\fP
-.IP \(bu 2
 \fI\%University of Chicago RCC\fP
 .UNINDENT
 .SS Public material about PRoot or CARE
@@ -820,7 +815,7 @@ chroot(1), mount(8), binfmt_misc, ptrace(2), qemu(1), sb2(1),
 bindfs(1), fakeroot(1), fakechroot(1)
 .SH COLOPHON
 .sp
-Visit \fI\%http://proot.me\fP for help, bug reports, suggestions, patches, ...
+Visit \fI\%https://proot\-me.github.io\fP for help, bug reports, suggestions, patches, ...
 Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
 .INDENT 0.0
 .INDENT 3.5
