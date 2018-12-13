@@ -26,7 +26,7 @@
 #include <linux/net.h>   /* SYS_*, */
 #include <fcntl.h>       /* AT_FDCWD, */
 #include <limits.h>      /* PATH_MAX, */
-
+#include <string.h>	 /* strcpy */
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
 #include "syscall/socket.h"
@@ -533,6 +533,7 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_renameat:
+	case PR_renameat2:
 		olddirfd = peek_reg(tracee, CURRENT, SYSARG_1);
 		newdirfd = peek_reg(tracee, CURRENT, SYSARG_3);
 

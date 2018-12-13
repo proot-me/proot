@@ -34,7 +34,8 @@ env:
 addons:
   coverity_scan:
     project:
-      name: "cedric-vincent/PRoot"
+      name: "proot-me/PRoot"
+      description: "PRoot"
     build_command_prepend:
     build_command: make -C src proot care CARE_BUILD_ENV=ok
     branch_pattern: coverity_scan
