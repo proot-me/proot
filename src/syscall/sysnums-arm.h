@@ -335,4 +335,9 @@ static const Sysnum sysnums_arm[] = {
 	[ 375 ] = PR_setns,
 	[ 376 ] = PR_process_vm_readv,
 	[ 377 ] = PR_process_vm_writev,
+	[ 378 ] = PR_kcmp,
+	[ 379 ] = PR_finit_module,
+	[ 380 ] = PR_sched_setattr,
+	[ 381 ] = PR_sched_getattr,
+	[ 382 ] = PR_renameat2,
 };

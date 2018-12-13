@@ -509,6 +509,24 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 		return 0;
 	}
 
+	case PR_renameat2: {
+		Modif modif = {
+			.expected_release = KERNEL_VERSION(3,15,0),
+			.new_sysarg_num   = PR_rename,
+			.shifts = { [0] = {
+					.sysarg  = SYSARG_2,
+					.nb_args = 1,
+					.offset  =-1 },
+				    [1] = {
+					    .sysarg  = SYSARG_4,
+					    .nb_args = 1,
+					    .offset  = -2 }
+			}
+		};
+		modify_syscall(tracee, config, &modif);
+		return 0;
+	}
+
 	case PR_signalfd4: {
 		bool modified;
 		Modif modif = {
@@ -968,6 +986,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_pselect6, 		0 },
 	{ PR_readlinkat, 	0 },
 	{ PR_renameat, 		0 },
+	{ PR_renameat2,		0 },
 	{ PR_setdomainname,	FILTER_SYSEXIT },
 	{ PR_sethostname,	FILTER_SYSEXIT },
 	{ PR_signalfd4, 	FILTER_SYSEXIT },
