@@ -1,7 +1,7 @@
 PRoot
 =====
 
-*chroot, mount --bind, and binfmt_misc without privilege/setup*
+*chroot, mount --bind, and binfmt_misc without privilege/setup for Linux*
 
 Build status
 ============
