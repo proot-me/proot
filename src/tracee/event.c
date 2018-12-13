@@ -34,6 +34,7 @@
 #include <stdlib.h>     /* atexit(3), getenv(3), */
 #include <talloc.h>     /* talloc_*, */
 #include <inttypes.h>   /* PRI*, */
+#include <linux/version.h> /* KERNEL_VERSION, */
 
 #include "tracee/event.h"
 #include "cli/note.h"
@@ -362,6 +363,7 @@ int event_loop()
 int handle_tracee_event(Tracee *tracee, int tracee_status)
 {
 	static bool seccomp_detected = false;
+	static bool seccomp_enabled = false;
 	long status;
 	int signal;
 
@@ -434,6 +436,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 			status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
 					default_ptrace_options | PTRACE_O_TRACESECCOMP);
 			if (status < 0) {
+                seccomp_enabled = false;
 				/* ... otherwise use default options only.  */
 				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
 						default_ptrace_options);
@@ -442,7 +445,50 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 					exit(EXIT_FAILURE);
 				}
 			}
+            else {
+                if (getenv("PROOT_NO_SECCOMP") == NULL)
+                    seccomp_enabled = true;
+            }
 		}
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4,8,0)
+
+			/* Fall through. */
+		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
+		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8:
+
+            if (!seccomp_detected && seccomp_enabled) {
+                VERBOSE(tracee, 1, "ptrace acceleration (seccomp mode 2) enabled");
+                tracee->seccomp = ENABLED;
+                seccomp_detected = true;
+            }
+
+            if (signal == (SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8) ||
+                    signal == (SIGTRAP | PTRACE_EVENT_SECCOMP << 8)) {
+
+                unsigned long flags = 0;
+                signal = 0;
+
+                /* SECCOMP TRAP can only be received for
+                 * sysenter events, ignore otherwise */
+                if (!IS_IN_SYSENTER(tracee)) {
+                    tracee->restart_how = PTRACE_CONT;
+                    return 0;
+                    }
+                status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
+                if (status < 0)
+                    break;
+
+                if (tracee->seccomp == ENABLED && (flags & FILTER_SYSEXIT) == 0) {
+                    tracee->restart_how = PTRACE_CONT;
+                    translate_syscall(tracee);
+
+                    if (tracee->seccomp == DISABLING)
+                        tracee->restart_how = PTRACE_SYSCALL;
+                    break;
+                }
+            }
+#endif
 			/* Fall through. */
 		case SIGTRAP | 0x80:
 			signal = 0;
@@ -451,7 +497,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 			   sysenter stage but the kernel reports the sysexit
 			   stage; just discard this spurious tracee/event.  */
 			if (tracee->exe == NULL) {
-				tracee->restart_how = PTRACE_CONT;
+				tracee->restart_how = PTRACE_CONT; /* SYSCALL OR CONT */
 				return 0;
 			}
 
@@ -491,6 +537,8 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				break;
 			}
 			break;
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,8,0)
 
 		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
 		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
@@ -532,6 +580,8 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				tracee->restart_how = PTRACE_SYSCALL;
 			break;
 		}
+
+#endif
 
 		case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			signal = 0;
