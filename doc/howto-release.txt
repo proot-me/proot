@@ -15,7 +15,7 @@ Checks
     - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
     - `make -C tests V=1 2>&1 | grep talloc`
 
-+ Fonctional checks: no regressions must appear with respect to
++ Functional checks: no regressions must appear with respect to
   tests/validation.mk and to the configurations tested in the previous
   release (`git show tags/...`).
 
