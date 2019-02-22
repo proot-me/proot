@@ -180,6 +180,7 @@ static inline int notify_extensions(Tracee *tracee, ExtensionEvent event,
 extern int kompat_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern int care_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
+extern int python_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 
 /* Added extensions.  */
 /**
