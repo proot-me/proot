@@ -60,6 +60,9 @@ static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_i(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_p(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_n(Tracee *tracee, const Cli *cli, const char *value);
+#ifdef HAVE_PYTHON_EXTENSION
+static int handle_option_P(Tracee *tracee, const Cli *cli, const char *value);
+#endif
 static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_kill_on_exit(Tracee *tracee, const Cli *cli, const char *value);
@@ -260,6 +263,16 @@ Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.",
 \tto run multiple instances of a same program without worrying about the same ports\n\
 \tbeing used twice.",
 	},
+#ifdef HAVE_PYTHON_EXTENSION
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-P", .separator = ' ', .value = "string" },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_p,
+	  .description = "Allow to access tracee information from python (experimental).",
+	  .detail = "\tThis option allow to launch a python script as an extension (experimental).",
+	},
+#endif
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-R", .separator = ' ', .value = "path" },

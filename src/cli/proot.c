@@ -323,6 +323,14 @@ static int handle_option_n(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return status;
 }
 
+#ifdef HAVE_PYTHON_EXTENSION
+static int handle_option_P(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+{
+	(void) initialize_extension(tracee, python_callback, value);
+	return 0;
+}
+#endif
+
 /**
  * Initialize @tracee->qemu.
  */
