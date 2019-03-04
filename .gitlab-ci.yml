@@ -9,7 +9,7 @@ test:
   script: 
     - make -C src loader.exe loader-m32.exe build.h
     - make -C src proot 
-    - PROOT_NO_SECCOMP=1 make -C tests || true # ignore failing tests
+    - make -C tests || true # ignore failing tests
 
 pages:
   stage: deploy
