@@ -664,6 +664,10 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 	case PR_chroot: {
 		char path[PATH_MAX];
+		char path_translated[PATH_MAX];
+		char path_translated_absolute[PATH_MAX];
+		char root_translated[PATH_MAX];
+		char root_translated_absolute[PATH_MAX];
 		word_t input;
 		int status;
 
@@ -677,12 +681,24 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 		input = peek_reg(tracee, MODIFIED, SYSARG_1);
 
+		// path can be relative
 		status = read_path(tracee, path, input);
 		if (status < 0)
 			return status;
 
+		// weird: translate(".") returns "/." rather than "/", when cwd is "/"
+		status = translate_path(tracee, path_translated, AT_FDCWD, path, false);
+		if (status < 0)
+			return status;
+		realpath(path_translated, path_translated_absolute);
+
+		status = translate_path(tracee, root_translated, AT_FDCWD, get_root(tracee), false);
+		if (status < 0)
+			return status;
+		realpath(root_translated, root_translated_absolute);
+
 		/* Only "new rootfs == current rootfs" is supported yet.  */
-		status = compare_paths(get_root(tracee), path);
+		status = compare_paths(root_translated_absolute, path_translated_absolute);
 		if (status != PATHS_ARE_EQUAL)
 			return 0;
 
