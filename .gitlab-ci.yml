@@ -1,0 +1,29 @@
+image: gcc
+
+before_script:
+  - apt-get update -qq
+  - apt-get install -qq clang-tools-4.0 libtalloc-dev uthash-dev libarchive-dev gdb strace realpath swig
+
+test:
+  stage: test
+  script: 
+    - make -C src loader.exe loader-m32.exe build.h
+    - make -C src proot 
+    - make -C tests || true # ignore failing tests
+
+pages:
+  stage: deploy
+  script:
+    - mkdir -p public/{bin,reports}
+    - LDFLAGS="${LDFLAGS} -static" make -C src proot GIT=false
+    - cp src/proot public/bin
+    - make -C src clean
+    - scan-build-4.0 make -C src proot
+    - cp -R /tmp/scan-build-* public/reports
+  artifacts:
+    paths:
+      - public
+  only:
+    - master
+    - gitlab-ci
+
