@@ -6,14 +6,14 @@ PRoot
 Build status
 ============
 
-- .. image:: https://travis-ci.org/proot-me/PRoot.png?branch=master
+- .. image:: https://img.shields.io/gitlab/pipeline/proot/proot.svg?label=gitlab-ci&style=flat-square
+     :target: https://gitlab.com/proot/proot/pipelines
+
+- .. image:: https://img.shields.io/travis/proot-me/PRoot.svg?label=travis-ci&style=flat-square
      :target: https://travis-ci.org/proot-me/PRoot
 
-- .. image:: https://coveralls.io/repos/github/proot-me/PRoot/badge.svg?branch=master
-     :target: https://coveralls.io/github/proot-me/PRoot?branch=master
-
-- .. image:: https://scan.coverity.com/projects/13786/badge.svg
-     :target: https://scan.coverity.com/projects/proot-me-proot
+- .. image:: https://img.shields.io/badge/scan--build-latest-yellow.svg?style=flat-square
+     :target: https://proot.gitlab.io/proot
 
 Manuals
 =======

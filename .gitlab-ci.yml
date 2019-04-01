@@ -2,7 +2,7 @@ image: gcc
 
 before_script:
   - apt-get update -qq
-  - apt-get install -qq clang-tools-4.0 libtalloc-dev uthash-dev libarchive-dev gdb strace realpath swig
+  - apt-get install -qq clang-tools-4.0 curl libtalloc-dev uthash-dev libarchive-dev gdb strace realpath swig
 
 test:
   stage: test
@@ -19,7 +19,9 @@ pages:
     - cp src/proot public/bin
     - make -C src clean
     - scan-build-4.0 make -C src proot
-    - cp -R /tmp/scan-build-* public/reports
+    - cp -R /tmp/scan-build-* public/reports/scan-build-latest
+    - curl -o public/index.html https://gitlab.com/lramage/lramage.gitlab.io/raw/master/_layouts/redirect.html
+    - sed -i "s|{{ page.source_url }}|https://proot.gitlab.io/-/proot/-/jobs/${CI_JOB_ID}/artifacts/public/reports/scan-build-latest/index.html|g" public/index.html
   artifacts:
     paths:
       - public
