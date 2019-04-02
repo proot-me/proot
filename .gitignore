@@ -7,6 +7,8 @@ src/care
 src/loader/loader
 src/loader/loader-m32
 src/proot
+src/proot.py
+src/proot_wrap.c
 tests/*
 !tests/*.sh.*
 !tests/*.sh
