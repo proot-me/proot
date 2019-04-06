@@ -192,7 +192,7 @@ static int archive_re_execute_sh(Care *care)
 
 	N("if [ -z ${PROOT} ]; then");
 	N("    echo '**********************************************************************'");
-	N("    echo '\"proot\" command not found, please get it from http://proot.me'");
+	N("    echo '\"proot\" command not found, please get it from https://proot-me.github.io'");
 	N("    echo '**********************************************************************'");
 	N("    exit 1");
 	N("fi");

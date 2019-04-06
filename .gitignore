@@ -1,5 +1,8 @@
 *.d
 *.o
+*.html
+doc/*.h
+doc/public_html/
 src/.check_process_vm.res
 src/.check_seccomp_filter.res
 src/build.h

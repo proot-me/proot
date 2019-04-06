@@ -43,3 +43,6 @@ Documentation Update
    src/cli/; $EDITOR src/cli/{proot,care}.h`
 
 4. upload the generated RPM .spec file to OBS
+
+5. regenerate the website: `SITE_DIR=../../proot-me.github.io
+   make -eC doc dist # relative to doc directory`

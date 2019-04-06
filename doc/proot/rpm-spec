@@ -60,7 +60,7 @@ rm -rf %{buildroot}
 %doc doc/*
 
 %changelog
-* Tue Jan 27 2015 Cédric VINCENT <cedric.vincent@st.com>
+* Wed Apr 10 2019 PRoot Team <proot_me@googlegroups.com>
 Release v5.1.0
 ==============
 

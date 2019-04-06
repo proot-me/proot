@@ -59,7 +59,7 @@ requests before sending them to the host kernel.  This means that
 guest programs can use host resources (devices, network, ...) just as
 if they were "normal" host programs.
 
-.. _CARE: https://proot-me.github.io
+.. _CARE: https://proot-me.github.io/care
 
 
 Options
@@ -511,7 +511,7 @@ PRoot
 -----
 
 The latest release of PRoot is packaged on https://github.com/proot-me/proot-static-build/releases
-and sources are hosted on https://github.com/proot-me/PRoot.  It is also
+and sources are hosted on https://github.com/proot-me/proot.  It is also
 available as highly compatible static binaries:
 
 * for x86_64: https://github.com/proot-me/proot-static-build/blob/master/static/proot-x86_64?raw=true
@@ -575,9 +575,6 @@ Projects using PRoot or CARE
 * `JuNest <http://fsquillace.github.io/junest-site>`_:
   use Arch Linux on any Linux distros without root access.
 
-* `Brickstrap <https://github.com/ev3dev/brickstrap>`_:
-  create ev3dev file system images.
-
 * `Portable PyPy <https://github.com/squeaky-pl/portable-pypy>`_:
   portable 32 and 64 bit x86 PyPy binaries.
 
@@ -596,15 +593,15 @@ Projects using PRoot or CARE
 * `SIO Workers <http://sioworkers.readthedocs.org/en/latest>`_:
   batch long-term computations with Python.
 
-.. _CARE: http://reproducible.io
-
 
 Third party packages
 --------------------
 
 Binaries from the Downloads_ section are likely more up-to-date.
 
-* `Arch Linux (PRoot) <https://aur.archlinux.org/packages/proot/>`_
+* `Alpine Linux <https://pkgs.alpinelinux.org/packages?name=proot>`_
+
+* `Arch Linux <https://aur.archlinux.org/packages/proot>`_
 
 * `Gentoo <http://packages.gentoo.org/package/sys-apps/proot>`_
 
@@ -655,7 +652,7 @@ Public material about PRoot or CARE
 Companies using PRoot or CARE internally
 ----------------------------------------
 
-* STMicroelectronics (main sponsor)
+* STMicroelectronics
 * Sony
 * Ericsson
 * Cisco

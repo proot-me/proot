@@ -434,7 +434,7 @@ Downloads
 =========
 
 CARE is heavily based on PRoot_, that's why they are both hosted in
-the same repository: https://github.com/proot-me.  Since CARE is supposed
+the same repository: https://github.com/proot-me/proot.  Since CARE is supposed
 to work on any Linux systems, it is recommended to use following
 highly compatible static binaries:
 
@@ -446,12 +446,12 @@ highly compatible static binaries:
 
 * other architectures: on demand.
 
-.. _PRoot: http://proot.me
+.. _PRoot: https://proot-me.github.io
 
 Colophon
 ========
 
-Visit http://reproducible.io for help, bug reports, suggestions, patches, ...
+Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
 Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
 
 ::

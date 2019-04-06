@@ -14,22 +14,12 @@ html {
 
 body {
     background-color: white;
-
-    border: 1px solid #dddddd;
-    border-radius: 1em;
-    -moz-border-radius: 1em;
-
-    max-width: 50em;
-    min-width: 25em;
-
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: 1.5em;
-    margin-bottom: 1.5em;
-
-    -moz-box-shadow: 0 0 1.5em 0.5em #333333;
-    -webkit-box-shadow: 0 0 1.5em 0.5em #333333;
-    box-shadow: 0 0 1.5em 0.5em #333333;
+    color: #444;
+    font-size: 18px;
+    line-height: 1.6;
+    margin: 40px auto; 
+    max-width: 650px;
+    padding:0 10px;
 }
 
 #title {
@@ -38,9 +28,12 @@ body {
     text-align: center;
 }
 
+h1, h2, h3 {
+    line-height: 1.2;
+}
+
 h1 {
     text-align: center;
-    text-shadow: 2px 3px 3px #333333;
     font-size: 3em;
     display: inline;
 }
@@ -78,14 +71,15 @@ h3 tt {
 }
 
 #contents ul {
+    list-style-type: none;
     margin: 0;
 }
 
 #contents li {
     display: inline;
-
     margin-left: 3%;
     margin-right: 3%;
+    white-space: nowrap;
 }
 
 #contents a {
@@ -130,30 +124,14 @@ table {
 }
 
 pre {
+    background-color: black;
+    color: white;
+    font-family: monospace;
     margin: 2em ;
     margin-top: 0.5em ;
     margin-bottom: 1em ;
-
     padding: 0.5em;
-
-    background-color: #dddddd;
-    color: black;
-
-    font-family: monospace;
-
     white-space: pre-wrap;
-
-    border-style: solid;
-    border-width: 1px;
-    border-color: gray;
-
-    border-radius: 0.5em;
-    -moz-border-radius: 0.5em;
-}
-
-pre:first-line
-{
-    font-style: italic;
 }
 
 tt {

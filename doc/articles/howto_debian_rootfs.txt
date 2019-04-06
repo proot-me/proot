@@ -26,7 +26,7 @@ How to Set Up a Debian RootFS for PRoot
     In this article and the following one, I will show that using
     PRoot_, such testing is quite handy and can be done by any users.
 
-.. _PRoot: http://proot.me
+.. _PRoot: https://proot-me.github.io
 
 Getting PRoot up and running
 ============================
@@ -35,14 +35,14 @@ In order to test PRoot, you can download the latest version on the
 `official website`_ and compile it. You can also grab a package for
 your distribution on the `Open Build Service`_.
 
-.. _official website: http://proot.me
+.. _official website: https://proot-me.github.io
 .. _Open Build Service: http://software.opensuse.org/download.html?project=home:cedric-vincent&amp;package=proot
 
 If you choose to compile PRoot, that's just a matter of::
 
     #!/bin/sh
-    git clone git://github.com/cedric-vincent/PRoot.git
-    cd PRoot/src
+    git clone https://github.com/proot-me/proot.git
+    cd proot/src
     make
     [...]
     ./proot

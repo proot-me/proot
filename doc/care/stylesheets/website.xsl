@@ -11,7 +11,7 @@
 	<title>
 	  <xsl:value-of select="document/title" /> — <xsl:value-of select="document/subtitle" />
 	</title>
-	<link rel="stylesheet" href="care-website.css" type="text/css" />
+	<link rel="stylesheet" href="care.css" type="text/css" />
 	<meta itemprop="name" content="CARE" />
 	<meta itemprop="description">
 	  <xsl:attribute name="content">
@@ -34,10 +34,6 @@
 	<div id="title">
 	  <h1>CARE</h1>
 	  <xsl:text> </xsl:text>
-	  <div class="g-plusone" data-size="small">
-	    <xsl:comment>By default XSLTproc converts tags with no
-	    content to self-closing tags</xsl:comment>
-	  </div>
 	</div>
 
 	  <div id="contents">
@@ -46,7 +42,6 @@
 	      <li><a href="#example">Example</a></li>
 	      <li><a href="#downloads">Downloads</a></li>
 	      <li><a href="#support">Support</a></li>
-	      <li><a href="https://plus.google.com/107771643881342199474/posts">News+</a></li>
 	    </ul>
 	  </div>
 
@@ -57,15 +52,16 @@
 	  <div class="section" id="support">
 	    <h2>Support</h2>
 	    <p>Feel free to send your questions, bug reports,
-	    suggestions, and patchs to <a
-	    href="mailto:reproducible@googlegroups.com">the
+	    suggestions, and patches to <a
+	    href="mailto:proot_me@googlegroups.com">the
 	    mailing-list</a> or to <a
-	    href="https://groups.google.com/forum/?fromgroups#!forum/reproducible">the
-	    forum</a>, but please be sure that your answer isn't in
-	    the <a
-	    href="https://raw.github.com/cedric-vincent/PRoot/next/doc/care/manual.txt">user
+	    href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
+	    forum</a>, or chat with us on <a href="https://gitter.im/proot-me/devs">Gitter</a>;
+            but please be sure that your answer isn't in the
+            <a href="https://raw.githubusercontent.com/proot-me/proot/master/doc/care/manual.txt">user
 	    manual</a> first.
 	    </p>
+
 	  </div>
 
 	  <script type="text/javascript">
