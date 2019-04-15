@@ -1,1 +1,0 @@
-cd sockets && ./testtcpsocketauto.sh
