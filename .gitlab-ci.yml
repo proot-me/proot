@@ -1,27 +1,73 @@
-image: gcc
+image: gcc:7.4.0
+
+stages:
+  - check
+  - dist
+  - coverage
+  - static-analysis
+  - deploy
 
 before_script:
   - apt-get update -qq
-  - apt-get install -qq clang-tools-4.0 curl libtalloc-dev uthash-dev libarchive-dev gdb strace realpath swig
+  - apt-get install -qq clang-tools-4.0 curl libtalloc-dev uthash-dev libarchive-dev gdb strace realpath swig lcov
 
-test:
-  stage: test
+check:
+  stage: check
   script: 
+    - make -C src proot care
+    - make -C tests
+  allow_failure: true
+
+dist:
+  stage: dist
+  script:
+    - LDFLAGS="${LDFLAGS} -static" make -C src proot GIT=false
+  after_script:
+    - cp src/proot .
+  artifacts:
+    paths:
+      - proot
+
+gcov:
+  stage: coverage
+  script:
     - make -C src loader.exe loader-m32.exe build.h
-    - make -C src proot 
-    - make -C tests || true # ignore failing tests
+    - CFLAGS='-Wall -Werror -O0 --coverage' LDFLAGS='-ltalloc -Wl,-z,noexecstack --coverage' make -eC src proot care
+    - make -C tests || true # ignore failing tests (for now)
+    - lcov --capture --directory src --output-file coverage.info
+    - genhtml coverage.info --output-directory gcov-latest
+  artifacts:
+    paths:
+      - gcov-latest
+
+scan-build:
+  stage: static-analysis
+  script:
+    - scan-build-4.0 make -C src proot
+  after_script:
+    - cp -R /tmp/scan-build-* scan-build-latest
+  artifacts:
+    paths:
+      - scan-build-latest
 
 pages:
   stage: deploy
   script:
     - mkdir -p public/{bin,reports}
-    - LDFLAGS="${LDFLAGS} -static" make -C src proot GIT=false
-    - cp src/proot public/bin
-    - make -C src clean
-    - scan-build-4.0 make -C src proot
-    - cp -R /tmp/scan-build-* public/reports/scan-build-latest
+    - mkdir -p public/reports/{lcov,scan-build}
+    - cp proot public/bin/proot
     - curl -o public/index.html https://gitlab.com/lramage/lramage.gitlab.io/raw/master/_layouts/redirect.html
-    - sed -i "s|{{ page.source_url }}|https://proot.gitlab.io/-/proot/-/jobs/${CI_JOB_ID}/artifacts/public/reports/scan-build-latest/index.html|g" public/index.html
+    - cp -R gcov-latest public/reports/
+    - cp -R scan-build-latest public/reports/
+    - cp public/index.html public/reports/scan-build/
+    - cp public/index.html public/reports/lcov/
+    - sed -i "s|{{ page.source_url }}|https://proot-me.github.io|g" public/index.html
+    - sed -i "s|{{ page.source_url }}|https://proot.gitlab.io/-/proot/-/jobs/${CI_JOB_ID}/artifacts/public/reports/scan-build-latest/index.html|g" public/reports/scan-build/index.html
+    - sed -i "s|{{ page.source_url }}|https://proot.gitlab.io/-/proot/-/jobs/${CI_JOB_ID}/artifacts/public/reports/gcov-latest/index.html|g" public/reports/lcov/index.html
+  dependencies:
+    - dist
+    - gcov
+    - scan-build
   artifacts:
     paths:
       - public

@@ -13,7 +13,10 @@ Build status
      :target: https://travis-ci.org/proot-me/proot
 
 - .. image:: https://img.shields.io/badge/scan--build-latest-yellow.svg?style=flat-square
-     :target: https://proot.gitlab.io/proot
+     :target: https://proot.gitlab.io/proot/reports/scan-build
+
+- .. image:: https://img.shields.io/badge/lcov-latest-6688D4.svg?style=flat-square
+     :target: https://proot.gitlab.io/proot/reports/lcov
 
 Manuals
 =======
