@@ -530,7 +530,7 @@ downloaded.  Note that ``mknod`` errors reported by ``tar`` when
 extracting these archives can be safely ignored since special files
 are typically bound (see ``-R`` option for details).
 
-* http://download.openvz.org/template/precreated
+* https://download.openvz.org/template/precreated
 
 * https://images.linuxcontainers.org/images
 
@@ -538,7 +538,7 @@ are typically bound (see ``-R`` option for details).
 
 * http://cdimage.ubuntu.com/ubuntu-core
 
-* http://archlinuxarm.org/developers/downloads
+* https://archlinuxarm.org/about/downloads
 
 * https://alpinelinux.org/downloads
 
