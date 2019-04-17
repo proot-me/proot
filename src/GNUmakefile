@@ -114,10 +114,15 @@ endif
 ######################################################################
 # Auto-configuration
 
-CHECK_VERSION = VERSION=$$($(GIT) describe --tags --dirty --abbrev=8 --always 2>/dev/null); \
-		if [ ! -z "$${VERSION}" ]; \
-		then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$${VERSION}\""; \
-		fi;
+GET_VERSION := $(shell git describe --tags --match v*)
+
+GET_COMMIT := $(shell git log -n 1 --pretty=format:'%H' | cut -c 1-8)
+
+VERSION = $(GET_VERSION)-$(GET_COMMIT)
+
+CHECK_VERSION = if [ ! -z "$(VERSION)" ]; \
+                then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$(VERSION)\""; \
+                fi;
 
 ifneq ($(and $(HAS_SWIG),$(HAS_PYTHON_CONFIG)),)
 	CHECK_PYTHON_EXTENSION = /bin/echo -e "\#define HAVE_PYTHON_EXTENSION"
