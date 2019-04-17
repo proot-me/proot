@@ -114,7 +114,7 @@ endif
 ######################################################################
 # Auto-configuration
 
-GET_VERSION := $(shell git describe --tags --match v*)
+GET_VERSION := $(shell git describe --tags --match v* --abbrev=0)
 
 GET_COMMIT := $(shell git log -n 1 --pretty=format:'%H' | cut -c 1-8)
 
