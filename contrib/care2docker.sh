@@ -1,4 +1,8 @@
 #!/bin/bash
+# shellcheck disable=SC1003
+# shellcheck disable=SC2016
+set -euo pipefail
+IFS=$'\n\t'
 
 ####
 #
@@ -18,7 +22,6 @@
 # Copyright Jonathan Passerat-Palmbach, 2016
 #
 ####
-
 
 archive=$(readlink -f "$1")
 basedir=$(dirname "${archive}")
