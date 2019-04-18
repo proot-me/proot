@@ -27,7 +27,7 @@ Checks
   where "/usr/bin/true" is a symlink to "/bin/true".
 
 + Static analysis: Gcov/Lcov and Clang Scan Build must not report
-  new issues.
+  new issues. All shell scripts must pass shellcheck.
 
 
 Documentation Update
