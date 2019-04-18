@@ -77,8 +77,7 @@ h3 tt {
 
 #contents li {
     display: inline;
-    margin-left: 3%;
-    margin-right: 3%;
+    padding: 10px;
     white-space: nowrap;
 }
 

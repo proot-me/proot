@@ -1,7 +1,7 @@
 DOC_DIR = .
 SITE_DIR = ${DOC_DIR}/public_html
 
-SUFFIX =
+SUFFIX +=
 RST2MAN = rst2man${SUFFIX}
 RST2XML = rst2xml${SUFFIX}
 RST2HTML = rst2html${SUFFIX}
