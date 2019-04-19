@@ -61,8 +61,7 @@ int launch_process(Tracee *tracee, char *const argv[])
 
 	/* Warn about open file descriptors. They won't be
 	 * translated until they are closed. */
-	if (tracee->verbose > 0)
-		list_open_fd(tracee);
+	list_open_fd(tracee);
 
 	pid = fork();
 	switch(pid) {
