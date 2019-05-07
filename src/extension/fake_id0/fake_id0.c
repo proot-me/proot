@@ -664,6 +664,7 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 
 	case PR_chroot: {
 		char path[PATH_MAX];
+		char abspath[PATH_MAX];
 		word_t input;
 		int status;
 
@@ -681,8 +682,12 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		if (status < 0)
 			return status;
 
+		/* Resolve relative path segments. */
+		if (!realpath(path, abspath))
+			return 0;
+
 		/* Only "new rootfs == current rootfs" is supported yet.  */
-		status = compare_paths(get_root(tracee), path);
+		status = compare_paths(get_root(tracee), abspath);
 		if (status != PATHS_ARE_EQUAL)
 			return 0;
 
