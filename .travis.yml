@@ -10,32 +10,9 @@ compiler: gcc
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq libtalloc-dev libarchive-dev uthash-dev gdb strace realpath swig
- - sudo -H pip install cpp-coveralls==0.3.12
 
-script: make -C src loader.exe loader-m32.exe build.h && env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot care && env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src PROOT_NO_SECCOMP=1 make -C tests
+script:
+  - make -C src loader.exe loader-m32.exe build.h 
+  - env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot care
+  - env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src PROOT_NO_SECCOMP=1 make -C tests
 
-after_success:
-- test [ $(echo "${TRAVIS_PULL_REQUEST_SLUG}" | grep -Eq  ^proot-me) ] && if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then coveralls --build-root src --exclude tests --gcov-options '\-lp'; fi
-- make -C src clean
-- tar -C .. --exclude-vcs -cvz -f src/proot-latest.tar.gz PRoot --transform='s/PRoot/proot-latest/g'
-- tar -C .. --exclude-vcs -cvz -f src/care-latest.tar.gz PRoot --transform='s/PRoot/care-latest/g'
-- tar ztf src/care-latest.tar.gz
-- pwd
-- git clone https://github.com/proot-me/proot-static-build -b build_environment
-- bash -x ./proot-static-build/build.sh make care proot
-- ls $TRAVIS_BUILD_DIR/target
-
-env:
-  global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   # via the "travis encrypt" command using the project repo's public key
-   - secure: "G2fG/oWcEOiG+RYLCK3XOO/7ZXn4LoiIyOT4fxxJzb43gu/90lEkbwsALqVAAjh/Fn5T4rYqiECeJ0jEhxvWak1pK/jkFshfXzL34yaY8ZLNtwvnFf7+DDtsj1Hx136TEjYuyc/jasoTf/3fNlIX6Oh1BB6c0UtJfHwTfbreRbI="
-
-addons:
-  coverity_scan:
-    project:
-      name: "proot-me/PRoot"
-      description: "PRoot"
-    build_command_prepend:
-    build_command: make -C src proot care CARE_BUILD_ENV=ok
-    branch_pattern: coverity_scan
