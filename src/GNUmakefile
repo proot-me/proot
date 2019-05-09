@@ -168,9 +168,6 @@ OBJIFY = $($(quiet)GEN)									\
 proot: $(OBJECTS)
 	$(LINK)
 
-proot.static: $(OBJECTS)
-	$(LINK) -static
-
 care: $(OBJECTS) $(CARE_OBJECTS)
 	$(LINK) $(CARE_LDFLAGS)
 
