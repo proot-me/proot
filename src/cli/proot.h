@@ -63,6 +63,7 @@ static int handle_option_n(Tracee *tracee, const Cli *cli, const char *value);
 #ifdef HAVE_PYTHON_EXTENSION
 static int handle_option_P(Tracee *tracee, const Cli *cli, const char *value);
 #endif
+static int handle_option_l(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_kill_on_exit(Tracee *tracee, const Cli *cli, const char *value);
@@ -273,6 +274,17 @@ Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.",
 	  .detail = "\tThis option allow to launch a python script as an extension (experimental).",
 	},
 #endif
+	{ .class = "Extension options",
+	  .arguments = {
+		{ .name = "-l", .separator = '\0', .value = NULL },
+		{ .name = "--link2symlink", .separator = '\0', .value = NULL },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_l,
+	  .description = "Enable the link2symlink extension.",
+	  .detail = "\tThis extension causes proot to create a symlink when a hardlink\n\
+\tshould be created. Some environments don't let the user create a hardlink, this\n\
+\toption should be used to fix it.",
+	},
 	{ .class = "Alias options",
 	  .arguments = {
 		{ .name = "-R", .separator = ' ', .value = "path" },

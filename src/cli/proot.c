@@ -193,7 +193,7 @@ static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value UNU
 
 static int handle_option_kill_on_exit(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
 {
-        tracee->killall_on_exit = true;
+	tracee->killall_on_exit = true;
 	return 0;
 }
 
@@ -280,7 +280,6 @@ static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value)
 	return 0;
 }
 
-
 static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
 	int status = 0;
@@ -309,7 +308,7 @@ static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return status;
 }
 
-static int handle_option_n(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_n(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
 	int status = 0;
 
@@ -330,6 +329,11 @@ static int handle_option_P(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 #endif
+
+static int handle_option_l(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+{
+	return initialize_extension(tracee, link2symlink_callback, NULL);
+}
 
 /**
  * Initialize @tracee->qemu.

@@ -75,6 +75,12 @@ typedef enum {
 	 * errno to the tracee.  */
 	SYSCALL_EXIT_END,
 
+	/* The canonicalization succeeds: "(char *) data1" is the
+	 * translated path from the host point-of-view. It can be
+	 * substituted by the extension. If the extension returns <
+	 * 0, then PRoot reports this errno as-is.  */
+	TRANSLATED_PATH,
+
 	/* The tracee is stopped either because of a syscall or a
 	 * signal: "(int) data1" is its new status as reported by
 	 * waitpid(2).  If the extension returns != 0, then PRoot
@@ -185,6 +191,7 @@ extern int kompat_callback(Extension *extension, ExtensionEvent event, intptr_t 
 extern int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern int care_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 extern int python_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
+extern int link2symlink_callback(Extension *extension, ExtensionEvent event, intptr_t d1, intptr_t d2);
 
 /* Added extensions.  */
 /**

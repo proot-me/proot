@@ -384,6 +384,11 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 skip:
 	VERBOSE(tracee, 2, "vpid %" PRIu64 ":          -> \"%s\"",
 		tracee != NULL ? tracee->vpid : 0, result);
+
+	status = notify_extensions(tracee, TRANSLATED_PATH, (intptr_t) result, 0);
+	if (status < 0)
+		return status;
+
 	return 0;
 }
 
