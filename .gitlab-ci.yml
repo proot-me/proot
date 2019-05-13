@@ -9,7 +9,7 @@ stages:
 
 before_script:
   - apt-get update -qq
-  - apt-get install -qq clang-tools-4.0 curl libtalloc-dev uthash-dev libarchive-dev gdb strace realpath swig lcov
+  - apt-get install -qq clang-tools-6.0 curl gdb lcov libarchive-dev libtalloc-dev strace swig uthash-dev
 
 check:
   stage: check
@@ -43,7 +43,7 @@ gcov:
 scan-build:
   stage: static-analysis
   script:
-    - scan-build-4.0 make -C src proot
+    - scan-build-6.0 make -C src proot
   after_script:
     - cp -R /tmp/scan-build-* scan-build-latest
   artifacts:
