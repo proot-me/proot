@@ -120,7 +120,8 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 		if (shorter_host_path == NULL || strlen(shorter_host_path) > sizeof_path)
 			return -EINVAL;
 
-		(void) mktemp(shorter_host_path);
+		if (mkstemp(shorter_host_path) == EEXIST)
+			return -EINVAL;
 
 		if (strlen(shorter_host_path) > sizeof_path)
 			return -EINVAL;
