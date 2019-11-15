@@ -114,7 +114,7 @@ endif
 ######################################################################
 # Auto-configuration
 
-GIT_VERSION := $(shell git describe --tags "$(git rev-list --tags --max-count=1)")
+GIT_VERSION := $(shell git describe --tags `git rev-list --tags --max-count=1`)
 
 GIT_COMMIT := $(shell git rev-list --all --max-count=1 | cut -c 1-8)
 
