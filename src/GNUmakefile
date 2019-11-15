@@ -114,11 +114,11 @@ endif
 ######################################################################
 # Auto-configuration
 
-GET_VERSION := $(shell git describe --tags --match v* --abbrev=0)
+GIT_VERSION := $(shell git describe --tags "$(git rev-list --tags --max-count=1)")
 
-GET_COMMIT := $(shell git log -n 1 --pretty=format:'%H' | cut -c 1-8)
+GIT_COMMIT := $(shell git rev-list --all --max-count=1 | cut -c 1-8)
 
-VERSION = $(GET_VERSION)-$(GET_COMMIT)
+VERSION = $(GIT_VERSION)-$(GIT_COMMIT)
 
 CHECK_VERSION = if [ ! -z "$(VERSION)" ]; \
                 then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$(VERSION)\""; \
