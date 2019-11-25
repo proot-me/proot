@@ -28,7 +28,15 @@ Checks
 
 + Static analysis: Gcov/Lcov and Clang Scan Build must not report
   new issues. All shell scripts must pass shellcheck.
+  
+Static Binaries
+---------------
 
+The following commands will generate statically-linked binaries
+which can be optionally distributed for each release:
+
+    make -C src loader.exe loader-m32.exe build.h
+    LDFLAGS="${LDFLAGS} -static" make -C proot
 
 Documentation Update
 --------------------
