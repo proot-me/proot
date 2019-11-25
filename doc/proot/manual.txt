@@ -510,17 +510,9 @@ Downloads
 PRoot
 -----
 
-The latest release of PRoot is packaged on https://github.com/proot-me/proot-static-build/releases
-and sources are hosted on https://github.com/proot-me/proot.  It is also
-available as highly compatible static binaries:
-
-* for x86_64: https://github.com/proot-me/proot-static-build/blob/master/static/proot-x86_64?raw=true
-
-* for x86: https://github.com/proot-me/proot-static-build/blob/master/static/proot-x86?raw=true
-
-* for ARM: https://github.com/proot-me/proot-static-build/blob/master/static/proot-arm?raw=true
-
-* other architectures: on demand.
+The source code for PRoot and CARE are hosted in the same repository on `GitHub <https://github.com/proot-me/proot>`_.
+Previous PRoot releases were packaged at https://github.com/proot-me/proot-static-build/releases, however, that
+repository has since been archived. The latest builds can be found under the job artifacts for the `GitLab CI/CD Pipelines <https://gitlab.com/proot/proot/pipelines>`_ for each commit.
 
 Rootfs
 ------
