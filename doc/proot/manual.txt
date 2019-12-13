@@ -605,7 +605,7 @@ Binaries from the Downloads_ section are likely more up-to-date.
 
 * `NixOS <https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/system/proot>`_
 
-* `University of Chicago RCC <https://rcc.uchicago.edu/docs/software/modules/proot/midway1/current.html>`_
+* `University of Chicago RCC <https://rcc.uchicago.edu/docs/software/modules/proot/midway2/current.html>`_
 
 
 Public material about PRoot or CARE
