@@ -56,7 +56,7 @@ pages:
     - mkdir -p public/{bin,reports}
     - mkdir -p public/reports/{lcov,scan-build}
     - cp proot public/bin/proot
-    - curl -o public/index.html https://gitlab.com/lramage/lramage.gitlab.io/raw/master/_layouts/redirect.html
+    - cp doc/template/redirect.html public/index.html
     - cp -R gcov-latest public/reports/
     - cp -R scan-build-latest public/reports/
     - cp public/index.html public/reports/scan-build/
