@@ -9,7 +9,7 @@ stages:
 
 before_script:
   - apt-get update -qq
-  - apt-get install -qq clang-tools-6.0 curl gdb lcov libarchive-dev libtalloc-dev strace swig uthash-dev
+  - apt-get install -qq clang-tools-6.0 curl docutils-common gdb lcov libarchive-dev libtalloc-dev strace swig uthash-dev xsltproc
 
 check:
   stage: check
@@ -71,3 +71,15 @@ pages:
   artifacts:
     paths:
       - public
+
+site:
+  stage: deploy
+  script:
+    - git config --global user.name "PRoot"
+    - git config --global user.email "proot_me@googlegroups.com"
+    - git clone https://${GITHUB_USER}:${GITHUB_ACCESS_TOKEN}@github.com/proot-me/proot-me.github.io doc/public_html
+    - make -eC doc dist
+    - cd doc/public_html && git add . && git commit -m "publishing changes to GitHub Pages" && git push
+  only:
+    - master
+
