@@ -18,6 +18,22 @@ Build status
 - .. image:: https://img.shields.io/badge/lcov-latest-6688D4.svg?style=flat-square
      :target: https://proot.gitlab.io/proot/reports/lcov
 
+Compiling
+=========
+
+The following command can be used to compile PRoot and CARE::
+
+    make -C src loader.exe loader-m32.exe build.h # first build the config and loader
+    make -C src proot care # then compile PRoot and CARE
+    make -C tests # run test suite
+
+Dependencies
+============
+
+- `libarchive <https://libarchive.org>`_
+- `libtalloc <https://talloc.samba.org>`_
+- `uthash <https://troydhanson.github.io/uthash>`_
+
 Manuals
 =======
 
