@@ -250,12 +250,12 @@ loader/assembly$1.o: loader/assembly.S
 loader/loader$1: $$(LOADER$1_OBJECTS)
 	$$($$(quiet)LD) $1 -o $$@ $$^ $$(LOADER_LDFLAGS$1)
 
-.INTERMEDIATE: loader$1.exe
-loader$1.exe: loader/loader$1
+.INTERMEDIATE: loader$1.elf
+loader$1.elf: loader/loader$1
 	$$(Q)cp $$< $$@
 	$$(Q)$(STRIP) $$@
 
-loader/loader$1-wrapped.o: loader$1.exe cli/cli.o
+loader/loader$1-wrapped.o: loader$1.elf cli/cli.o
 	$$(OBJIFY)
 
 endef
