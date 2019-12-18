@@ -19,3 +19,8 @@ tests/*
 !tests/*.c
 !tests/*.py
 !tests/*.mk
+doc/proot/man.1
+doc/proot/rpm-spec
+src/cli/care.h
+src/cli/cli.h
+src/cli/proot.h
