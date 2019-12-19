@@ -10,13 +10,13 @@ Checks
 + Sanity checks:
   * on ARM and *all* OBS distros (x86 and x86_64): `make -C test`
   * on x86_64, with *and* without seccomp:
-    - `make -C tests` on *all* OBS distros
-    - `make -C tests memcheck`
+    - `make -C test` on *all* OBS distros
+    - `make -C test memcheck`
     - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
-    - `make -C tests V=1 2>&1 | grep talloc`
+    - `make -C test V=1 2>&1 | grep talloc`
 
 + Functional checks: no regressions must appear with respect to
-  tests/validation.mk and to the configurations tested in the previous
+  test/validation.mk and to the configurations tested in the previous
   release (`git show tags/...`).
 
 + Performance checks: the following command must not suffer from

@@ -130,4 +130,4 @@ $(proot).log: $(proot).tar.gz
 	rm -fr $(proot)
 	tar -xf $<
 	$(MAKE) -C $(proot)/src
-	($(MAKE) -C $(proot)/tests || true) | tee $@
+	($(MAKE) -C $(proot)/test || true) | tee $@
