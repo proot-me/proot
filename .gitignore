@@ -13,9 +13,9 @@ src/build.h
 src/care*
 src/loader*
 src/proot*
-test/*
-!test/*.sh.*
-!test/*.sh
-!test/*.c
-!test/*.py
-!test/*.mk
+tests/*
+!tests/*.sh.*
+!tests/*.sh
+!tests/*.c
+!tests/*.py
+!tests/*.mk
