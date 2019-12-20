@@ -31,11 +31,7 @@ dist:
 gcov:
   stage: coverage
   script:
-    - make -C src loader.exe loader-m32.exe build.h
-    - CFLAGS='-Wall -Werror -O0 --coverage' LDFLAGS='-ltalloc -Wl,-z,noexecstack --coverage' make -eC src proot care
-    - make -C test || true # ignore failing tests (for now)
-    - lcov --capture --directory src --output-file coverage.info
-    - genhtml coverage.info --output-directory gcov-latest
+    - /bin/sh ./util/coverage.sh
   artifacts:
     paths:
       - gcov-latest
@@ -53,17 +49,7 @@ scan-build:
 pages:
   stage: deploy
   script:
-    - mkdir -p public/{bin,reports}
-    - mkdir -p public/reports/{lcov,scan-build}
-    - cp proot public/bin/proot
-    - cp doc/template/redirect.html public/index.html
-    - cp -R gcov-latest public/reports/
-    - cp -R scan-build-latest public/reports/
-    - cp public/index.html public/reports/scan-build/
-    - cp public/index.html public/reports/lcov/
-    - sed -i "s|{{ page.source_url }}|https://proot-me.github.io|g" public/index.html
-    - sed -i "s|{{ page.source_url }}|https://proot.gitlab.io/-/proot/-/jobs/${CI_JOB_ID}/artifacts/public/reports/scan-build-latest/index.html|g" public/reports/scan-build/index.html
-    - sed -i "s|{{ page.source_url }}|https://proot.gitlab.io/-/proot/-/jobs/${CI_JOB_ID}/artifacts/public/reports/gcov-latest/index.html|g" public/reports/lcov/index.html
+    - /bin/sh ./util/dist.sh
   dependencies:
     - dist
     - gcov
@@ -75,11 +61,7 @@ pages:
 site:
   stage: deploy
   script:
-    - git config --global user.name "PRoot"
-    - git config --global user.email "proot_me@googlegroups.com"
-    - git clone https://${GITHUB_USER}:${GITHUB_ACCESS_TOKEN}@github.com/proot-me/proot-me.github.io doc/public_html
-    - make -eC doc dist
-    - cd doc/public_html && git add . && git commit -m "publishing changes to GitHub Pages" && git push
+    - /bin/sh ./util/site.sh
   only:
     - master
 
