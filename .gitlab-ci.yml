@@ -15,7 +15,7 @@ check:
   stage: check
   script: 
     - make -C src proot care
-    - make -C tests
+    - make -C test
   allow_failure: true
 
 dist:
@@ -33,7 +33,7 @@ gcov:
   script:
     - make -C src loader.exe loader-m32.exe build.h
     - CFLAGS='-Wall -Werror -O0 --coverage' LDFLAGS='-ltalloc -Wl,-z,noexecstack --coverage' make -eC src proot care
-    - make -C tests || true # ignore failing tests (for now)
+    - make -C test || true # ignore failing tests (for now)
     - lcov --capture --directory src --output-file coverage.info
     - genhtml coverage.info --output-directory gcov-latest
   artifacts:

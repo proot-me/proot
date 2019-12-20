@@ -23,9 +23,9 @@ Compiling
 
 The following commands can be used to compile PRoot and CARE::
 
-    make -C src loader.exe loader-m32.exe build.h # first build the config and loader
+    make -C src loader.elf loader-m32.elf build.h # first build the config and loader
     make -C src proot care # then compile PRoot and CARE
-    make -C tests # run test suite
+    make -C test # run test suite
 
 Dependencies
 ============

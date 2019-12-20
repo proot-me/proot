@@ -15,6 +15,6 @@ before_install:
 
 script:
   - sloccount --details .
-  - make -C src loader.exe loader-m32.exe build.h 
+  - make -C src loader.elf loader-m32.elf build.h 
   - env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot care
-  - env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src PROOT_NO_SECCOMP=1 make -C tests
+  - env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src PROOT_NO_SECCOMP=1 make -C test
