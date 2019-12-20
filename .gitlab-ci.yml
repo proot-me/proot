@@ -15,7 +15,7 @@ check:
   stage: check
   script: 
     - make -C src proot care
-    - make -C test
+    - timeout --signal=SIGKILL 5m make -C test
   allow_failure: true
 
 dist:

@@ -31,11 +31,6 @@ check-%.c: $(ROOTFS)/bin/% setup
 check-test-bdc90417.c: test-bdc90417
 	$(call check_c,$<,$(PROOT) -w . ./$<)
 
-# Not supported anymore.
-# check-test-af062114.c: test-af062114
-# 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true -b . -b /lib -b /lib64 -b /proc -r $(ROOTFS) ./$< | grep -- --inhibit-rpath)
-# 	$(call check_c,$<,$(PROOT) -v -1 -q /bin/true / ./$< | grep '^./$<') deprecated
-
 check-test-5bed7141.c: test-5bed7141
 	$(call check_c,$<,$(PROOT) ./$<)
 
