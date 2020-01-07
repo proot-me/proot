@@ -2,7 +2,7 @@ sudo: required
 
 language: c
 
-dist: bionic
+dist: xenial
 
 services:
     - docker
@@ -18,4 +18,3 @@ script:
   - make -C src loader.elf loader-m32.elf build.h 
   - env CFLAGS=--coverage LDFLAGS='--coverage' make -C src proot care
   - env PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src PROOT_NO_SECCOMP=1 make -C test
-

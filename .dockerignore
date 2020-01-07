@@ -1,0 +1,8 @@
+AUTHORS
+contrib
+COPYING
+doc
+Dockerfile
+install-proot.sh
+ISSUE_TEMPLATE
+*.rst
