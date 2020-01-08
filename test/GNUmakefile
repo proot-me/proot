@@ -67,13 +67,13 @@ check-test-c5a7a0f0.c: test-c5a7a0f0
 	$(call check_c,$<,$(PROOT) -0 ./$<)
 	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
-check-test-a3e68988.c: test-a3e68988
-	@which gdb >/dev/null 2>&1 || rm -f $<
-	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
+#check-test-a3e68988.c: test-a3e68988
+#	@which gdb >/dev/null 2>&1 || rm -f $<
+#	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
 
-check-test-c47aeb7d.c: test-c47aeb7d
-	@which gdb >/dev/null 2>&1 || rm -f $<
-	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
+#check-test-c47aeb7d.c: test-c47aeb7d
+#	@which gdb >/dev/null 2>&1 || rm -f $<
+#	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
 
 check-test-fdf487a0.c: test-fdf487a0
 	$(call check_c,$<,echo test | $(PROOT) ./$<)
