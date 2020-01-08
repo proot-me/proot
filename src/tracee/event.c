@@ -228,7 +228,7 @@ bool is_kernel_4_8(void)
 
 	sscanf(utsname.release, "%d.%d", &major, &minor);
 
-	if (major >= 4 && minor >= 8
+	if (major >= 4 && minor >= 8)
 			version_48 = true;
 
 	return version_48;
