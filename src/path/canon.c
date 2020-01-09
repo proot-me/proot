@@ -129,8 +129,7 @@ static inline Finality next_component(char component[NAME_MAX], const char **cur
  * Resolve bindings (if any) in @guest_path and copy the translated
  * path into @host_path.  Also, this function checks that a non-final
  * component is either a directory (returned value is 0) or a symlink
- * (returned value is 1), otherwise it returns -errno (-ENOENT or
- * -ENOTDIR).
+ * (returned value is 1), otherwise it returns -errno or -ENOTDIR.
  */
 static inline int substitute_binding_stat(Tracee *tracee, Finality finality, unsigned int recursion_level,
 					const char guest_path[PATH_MAX], char host_path[PATH_MAX])
@@ -162,12 +161,12 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality finality, uns
 			status = -1;
 	}
 
-	/* Return an error if a non-final component isn't a
-	 * directory nor a symlink.  The error is "No such
-	 * file or directory" if this component doesn't exist,
-	 * otherwise the error is "Not a directory".  */
+	/* Return an error if a non-final component isn't a directory
+	 * nor a symlink.  The error depends on why the component
+	 * could not be accessed (ENOENT, EACCES, ...), otherwise the
+	 * error is "Not a directory".  */
 	if (!IS_FINAL(finality) && !S_ISDIR(statl.st_mode) && !S_ISLNK(statl.st_mode))
-		return (status < 0 ? -ENOENT : -ENOTDIR);
+		return (status < 0 ? -errno : -ENOTDIR);
 
 	return (S_ISLNK(statl.st_mode) ? 1 : 0);
 }
