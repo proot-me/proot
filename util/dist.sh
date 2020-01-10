@@ -2,11 +2,13 @@
 set -eu
 
 # create directories
-mkdir -p public/{bin,reports}
-mkdir -p public/reports/{lcov,scan-build}
+mkdir -p public/bin
+mkdir -p public/reports
+mkdir -p public/reports/lcov
+mkdir -p public/reports/scan-build
 
 # copy static binary
-cp proot public/bin/proot
+cp src/proot public/bin/proot
 
 # copy redirect template
 cp doc/template/redirect.html public/index.html

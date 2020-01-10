@@ -6,6 +6,7 @@
 *.o
 doc/*.h
 doc/public_html/
+gcov-latest/
 public/
 src/.check_process_vm.res
 src/.check_seccomp_filter.res

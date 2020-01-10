@@ -6,7 +6,7 @@ git config --global user.name "PRoot"
 git config --global user.email "proot_me@googlegroups.com"
 
 # clone site repository
-git clone https://${GITHUB_USER}:${GITHUB_ACCESS_TOKEN}@github.com/proot-me/proot-me.github.io doc/public_html
+git clone "https://${GITHUB_USER-}:${GITHUB_ACCESS_TOKEN-}@github.com/proot-me/proot-me.github.io doc/public_html"
 
 # compile site from documentation
 make -eC doc dist
