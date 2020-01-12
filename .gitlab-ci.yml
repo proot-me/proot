@@ -23,10 +23,11 @@ dist:
   script:
     - LDFLAGS="${LDFLAGS} -static" make -C src proot GIT=false
   after_script:
-    - cp src/proot .
+    - mkdir -p dist
+    - cp src/proot dist/
   artifacts:
     paths:
-      - proot
+      - dist
 
 gcov:
   stage: coverage

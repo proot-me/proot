@@ -8,7 +8,7 @@ mkdir -p public/reports/lcov
 mkdir -p public/reports/scan-build
 
 # copy static binary
-cp src/proot public/bin/proot
+cp dist/proot public/bin/proot
 
 # copy redirect template
 cp doc/template/redirect.html public/index.html
