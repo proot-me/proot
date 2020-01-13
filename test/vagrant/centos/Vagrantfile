@@ -1,0 +1,28 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "centos/7"
+
+  config.vm.synced_folder "../../..", "/usr/src/proot", type: "sshfs"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 1024
+    vb.cpus = 2
+    vb.linked_clone = true if Vagrant::VERSION =~ /^1.8/
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo yum update -y
+    sudo yum install -y yum-utils
+    sudo yum-config-manager --enable extras
+    sudo yum makecache
+    sudo yum group install -y 'Development Tools'
+    sudo yum install -y clang \
+                        git \
+                        libarchive-devel \
+                        libtalloc-devel \
+                        python-devel \
+                        strace \
+                        swig \
+                        uthash-devel
+  SHELL
+
+end

@@ -1,0 +1,34 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/alpine310"
+
+  config.vm.synced_folder "../../..", "/usr/src/proot", type: "sshfs"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = 1024
+    vb.cpus = 2
+    vb.linked_clone = true if Vagrant::VERSION =~ /^1.8/
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apk update
+    sudo apk add bash \
+                 bsd-compat-headers \
+                 clang \
+                 clang-analyzer \
+                 coreutils \
+                 gcc \
+                 git \
+                 grep \
+                 libarchive-dev \
+                 linux-headers \
+                 lzo \
+                 make \
+                 mcookie \
+                 musl-dev \
+                 python2-dev \
+                 swig \
+                 talloc-dev \
+                 uthash-dev
+  SHELL
+
+end
