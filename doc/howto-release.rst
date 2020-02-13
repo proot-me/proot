@@ -8,8 +8,11 @@ Checks
 ------
 
 + Sanity checks:
+
   * on ARM and *all* OBS distros (x86 and x86_64): `make -C test`
+
   * on x86_64, with *and* without seccomp:
+
     - `make -C test` on *all* OBS distros
     - `make -C test memcheck`
     - `CFLAGS=-fsanitize=address LDFLAGS=-lasan`
