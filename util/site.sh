@@ -22,4 +22,3 @@ git commit -m "publishing changes to GitHub Pages"
 
 # push to github
 git push
-
