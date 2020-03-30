@@ -15,7 +15,7 @@ OBJCOPY  = $(CROSS_COMPILE)objcopy
 OBJDUMP  = $(CROSS_COMPILE)objdump
 
 HAS_SWIG := $(shell swig -version 2>/dev/null)
-PYTHON_VERSION=$(python --version | cut -f 2 -d ' ' | awk -F'.' '{print $1"."$2}')
+PYTHON_VERSION=$(shell python3 --version | cut -f 2 -d ' ' | cut -f 1,2 -d'.')
 HAS_PYTHON_CONFIG := $(shell python${PYTHON_VERSION}-config --ldflags 2>/dev/null)
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
@@ -216,7 +216,7 @@ extension/python/python_extension.o: python_extension.py cli/cli.o
 
 .SECONDARY: proot_wrap.c proot.py
 proot_wrap.c proot.py: extension/python/proot.i
-	$$($$(quiet)SWIG) -python -outcurrentdir -I$$(VPATH) $$(VPATH)/extension/python/proot.i
+	$$($$(quiet)SWIG) -python -py3 -outcurrentdir -I$$(VPATH) $$(VPATH)/extension/python/proot.i
 
 extension/python/proot.o: proot.py cli/cli.o
 	$$(OBJIFY)

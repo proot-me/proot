@@ -1,5 +1,7 @@
 %module proot
 %{
+#define SWIG_FILE_WITH_INIT
+
 #include "arch.h"
 #include "syscall/sysnum.h"
 #include "tracee/tracee.h"
