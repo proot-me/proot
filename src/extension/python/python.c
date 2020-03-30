@@ -19,6 +19,7 @@ static FilteredSysnum filtered_sysnums[] = {
 
 /* build by swig */
 extern void init_proot(void);
+extern void PyInit__proot(void);
 
 /* create python files */
 extern unsigned char _binary_python_extension_py_start;
@@ -82,10 +83,14 @@ void init_python_env()
 			is_done = true;
 		} else {
 			Py_Initialize();
+#if PY_VERSION_HEX >= 0x03000000
+			PyInit__proot();
+#else
 			init_proot();
+#endif
 			PyRun_SimpleString("import sys");
 			PyRun_SimpleString(path_insert);
-			pName = PyString_FromString("python_extension");
+			pName = PyUnicode_FromString("python_extension");
 			if (pName) {
 				pModule = PyImport_Import(pName);
 				Py_DECREF(pName);
@@ -121,17 +126,17 @@ static int python_callback_func_wrapper(Extension *extension, ExtensionEvent eve
 			note(NULL, ERROR, USER, "pValue allocation failure\n");
 		PyTuple_SetItem(pArgs, 0, pValue);
 		
-		pValue = PyInt_FromLong(event);
+		pValue = PyLong_FromLong(event);
 		if (!pValue)
 			note(NULL, ERROR, USER, "pValue allocation failure\n");
 		PyTuple_SetItem(pArgs, 1, pValue);
 		
-		pValue = PyInt_FromLong(data1);
+		pValue = PyLong_FromLong(data1);
 		if (!pValue)
 			note(NULL, ERROR, USER, "pValue allocation failure\n");
 		PyTuple_SetItem(pArgs, 2, pValue);
 		
-		pValue = PyInt_FromLong(data2);
+		pValue = PyLong_FromLong(data2);
 		if (!pValue)
 			note(NULL, ERROR, USER, "pValue allocation failure\n");
 		PyTuple_SetItem(pArgs, 3, pValue);
@@ -139,7 +144,7 @@ static int python_callback_func_wrapper(Extension *extension, ExtensionEvent eve
 		/* call function */
 		pValue = PyObject_CallObject(python_callback_func, pArgs);
 		if (pValue != NULL) {
-			res = PyInt_AsLong(pValue);
+			res = PyLong_AsLong(pValue);
 			Py_DECREF(pValue);
 		} else {
 			PyErr_Print();
