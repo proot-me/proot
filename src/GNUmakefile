@@ -15,11 +15,14 @@ OBJCOPY  = $(CROSS_COMPILE)objcopy
 OBJDUMP  = $(CROSS_COMPILE)objdump
 
 HAS_SWIG := $(shell swig -version 2>/dev/null)
-HAS_PYTHON_CONFIG := $(shell python2.7-config --ldflags 2>/dev/null)
+PYTHON_VERSION=$(python --version | cut -f 2 -d ' ' | awk -F'.' '{print $1"."$2}')
+HAS_PYTHON_CONFIG := $(shell python${PYTHON_VERSION}-config --ldflags 2>/dev/null)
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
-CFLAGS   += -Wall -Wextra -O2
-LDFLAGS  += -ltalloc -Wl,-z,noexecstack
+CFLAGS   += -g -Wall -Wextra -O2
+CFLAGS   += $(shell pkg-config --cflags talloc libarchive)
+LDFLAGS  += -Wl,-z,noexecstack
+LDFLAGS  += $(shell pkg-config --libs talloc libarchive)
 
 CARE_LDFLAGS = -larchive
 
@@ -200,8 +203,8 @@ cli/%-licenses.o: licenses cli/cli.o
 # Python extension
 
 define build_python_extension
-CPPFLAGS 	+= `python2.7-config --includes`
-LDFLAGS 	+= `python2.7-config --ldflags`
+CPPFLAGS 	+= $(shell python${PYTHON_VERSION}-config --includes)
+LDFLAGS 	+= $(shell python${PYTHON_VERSION}-config --ldflags)
 SWIG     	= swig
 quiet_SWIG 	= @echo "  SWIG	$$@"; swig
 
