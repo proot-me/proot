@@ -51,4 +51,4 @@ Support
 License
 =======
 
-SPDX-License-Identifier: `GPL-2.0-only <COPYING>`_
+SPDX-License-Identifier: `GPL-2.0-or-later <COPYING>`_
