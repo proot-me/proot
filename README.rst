@@ -47,3 +47,8 @@ Support
 - `Mailing List <mailto:proot_me@googlegroups.com>`_
 - `Forum <https://groups.google.com/forum/?fromgroups#!forum/proot_me>`_
 - `Chat <https://gitter.im/proot-me/devs>`_
+
+License
+=======
+
+SPDX-License-Identifier: `GPL-2.0-only <COPYING>`_
