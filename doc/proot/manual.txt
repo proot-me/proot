@@ -601,13 +601,13 @@ Binaries from the Downloads_ section are likely more up-to-date.
 
 * `NixOS <https://github.com/NixOS/nixpkgs/tree/master/pkgs/tools/system/proot>`_
 
-* `Void Linux <https://github.com/void-linux/void-packages/tree/master/srcpkgs/proot>`_
+* `Termux <https://wiki.termux.com/wiki/PRoot>`_
 
 * `Ubuntu <https://launchpad.net/ubuntu/+source/proot>`_
 
 * `University of Chicago RCC <https://rcc.uchicago.edu/docs/software/modules/proot/midway2/current.html>`_
 
-* `Termux <https://wiki.termux.com/wiki/PRoot>`_
+* `Void Linux <https://github.com/void-linux/void-packages/tree/master/srcpkgs/proot>`_
 
 
 Public material about PRoot or CARE
