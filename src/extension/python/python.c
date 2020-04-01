@@ -82,7 +82,11 @@ void init_python_env()
 			is_done = true;
 		} else {
 			Py_Initialize();
+#if PY_VERSION_HEX >= 0x03000000
 			PyInit__proot();
+#else
+			init_proot();
+#endif
 			PyRun_SimpleString("import sys");
 			PyRun_SimpleString(path_insert);
 			pName = PyUnicode_FromString("python_extension");

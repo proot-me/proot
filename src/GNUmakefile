@@ -13,10 +13,11 @@ LD       = $(CC)
 STRIP    = $(CROSS_COMPILE)strip
 OBJCOPY  = $(CROSS_COMPILE)objcopy
 OBJDUMP  = $(CROSS_COMPILE)objdump
+PYTHON   = python3
 
 HAS_SWIG := $(shell swig -version 2>/dev/null)
-PYTHON_VERSION=$(shell python3 --version | cut -f 2 -d ' ' | cut -f 1,2 -d'.')
-HAS_PYTHON_CONFIG := $(shell python${PYTHON_VERSION}-config --ldflags 2>/dev/null)
+PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
+HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags 2>/dev/null)
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -g -Wall -Wextra -O2
@@ -203,10 +204,15 @@ cli/%-licenses.o: licenses cli/cli.o
 # Python extension
 
 define build_python_extension
-CPPFLAGS 	+= $(shell python${PYTHON_VERSION}-config --includes)
-LDFLAGS 	+= $(shell python${PYTHON_VERSION}-config --ldflags)
+CPPFLAGS 	+= $(shell ${PYTHON}-config --includes)
+LDFLAGS 	+= $(shell ${PYTHON}-config --ldflags)
 SWIG     	= swig
 quiet_SWIG 	= @echo "  SWIG	$$@"; swig
+SWIG_OPT 	= -python
+
+ifeq ($(PYTHON_MAJOR_VERSION), 3)
+	SWIG_OPT += -py3
+endif
 
 .INTERMEDIATE:python_extension.py
 python_extension.py: extension/python/python_extension.py
@@ -216,7 +222,7 @@ extension/python/python_extension.o: python_extension.py cli/cli.o
 
 .SECONDARY: proot_wrap.c proot.py
 proot_wrap.c proot.py: extension/python/proot.i
-	$$($$(quiet)SWIG) -python -py3 -outcurrentdir -I$$(VPATH) $$(VPATH)/extension/python/proot.i
+	$$($$(quiet)SWIG) $$(SWIG_OPT) -outcurrentdir -I$$(VPATH) $$(VPATH)/extension/python/proot.i
 
 extension/python/proot.o: proot.py cli/cli.o
 	$$(OBJIFY)
