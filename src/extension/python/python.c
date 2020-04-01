@@ -18,6 +18,7 @@ static FilteredSysnum filtered_sysnums[] = {
 };
 
 /* build by swig */
+extern void init_proot(void);
 extern void PyInit__proot(void);
 
 /* create python files */
