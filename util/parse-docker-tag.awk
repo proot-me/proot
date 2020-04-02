@@ -4,7 +4,7 @@
 # output: alpine-x86-gcc
 {
   gsub(/\//,"-"); # replace / with -
-  split($0,a,"test-docker-"); # remove leading directory name
+  split($0,a,"test-docker-"); # remove leading directories
   split(a[2],b,"-Docker"); # remove trailing Dockerfile
   print b[1] # print final tag
 }
