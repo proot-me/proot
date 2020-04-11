@@ -6,7 +6,7 @@
 #include "cli/cli.h"
 
 #ifndef VERSION
-#define VERSION "5.1.0"
+#define VERSION "5.2.0-alpha"
 #endif
 
 static const char *recommended_bindings[] = {
@@ -77,7 +77,7 @@ static Cli proot_cli = {
 	.subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup",
 	.synopsis = "proot [option] ... [command]",
 	.colophon = "Visit https://proot-me.github.io for help, bug reports, suggestions, patchs, ...\n\
-Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.",
+Copyright (C) 2020 PRoot Developers, licensed under GPL v2 or later.",
 	.logo = "\
  _____ _____              ___\n\
 |  __ \\  __ \\_____  _____|   |_\n\

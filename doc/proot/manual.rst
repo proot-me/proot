@@ -6,8 +6,8 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2016-08-09
-:Version: 5.1.0
+:Date: 2020-04-14
+:Version: 5.2.0-alpha
 :Manual section: 1
 
 
@@ -666,7 +666,7 @@ Colophon
 ========
 
 Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
-Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
+Copyright (C) 2020 PRoot Developers, licensed under GPL v2 or later.
 
 ::
 

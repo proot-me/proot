@@ -191,7 +191,7 @@ $(USE_BUILD_H): build.h
 	$(COMPILE)
 
 .INTERMEDIATE: manual
-manual: $(VPATH)/../doc/care/manual.txt
+manual: $(VPATH)/../doc/care/manual.rst
 	$(Q)cp $< $@
 
 cli/care-manual.o: manual cli/cli.o

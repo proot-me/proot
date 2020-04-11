@@ -44,9 +44,9 @@ which can be optionally distributed for each release:
 Documentation Update
 --------------------
 
-0. update "doc/changelog.txt"
+0. update "doc/changelog.rst"
 
-1. update the release number in "doc/proot/manual.txt"
+1. update the release number in "doc/proot/manual.rst"
 
 2. regenerate the documentation: `make -C doc`
 

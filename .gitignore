@@ -4,7 +4,9 @@
 *.html
 *.info
 *.o
+*.1
 doc/*.h
+*rpm-spec
 doc/public_html/
 gcov-latest/
 public/

@@ -452,7 +452,7 @@ Colophon
 ========
 
 Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
-Copyright (C) 2015 STMicroelectronics, licensed under GPL v2 or later.
+Copyright (C) 2020 PRoot Developers, licensed under GPL v2 or later.
 
 ::
 

@@ -21,26 +21,26 @@ dist: $(OUTPUTS)
 	@cp ${DOC_DIR}/../README.rst ${SITE_DIR}/
 	@cp ${DOC_DIR}/../HACKING.rst ${SITE_DIR}/
 
-%/man.1: %/manual.txt
+%/man.1: %/manual.rst
 	$(RST2MAN) $< $@
 
-%.xml: %.txt
+%.xml: %.rst
 	$(RST2XML) --no-doctype $< $@
 
-%.html: %.txt
+%.html: %.rst
 	$(RST2HTML) $< $@
 
 # Workaround to avoid unescaped C character.
-%/manual-quoted.txt: %/manual.txt
+%/manual-quoted.rst: %/manual.rst
 	sed 's/"/\\\\"/g' $^ > $@
 
 %.h: %/stylesheets/cli.xsl %/manual-quoted.xml
 	xsltproc --output $@ $^
 
-%/rpm-spec:  %/stylesheets/rpm-spec.xsl %/manual.xml # %/changelog.txt
+%/rpm-spec:  %/stylesheets/rpm-spec.xsl %/manual.xml # %/changelog.rst
 	xsltproc --output $@ $^
 	echo "* $(shell date +'%a %b %d %Y') PRoot Team <proot_me@googlegroups.com>" >> $@
-	cat $*/changelog.txt >> $@
+	cat $*/changelog.rst >> $@
 
 %/index.html: stylesheets/website.xsl %/stylesheets/website.xsl %/manual.xml
 	xsltproc --output $@ $*/stylesheets/website.xsl $*/manual.xml

@@ -1,66 +1,13 @@
-%define version v5.1.0
+=======================================================================
+=======================================================================
 
-Summary   : chroot, mount --bind, and binfmt_misc without privilege/setup
-Version   : %{version}
-Release   : 1
-License   : GPL2+
-Group     : Applications/System
-Source    : proot-%{version}.tar.gz
-Buildroot : %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
-Prefix    : /usr
-Name      : proot
+  This file is no longer used for tracking changes for PRoot. For
+  user visible changes, please look in the top-level CHANGELOG.rst
+  file.
 
-BuildRequires: libtalloc-devel
+=======================================================================
+=======================================================================
 
-%if 0%{?suse_version} >= 1210 || 0%{?fedora_version} >= 15
-BuildRequires: glibc-static
-%endif
-
-%if !0%{?suse_version} != 0
-BuildRequires: which
-%endif
-
-%description
-PRoot is a user-space implementation of chroot, mount --bind,
-and binfmt_misc.  This means that users don't need any privileges
-or setup to do things like using an arbitrary directory as the new
-root filesystem, making files accessible somewhere else in the
-filesystem hierarchy, or executing programs built for another CPU
-architecture transparently through QEMU user-mode.  Also, developers
-can use PRoot as a generic Linux process instrumentation engine thanks
-to its extension mechanism, see CARE for an example.  Technically
-PRoot relies on ptrace, an unprivileged system-call available in
-every Linux kernel.
-
-%prep
-%setup -n proot-%{version}
-
-%build
-make -C src
-
-%install
-make -C src install PREFIX=%{buildroot}/%{prefix}
-install -D doc/proot/man.1 %{buildroot}/%{_mandir}/man1/proot.1
-
-%check
-env LD_SHOW_AUXV=1 true
-cat /proc/cpuinfo
-./src/proot -V
-./src/proot -v 1 true
-make -C test
-
-%clean
-rm -rf %{buildroot}
-
-%files
-%defattr(-,root,root)
-%{prefix}/bin/proot
-%doc %{_mandir}/man1/proot.1*
-%doc COPYING
-%doc doc/*
-
-%changelog
-* Fri Dec 13 2019 PRoot Team <proot_me@googlegroups.com>
 Release v5.1.0
 ==============
 
