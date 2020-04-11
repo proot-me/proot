@@ -27,6 +27,11 @@ The following commands can be used to compile PRoot and CARE::
     make -C src proot care # then compile PRoot and CARE
     make -C test # run test suite
 
+|asciicast|
+
+.. |asciicast| image:: https://asciinema.org/a/315367.svg
+   :target: https://asciinema.org/a/315367
+
 Dependencies
 ============
 
