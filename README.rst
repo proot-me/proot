@@ -18,6 +18,9 @@ Build status
 .. image:: https://img.shields.io/badge/lcov-latest-6688D4.svg?style=flat-square
    :target: https://proot.gitlab.io/proot/reports/lcov
 
+.. image:: https://img.shields.io/cii/summary/2444.svg?label=cii-best-practices&style=flat-square
+   :target: https://bestpractices.coreinfrastructure.org/projects/2444
+
 Compiling
 =========
 
