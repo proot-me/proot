@@ -21,6 +21,9 @@ Build status
 .. image:: https://img.shields.io/cii/summary/2444.svg?label=cii-best-practices&style=flat-square
    :target: https://bestpractices.coreinfrastructure.org/projects/2444
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3751971.svg
+   :target: https://doi.org/10.5281/zenodo.3751971
+
 Compiling
 =========
 
