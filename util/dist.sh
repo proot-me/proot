@@ -8,8 +8,8 @@ mkdir -p public/reports/lcov
 mkdir -p public/reports/scan-build
 
 # copy static binary
-sha256sum dist/proot public/bin/proot.sha256sum
-md5sum dist/proot public/bin/proot.md5sum
+sha256sum dist/proot > public/bin/proot.sha256sum
+md5sum dist/proot > public/bin/proot.md5sum
 cp dist/proot public/bin/proot
 
 # copy redirect template
