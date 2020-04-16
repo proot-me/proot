@@ -2,6 +2,9 @@ sudo: required
 
 language: c
 
+notifications:
+  email: false
+
 dist: bionic
 
 services:
