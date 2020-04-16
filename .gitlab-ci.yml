@@ -25,6 +25,9 @@ dist:
   after_script:
     - mkdir -p dist
     - cp src/proot dist/
+    - cd dist
+    - sha256sum ./proot > proot.sha256sum
+    - md5sum ./proot > proot.md5sum
   artifacts:
     paths:
       - dist
