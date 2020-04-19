@@ -48,9 +48,9 @@ Dependencies
 Manuals
 =======
 
-- `PRoot <https://raw.githubusercontent.com/proot-me/proot/master/doc/proot/manual.txt>`_
+- `PRoot <https://github.com/proot-me/proot/blob/master/doc/proot/manual.rst#proot>`_
 
-- `CARE <https://raw.githubusercontent.com/proot-me/proot/master/doc/care/manual.txt>`_
+- `CARE <https://github.com/proot-me/proot/blob/master/doc/care/manual.rst#care>`_
 
 Support
 =======
