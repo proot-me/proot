@@ -1,7 +1,8 @@
-How to setup a developer environment for PRoot?
-===============================================
+How to setup a development environment for PRoot?
+=================================================
 
-This document provides instructions for developing PRoot and CARE.
+This document provides instructions for preparing
+a system for developing PRoot and CARE.
 
 Vagrant
 -------
