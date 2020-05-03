@@ -9,28 +9,31 @@ Checks
 
 + Sanity checks:
 
-  * on ARM and *all* OBS distros (x86 and x86_64): `make -C test`
+  * All supported atchitectures and distributions
+    both with and without seccomp support enabled:
 
-  * on x86_64, with *and* without seccomp:
+      make -C test
+      make -C test memcheck
+      CFLAGS=-fsanitize=address LDFLAGS=-lasan
+      make -C test V=1 2>&1 | grep talloc
 
-    - :code:`make -C test` on *all* OBS distros
-    - :code:`make -C test memcheck`
-    - :code:`CFLAGS=-fsanitize=address LDFLAGS=-lasan`
-    - :code:`make -C test V=1 2>&1 | grep talloc`
++ Functional checks:
 
-+ Functional checks: no regressions must appear with respect to
-  :code:`test/validation.mk` and to the configurations tested in the previous
-  release (:code:`git tag -l`).
+  * No regressions must appear with respect to :code:`test/validation.mk`
+    and to the configurations tested in the previous
+    release (:code:`git tag -l`).
 
-+ Performance checks: the following command must not suffer from
-  unexpected performance regression::
++ Performance checks:
 
-    time proot -R / perl -e 'system("/usr/bin/true") for (1..10000)'
+  * The following command must not suffer from
+    unexpected performance regression::
 
-  where :code:`/usr/bin/true` is a symlink to :code:`/bin/true`.
+      time proot -R / perl -e 'system("/usr/bin/true") for (1..10000)'
 
-+ Static analysis: Gcov/Lcov and Clang Scan Build must not report
-  new issues. All shell scripts must pass shellcheck.
+    where :code:`/usr/bin/true` is a symlink to :code:`/bin/true`.
+
++ Static analysis: :code:`gcov`/:code:`lcov` and clang :code:`scan-build`
+  must not report new issues. All shell scripts must pass :code:`shellcheck`.
   
 Static Binaries
 ---------------
