@@ -19,10 +19,12 @@ TMP=$(mcookie)
 TMP="/tmp/${TMP}"
 
 # Generate image list
-find "${SRC_DIR}" -name 'Dockerfile' -exec sh -c '
-  TAG=$(echo "${1}" | ${SRC_DIR}/util/parse-docker-tag.awk)
-  echo ${BUILDER} build -t ${DOCKER_IMAGE}:${TAG} -f ${1} ${SRC_DIR}
+find . -name 'Dockerfile' -exec sh -c '
+  TAG=$(echo "${1}" | ../util/parse-docker-tag.awk)
+  echo ${BUILDER} build -t ${DOCKER_IMAGE}:${TAG} -f ${1} ..
   ' sh {} \; | sort -k1 > "${TMP}"
+
+cat "${TMP}"
 
 # Build all images
 sh "${TMP}"
