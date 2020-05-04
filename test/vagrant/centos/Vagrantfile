@@ -16,6 +16,7 @@ Vagrant.configure("2") do |config|
     sudo yum makecache
     sudo yum group install -y 'Development Tools'
     sudo yum install -y clang \
+                        clang-analyzer \
                         git \
                         libarchive-devel \
                         libtalloc-devel \
