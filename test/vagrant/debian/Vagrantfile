@@ -10,21 +10,21 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<-SHELL
-    sudo apt-get update -qq
-    sudo apt-get install -qq clang \
-                             clang-tools-4.0 \
-                             curl \
-                             gcc \
-                             gdb \
-                             git \
-                             lcov \
-                             libarchive-dev \
-                             libtalloc-dev \
-                             make \
-                             sloccount \
-                             strace \
-                             swig \
-                             uthash-dev
+    sudo apt update
+    sudo apt install -y clang \
+                        clang-tools-4.0 \
+                        curl \
+                        gcc \
+                        gdb \
+                        git \
+                        lcov \
+                        libarchive-dev \
+                        libtalloc-dev \
+                        make \
+                        sloccount \
+                        strace \
+                        swig \
+                        uthash-dev
   SHELL
 
 end
