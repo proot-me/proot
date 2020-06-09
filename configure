@@ -1,6 +1,7 @@
 #!/bin/sh
 # Copyright (C) 2003 Fabrice Bellard
-# PRoot configure script
+# Copyright (C) 2020 PRoot Developers
+# PROOT configure script
 
 # Unset some variables known to interfere with behavior of common tools,
 # just as autoconf does.
@@ -23,18 +24,16 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-TMPB="qemu-conf"
+TMPB="proot-conf"
 TMPC="${TMPDIR1}/${TMPB}.c"
 TMPO="${TMPDIR1}/${TMPB}.o"
-TMPCXX="${TMPDIR1}/${TMPB}.cxx"
-TMPE="${TMPDIR1}/${TMPB}.exe"
+TMPE="${TMPDIR1}/${TMPB}.elf"
 TMPMO="${TMPDIR1}/${TMPB}.mo"
-TMPTXT="${TMPDIR1}/${TMPB}.txt"
 
 rm -f config.log
 
 # Print a helpful header at the top of config.log
-echo "# PRoot configure log $(date)" >> config.log
+echo "# PROOT configure log $(date)" >> config.log
 printf "# Configured with:" >> config.log
 printf " '%s'" "$0" "$@" >> config.log
 echo >> config.log
@@ -92,40 +91,15 @@ do_cc() {
     do_compiler "$cc" "$@"
 }
 
-do_cxx() {
-    do_compiler "$cxx" "$@"
-}
-
-update_cxxflags() {
-    # Set PRoot_CXXFLAGS from PRoot_CFLAGS by filtering out those
-    # options which some versions of GCC's C++ compiler complain about
-    # because they only make sense for C programs.
-    PRoot_CXXFLAGS="$PRoot_CXXFLAGS -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS"
-
-    for arg in $PRoot_CFLAGS; do
-        case $arg in
-            -Wstrict-prototypes|-Wmissing-prototypes|-Wnested-externs|\
-            -Wold-style-declaration|-Wold-style-definition|-Wredundant-decls)
-                ;;
-            -std=gnu99)
-                PRoot_CXXFLAGS=${PRoot_CXXFLAGS:+$PRoot_CXXFLAGS }"-std=gnu++98"
-                ;;
-            *)
-                PRoot_CXXFLAGS=${PRoot_CXXFLAGS:+$PRoot_CXXFLAGS }$arg
-                ;;
-        esac
-    done
-}
-
 compile_object() {
   local_cflags="$1"
-  do_cc $PRoot_CFLAGS $local_cflags -c -o $TMPO $TMPC
+  do_cc $PROOT_CFLAGS $local_cflags -c -o $TMPO $TMPC
 }
 
 compile_prog() {
   local_cflags="$1"
   local_ldflags="$2"
-  do_cc $PRoot_CFLAGS $local_cflags -o $TMPE $TMPC $PRoot_LDFLAGS $local_ldflags
+  do_cc $PROOT_CFLAGS $local_cflags -o $TMPE $TMPC $PROOT_LDFLAGS $local_ldflags
 }
 
 # symbolically link $1 to $2.  Portable version of "ln -sf".
@@ -171,106 +145,9 @@ path_of() {
     return 1
 }
 
-have_backend () {
-    echo "$trace_backends" | grep "$1" >/dev/null
-}
-
 glob() {
     eval test -z '"${1#'"$2"'}"'
 }
-
-supported_hax_target() {
-    test "$hax" = "yes" || return 1
-    glob "$1" "*-softmmu" || return 1
-    case "${1%-softmmu}" in
-        i386|x86_64)
-            return 0
-        ;;
-    esac
-    return 1
-}
-
-supported_kvm_target() {
-    test "$kvm" = "yes" || return 1
-    glob "$1" "*-softmmu" || return 1
-    case "${1%-softmmu}:$cpu" in
-        arm:arm | aarch64:aarch64 | \
-        i386:i386 | i386:x86_64 | i386:x32 | \
-        x86_64:i386 | x86_64:x86_64 | x86_64:x32 | \
-        mips:mips | mipsel:mips | mips64:mips | mips64el:mips | \
-        ppc:ppc | ppc64:ppc | ppc:ppc64 | ppc64:ppc64 | ppc64:ppc64le | \
-        s390x:s390x)
-            return 0
-        ;;
-    esac
-    return 1
-}
-
-supported_xen_target() {
-    test "$xen" = "yes" || return 1
-    glob "$1" "*-softmmu" || return 1
-    # Only i386 and x86_64 provide the xenpv machine.
-    case "${1%-softmmu}" in
-        i386|x86_64)
-            return 0
-        ;;
-    esac
-    return 1
-}
-
-supported_hvf_target() {
-    test "$hvf" = "yes" || return 1
-    glob "$1" "*-softmmu" || return 1
-    case "${1%-softmmu}" in
-        x86_64)
-            return 0
-        ;;
-    esac
-    return 1
-}
-
-supported_whpx_target() {
-    test "$whpx" = "yes" || return 1
-    glob "$1" "*-softmmu" || return 1
-    case "${1%-softmmu}" in
-        i386|x86_64)
-            return 0
-        ;;
-    esac
-    return 1
-}
-
-supported_target() {
-    case "$1" in
-        *-softmmu)
-            ;;
-        *-linux-user)
-            if test "$linux" != "yes"; then
-                print_error "Target '$target' is only available on a Linux host"
-                return 1
-            fi
-            ;;
-        *-bsd-user)
-            if test "$bsd" != "yes"; then
-                print_error "Target '$target' is only available on a BSD host"
-                return 1
-            fi
-            ;;
-        *)
-            print_error "Invalid target name '$target'"
-            return 1
-            ;;
-    esac
-    test "$tcg" = "yes" && return 0
-    supported_kvm_target "$1" && return 0
-    supported_xen_target "$1" && return 0
-    supported_hax_target "$1" && return 0
-    supported_hvf_target "$1" && return 0
-    supported_whpx_target "$1" && return 0
-    print_error "TCG disabled, but hardware accelerator not available for '$target'"
-    return 1
-}
-
 
 ld_has() {
     $ld --help 2>/dev/null | grep ".$1" >/dev/null 2>&1
@@ -286,19 +163,9 @@ fi
 
 # default parameters
 cpu=""
-iasl="iasl"
-interp_prefix="/usr/gnemul/qemu-%M"
 static="no"
 cross_prefix=""
-audio_drv_list=""
-block_drv_rw_whitelist=""
-block_drv_ro_whitelist=""
 host_cc="cc"
-libs_cpu=""
-libs_softmmu=""
-libs_tools=""
-audio_win_int=""
-libs_qga=""
 debug_info="yes"
 stack_protector=""
 use_containers="yes"
@@ -307,30 +174,8 @@ gdb_bin=$(command -v "gdb-multiarch" || command -v "gdb")
 if test -e "$source_path/.git"
 then
     git_update=yes
-    git_submodules="ui/keycodemapdb"
-    git_submodules="$git_submodules tests/fp/berkeley-testfloat-3"
-    git_submodules="$git_submodules tests/fp/berkeley-softfloat-3"
 else
     git_update=no
-    git_submodules=""
-
-    if ! test -f "$source_path/ui/keycodemapdb/README"
-    then
-        echo
-        echo "ERROR: missing file $source_path/ui/keycodemapdb/README"
-        echo
-        echo "This is not a GIT checkout but module content appears to"
-        echo "be missing. Do not use 'git archive' or GitHub download links"
-        echo "to acquire PRoot source archives. Non-GIT builds are only"
-        echo "supported with source archives linked from:"
-        echo
-        echo "  https://www.qemu.org/download/#source"
-        echo
-        echo "Developers working with GIT can use scripts/archive-source.sh"
-        echo "if they need to create valid source archives."
-        echo
-        exit 1
-    fi
 fi
 git="git"
 
@@ -350,10 +195,7 @@ unset target_list_exclude
 # Distributions want to ensure that several features are compiled in, and it
 # is impossible without a --enable-foo that exits if a feature is not found.
 
-brlapi=""
-curl=""
-curses=""
-docs=""
+doc=""
 fdt=""
 netmap="no"
 sdl=""
@@ -409,15 +251,15 @@ module_upgrades="no"
 prefix="/usr/local"
 mandir="\${prefix}/share/man"
 datadir="\${prefix}/share"
-firmwarepath="\${prefix}/share/qemu-firmware"
-qemu_docdir="\${prefix}/share/doc/qemu"
+firmwarepath="\${prefix}/share/proot-firmware"
+proot_docdir="\${prefix}/share/doc/proot"
 bindir="\${prefix}/bin"
 libdir="\${prefix}/lib"
 libexecdir="\${prefix}/libexec"
 includedir="\${prefix}/include"
 sysconfdir="\${prefix}/etc"
 local_statedir="\${prefix}/var"
-confsuffix="/qemu"
+confsuffix="/proot"
 slirp=""
 oss_lib=""
 bsd="no"
@@ -481,7 +323,7 @@ nettle_xts="no"
 gcrypt=""
 gcrypt_hmac="no"
 gcrypt_xts="no"
-qemu_private_xts="yes"
+proot_private_xts="yes"
 auth_pam=""
 vte=""
 virglrenderer=""
@@ -526,12 +368,12 @@ for opt do
   ;;
   --cpu=*) cpu="$optarg"
   ;;
-  --extra-cflags=*) PRoot_CFLAGS="$PRoot_CFLAGS $optarg"
-                    PRoot_LDFLAGS="$PRoot_LDFLAGS $optarg"
+  --extra-cflags=*) PROOT_CFLAGS="$PROOT_CFLAGS $optarg"
+                    PROOT_LDFLAGS="$PROOT_LDFLAGS $optarg"
   ;;
-  --extra-cxxflags=*) PRoot_CXXFLAGS="$PRoot_CXXFLAGS $optarg"
+  --extra-cxxflags=*) PROOT_CXXFLAGS="$PROOT_CXXFLAGS $optarg"
   ;;
-  --extra-ldflags=*) PRoot_LDFLAGS="$PRoot_LDFLAGS $optarg"
+  --extra-ldflags=*) PROOT_LDFLAGS="$PROOT_LDFLAGS $optarg"
                      EXTRA_LDFLAGS="$optarg"
   ;;
   --enable-debug-info) debug_info="yes"
@@ -583,7 +425,7 @@ strip="${STRIP-${cross_prefix}strip}"
 windres="${WINDRES-${cross_prefix}windres}"
 pkg_config_exe="${PKG_CONFIG-${cross_prefix}pkg-config}"
 query_pkg_config() {
-    "${pkg_config_exe}" ${PRoot_PKG_CONFIG_FLAGS} "$@"
+    "${pkg_config_exe}" ${PROOT_PKG_CONFIG_FLAGS} "$@"
 }
 pkg_config=query_pkg_config
 sdl2_config="${SDL2_CONFIG-${cross_prefix}sdl2-config}"
@@ -596,12 +438,12 @@ ARFLAGS="${ARFLAGS-rv}"
 # left shift of signed integers is well defined and has the expected
 # 2s-complement style results. (Both clang and gcc agree that it
 # provides these semantics.)
-PRoot_CFLAGS="-fno-strict-aliasing -fno-common -fwrapv -std=gnu99 $PRoot_CFLAGS"
-PRoot_CFLAGS="-Wall -Wundef -Wwrite-strings -Wmissing-prototypes $PRoot_CFLAGS"
-PRoot_CFLAGS="-Wstrict-prototypes -Wredundant-decls $PRoot_CFLAGS"
-PRoot_CFLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE $PRoot_CFLAGS"
-PRoot_INCLUDES="-iquote . -iquote \$(SRC_PATH) -iquote \$(SRC_PATH)/accel/tcg -iquote \$(SRC_PATH)/include"
-PRoot_INCLUDES="$PRoot_INCLUDES -iquote \$(SRC_PATH)/disas/libvixl"
+PROOT_CFLAGS="-fno-strict-aliasing -fno-common -fwrapv -std=gnu99 $PROOT_CFLAGS"
+PROOT_CFLAGS="-Wall -Wundef -Wwrite-strings -Wmissing-prototypes $PROOT_CFLAGS"
+PROOT_CFLAGS="-Wstrict-prototypes -Wredundant-decls $PROOT_CFLAGS"
+PROOT_CFLAGS="-D_GNU_SOURCE -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE $PROOT_CFLAGS"
+PROOT_INCLUDES="-iquote . -iquote \$(SRC_PATH) -iquote \$(SRC_PATH)/accel/tcg -iquote \$(SRC_PATH)/include"
+PROOT_INCLUDES="$PROOT_INCLUDES -iquote \$(SRC_PATH)/disas/libvixl"
 if test "$debug_info" = "yes"; then
     CFLAGS="-g $CFLAGS"
 fi
@@ -858,17 +700,17 @@ Darwin)
   hvf="yes"
   LDFLAGS_SHARED="-bundle -undefined dynamic_lookup"
   if [ "$cpu" = "x86_64" ] ; then
-    PRoot_CFLAGS="-arch x86_64 $PRoot_CFLAGS"
-    PRoot_LDFLAGS="-arch x86_64 $PRoot_LDFLAGS"
+    PROOT_CFLAGS="-arch x86_64 $PROOT_CFLAGS"
+    PROOT_LDFLAGS="-arch x86_64 $PROOT_LDFLAGS"
   fi
   cocoa="yes"
   audio_drv_list="coreaudio try-sdl"
   audio_possible_drivers="coreaudio sdl"
-  PRoot_LDFLAGS="-framework CoreFoundation -framework IOKit $PRoot_LDFLAGS"
+  PROOT_LDFLAGS="-framework CoreFoundation -framework IOKit $PROOT_LDFLAGS"
   libs_softmmu="-F/System/Library/Frameworks -framework Cocoa -framework IOKit $libs_softmmu"
   # Disable attempts to use ObjectiveC features in os/object.h since they
   # won't work when we're compiling with gcc as a C compiler.
-  PRoot_CFLAGS="-DOS_OBJECT_USE_OBJC=0 $PRoot_CFLAGS"
+  PROOT_CFLAGS="-DOS_OBJECT_USE_OBJC=0 $PROOT_CFLAGS"
   HOST_VARIANT_DIR="darwin"
   supported_os="yes"
 ;;
@@ -882,17 +724,17 @@ SunOS)
   fi
   audio_possible_drivers="oss sdl"
 # needed for CMSG_ macros in sys/socket.h
-  PRoot_CFLAGS="-D_XOPEN_SOURCE=600 $PRoot_CFLAGS"
+  PROOT_CFLAGS="-D_XOPEN_SOURCE=600 $PROOT_CFLAGS"
 # needed for TIOCWIN* defines in termios.h
-  PRoot_CFLAGS="-D__EXTENSIONS__ $PRoot_CFLAGS"
-  PRoot_CFLAGS="-std=gnu99 $PRoot_CFLAGS"
+  PROOT_CFLAGS="-D__EXTENSIONS__ $PROOT_CFLAGS"
+  PROOT_CFLAGS="-std=gnu99 $PROOT_CFLAGS"
   solarisnetlibs="-lsocket -lnsl -lresolv"
   LIBS="$solarisnetlibs $LIBS"
   libs_qga="$solarisnetlibs $libs_qga"
 ;;
 Haiku)
   haiku="yes"
-  PRoot_CFLAGS="-DB_USE_POSITIVE_POSIX_ERRORS $PRoot_CFLAGS"
+  PROOT_CFLAGS="-DB_USE_POSITIVE_POSIX_ERRORS $PROOT_CFLAGS"
   LIBS="-lposix_error_mapper -lnetwork $LIBS"
 ;;
 Linux)
@@ -901,7 +743,7 @@ Linux)
   linux="yes"
   linux_user="yes"
   kvm="yes"
-  PRoot_INCLUDES="-isystem \$(SRC_PATH)/linux-headers -isystem $PWD/linux-headers $PRoot_INCLUDES"
+  PROOT_INCLUDES="-isystem \$(SRC_PATH)/linux-headers -isystem $PWD/linux-headers $PROOT_INCLUDES"
   supported_os="yes"
   libudev="yes"
 ;;
@@ -959,19 +801,19 @@ else
 fi
 
 if test "$mingw32" = "yes" ; then
-  EXESUF=".exe"
+  EXESUF=".elf"
   DSOSUF=".dll"
   # MinGW needs -mthreads for TLS and macro _MT.
-  PRoot_CFLAGS="-mthreads $PRoot_CFLAGS"
+  PROOT_CFLAGS="-mthreads $PROOT_CFLAGS"
   LIBS="-lwinmm -lws2_32 $LIBS"
   write_c_skeleton;
   if compile_prog "" "-liberty" ; then
     LIBS="-liberty $LIBS"
   fi
-  prefix="c:/Program Files/PRoot"
+  prefix="c:/Program Files/PROOT"
   mandir="\${prefix}"
   datadir="\${prefix}"
-  qemu_docdir="\${prefix}"
+  proot_docdir="\${prefix}"
   bindir="\${prefix}"
   sysconfdir="\${prefix}"
   local_statedir=
@@ -1067,7 +909,7 @@ for opt do
   ;;
   --static)
     static="yes"
-    PRoot_PKG_CONFIG_FLAGS="--static $PRoot_PKG_CONFIG_FLAGS"
+    PROOT_PKG_CONFIG_FLAGS="--static $PROOT_PKG_CONFIG_FLAGS"
   ;;
   --mandir=*) mandir="$optarg"
   ;;
@@ -1083,7 +925,7 @@ for opt do
   ;;
   --with-confsuffix=*) confsuffix="$optarg"
   ;;
-  --docdir=*) qemu_docdir="$optarg"
+  --docdir=*) proot_docdir="$optarg"
   ;;
   --sysconfdir=*) sysconfdir="$optarg"
   ;;
@@ -1097,7 +939,7 @@ for opt do
   --oldincludedir=*|--datarootdir=*|--infodir=*|--localedir=*|\
   --htmldir=*|--dvidir=*|--pdfdir=*|--psdir=*)
     # These switches are silently ignored, for compatibility with
-    # autoconf-generated configure scripts. This allows PRoot's
+    # autoconf-generated configure scripts. This allows PROOT's
     # configure to be used by RPM and similar macros that set
     # lots of directory switches by default.
   ;;
@@ -1322,9 +1164,9 @@ for opt do
   ;;
   --disable-crypto-afalg) crypto_afalg="no"
   ;;
-  --disable-docs) docs="no"
+  --disable-doc) doc="no"
   ;;
-  --enable-docs) docs="yes"
+  --enable-doc) doc="yes"
   ;;
   --disable-vhost-net) vhost_net="no"
   ;;
@@ -1611,49 +1453,49 @@ done
 case "$cpu" in
     ppc)
            CPU_CFLAGS="-m32"
-           PRoot_LDFLAGS="-m32 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m32 $PROOT_LDFLAGS"
            ;;
     ppc64)
            CPU_CFLAGS="-m64"
-           PRoot_LDFLAGS="-m64 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m64 $PROOT_LDFLAGS"
            ;;
     sparc)
            CPU_CFLAGS="-m32 -mv8plus -mcpu=ultrasparc"
-           PRoot_LDFLAGS="-m32 -mv8plus $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m32 -mv8plus $PROOT_LDFLAGS"
            ;;
     sparc64)
            CPU_CFLAGS="-m64 -mcpu=ultrasparc"
-           PRoot_LDFLAGS="-m64 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m64 $PROOT_LDFLAGS"
            ;;
     s390)
            CPU_CFLAGS="-m31"
-           PRoot_LDFLAGS="-m31 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m31 $PROOT_LDFLAGS"
            ;;
     s390x)
            CPU_CFLAGS="-m64"
-           PRoot_LDFLAGS="-m64 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m64 $PROOT_LDFLAGS"
            ;;
     i386)
            CPU_CFLAGS="-m32"
-           PRoot_LDFLAGS="-m32 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m32 $PROOT_LDFLAGS"
            ;;
     x86_64)
            # ??? Only extremely old AMD cpus do not have cmpxchg16b.
            # If we truly care, we should simply detect this case at
            # runtime and generate the fallback to serial emulation.
            CPU_CFLAGS="-m64 -mcx16"
-           PRoot_LDFLAGS="-m64 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-m64 $PROOT_LDFLAGS"
            ;;
     x32)
            CPU_CFLAGS="-mx32"
-           PRoot_LDFLAGS="-mx32 $PRoot_LDFLAGS"
+           PROOT_LDFLAGS="-mx32 $PROOT_LDFLAGS"
            ;;
     # No special flags required for other host CPUs
 esac
 
 eval "cross_cc_${cpu}=\$host_cc"
 cross_cc_vars="$cross_cc_vars cross_cc_${cpu}"
-PRoot_CFLAGS="$CPU_CFLAGS $PRoot_CFLAGS"
+PROOT_CFLAGS="$CPU_CFLAGS $PROOT_CFLAGS"
 
 # For user-mode emulation the host arch has to be one we explicitly
 # support, even if we're using TCI.
@@ -1728,8 +1570,8 @@ Advanced options (experts only):
                            build time
   --cxx=CXX                use C++ compiler CXX [$cxx]
   --objcc=OBJCC            use Objective-C compiler OBJCC [$objcc]
-  --extra-cflags=CFLAGS    append extra C compiler flags PRoot_CFLAGS
-  --extra-cxxflags=CXXFLAGS append extra C++ compiler flags PRoot_CXXFLAGS
+  --extra-cflags=CFLAGS    append extra C compiler flags PROOT_CFLAGS
+  --extra-cxxflags=CXXFLAGS append extra C++ compiler flags PROOT_CXXFLAGS
   --extra-ldflags=LDFLAGS  append extra linker flags LDFLAGS
   --cross-cc-ARCH=CC       use compiler when building ARCH guest test cases
   --cross-cc-flags-ARCH=   use compiler flags when building ARCH guest tests
@@ -1749,7 +1591,7 @@ Advanced options (experts only):
   --sysconfdir=PATH        install config in PATH$confsuffix
   --localstatedir=PATH     install local state in PATH (set at runtime on win32)
   --firmwarepath=PATH      search PATH for firmware files
-  --with-confsuffix=SUFFIX suffix for PRoot data inside datadir/libdir/sysconfdir [$confsuffix]
+  --with-confsuffix=SUFFIX suffix for PROOT data inside datadir/libdir/sysconfdir [$confsuffix]
   --with-pkgversion=VERS   use specified string as sub-version of the package
   --enable-debug           enable common debug build options
   --enable-sanitizers      enable default sanitizers
@@ -1761,10 +1603,10 @@ Advanced options (experts only):
   --block-drv-whitelist=L  Same as --block-drv-rw-whitelist=L
   --block-drv-rw-whitelist=L
                            set block driver read-write whitelist
-                           (affects only PRoot, not qemu-img)
+                           (affects only PROOT, not proot-img)
   --block-drv-ro-whitelist=L
                            set block driver read-only whitelist
-                           (affects only PRoot, not qemu-img)
+                           (affects only PROOT, not proot-img)
   --enable-trace-backends=B Set trace backend
                            Available backends: $trace_backend_list
   --with-trace-file=NAME   Full PATH,NAME of file to store traces
@@ -1779,13 +1621,13 @@ Advanced options (experts only):
   --enable-gcov            enable test coverage analysis with gcov
   --gcov=GCOV              use specified gcov [$gcov_tool]
   --disable-blobs          disable installing provided firmware blobs
-  --with-vss-sdk=SDK-path  enable Windows VSS support in PRoot Guest Agent
+  --with-vss-sdk=SDK-path  enable Windows VSS support in PROOT Guest Agent
   --with-win-sdk=SDK-path  path to Windows Platform SDK (to build VSS .tlb)
   --tls-priority           default TLS protocol/cipher priority string
-  --enable-gprof           PRoot profiling with gprof
+  --enable-gprof           PROOT profiling with gprof
   --enable-profiler        profiler support
   --enable-debug-stack-usage
-                           track the maximum stack usage of stacks created by qemu_alloc_stack
+                           track the maximum stack usage of stacks created by proot_alloc_stack
   --enable-plugins
                            enable plugins via shared library loading
   --disable-containers     don't use containers for cross-building
@@ -1798,8 +1640,8 @@ disabled with --disable-FEATURE, default is enabled if available:
   user            supported user emulation targets
   linux-user      all linux usermode emulation targets
   bsd-user        all BSD usermode emulation targets
-  docs            build documentation
-  guest-agent     build the PRoot Guest Agent
+  doc            build documentation
+  guest-agent     build the PROOT Guest Agent
   guest-agent-msi build guest agent Windows MSI installation package
   pie             Position Independent Executables
   modules         modules support (non-Windows)
@@ -1881,7 +1723,7 @@ disabled with --disable-FEATURE, default is enabled if available:
   virglrenderer   virgl rendering support
   xfsctl          xfsctl support
   qom-cast-debug  cast debugging support
-  tools           build qemu-io, qemu-nbd and qemu-img tools
+  tools           build proot-io, proot-nbd and proot-img tools
   vxhs            Veritas HyperScale vDisk backend support
   bochs           bochs image format support
   cloop           cloop image format support
@@ -1986,19 +1828,19 @@ cat > $TMPC << EOF
 #if defined(__clang_major__) && defined(__clang_minor__)
 # ifdef __apple_build_version__
 #  if __clang_major__ < 5 || (__clang_major__ == 5 && __clang_minor__ < 1)
-#   error You need at least XCode Clang v5.1 to compile PRoot
+#   error You need at least XCode Clang v5.1 to compile PROOT
 #  endif
 # else
 #  if __clang_major__ < 3 || (__clang_major__ == 3 && __clang_minor__ < 4)
-#   error You need at least Clang v3.4 to compile PRoot
+#   error You need at least Clang v3.4 to compile PROOT
 #  endif
 # endif
 #elif defined(__GNUC__) && defined(__GNUC_MINOR__)
 # if __GNUC__ < 4 || (__GNUC__ == 4 && __GNUC_MINOR__ < 8)
-#  error You need at least GCC v4.8 to compile PRoot
+#  error You need at least GCC v4.8 to compile PROOT
 # endif
 #else
-# error You either need GCC or Clang to compiler PRoot
+# error You either need GCC or Clang to compiler PROOT
 #endif
 int main (void) { return 0; }
 EOF
@@ -2007,7 +1849,7 @@ if ! compile_prog "" "" ; then
 fi
 
 gcc_flags="-Wold-style-declaration -Wold-style-definition -Wtype-limits"
-gcc_flags="-Wformat-security -Wformat-y2k -Winit-self -Wignored-qualifiers $gcc_flags"
+gcc_flags="-Wformat-security -Wformat-y2k -Winit-sexe -Wignored-qualifiers $gcc_flags"
 gcc_flags="-Wno-missing-include-dirs -Wempty-body -Wnested-externs $gcc_flags"
 gcc_flags="-Wendif-labels -Wno-shift-negative-value $gcc_flags"
 gcc_flags="-Wno-initializer-overrides -Wexpansion-to-defined $gcc_flags"
@@ -2029,7 +1871,7 @@ cc_has_warning_flag() {
 
 for flag in $gcc_flags; do
     if cc_has_warning_flag $flag ; then
-        PRoot_CFLAGS="$PRoot_CFLAGS $flag"
+        PROOT_CFLAGS="$PROOT_CFLAGS $flag"
     fi
 done
 
@@ -2049,10 +1891,10 @@ EOF
   for flag in $gcc_flags; do
     # We need to check both a compile and a link, since some compiler
     # setups fail only on a .c->.o compile and some only at link time
-    if do_cc $PRoot_CFLAGS -Werror $flag -c -o $TMPO $TMPC &&
+    if do_cc $PROOT_CFLAGS -Werror $flag -c -o $TMPO $TMPC &&
        compile_prog "-Werror $flag" ""; then
-      PRoot_CFLAGS="$PRoot_CFLAGS $flag"
-      PRoot_LDFLAGS="$PRoot_LDFLAGS $flag"
+      PROOT_CFLAGS="$PROOT_CFLAGS $flag"
+      PROOT_LDFLAGS="$PROOT_LDFLAGS $flag"
       sp_on=1
       break
     fi
@@ -2074,7 +1916,7 @@ EOF
 if compile_object "-Werror" "" ; then
   :
 else
-  PRoot_CFLAGS="$PRoot_CFLAGS -Wno-missing-braces"
+  PROOT_CFLAGS="$PROOT_CFLAGS -Wno-missing-braces"
 fi
 
 # Our module code doesn't support Windows
@@ -2124,21 +1966,21 @@ fi
 
 if test "$static" = "yes"; then
   if test "$pie" != "no" && compile_prog "-Werror -fPIE -DPIE" "-static-pie"; then
-    PRoot_CFLAGS="-fPIE -DPIE $PRoot_CFLAGS"
-    PRoot_LDFLAGS="-static-pie $PRoot_LDFLAGS"
+    PROOT_CFLAGS="-fPIE -DPIE $PROOT_CFLAGS"
+    PROOT_LDFLAGS="-static-pie $PROOT_LDFLAGS"
     pie="yes"
   elif test "$pie" = "yes"; then
     error_exit "-static-pie not available due to missing toolchain support"
   else
-    PRoot_LDFLAGS="-static $PRoot_LDFLAGS"
+    PROOT_LDFLAGS="-static $PROOT_LDFLAGS"
     pie="no"
   fi
 elif test "$pie" = "no"; then
-  PRoot_CFLAGS="$CFLAGS_NOPIE $PRoot_CFLAGS"
-  PRoot_LDFLAGS="$LDFLAGS_NOPIE $PRoot_LDFLAGS"
+  PROOT_CFLAGS="$CFLAGS_NOPIE $PROOT_CFLAGS"
+  PROOT_LDFLAGS="$LDFLAGS_NOPIE $PROOT_LDFLAGS"
 elif compile_prog "-Werror -fPIE -DPIE" "-pie"; then
-  PRoot_CFLAGS="-fPIE -DPIE $PRoot_CFLAGS"
-  PRoot_LDFLAGS="-pie $PRoot_LDFLAGS"
+  PROOT_CFLAGS="-fPIE -DPIE $PROOT_CFLAGS"
+  PROOT_LDFLAGS="-pie $PROOT_LDFLAGS"
   pie="yes"
 elif test "$pie" = "yes"; then
   error_exit "PIE not available due to missing toolchain support"
@@ -2150,7 +1992,7 @@ fi
 # Detect support for PT_GNU_RELRO + DT_BIND_NOW.
 # The combination is known as "full relro", because .got.plt is read-only too.
 if compile_prog "" "-Wl,-z,relro -Wl,-z,now" ; then
-  PRoot_LDFLAGS="-Wl,-z,relro -Wl,-z,now $PRoot_LDFLAGS"
+  PROOT_LDFLAGS="-Wl,-z,relro -Wl,-z,now $PROOT_LDFLAGS"
 fi
 
 ##########################################
@@ -2174,7 +2016,7 @@ int main(void)
 }
 EOF
   if ! compile_prog "" "" ; then
-    PRoot_CFLAGS="-march=i486 $PRoot_CFLAGS"
+    PROOT_CFLAGS="-march=i486 $PROOT_CFLAGS"
   fi
 fi
 
@@ -2244,7 +2086,7 @@ for target in $target_list; do
 done
 # The EDK2 binaries are compressed with bzip2
 if test "$edk2_blobs" = "yes" && ! has bzip2; then
-  error_exit "The bzip2 program is required for building PRoot"
+  error_exit "The bzip2 program is required for building PROOT"
 fi
 
 feature_not_found() {
@@ -2514,7 +2356,7 @@ if test "$zstd" != "no" ; then
         zstd_cflags="$($pkg_config --cflags libzstd)"
         zstd_libs="$($pkg_config --libs libzstd)"
         LIBS="$zstd_libs $LIBS"
-        PRoot_CFLAGS="$PRoot_CFLAGS $zstd_cflags"
+        PROOT_CFLAGS="$PROOT_CFLAGS $zstd_cflags"
         zstd="yes"
     else
         if test "$zstd" = "yes" ; then
@@ -2559,7 +2401,7 @@ if test "$xen" != "no" ; then
     if $pkg_config --exists xentoolcore; then
       xen_pc="$xen_pc xentoolcore"
     fi
-    PRoot_CFLAGS="$PRoot_CFLAGS $($pkg_config --cflags $xen_pc)"
+    PROOT_CFLAGS="$PROOT_CFLAGS $($pkg_config --cflags $xen_pc)"
     libs_softmmu="$($pkg_config --libs $xen_pc) $libs_softmmu"
   else
 
@@ -2932,7 +2774,7 @@ if test "$gnutls" != "no"; then
         write_c_skeleton
         if compile_prog "" "$gnutls_libs" ; then
             LIBS="$gnutls_libs $LIBS"
-            PRoot_CFLAGS="$PRoot_CFLAGS $gnutls_cflags"
+            PROOT_CFLAGS="$PROOT_CFLAGS $gnutls_cflags"
             pass="yes"
         fi
     fi
@@ -3003,7 +2845,7 @@ if test "$nettle" != "no"; then
         write_c_skeleton
         if compile_prog "" "$nettle_libs" ; then
             LIBS="$nettle_libs $LIBS"
-            PRoot_CFLAGS="$PRoot_CFLAGS $nettle_cflags"
+            PROOT_CFLAGS="$PROOT_CFLAGS $nettle_cflags"
             if test -z "$gcrypt"; then
                gcrypt="no"
             fi
@@ -3020,7 +2862,7 @@ int main(void) {
 EOF
         if compile_prog "$nettle_cflags" "$nettle_libs" ; then
             nettle_xts=yes
-            qemu_private_xts=no
+            proot_private_xts=no
         fi
     fi
     if test "$pass" = "no" && test "$nettle" = "yes"; then
@@ -3047,7 +2889,7 @@ if test "$gcrypt" != "no"; then
         write_c_skeleton
         if compile_prog "" "$gcrypt_libs" ; then
             LIBS="$gcrypt_libs $LIBS"
-            PRoot_CFLAGS="$PRoot_CFLAGS $gcrypt_cflags"
+            PROOT_CFLAGS="$PROOT_CFLAGS $gcrypt_cflags"
             pass="yes"
         fi
     fi
@@ -3075,7 +2917,7 @@ int main(void) {
 EOF
         if compile_prog "$gcrypt_cflags" "$gcrypt_libs" ; then
             gcrypt_xts=yes
-            qemu_private_xts=no
+            proot_private_xts=no
         fi
     elif test "$gcrypt" = "yes"; then
         feature_not_found "gcrypt" "Install gcrypt devel >= 1.5.0"
@@ -3112,7 +2954,7 @@ if test "$auth_pam" != "no"; then
 #include <security/pam_appl.h>
 #include <stdio.h>
 int main(void) {
-   const char *service_name = "qemu";
+   const char *service_name = "proot";
    const char *user = "frank";
    const struct pam_conv pam_conv = { 0 };
    pam_handle_t *pamh = NULL;
@@ -3371,7 +3213,7 @@ main(void)
 }
 EOF
     if ! compile_prog "" "-libverbs"; then
-        PRoot_CFLAGS="$PRoot_CFLAGS -DLEGACY_RDMA_REG_MR"
+        PROOT_CFLAGS="$PROOT_CFLAGS -DLEGACY_RDMA_REG_MR"
     fi
 fi
 
@@ -3381,17 +3223,17 @@ if test "$vnc" = "yes" && test "$vnc_sasl" != "no" ; then
   cat > $TMPC <<EOF
 #include <sasl/sasl.h>
 #include <stdio.h>
-int main(void) { sasl_server_init(NULL, "qemu"); return 0; }
+int main(void) { sasl_server_init(NULL, "proot"); return 0; }
 EOF
   # Assuming Cyrus-SASL installed in /usr prefix
-  # PRoot defines struct iovec in "qemu/osdep.h",
+  # PROOT defines struct iovec in "proot/osdep.h",
   # we don't want libsasl to redefine it in <sasl/sasl.h>.
   vnc_sasl_cflags="-DSTRUCT_IOVEC_DEFINED"
   vnc_sasl_libs="-lsasl2"
   if compile_prog "$vnc_sasl_cflags" "$vnc_sasl_libs" ; then
     vnc_sasl=yes
     libs_softmmu="$vnc_sasl_libs $libs_softmmu"
-    PRoot_CFLAGS="$PRoot_CFLAGS $vnc_sasl_cflags"
+    PROOT_CFLAGS="$PROOT_CFLAGS $vnc_sasl_cflags"
   else
     if test "$vnc_sasl" = "yes" ; then
       feature_not_found "vnc-sasl" "Install Cyrus SASL devel"
@@ -3413,7 +3255,7 @@ EOF
   if compile_prog "$vnc_jpeg_cflags" "$vnc_jpeg_libs" ; then
     vnc_jpeg=yes
     libs_softmmu="$vnc_jpeg_libs $libs_softmmu"
-    PRoot_CFLAGS="$PRoot_CFLAGS $vnc_jpeg_cflags"
+    PROOT_CFLAGS="$PROOT_CFLAGS $vnc_jpeg_cflags"
   else
     if test "$vnc_jpeg" = "yes" ; then
       feature_not_found "vnc-jpeg" "Install libjpeg-turbo devel"
@@ -3445,7 +3287,7 @@ EOF
   if compile_prog "$vnc_png_cflags" "$vnc_png_libs" ; then
     vnc_png=yes
     libs_softmmu="$vnc_png_libs $libs_softmmu"
-    PRoot_CFLAGS="$PRoot_CFLAGS $vnc_png_cflags"
+    PROOT_CFLAGS="$PROOT_CFLAGS $vnc_png_cflags"
   else
     if test "$vnc_png" = "yes" ; then
       feature_not_found "vnc-png" "Install libpng devel"
@@ -3816,18 +3658,18 @@ fi
 # doesn't define GLIB_STATIC_COMPILATION for pkg-config --static
 
 if test "$static" = yes && test "$mingw32" = yes; then
-    PRoot_CFLAGS="-DGLIB_STATIC_COMPILATION $PRoot_CFLAGS"
+    PROOT_CFLAGS="-DGLIB_STATIC_COMPILATION $PROOT_CFLAGS"
 fi
 
 for i in $glib_modules; do
     if $pkg_config --atleast-version=$glib_req_ver $i; then
         glib_cflags=$($pkg_config --cflags $i)
         glib_libs=$($pkg_config --libs $i)
-        PRoot_CFLAGS="$glib_cflags $PRoot_CFLAGS"
+        PROOT_CFLAGS="$glib_cflags $PROOT_CFLAGS"
         LIBS="$glib_libs $LIBS"
         libs_qga="$glib_libs $libs_qga"
     else
-        error_exit "glib-$glib_req_ver $i is required to compile PRoot"
+        error_exit "glib-$glib_req_ver $i is required to compile PROOT"
     fi
 done
 
@@ -3851,16 +3693,16 @@ fi
 # Sanity check that the current size_t matches the
 # size that glib thinks it should be. This catches
 # problems on multi-arch where people try to build
-# 32-bit PRoot while pointing at 64-bit glib headers
+# 32-bit PROOT while pointing at 64-bit glib headers
 cat > $TMPC <<EOF
 #include <glib.h>
 #include <unistd.h>
 
-#define PRoot_BUILD_BUG_ON(x) \
-  typedef char qemu_build_bug_on[(x)?-1:1] __attribute__((unused));
+#define PROOT_BUILD_BUG_ON(x) \
+  typedef char proot_build_bug_on[(x)?-1:1] __attribute__((unused));
 
 int main(void) {
-   PRoot_BUILD_BUG_ON(sizeof(size_t) != GLIB_SIZEOF_SIZE_T);
+   PROOT_BUILD_BUG_ON(sizeof(size_t) != GLIB_SIZEOF_SIZE_T);
    return 0;
 }
 EOF
@@ -3911,7 +3753,7 @@ if test "$zlib" != "no" ; then
     if $pkg_config --exists zlib; then
         zlib_cflags=$($pkg_config --cflags zlib)
         zlib_libs=$($pkg_config --libs zlib)
-        PRoot_CFLAGS="$zlib_cflags $PRoot_CFLAGS"
+        PROOT_CFLAGS="$zlib_cflags $PROOT_CFLAGS"
         LIBS="$zlib_libs $LIBS"
     else
         cat > $TMPC << EOF
@@ -4059,7 +3901,7 @@ int main(void)
 {
     pthread_t thread;
     pthread_create(&thread, 0, f, 0);
-    pthread_setname_np(thread, "PRoot");
+    pthread_setname_np(thread, "PROOT");
     return 0;
 }
 EOF
@@ -4072,7 +3914,7 @@ pthread_setname_np_wo_tid=no
 cat > $TMPC << EOF
 #include <pthread.h>
 
-static void *f(void *p) { pthread_setname_np("PRoot"); }
+static void *f(void *p) { pthread_setname_np("PROOT"); }
 int main(void)
 {
     pthread_t thread;
@@ -4167,7 +4009,7 @@ if test "$linux_io_uring" != "no" ; then
     linux_io_uring_libs=$($pkg_config --libs liburing)
     linux_io_uring=yes
 
-    # io_uring is used in libqemuutil.a where per-file -libs variables are not
+    # io_uring is used in libprootutil.a where per-file -libs variables are not
     # seen by programs linking the archive.  It's not ideal, but just add the
     # library dependency globally.
     LIBS="$linux_io_uring_libs $LIBS"
@@ -4338,7 +4180,7 @@ if test "$opengl" != "no" ; then
     if test "$gtk" = "yes" && $pkg_config --exists "$gtkpackage >= 3.16"; then
         gtk_gl="yes"
     fi
-    PRoot_CFLAGS="$PRoot_CFLAGS $opengl_cflags"
+    PROOT_CFLAGS="$PROOT_CFLAGS $opengl_cflags"
   else
     if test "$opengl" = "yes" ; then
       feature_not_found "opengl" "Please install opengl (mesa) devel pkgs: $opengl_pkgs"
@@ -4858,7 +4700,7 @@ int main(void)
      * the library but not declared in the header file we will
      * fail the configure check. (Otherwise we will get a compiler
      * warning but not an error, and will proceed to fail the
-     * qemu compile where we compile with -Werror.)
+     * proot compile where we compile with -Werror.)
      */
     return (int)(uintptr_t)&epoll_create1;
 }
@@ -4962,28 +4804,28 @@ has_sphinx_build() {
     # sphinx-build doesn't exist at all or if it is too old.
     mkdir -p "$TMPDIR1/sphinx"
     touch "$TMPDIR1/sphinx/index.rst"
-    "$sphinx_build" $sphinx_werror -c "$source_path/docs" \
+    "$sphinx_build" $sphinx_werror -c "$source_path/doc" \
                     -b html "$TMPDIR1/sphinx" \
                     "$TMPDIR1/sphinx/out"  >> config.log 2>&1
 }
 
 # Check if tools are available to build documentation.
-if test "$docs" != "no" ; then
+if test "$doc" != "no" ; then
   if has_sphinx_build; then
     sphinx_ok=yes
   else
     sphinx_ok=no
   fi
   if has makeinfo && has pod2man && test "$sphinx_ok" = "yes"; then
-    docs=yes
+    doc=yes
   else
-    if test "$docs" = "yes" ; then
+    if test "$doc" = "yes" ; then
       if has $sphinx_build && test "$sphinx_ok" != "yes"; then
         echo "Warning: $sphinx_build exists but it is either too old or uses too old a Python version" >&2
       fi
-      feature_not_found "docs" "Install texinfo, Perl/perl-podlators and a Python 3 version of python-sphinx"
+      feature_not_found "doc" "Install texinfo, Perl/perl-podlators and a Python 3 version of python-sphinx"
     fi
-    docs=no
+    doc=no
   fi
 fi
 
@@ -5089,7 +4931,7 @@ EOF
      compile_prog "$spice_cflags" "$spice_libs" ; then
     spice="yes"
     libs_softmmu="$libs_softmmu $spice_libs"
-    PRoot_CFLAGS="$PRoot_CFLAGS $spice_cflags"
+    PROOT_CFLAGS="$PROOT_CFLAGS $spice_cflags"
     spice_protocol_version=$($pkg_config --modversion spice-protocol)
     spice_server_version=$($pkg_config --modversion spice-server)
   else
@@ -5144,203 +4986,6 @@ if test "$usb_redir" != "no" ; then
 fi
 
 ##########################################
-# check if we have VSS SDK headers for win
-
-if test "$mingw32" = "yes" && test "$guest_agent" != "no" && \
-        test "$vss_win32_sdk" != "no" ; then
-  case "$vss_win32_sdk" in
-    "")   vss_win32_include="-isystem $source_path" ;;
-    *\ *) # The SDK is installed in "Program Files" by default, but we cannot
-          # handle path with spaces. So we symlink the headers into ".sdk/vss".
-          vss_win32_include="-isystem $source_path/.sdk/vss"
-	  symlink "$vss_win32_sdk/inc" "$source_path/.sdk/vss/inc"
-	  ;;
-    *)    vss_win32_include="-isystem $vss_win32_sdk"
-  esac
-  cat > $TMPC << EOF
-#define __MIDL_user_allocate_free_DEFINED__
-#include <inc/win2003/vss.h>
-int main(void) { return VSS_CTX_BACKUP; }
-EOF
-  if compile_prog "$vss_win32_include" "" ; then
-    guest_agent_with_vss="yes"
-    PRoot_CFLAGS="$PRoot_CFLAGS $vss_win32_include"
-    libs_qga="-lole32 -loleaut32 -lshlwapi -lstdc++ -Wl,--enable-stdcall-fixup $libs_qga"
-    qga_vss_provider="qga/vss-win32/qga-vss.dll qga/vss-win32/qga-vss.tlb"
-  else
-    if test "$vss_win32_sdk" != "" ; then
-      echo "ERROR: Please download and install Microsoft VSS SDK:"
-      echo "ERROR:   http://www.microsoft.com/en-us/download/details.aspx?id=23490"
-      echo "ERROR: On POSIX-systems, you can extract the SDK headers by:"
-      echo "ERROR:   scripts/extract-vsssdk-headers setup.exe"
-      echo "ERROR: The headers are extracted in the directory \`inc'."
-      feature_not_found "VSS support"
-    fi
-    guest_agent_with_vss="no"
-  fi
-fi
-
-##########################################
-# lookup Windows platform SDK (if not specified)
-# The SDK is needed only to build .tlb (type library) file of guest agent
-# VSS provider from the source. It is usually unnecessary because the
-# pre-compiled .tlb file is included.
-
-if test "$mingw32" = "yes" && test "$guest_agent" != "no" && \
-        test "$guest_agent_with_vss" = "yes" ; then
-  if test -z "$win_sdk"; then
-    programfiles="$PROGRAMFILES"
-    test -n "$PROGRAMW6432" && programfiles="$PROGRAMW6432"
-    if test -n "$programfiles"; then
-      win_sdk=$(ls -d "$programfiles/Microsoft SDKs/Windows/v"* | tail -1) 2>/dev/null
-    else
-      feature_not_found "Windows SDK"
-    fi
-  elif test "$win_sdk" = "no"; then
-    win_sdk=""
-  fi
-fi
-
-##########################################
-# check if mingw environment provides a recent ntddscsi.h
-if test "$mingw32" = "yes" && test "$guest_agent" != "no"; then
-  cat > $TMPC << EOF
-#include <windows.h>
-#include <ntddscsi.h>
-int main(void) {
-#if !defined(IOCTL_SCSI_GET_ADDRESS)
-#error Missing required ioctl definitions
-#endif
-  SCSI_ADDRESS addr = { .Lun = 0, .TargetId = 0, .PathId = 0 };
-  return addr.Lun;
-}
-EOF
-  if compile_prog "" "" ; then
-    guest_agent_ntddscsi=yes
-    libs_qga="-lsetupapi -lcfgmgr32 $libs_qga"
-  fi
-fi
-
-##########################################
-# virgl renderer probe
-
-if test "$virglrenderer" != "no" ; then
-  cat > $TMPC << EOF
-#include <virglrenderer.h>
-int main(void) { virgl_renderer_poll(); return 0; }
-EOF
-  virgl_cflags=$($pkg_config --cflags virglrenderer 2>/dev/null)
-  virgl_libs=$($pkg_config --libs virglrenderer 2>/dev/null)
-  virgl_version=$($pkg_config --modversion virglrenderer 2>/dev/null)
-  if $pkg_config virglrenderer >/dev/null 2>&1 && \
-     compile_prog "$virgl_cflags" "$virgl_libs" ; then
-    virglrenderer="yes"
-  else
-    if test "$virglrenderer" = "yes" ; then
-      feature_not_found "virglrenderer"
-    fi
-    virglrenderer="no"
-  fi
-fi
-
-##########################################
-# capstone
-
-case "$capstone" in
-  "" | yes)
-    if $pkg_config capstone; then
-      capstone=system
-    elif test -e "${source_path}/.git" && test $git_update = 'yes' ; then
-      capstone=git
-    elif test -e "${source_path}/capstone/Makefile" ; then
-      capstone=internal
-    elif test -z "$capstone" ; then
-      capstone=no
-    else
-      feature_not_found "capstone" "Install capstone devel or git submodule"
-    fi
-    ;;
-
-  system)
-    if ! $pkg_config capstone; then
-      feature_not_found "capstone" "Install capstone devel"
-    fi
-    ;;
-esac
-
-case "$capstone" in
-  git | internal)
-    if test "$capstone" = git; then
-      git_submodules="${git_submodules} capstone"
-    fi
-    mkdir -p capstone
-    PRoot_CFLAGS="$PRoot_CFLAGS -I\$(SRC_PATH)/capstone/include"
-    if test "$mingw32" = "yes"; then
-      LIBCAPSTONE=capstone.lib
-    else
-      LIBCAPSTONE=libcapstone.a
-    fi
-    libs_cpu="-L\$(BUILD_DIR)/capstone -lcapstone $libs_cpu"
-    ;;
-
-  system)
-    PRoot_CFLAGS="$PRoot_CFLAGS $($pkg_config --cflags capstone)"
-    libs_cpu="$($pkg_config --libs capstone) $libs_cpu"
-    ;;
-
-  no)
-    ;;
-  *)
-    error_exit "Unknown state for capstone: $capstone"
-    ;;
-esac
-
-##########################################
-# check if we have fdatasync
-
-fdatasync=no
-cat > $TMPC << EOF
-#include <unistd.h>
-int main(void) {
-#if defined(_POSIX_SYNCHRONIZED_IO) && _POSIX_SYNCHRONIZED_IO > 0
-return fdatasync(0);
-#else
-#error Not supported
-#endif
-}
-EOF
-if compile_prog "" "" ; then
-    fdatasync=yes
-fi
-
-##########################################
-# check if we have madvise
-
-madvise=no
-cat > $TMPC << EOF
-#include <sys/types.h>
-#include <sys/mman.h>
-#include <stddef.h>
-int main(void) { return madvise(NULL, 0, MADV_DONTNEED); }
-EOF
-if compile_prog "" "" ; then
-    madvise=yes
-fi
-
-##########################################
-# check if we have posix_madvise
-
-posix_madvise=no
-cat > $TMPC << EOF
-#include <sys/mman.h>
-#include <stddef.h>
-int main(void) { return posix_madvise(NULL, 0, POSIX_MADV_DONTNEED); }
-EOF
-if compile_prog "" "" ; then
-    posix_madvise=yes
-fi
-
-##########################################
 # check if we have posix_memalign()
 
 posix_memalign=no
@@ -5355,227 +5000,6 @@ if compile_prog "" "" ; then
     posix_memalign=yes
 fi
 
-##########################################
-# check if we have posix_syslog
-
-posix_syslog=no
-cat > $TMPC << EOF
-#include <syslog.h>
-int main(void) { openlog("qemu", LOG_PID, LOG_DAEMON); syslog(LOG_INFO, "configure"); return 0; }
-EOF
-if compile_prog "" "" ; then
-    posix_syslog=yes
-fi
-
-##########################################
-# check if we have sem_timedwait
-
-sem_timedwait=no
-cat > $TMPC << EOF
-#include <semaphore.h>
-int main(void) { sem_t s; struct timespec t = {0}; return sem_timedwait(&s, &t); }
-EOF
-if compile_prog "" "" ; then
-    sem_timedwait=yes
-fi
-
-##########################################
-# check if we have strchrnul
-
-strchrnul=no
-cat > $TMPC << EOF
-#include <string.h>
-int main(void);
-// Use a haystack that the compiler shouldn't be able to constant fold
-char *haystack = (char*)&main;
-int main(void) { return strchrnul(haystack, 'x') != &haystack[6]; }
-EOF
-if compile_prog "" "" ; then
-    strchrnul=yes
-fi
-
-#########################################
-# check if we have st_atim
-
-st_atim=no
-cat > $TMPC << EOF
-#include <sys/stat.h>
-#include <stddef.h>
-int main(void) { return offsetof(struct stat, st_atim); }
-EOF
-if compile_prog "" "" ; then
-    st_atim=yes
-fi
-
-##########################################
-# check if trace backend exists
-
-$python "$source_path/scripts/tracetool.py" "--backends=$trace_backends" --check-backends  > /dev/null 2> /dev/null
-if test "$?" -ne 0 ; then
-  error_exit "invalid trace backends" \
-      "Please choose supported trace backends."
-fi
-
-##########################################
-# For 'ust' backend, test if ust headers are present
-if have_backend "ust"; then
-  cat > $TMPC << EOF
-#include <lttng/tracepoint.h>
-int main(void) { return 0; }
-EOF
-  if compile_prog "" "-Wl,--no-as-needed -ldl" ; then
-    if $pkg_config lttng-ust --exists; then
-      lttng_ust_libs=$($pkg_config --libs lttng-ust)
-    else
-      lttng_ust_libs="-llttng-ust -ldl"
-    fi
-    if $pkg_config liburcu-bp --exists; then
-      urcu_bp_libs=$($pkg_config --libs liburcu-bp)
-    else
-      urcu_bp_libs="-lurcu-bp"
-    fi
-
-    LIBS="$lttng_ust_libs $urcu_bp_libs $LIBS"
-    libs_qga="$lttng_ust_libs $urcu_bp_libs $libs_qga"
-  else
-    error_exit "Trace backend 'ust' missing lttng-ust header files"
-  fi
-fi
-
-##########################################
-# For 'dtrace' backend, test if 'dtrace' command is present
-if have_backend "dtrace"; then
-  if ! has 'dtrace' ; then
-    error_exit "dtrace command is not found in PATH $PATH"
-  fi
-  trace_backend_stap="no"
-  if has 'stap' ; then
-    trace_backend_stap="yes"
-  fi
-fi
-
-##########################################
-# check and set a backend for coroutine
-
-# We prefer ucontext, but it's not always possible. The fallback
-# is sigcontext. On Windows the only valid backend is the Windows
-# specific one.
-
-ucontext_works=no
-if test "$darwin" != "yes"; then
-  cat > $TMPC << EOF
-#include <ucontext.h>
-#ifdef __stub_makecontext
-#error Ignoring glibc stub makecontext which will always fail
-#endif
-int main(void) { makecontext(0, 0, 0); return 0; }
-EOF
-  if compile_prog "" "" ; then
-    ucontext_works=yes
-  fi
-fi
-
-if test "$coroutine" = ""; then
-  if test "$mingw32" = "yes"; then
-    coroutine=win32
-  elif test "$ucontext_works" = "yes"; then
-    coroutine=ucontext
-  else
-    coroutine=sigaltstack
-  fi
-else
-  case $coroutine in
-  windows)
-    if test "$mingw32" != "yes"; then
-      error_exit "'windows' coroutine backend only valid for Windows"
-    fi
-    # Unfortunately the user visible backend name doesn't match the
-    # coroutine-*.c filename for this case, so we have to adjust it here.
-    coroutine=win32
-    ;;
-  ucontext)
-    if test "$ucontext_works" != "yes"; then
-      feature_not_found "ucontext"
-    fi
-    ;;
-  sigaltstack)
-    if test "$mingw32" = "yes"; then
-      error_exit "only the 'windows' coroutine backend is valid for Windows"
-    fi
-    ;;
-  *)
-    error_exit "unknown coroutine backend $coroutine"
-    ;;
-  esac
-fi
-
-if test "$coroutine_pool" = ""; then
-  coroutine_pool=yes
-fi
-
-if test "$debug_stack_usage" = "yes"; then
-  if test "$coroutine_pool" = "yes"; then
-    echo "WARN: disabling coroutine pool for stack usage debugging"
-    coroutine_pool=no
-  fi
-fi
-
-
-##########################################
-# check if we have open_by_handle_at
-
-open_by_handle_at=no
-cat > $TMPC << EOF
-#include <fcntl.h>
-#if !defined(AT_EMPTY_PATH)
-# error missing definition
-#else
-int main(void) { struct file_handle fh; return open_by_handle_at(0, &fh, 0); }
-#endif
-EOF
-if compile_prog "" "" ; then
-    open_by_handle_at=yes
-fi
-
-########################################
-# check if we have linux/magic.h
-
-linux_magic_h=no
-cat > $TMPC << EOF
-#include <linux/magic.h>
-int main(void) {
-  return 0;
-}
-EOF
-if compile_prog "" "" ; then
-    linux_magic_h=yes
-fi
-
-########################################
-# check whether we can disable warning option with a pragma (this is needed
-# to silence warnings in the headers of some versions of external libraries).
-# This test has to be compiled with -Werror as otherwise an unknown pragma is
-# only a warning.
-#
-# If we can't selectively disable warning in the code, disable -Werror so that
-# the build doesn't fail anyway.
-
-pragma_disable_unused_but_set=no
-cat > $TMPC << EOF
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstrict-prototypes"
-#pragma GCC diagnostic pop
-
-int main(void) {
-    return 0;
-}
-EOF
-if compile_prog "-Werror" "" ; then
-    pragma_diagnostic_available=yes
-else
-    werror=no
-fi
-
 ########################################
 # check if we have valgrind/valgrind.h
 
@@ -5588,294 +5012,6 @@ int main(void) {
 EOF
 if compile_prog "" "" ; then
     valgrind_h=yes
-fi
-
-########################################
-# check if environ is declared
-
-has_environ=no
-cat > $TMPC << EOF
-#include <unistd.h>
-int main(void) {
-    environ = 0;
-    return 0;
-}
-EOF
-if compile_prog "" "" ; then
-    has_environ=yes
-fi
-
-########################################
-# check if cpuid.h is usable.
-
-cat > $TMPC << EOF
-#include <cpuid.h>
-int main(void) {
-    unsigned a, b, c, d;
-    int max = __get_cpuid_max(0, 0);
-
-    if (max >= 1) {
-        __cpuid(1, a, b, c, d);
-    }
-
-    if (max >= 7) {
-        __cpuid_count(7, 0, a, b, c, d);
-    }
-
-    return 0;
-}
-EOF
-if compile_prog "" "" ; then
-    cpuid_h=yes
-fi
-
-##########################################
-# avx2 optimization requirement check
-#
-# There is no point enabling this if cpuid.h is not usable,
-# since we won't be able to select the new routines.
-
-if test "$cpuid_h" = "yes" && test "$avx2_opt" != "no"; then
-  cat > $TMPC << EOF
-#pragma GCC push_options
-#pragma GCC target("avx2")
-#include <cpuid.h>
-#include <immintrin.h>
-static int bar(void *a) {
-    __m256i x = *(__m256i *)a;
-    return _mm256_testz_si256(x, x);
-}
-int main(int argc, char *argv[]) { return bar(argv[0]); }
-EOF
-  if compile_object "" ; then
-    avx2_opt="yes"
-  else
-    avx2_opt="no"
-  fi
-fi
-
-##########################################
-# avx512f optimization requirement check
-#
-# There is no point enabling this if cpuid.h is not usable,
-# since we won't be able to select the new routines.
-# by default, it is turned off.
-# if user explicitly want to enable it, check environment
-
-if test "$cpuid_h" = "yes" && test "$avx512f_opt" = "yes"; then
-  cat > $TMPC << EOF
-#pragma GCC push_options
-#pragma GCC target("avx512f")
-#include <cpuid.h>
-#include <immintrin.h>
-static int bar(void *a) {
-    __m512i x = *(__m512i *)a;
-    return _mm512_test_epi64_mask(x, x);
-}
-int main(int argc, char *argv[])
-{
-	return bar(argv[0]);
-}
-EOF
-  if ! compile_object "" ; then
-    avx512f_opt="no"
-  fi
-else
-  avx512f_opt="no"
-fi
-
-########################################
-# check if __[u]int128_t is usable.
-
-int128=no
-cat > $TMPC << EOF
-__int128_t a;
-__uint128_t b;
-int main (void) {
-  a = a + b;
-  b = a * b;
-  a = a * a;
-  return 0;
-}
-EOF
-if compile_prog "" "" ; then
-    int128=yes
-fi
-
-#########################################
-# See if 128-bit atomic operations are supported.
-
-atomic128=no
-if test "$int128" = "yes"; then
-  cat > $TMPC << EOF
-int main(void)
-{
-  unsigned __int128 x = 0, y = 0;
-  y = __atomic_load_16(&x, 0);
-  __atomic_store_16(&x, y, 0);
-  __atomic_compare_exchange_16(&x, &y, x, 0, 0, 0);
-  return 0;
-}
-EOF
-  if compile_prog "" "" ; then
-    atomic128=yes
-  fi
-fi
-
-cmpxchg128=no
-if test "$int128" = yes && test "$atomic128" = no; then
-  cat > $TMPC << EOF
-int main(void)
-{
-  unsigned __int128 x = 0, y = 0;
-  __sync_val_compare_and_swap_16(&x, y, x);
-  return 0;
-}
-EOF
-  if compile_prog "" "" ; then
-    cmpxchg128=yes
-  fi
-fi
-
-#########################################
-# See if 64-bit atomic operations are supported.
-# Note that without __atomic builtins, we can only
-# assume atomic loads/stores max at pointer size.
-
-cat > $TMPC << EOF
-#include <stdint.h>
-int main(void)
-{
-  uint64_t x = 0, y = 0;
-#ifdef __ATOMIC_RELAXED
-  y = __atomic_load_8(&x, 0);
-  __atomic_store_8(&x, y, 0);
-  __atomic_compare_exchange_8(&x, &y, x, 0, 0, 0);
-  __atomic_exchange_8(&x, y, 0);
-  __atomic_fetch_add_8(&x, y, 0);
-#else
-  typedef char is_host64[sizeof(void *) >= sizeof(uint64_t) ? 1 : -1];
-  __sync_lock_test_and_set(&x, y);
-  __sync_val_compare_and_swap(&x, y, 0);
-  __sync_fetch_and_add(&x, y);
-#endif
-  return 0;
-}
-EOF
-if compile_prog "" "" ; then
-  atomic64=yes
-fi
-
-#########################################
-# See if --dynamic-list is supported by the linker
-ld_dynamic_list="no"
-if test "$static" = "no" ; then
-    cat > $TMPTXT <<EOF
-{
-  foo;
-};
-EOF
-
-    cat > $TMPC <<EOF
-#include <stdio.h>
-void foo(void);
-
-void foo(void)
-{
-  printf("foo\n");
-}
-
-int main(void)
-{
-  foo();
-  return 0;
-}
-EOF
-
-    if compile_prog "" "-Wl,--dynamic-list=$TMPTXT" ; then
-        ld_dynamic_list="yes"
-    fi
-fi
-
-#########################################
-# See if -exported_symbols_list is supported by the linker
-
-ld_exported_symbols_list="no"
-if test "$static" = "no" ; then
-    cat > $TMPTXT <<EOF
-  _foo
-EOF
-
-    if compile_prog "" "-Wl,-exported_symbols_list,$TMPTXT" ; then
-        ld_exported_symbols_list="yes"
-    fi
-fi
-
-if  test "$plugins" = "yes" &&
-    test "$ld_dynamic_list" = "no" &&
-    test "$ld_exported_symbols_list" = "no" ; then
-  error_exit \
-      "Plugin support requires dynamic linking and specifying a set of symbols " \
-      "that are exported to plugins. Unfortunately your linker doesn't " \
-      "support the flag (--dynamic-list or -exported_symbols_list) used " \
-      "for this purpose. You can't build with --static."
-fi
-
-########################################
-# See if __attribute__((alias)) is supported.
-# This false for Xcode 9, but has been remedied for Xcode 10.
-# Unfortunately, travis uses Xcode 9 by default.
-
-attralias=no
-cat > $TMPC << EOF
-int x = 1;
-extern const int y __attribute__((alias("x")));
-int main(void) { return 0; }
-EOF
-if compile_prog "" "" ; then
-    attralias=yes
-fi
-
-########################################
-# check if getauxval is available.
-
-getauxval=no
-cat > $TMPC << EOF
-#include <sys/auxv.h>
-int main(void) {
-  return getauxval(AT_HWCAP) == 0;
-}
-EOF
-if compile_prog "" "" ; then
-    getauxval=yes
-fi
-
-########################################
-# check if ccache is interfering with
-# semantic analysis of macros
-
-unset CCACHE_CPP2
-ccache_cpp2=no
-cat > $TMPC << EOF
-static const int Z = 1;
-#define fn() ({ Z; })
-#define TAUT(X) ((X) == Z)
-#define PAREN(X, Y) (X == Y)
-#define ID(X) (X)
-int main(int argc, char *argv[])
-{
-    int x = 0, y = 0;
-    x = ID(x);
-    x = fn();
-    fn();
-    if (PAREN(x, y)) return 0;
-    if (TAUT(Z)) return 0;
-    return 0;
-}
-EOF
-
-if ! compile_object "-Werror"; then
-    ccache_cpp2=yes
 fi
 
 #################################################
@@ -6029,7 +5165,7 @@ EOF
     hvf='no'
   else
     hvf='yes'
-    PRoot_LDFLAGS="-framework Hypervisor $PRoot_LDFLAGS"
+    PROOT_LDFLAGS="-framework Hypervisor $PROOT_LDFLAGS"
   fi
 fi
 
@@ -6039,7 +5175,7 @@ fi
 # given. It does no harm to give it on other
 # platforms too.
 
-# Note: the prototype is needed since PRoot_CFLAGS
+# Note: the prototype is needed since PROOT_CFLAGS
 #       contains -Wmissing-prototypes
 cat > $TMPC << EOF
 extern int foo(void);
@@ -6204,7 +5340,7 @@ if test "$libpmem" != "no"; then
 		libpmem_libs=$($pkg_config --libs libpmem)
 		libpmem_cflags=$($pkg_config --cflags libpmem)
 		libs_softmmu="$libs_softmmu $libpmem_libs"
-		PRoot_CFLAGS="$PRoot_CFLAGS $libpmem_cflags"
+		PROOT_CFLAGS="$PROOT_CFLAGS $libpmem_cflags"
 	else
 		if test "$libpmem" = "yes" ; then
 			feature_not_found "libpmem" "Install nvml or pmdk"
@@ -6277,8 +5413,8 @@ esac
 write_c_skeleton
 
 if test "$gcov" = "yes" ; then
-  PRoot_CFLAGS="-fprofile-arcs -ftest-coverage -g $PRoot_CFLAGS"
-  PRoot_LDFLAGS="-fprofile-arcs -ftest-coverage $PRoot_LDFLAGS"
+  PROOT_CFLAGS="-fprofile-arcs -ftest-coverage -g $PROOT_CFLAGS"
+  PROOT_LDFLAGS="-fprofile-arcs -ftest-coverage $PROOT_LDFLAGS"
 elif test "$fortify_source" = "yes" ; then
   CFLAGS="-O2 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 $CFLAGS"
 elif test "$debug" = "no"; then
@@ -6286,8 +5422,8 @@ elif test "$debug" = "no"; then
 fi
 
 if test "$have_asan" = "yes"; then
-  PRoot_CFLAGS="-fsanitize=address $PRoot_CFLAGS"
-  PRoot_LDFLAGS="-fsanitize=address $PRoot_LDFLAGS"
+  PROOT_CFLAGS="-fsanitize=address $PROOT_CFLAGS"
+  PROOT_LDFLAGS="-fsanitize=address $PROOT_LDFLAGS"
   if test "$have_asan_iface_h" = "no" ; then
       echo "ASAN build enabled, but ASAN header missing." \
            "Without code annotation, the report may be inferior."
@@ -6297,8 +5433,8 @@ if test "$have_asan" = "yes"; then
   fi
 fi
 if test "$have_ubsan" = "yes"; then
-  PRoot_CFLAGS="-fsanitize=undefined $PRoot_CFLAGS"
-  PRoot_LDFLAGS="-fsanitize=undefined $PRoot_LDFLAGS"
+  PROOT_CFLAGS="-fsanitize=undefined $PROOT_CFLAGS"
+  PROOT_LDFLAGS="-fsanitize=undefined $PROOT_LDFLAGS"
 fi
 
 ##########################################
@@ -6328,12 +5464,12 @@ fi
 
 # Now we've finished running tests it's OK to add -Werror to the compiler flags
 if test "$werror" = "yes"; then
-    PRoot_CFLAGS="-Werror $PRoot_CFLAGS"
+    PROOT_CFLAGS="-Werror $PROOT_CFLAGS"
 fi
 
 if test "$solaris" = "no" ; then
     if $ld --version 2>/dev/null | grep "GNU ld" >/dev/null 2>/dev/null ; then
-        PRoot_LDFLAGS="-Wl,--warn-common $PRoot_LDFLAGS"
+        PROOT_LDFLAGS="-Wl,--warn-common $PROOT_LDFLAGS"
     fi
 fi
 
@@ -6348,7 +5484,7 @@ fi
 if test "$mingw32" = "yes" ; then
     for flag in --dynamicbase --no-seh --nxcompat; do
         if ld_has $flag ; then
-            PRoot_LDFLAGS="-Wl,$flag $PRoot_LDFLAGS"
+            PROOT_LDFLAGS="-Wl,$flag $PROOT_LDFLAGS"
         fi
     done
 fi
@@ -6360,16 +5496,16 @@ if test "$tcg" = "yes" && test "$targetos" = "OpenBSD"; then
 EOF
     wx_ldflags="-Wl,-z,wxneeded"
     if compile_prog "" "$wx_ldflags"; then
-        PRoot_LDFLAGS="$PRoot_LDFLAGS $wx_ldflags"
+        PROOT_LDFLAGS="$PROOT_LDFLAGS $wx_ldflags"
     fi
 fi
 
-qemu_confdir=$sysconfdir$confsuffix
-qemu_moddir=$libdir$confsuffix
-qemu_datadir=$datadir$confsuffix
-qemu_localedir="$datadir/locale"
-qemu_icondir="$datadir/icons"
-qemu_desktopdir="$datadir/applications"
+proot_confdir=$sysconfdir$confsuffix
+proot_moddir=$libdir$confsuffix
+proot_datadir=$datadir$confsuffix
+proot_localedir="$datadir/locale"
+proot_icondir="$datadir/icons"
+proot_desktopdir="$datadir/applications"
 
 # We can only support ivshmem if we have eventfd
 if [ "$eventfd" = "yes" ]; then
@@ -6378,15 +5514,15 @@ fi
 
 tools=""
 if test "$want_tools" = "yes" ; then
-  tools="qemu-img\$(EXESUF) qemu-io\$(EXESUF) qemu-edid\$(EXESUF) $tools"
+  tools="proot-img\$(EXESUF) proot-io\$(EXESUF) proot-edid\$(EXESUF) $tools"
   if [ "$linux" = "yes" -o "$bsd" = "yes" -o "$solaris" = "yes" ] ; then
-    tools="qemu-nbd\$(EXESUF) qemu-storage-daemon\$(EXESUF) $tools"
+    tools="proot-nbd\$(EXESUF) proot-storage-daemon\$(EXESUF) $tools"
   fi
   if [ "$ivshmem" = "yes" ]; then
     tools="ivshmem-client\$(EXESUF) ivshmem-server\$(EXESUF) $tools"
   fi
   if [ "$curl" = "yes" ]; then
-      tools="elf2dmp\$(EXESUF) $tools"
+      tools="exe2dmp\$(EXESUF) $tools"
   fi
 fi
 if test "$softmmu" = yes ; then
@@ -6408,7 +5544,7 @@ if test "$softmmu" = yes ; then
       fi
       mpath=no
     fi
-    tools="$tools scsi/qemu-pr-helper\$(EXESUF)"
+    tools="$tools scsi/proot-pr-helper\$(EXESUF)"
   else
     if test "$virtfs" = yes; then
       error_exit "VirtFS is supported only on Linux"
@@ -6420,7 +5556,7 @@ if test "$softmmu" = yes ; then
     mpath=no
   fi
   if test "$xkbcommon" = "yes"; then
-    tools="qemu-keymap\$(EXESUF) $tools"
+    tools="proot-keymap\$(EXESUF) $tools"
   fi
 fi
 
@@ -6430,7 +5566,7 @@ if [ "$guest_agent" != "no" ]; then
   if [ "$softmmu" = no -a "$want_tools" = no ] ; then
       guest_agent=no
   elif [ "$linux" = "yes" -o "$bsd" = "yes" -o "$solaris" = "yes" -o "$mingw32" = "yes" ] ; then
-      tools="qemu-ga\$(EXESUF) $tools"
+      tools="proot-ga\$(EXESUF) $tools"
       guest_agent=yes
   elif [ "$guest_agent" != yes ]; then
       guest_agent=no
@@ -6457,7 +5593,7 @@ elif ! has wixl; then
   fi
   guest_agent_msi=no
 else
-  # we support qemu-ga, mingw32, and wixl: default to MSI enabled if it wasn't
+  # we support proot-ga, mingw32, and wixl: default to MSI enabled if it wasn't
   # disabled explicitly
   if test "$guest_agent_msi" != "no"; then
     guest_agent_msi=yes
@@ -6466,29 +5602,29 @@ fi
 
 if test "$guest_agent_msi" = "yes"; then
   if test "$guest_agent_with_vss" = "yes"; then
-    PRoot_GA_MSI_WITH_VSS="-D InstallVss"
+    PROOT_GA_MSI_WITH_VSS="-D InstallVss"
   fi
 
-  if test "$PRoot_GA_MANUFACTURER" = ""; then
-    PRoot_GA_MANUFACTURER=PRoot
+  if test "$PROOT_GA_MANUFACTURER" = ""; then
+    PROOT_GA_MANUFACTURER=PROOT
   fi
 
-  if test "$PRoot_GA_DISTRO" = ""; then
-    PRoot_GA_DISTRO=Linux
+  if test "$PROOT_GA_DISTRO" = ""; then
+    PROOT_GA_DISTRO=Linux
   fi
 
-  if test "$PRoot_GA_VERSION" = ""; then
-      PRoot_GA_VERSION=$(cat $source_path/VERSION)
+  if test "$PROOT_GA_VERSION" = ""; then
+      PROOT_GA_VERSION=$(cat $source_path/VERSION)
   fi
 
-  PRoot_GA_MSI_MINGW_DLL_PATH="-D Mingw_dlls=$($pkg_config --variable=prefix glib-2.0)/bin"
+  PROOT_GA_MSI_MINGW_DLL_PATH="-D Mingw_dlls=$($pkg_config --variable=prefix glib-2.0)/bin"
 
   case "$cpu" in
   x86_64)
-    PRoot_GA_MSI_ARCH="-a x64 -D Arch=64"
+    PROOT_GA_MSI_ARCH="-a x64 -D Arch=64"
     ;;
   i386)
-    PRoot_GA_MSI_ARCH="-D Arch=32"
+    PROOT_GA_MSI_ARCH="-D Arch=32"
     ;;
   *)
     error_exit "CPU $cpu not supported for building installation package"
@@ -6502,9 +5638,9 @@ if { test "$cpu" = "i386" || test "$cpu" = "x86_64"; } && \
         test "$targetos" != "Darwin" && test "$targetos" != "SunOS" && \
         test "$softmmu" = yes ; then
     # Different host OS linkers have different ideas about the name of the ELF
-    # emulation. Linux and OpenBSD/amd64 use 'elf_i386'; FreeBSD uses the _fbsd
+    # emulation. Linux and OpenBSD/amd64 use 'exe_i386'; FreeBSD uses the _fbsd
     # variant; OpenBSD/i386 uses the _obsd variant; and Windows uses i386pe.
-    for emu in elf_i386 elf_i386_fbsd elf_i386_obsd i386pe; do
+    for emu in exe_i386 exe_i386_fbsd exe_i386_obsd i386pe; do
         if "$ld" -verbose 2>&1 | grep -q "^[[:space:]]*$emu[[:space:]]*$"; then
             ld_i386_emulation="$emu"
             roms="optionrom"
@@ -6522,7 +5658,7 @@ if test "$cpu" = "s390x" ; then
 fi
 
 # Check that the C++ compiler exists and works with the C compiler.
-# All the PRoot_CXXFLAGS are based on PRoot_CFLAGS. Keep this at the end to don't miss any other that could be added.
+# All the PROOT_CXXFLAGS are based on PROOT_CFLAGS. Keep this at the end to don't miss any other that could be added.
 if has $cxx; then
     cat > $TMPC <<EOF
 int c_function(void);
@@ -6540,7 +5676,7 @@ EOF
 
     update_cxxflags
 
-    if do_cxx $PRoot_CXXFLAGS -o $TMPE $TMPCXX $TMPO $PRoot_LDFLAGS; then
+    if do_cxx $PROOT_CXXFLAGS -o $TMPE $TMPCXX $TMPO $PROOT_LDFLAGS; then
         # C++ compiler $cxx works ok with C compiler $cc
         :
     else
@@ -6560,16 +5696,16 @@ echo_version() {
 }
 
 # prepend pixman and ftd flags after all config tests are done
-PRoot_CFLAGS="$pixman_cflags $fdt_cflags $PRoot_CFLAGS"
-PRoot_LDFLAGS="$fdt_ldflags $PRoot_LDFLAGS"
+PROOT_CFLAGS="$pixman_cflags $fdt_cflags $PROOT_CFLAGS"
+PROOT_LDFLAGS="$fdt_ldflags $PROOT_LDFLAGS"
 libs_softmmu="$pixman_libs $libs_softmmu"
 
 echo "Install prefix    $prefix"
-echo "BIOS directory    $(eval echo $qemu_datadir)"
+echo "BIOS directory    $(eval echo $proot_datadir)"
 echo "firmware path     $(eval echo $firmwarepath)"
 echo "binary directory  $(eval echo $bindir)"
 echo "library directory $(eval echo $libdir)"
-echo "module directory  $(eval echo $qemu_moddir)"
+echo "module directory  $(eval echo $proot_moddir)"
 echo "libexec directory $(eval echo $libexecdir)"
 echo "include directory $(eval echo $includedir)"
 echo "config directory  $(eval echo $sysconfdir)"
@@ -6591,12 +5727,12 @@ echo "C++ compiler      $cxx"
 echo "Objective-C compiler $objcc"
 echo "ARFLAGS           $ARFLAGS"
 echo "CFLAGS            $CFLAGS"
-echo "PRoot_CFLAGS       $PRoot_CFLAGS"
-echo "PRoot_LDFLAGS      $PRoot_LDFLAGS"
+echo "PROOT_CFLAGS       $PROOT_CFLAGS"
+echo "PROOT_LDFLAGS      $PROOT_LDFLAGS"
 echo "make              $make"
 echo "install           $install"
 echo "python            $python ($python_version)"
-if test "$docs" != "no"; then
+if test "$doc" != "no"; then
     echo "sphinx-build      $sphinx_build"
 fi
 echo "genisoimage       $genisoimage"
@@ -6658,7 +5794,7 @@ if test "$xen" = "yes" ; then
   echo "xen ctrl version  $xen_ctrl_version"
 fi
 echo "brlapi support    $brlapi"
-echo "Documentation     $docs"
+echo "Documentation     $doc"
 echo "PIE               $pie"
 echo "vde support       $vde"
 echo "netmap support    $netmap"
@@ -6758,12 +5894,12 @@ if test "$supported_cpu" = "no"; then
     echo "WARNING: SUPPORT FOR THIS HOST CPU WILL GO AWAY IN FUTURE RELEASES!"
     echo
     echo "CPU host architecture $cpu support is not currently maintained."
-    echo "The PRoot project intends to remove support for this host CPU in"
+    echo "The PROOT project intends to remove support for this host CPU in"
     echo "a future release if nobody volunteers to maintain it and to"
     echo "provide a build host for our continuous integration setup."
     echo "configure has succeeded and you can continue to build, but"
-    echo "if you care about PRoot on this platform you should contact"
-    echo "us upstream at qemu-devel@nongnu.org."
+    echo "if you care about PROOT on this platform you should contact"
+    echo "us upstream at proot-devel@nongnu.org."
 fi
 
 if test "$supported_os" = "no"; then
@@ -6771,12 +5907,12 @@ if test "$supported_os" = "no"; then
     echo "WARNING: SUPPORT FOR THIS HOST OS WILL GO AWAY IN FUTURE RELEASES!"
     echo
     echo "Host OS $targetos support is not currently maintained."
-    echo "The PRoot project intends to remove support for this host OS in"
+    echo "The PROOT project intends to remove support for this host OS in"
     echo "a future release if nobody volunteers to maintain it and to"
     echo "provide a build host for our continuous integration setup."
     echo "configure has succeeded and you can continue to build, but"
-    echo "if you care about PRoot on this platform you should contact"
-    echo "us upstream at qemu-devel@nongnu.org."
+    echo "if you care about PROOT on this platform you should contact"
+    echo "us upstream at proot-devel@nongnu.org."
 fi
 
 config_host_mak="config-host.mak"
@@ -6794,18 +5930,18 @@ echo "libexecdir=$libexecdir" >> $config_host_mak
 echo "includedir=$includedir" >> $config_host_mak
 echo "mandir=$mandir" >> $config_host_mak
 echo "sysconfdir=$sysconfdir" >> $config_host_mak
-echo "qemu_confdir=$qemu_confdir" >> $config_host_mak
-echo "qemu_datadir=$qemu_datadir" >> $config_host_mak
-echo "qemu_firmwarepath=$firmwarepath" >> $config_host_mak
-echo "qemu_docdir=$qemu_docdir" >> $config_host_mak
-echo "qemu_moddir=$qemu_moddir" >> $config_host_mak
+echo "proot_confdir=$proot_confdir" >> $config_host_mak
+echo "proot_datadir=$proot_datadir" >> $config_host_mak
+echo "proot_firmwarepath=$firmwarepath" >> $config_host_mak
+echo "proot_docdir=$proot_docdir" >> $config_host_mak
+echo "proot_moddir=$proot_moddir" >> $config_host_mak
 if test "$mingw32" = "no" ; then
-  echo "qemu_localstatedir=$local_statedir" >> $config_host_mak
+  echo "proot_localstatedir=$local_statedir" >> $config_host_mak
 fi
-echo "qemu_helperdir=$libexecdir" >> $config_host_mak
-echo "qemu_localedir=$qemu_localedir" >> $config_host_mak
-echo "qemu_icondir=$qemu_icondir" >> $config_host_mak
-echo "qemu_desktopdir=$qemu_desktopdir" >> $config_host_mak
+echo "proot_helperdir=$libexecdir" >> $config_host_mak
+echo "proot_localedir=$proot_localedir" >> $config_host_mak
+echo "proot_icondir=$proot_icondir" >> $config_host_mak
+echo "proot_desktopdir=$proot_desktopdir" >> $config_host_mak
 echo "libs_cpu=$libs_cpu" >> $config_host_mak
 echo "libs_softmmu=$libs_softmmu" >> $config_host_mak
 echo "GIT=$git" >> $config_host_mak
@@ -6848,13 +5984,13 @@ if test "$mingw32" = "yes" ; then
     echo "CONFIG_QGA_NTDDSCSI=y" >> $config_host_mak
   fi
   if test "$guest_agent_msi" = "yes"; then
-    echo "PRoot_GA_MSI_ENABLED=yes" >> $config_host_mak
-    echo "PRoot_GA_MSI_MINGW_DLL_PATH=${PRoot_GA_MSI_MINGW_DLL_PATH}" >> $config_host_mak
-    echo "PRoot_GA_MSI_WITH_VSS=${PRoot_GA_MSI_WITH_VSS}" >> $config_host_mak
-    echo "PRoot_GA_MSI_ARCH=${PRoot_GA_MSI_ARCH}" >> $config_host_mak
-    echo "PRoot_GA_MANUFACTURER=${PRoot_GA_MANUFACTURER}" >> $config_host_mak
-    echo "PRoot_GA_DISTRO=${PRoot_GA_DISTRO}" >> $config_host_mak
-    echo "PRoot_GA_VERSION=${PRoot_GA_VERSION}" >> $config_host_mak
+    echo "PROOT_GA_MSI_ENABLED=yes" >> $config_host_mak
+    echo "PROOT_GA_MSI_MINGW_DLL_PATH=${PROOT_GA_MSI_MINGW_DLL_PATH}" >> $config_host_mak
+    echo "PROOT_GA_MSI_WITH_VSS=${PROOT_GA_MSI_WITH_VSS}" >> $config_host_mak
+    echo "PROOT_GA_MSI_ARCH=${PROOT_GA_MSI_ARCH}" >> $config_host_mak
+    echo "PROOT_GA_MANUFACTURER=${PROOT_GA_MANUFACTURER}" >> $config_host_mak
+    echo "PROOT_GA_DISTRO=${PROOT_GA_DISTRO}" >> $config_host_mak
+    echo "PROOT_GA_VERSION=${PROOT_GA_VERSION}" >> $config_host_mak
   fi
 else
   echo "CONFIG_POSIX=y" >> $config_host_mak
@@ -6948,18 +6084,18 @@ fi
 if test "$xfs" = "yes" ; then
   echo "CONFIG_XFS=y" >> $config_host_mak
 fi
-qemu_version=$(head $source_path/VERSION)
-echo "VERSION=$qemu_version" >>$config_host_mak
+proot_version=$(head $source_path/VERSION)
+echo "VERSION=$proot_version" >>$config_host_mak
 echo "PKGVERSION=$pkgversion" >>$config_host_mak
 echo "SRC_PATH=$source_path" >> $config_host_mak
 echo "TARGET_DIRS=$target_list" >> $config_host_mak
-if [ "$docs" = "yes" ] ; then
+if [ "$doc" = "yes" ] ; then
   echo "BUILD_DOCS=yes" >> $config_host_mak
 fi
 if test "$modules" = "yes"; then
   # $shacmd can generate a hash started with digit, which the compiler doesn't
   # like as an symbol. So prefix it with an underscore
-  echo "CONFIG_STAMP=_$( (echo $qemu_version; echo $pkgversion; cat $0) | $shacmd - | cut -f1 -d\ )" >> $config_host_mak
+  echo "CONFIG_STAMP=_$( (echo $proot_version; echo $pkgversion; cat $0) | $shacmd - | cut -f1 -d\ )" >> $config_host_mak
   echo "CONFIG_MODULES=y" >> $config_host_mak
 fi
 if test "$module_upgrades" = "yes"; then
@@ -7118,8 +6254,8 @@ if test "$nettle" = "yes" ; then
   echo "CONFIG_NETTLE=y" >> $config_host_mak
   echo "CONFIG_NETTLE_VERSION_MAJOR=${nettle_version%%.*}" >> $config_host_mak
 fi
-if test "$qemu_private_xts" = "yes" ; then
-  echo "CONFIG_PRoot_PRIVATE_XTS=y" >> $config_host_mak
+if test "$proot_private_xts" = "yes" ; then
+  echo "CONFIG_PROOT_PRIVATE_XTS=y" >> $config_host_mak
 fi
 if test "$tasn1" = "yes" ; then
   echo "CONFIG_TASN1=y" >> $config_host_mak
@@ -7615,13 +6751,13 @@ if test "$plugins" = "yes" ; then
     # Copy the export object list to the build dir
     if test "$ld_dynamic_list" = "yes" ; then
 	echo "CONFIG_HAS_LD_DYNAMIC_LIST=yes" >> $config_host_mak
-	ld_symbols=qemu-plugins-ld.symbols
-	cp "$source_path/plugins/qemu-plugins.symbols" $ld_symbols
+	ld_symbols=proot-plugins-ld.symbols
+	cp "$source_path/plugins/proot-plugins.symbols" $ld_symbols
     elif test "$ld_exported_symbols_list" = "yes" ; then
 	echo "CONFIG_HAS_LD_EXPORTED_SYMBOLS_LIST=yes" >> $config_host_mak
-	ld64_symbols=qemu-plugins-ld64.symbols
+	ld64_symbols=proot-plugins-ld64.symbols
 	echo "# Automatically generated by configure - do not modify" > $ld64_symbols
-	grep 'qemu_' "$source_path/plugins/qemu-plugins.symbols" | sed 's/;//g' | \
+	grep 'proot_' "$source_path/plugins/proot-plugins.symbols" | sed 's/;//g' | \
 	    sed -E 's/^[[:space:]]*(.*)/_\1/' >> $ld64_symbols
     else
 	error_exit \
@@ -7635,19 +6771,19 @@ if test -n "$gdb_bin" ; then
 fi
 
 if test "$tcg_interpreter" = "yes"; then
-  PRoot_INCLUDES="-iquote \$(SRC_PATH)/tcg/tci $PRoot_INCLUDES"
+  PROOT_INCLUDES="-iquote \$(SRC_PATH)/tcg/tci $PROOT_INCLUDES"
 elif test "$ARCH" = "sparc64" ; then
-  PRoot_INCLUDES="-iquote \$(SRC_PATH)/tcg/sparc $PRoot_INCLUDES"
+  PROOT_INCLUDES="-iquote \$(SRC_PATH)/tcg/sparc $PROOT_INCLUDES"
 elif test "$ARCH" = "s390x" ; then
-  PRoot_INCLUDES="-iquote \$(SRC_PATH)/tcg/s390 $PRoot_INCLUDES"
+  PROOT_INCLUDES="-iquote \$(SRC_PATH)/tcg/s390 $PROOT_INCLUDES"
 elif test "$ARCH" = "x86_64" || test "$ARCH" = "x32" ; then
-  PRoot_INCLUDES="-iquote \$(SRC_PATH)/tcg/i386 $PRoot_INCLUDES"
+  PROOT_INCLUDES="-iquote \$(SRC_PATH)/tcg/i386 $PROOT_INCLUDES"
 elif test "$ARCH" = "ppc64" ; then
-  PRoot_INCLUDES="-iquote \$(SRC_PATH)/tcg/ppc $PRoot_INCLUDES"
+  PROOT_INCLUDES="-iquote \$(SRC_PATH)/tcg/ppc $PROOT_INCLUDES"
 elif test "$ARCH" = "riscv32" || test "$ARCH" = "riscv64" ; then
-  PRoot_INCLUDES="-I\$(SRC_PATH)/tcg/riscv $PRoot_INCLUDES"
+  PROOT_INCLUDES="-I\$(SRC_PATH)/tcg/riscv $PROOT_INCLUDES"
 else
-  PRoot_INCLUDES="-iquote \$(SRC_PATH)/tcg/\$(ARCH) $PRoot_INCLUDES"
+  PROOT_INCLUDES="-iquote \$(SRC_PATH)/tcg/\$(ARCH) $PROOT_INCLUDES"
 fi
 
 echo "TOOLS=$tools" >> $config_host_mak
@@ -7682,17 +6818,17 @@ echo "PKG_CONFIG=$pkg_config_exe" >> $config_host_mak
 echo "WINDRES=$windres" >> $config_host_mak
 echo "CFLAGS=$CFLAGS" >> $config_host_mak
 echo "CFLAGS_NOPIE=$CFLAGS_NOPIE" >> $config_host_mak
-echo "PRoot_CFLAGS=$PRoot_CFLAGS" >> $config_host_mak
-echo "PRoot_CXXFLAGS=$PRoot_CXXFLAGS" >> $config_host_mak
-echo "PRoot_INCLUDES=$PRoot_INCLUDES" >> $config_host_mak
+echo "PROOT_CFLAGS=$PROOT_CFLAGS" >> $config_host_mak
+echo "PROOT_CXXFLAGS=$PROOT_CXXFLAGS" >> $config_host_mak
+echo "PROOT_INCLUDES=$PROOT_INCLUDES" >> $config_host_mak
 if test "$sparse" = "yes" ; then
   echo "CC           := REAL_CC=\"\$(CC)\" cgcc"       >> $config_host_mak
   echo "CPP          := REAL_CC=\"\$(CPP)\" cgcc"      >> $config_host_mak
   echo "CXX          := REAL_CC=\"\$(CXX)\" cgcc"      >> $config_host_mak
   echo "HOST_CC      := REAL_CC=\"\$(HOST_CC)\" cgcc"  >> $config_host_mak
-  echo "PRoot_CFLAGS  += -Wbitwise -Wno-transparent-union -Wno-old-initializer -Wno-non-pointer-null" >> $config_host_mak
+  echo "PROOT_CFLAGS  += -Wbitwise -Wno-transparent-union -Wno-old-initializer -Wno-non-pointer-null" >> $config_host_mak
 fi
-echo "PRoot_LDFLAGS=$PRoot_LDFLAGS" >> $config_host_mak
+echo "PROOT_LDFLAGS=$PROOT_LDFLAGS" >> $config_host_mak
 echo "LDFLAGS_NOPIE=$LDFLAGS_NOPIE" >> $config_host_mak
 echo "LD_REL_FLAGS=$LD_REL_FLAGS" >> $config_host_mak
 echo "LD_I386_EMULATION=$ld_i386_emulation" >> $config_host_mak
@@ -7745,7 +6881,7 @@ if test "$linux" = "yes" ; then
     linux_arch=mips
     ;;
   *)
-    # For most CPUs the kernel architecture name and PRoot CPU name match.
+    # For most CPUs the kernel architecture name and PROOT CPU name match.
     linux_arch="$cpu"
     ;;
   esac
@@ -8032,7 +7168,7 @@ if test "$target_softmmu" = "yes" ; then
 fi
 if test "$target_user_only" = "yes" ; then
   echo "CONFIG_USER_ONLY=y" >> $config_target_mak
-  echo "CONFIG_PRoot_INTERP_PREFIX=\"$interp_prefix1\"" >> $config_target_mak
+  echo "CONFIG_PROOT_INTERP_PREFIX=\"$interp_prefix1\"" >> $config_target_mak
 fi
 if test "$target_linux_user" = "yes" ; then
   echo "CONFIG_LINUX_USER=y" >> $config_target_mak
@@ -8053,7 +7189,7 @@ if test "$target_bsd_user" = "yes" ; then
 fi
 
 
-# generate PRoot_CFLAGS/PRoot_LDFLAGS for targets
+# generate PROOT_CFLAGS/PROOT_LDFLAGS for targets
 
 cflags=""
 ldflags=""
@@ -8162,7 +7298,7 @@ fi
 # the vm.allocate_pgste sysctl unnecessary. We enable this program
 # header if
 #  - we build on s390x
-#  - we build the system emulation for s390x (qemu-system-s390x)
+#  - we build the system emulation for s390x (proot-system-s390x)
 #  - KVM is enabled
 #  - the linker supports --s390-pgste
 if test "$TARGET_ARCH" = "s390x" && test "$target_softmmu" = "yes" && \
@@ -8172,8 +7308,8 @@ if test "$TARGET_ARCH" = "s390x" && test "$target_softmmu" = "yes" && \
     fi
 fi
 
-echo "PRoot_LDFLAGS+=$ldflags" >> $config_target_mak
-echo "PRoot_CFLAGS+=$cflags" >> $config_target_mak
+echo "PROOT_LDFLAGS+=$ldflags" >> $config_target_mak
+echo "PROOT_CFLAGS+=$cflags" >> $config_target_mak
 
 done # for target in $targets
 
@@ -8209,8 +7345,8 @@ fi
 # tests might fail. Prefer to keep the relevant files in their own
 # directory and symlink the directory instead.
 DIRS="tests tests/tcg tests/tcg/lm32 tests/qapi-schema tests/qtest/libqos"
-DIRS="$DIRS tests/qtest tests/qemu-iotests tests/vm tests/fp tests/qgraph"
-DIRS="$DIRS docs docs/interop fsdev scsi"
+DIRS="$DIRS tests/qtest tests/proot-iotests tests/vm tests/fp tests/qgraph"
+DIRS="$DIRS doc doc/interop fsdev scsi"
 DIRS="$DIRS pc-bios/optionrom pc-bios/s390-ccw"
 DIRS="$DIRS roms/seabios roms/vgabios"
 LINKS="Makefile"
@@ -8220,10 +7356,10 @@ LINKS="$LINKS tests/plugin/Makefile"
 LINKS="$LINKS pc-bios/optionrom/Makefile pc-bios/keymaps"
 LINKS="$LINKS pc-bios/s390-ccw/Makefile"
 LINKS="$LINKS roms/seabios/Makefile roms/vgabios/Makefile"
-LINKS="$LINKS pc-bios/qemu-icon.bmp"
+LINKS="$LINKS pc-bios/proot-icon.bmp"
 LINKS="$LINKS .gdbinit scripts" # scripts needed by relative path in .gdbinit
 LINKS="$LINKS tests/acceptance tests/data"
-LINKS="$LINKS tests/qemu-iotests/check"
+LINKS="$LINKS tests/proot-iotests/check"
 LINKS="$LINKS python"
 for bios_file in \
     $source_path/pc-bios/*.bin \
@@ -8267,21 +7403,14 @@ for rom in seabios vgabios ; do
     echo "RANLIB=$ranlib" >> $config_mak
 done
 
-# set up qemu-iotests in this build directory
-iotests_common_env="tests/qemu-iotests/common.env"
-
-echo "# Automatically generated by configure - do not modify" > "$iotests_common_env"
-echo >> "$iotests_common_env"
-echo "export PYTHON='$python'" >> "$iotests_common_env"
-
 # Save the configure command line for later reuse.
-cat <<EOD >config.status
+cat <<EOF >config.status
 #!/bin/sh
 # Generated by configure.
 # Run this file to recreate the current configuration.
 # Compiler output produced by configure, useful for debugging
 # configure, is in config.log if it exists.
-EOD
+EOF
 
 preserve_env() {
     envname=$1
@@ -8302,8 +7431,6 @@ preserve_env() {
 preserve_env AR
 preserve_env AS
 preserve_env CC
-preserve_env CPP
-preserve_env CXX
 preserve_env INSTALL
 preserve_env LD
 preserve_env LD_LIBRARY_PATH

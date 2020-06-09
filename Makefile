@@ -10,7 +10,7 @@ BUILD_DIR=$(CURDIR)
 # Before including a proper config-host.mak, assume we are in the source tree
 SRC_PATH=.
 
-UNCHECKED_GOALS := %clean TAGS cscope ctags dist \
+UNCHECKED_GOALS := %clean TAGS ctags dist \
     html info pdf txt \
     help check-help print-% \
     docker docker-% vm-help vm-test vm-build-%
@@ -21,61 +21,19 @@ ifneq ($(wildcard config-host.mak),)
 all:
 include config-host.mak
 
-git-submodule-update:
-
-.PHONY: git-submodule-update
-
-git_module_status := $(shell \
-  cd '$(SRC_PATH)' && \
-  GIT="$(GIT)" ./scripts/git-submodule.sh status $(GIT_SUBMODULES); \
-  echo $$?; \
-)
-
-ifeq (1,$(git_module_status))
-ifeq (no,$(GIT_UPDATE))
-git-submodule-update:
-	$(call quiet-command, \
-            echo && \
-            echo "GIT submodule checkout is out of date. Please run" && \
-            echo "  scripts/git-submodule.sh update $(GIT_SUBMODULES)" && \
-            echo "from the source directory checkout $(SRC_PATH)" && \
-            echo && \
-            exit 1)
-else
-git-submodule-update:
-	$(call quiet-command, \
-          (cd $(SRC_PATH) && GIT="$(GIT)" ./scripts/git-submodule.sh update $(GIT_SUBMODULES)), \
-          "GIT","$(GIT_SUBMODULES)")
-endif
-endif
-
-.git-submodule-status: git-submodule-update config-host.mak
-
 # Check that we're not trying to do an out-of-tree build from
 # a tree that's been used for an in-tree build.
 ifneq ($(realpath $(SRC_PATH)),$(realpath .))
 ifneq ($(wildcard $(SRC_PATH)/config-host.mak),)
 $(error This is an out of tree build but your source tree ($(SRC_PATH)) \
 seems to have been used for an in-tree build. You can fix this by running \
-"$(MAKE) distclean && rm -rf *-linux-user *-softmmu" in your source tree)
+"$(MAKE) distclean " in your source tree)
 endif
 endif
 
-CONFIG_SOFTMMU := $(if $(filter %-softmmu,$(TARGET_DIRS)),y)
-CONFIG_USER_ONLY := $(if $(filter %-user,$(TARGET_DIRS)),y)
-CONFIG_XEN := $(CONFIG_XEN_BACKEND)
-CONFIG_ALL=y
--include config-all-devices.mak
--include config-all-disas.mak
-
-config-host.mak: $(SRC_PATH)/configure $(SRC_PATH)/pc-bios $(SRC_PATH)/VERSION
+config-host.mak: $(SRC_PATH)/configure $(SRC_PATH)/VERSION
 	@echo $@ is out-of-date, running configure
 	@./config.status
-
-# Force configure to re-run if the API symbols are updated
-ifeq ($(CONFIG_PLUGIN),y)
-config-host.mak: $(SRC_PATH)/plugins/qemu-plugins.symbols
-endif
 
 else
 config-host.mak:
@@ -104,251 +62,17 @@ PROOT_PKGVERSION := $(if $(PKGVERSION),$(PKGVERSION),$(shell \
 # Either "version (pkgversion)", or just "version" if pkgversion not set
 FULL_VERSION := $(if $(PROOT_PKGVERSION),$(VERSION) ($(PROOT_PKGVERSION)),$(VERSION))
 
-generated-files-y = qemu-version.h config-host.h qemu-options.def
-
-GENERATED_QAPI_FILES = qapi/qapi-builtin-types.h qapi/qapi-builtin-types.c
-GENERATED_QAPI_FILES += qapi/qapi-types.h qapi/qapi-types.c
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-types-%.h)
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-types-%.c)
-GENERATED_QAPI_FILES += qapi/qapi-builtin-visit.h qapi/qapi-builtin-visit.c
-GENERATED_QAPI_FILES += qapi/qapi-visit.h qapi/qapi-visit.c
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-visit-%.h)
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-visit-%.c)
-GENERATED_QAPI_FILES += qapi/qapi-init-commands.h qapi/qapi-init-commands.c
-GENERATED_QAPI_FILES += qapi/qapi-commands.h qapi/qapi-commands.c
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-commands-%.h)
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-commands-%.c)
-GENERATED_QAPI_FILES += qapi/qapi-emit-events.h qapi/qapi-emit-events.c
-GENERATED_QAPI_FILES += qapi/qapi-events.h qapi/qapi-events.c
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-events-%.h)
-GENERATED_QAPI_FILES += $(QAPI_MODULES:%=qapi/qapi-events-%.c)
-GENERATED_QAPI_FILES += qapi/qapi-introspect.c qapi/qapi-introspect.h
-GENERATED_QAPI_FILES += qapi/qapi-doc.texi
-
-# The following list considers only the storage daemon main module. All other
-# modules are currently shared with the main schema, so we don't actually
-# generate additional files.
-
-GENERATED_STORAGE_DAEMON_QAPI_FILES = storage-daemon/qapi/qapi-commands.h
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-commands.c
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-emit-events.h
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-emit-events.c
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-events.h
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-events.c
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-init-commands.h
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-init-commands.c
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-introspect.h
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-introspect.c
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-types.h
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-types.c
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-visit.h
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-visit.c
-GENERATED_STORAGE_DAEMON_QAPI_FILES += storage-daemon/qapi/qapi-doc.texi
-
-generated-files-y += $(GENERATED_QAPI_FILES)
-generated-files-y += $(GENERATED_STORAGE_DAEMON_QAPI_FILES)
-
-generated-files-y += trace/generated-tcg-tracers.h
-
-generated-files-y += trace/generated-helpers-wrappers.h
-generated-files-y += trace/generated-helpers.h
-generated-files-y += trace/generated-helpers.c
-
-generated-files-$(CONFIG_TRACE_UST) += trace-ust-all.h
-generated-files-$(CONFIG_TRACE_UST) += trace-ust-all.c
-
-generated-files-y += module_block.h
-
-TRACE_HEADERS = trace-root.h $(trace-events-subdirs:%=%/trace.h)
-TRACE_SOURCES = trace-root.c $(trace-events-subdirs:%=%/trace.c)
-TRACE_DTRACE =
-ifdef CONFIG_TRACE_DTRACE
-TRACE_HEADERS += trace-dtrace-root.h $(trace-events-subdirs:%=%/trace-dtrace.h)
-TRACE_DTRACE += trace-dtrace-root.dtrace $(trace-events-subdirs:%=%/trace-dtrace.dtrace)
-endif
-ifdef CONFIG_TRACE_UST
-TRACE_HEADERS += trace-ust-root.h $(trace-events-subdirs:%=%/trace-ust.h)
-endif
-
-generated-files-y += $(TRACE_HEADERS)
-generated-files-y += $(TRACE_SOURCES)
-generated-files-y += $(BUILD_DIR)/trace-events-all
-generated-files-y += .git-submodule-status
-
-trace-group-name = $(shell dirname $1 | sed -e 's/[^a-zA-Z0-9]/_/g')
-
-tracetool-y = $(SRC_PATH)/scripts/tracetool.py
-tracetool-y += $(shell find $(SRC_PATH)/scripts/tracetool -name "*.py")
-
-%/trace.h: %/trace.h-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-%/trace.h-timestamp: $(SRC_PATH)/%/trace-events $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=$(call trace-group-name,$@) \
-		--format=h \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-%/trace.c: %/trace.c-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-%/trace.c-timestamp: $(SRC_PATH)/%/trace-events $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=$(call trace-group-name,$@) \
-		--format=c \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-%/trace-ust.h: %/trace-ust.h-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-%/trace-ust.h-timestamp: $(SRC_PATH)/%/trace-events $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=$(call trace-group-name,$@) \
-		--format=ust-events-h \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-%/trace-dtrace.dtrace: %/trace-dtrace.dtrace-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-%/trace-dtrace.dtrace-timestamp: $(SRC_PATH)/%/trace-events $(BUILD_DIR)/config-host.mak $(tracetool-y)
-	$(call quiet-command,$(TRACETOOL) \
-		--group=$(call trace-group-name,$@) \
-		--format=d \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-%/trace-dtrace.h: %/trace-dtrace.dtrace $(tracetool-y)
-	$(call quiet-command,dtrace -o $@ -h -s $<, "GEN","$@")
-
-%/trace-dtrace.o: %/trace-dtrace.dtrace $(tracetool-y)
-
-
-trace-root.h: trace-root.h-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-trace-root.h-timestamp: $(SRC_PATH)/trace-events $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=root \
-		--format=h \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-trace-root.c: trace-root.c-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-trace-root.c-timestamp: $(SRC_PATH)/trace-events $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=root \
-		--format=c \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-trace-ust-root.h: trace-ust-root.h-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-trace-ust-root.h-timestamp: $(SRC_PATH)/trace-events $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=root \
-		--format=ust-events-h \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-trace-ust-all.h: trace-ust-all.h-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-trace-ust-all.h-timestamp: $(trace-events-files) $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=all \
-		--format=ust-events-h \
-		--backends=$(TRACE_BACKENDS) \
-		$(trace-events-files) > $@,"GEN","$(@:%-timestamp=%)")
-
-trace-ust-all.c: trace-ust-all.c-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-trace-ust-all.c-timestamp: $(trace-events-files) $(tracetool-y) $(BUILD_DIR)/config-host.mak
-	$(call quiet-command,$(TRACETOOL) \
-		--group=all \
-		--format=ust-events-c \
-		--backends=$(TRACE_BACKENDS) \
-		$(trace-events-files) > $@,"GEN","$(@:%-timestamp=%)")
-
-trace-dtrace-root.dtrace: trace-dtrace-root.dtrace-timestamp
-	@cmp $< $@ >/dev/null 2>&1 || cp $< $@
-trace-dtrace-root.dtrace-timestamp: $(SRC_PATH)/trace-events $(BUILD_DIR)/config-host.mak $(tracetool-y)
-	$(call quiet-command,$(TRACETOOL) \
-		--group=root \
-		--format=d \
-		--backends=$(TRACE_BACKENDS) \
-		$< > $@,"GEN","$(@:%-timestamp=%)")
-
-trace-dtrace-root.h: trace-dtrace-root.dtrace
-	$(call quiet-command,dtrace -o $@ -h -s $<, "GEN","$@")
-
-trace-dtrace-root.o: trace-dtrace-root.dtrace
-
-KEYCODEMAP_GEN = $(SRC_PATH)/ui/keycodemapdb/tools/keymap-gen
-KEYCODEMAP_CSV = $(SRC_PATH)/ui/keycodemapdb/data/keymaps.csv
-
-KEYCODEMAP_FILES = \
-		 ui/input-keymap-atset1-to-qcode.c \
-		 ui/input-keymap-linux-to-qcode.c \
-		 ui/input-keymap-qcode-to-atset1.c \
-		 ui/input-keymap-qcode-to-atset2.c \
-		 ui/input-keymap-qcode-to-atset3.c \
-		 ui/input-keymap-qcode-to-linux.c \
-		 ui/input-keymap-qcode-to-qnum.c \
-		 ui/input-keymap-qcode-to-sun.c \
-		 ui/input-keymap-qnum-to-qcode.c \
-		 ui/input-keymap-usb-to-qcode.c \
-		 ui/input-keymap-win32-to-qcode.c \
-		 ui/input-keymap-x11-to-qcode.c \
-		 ui/input-keymap-xorgevdev-to-qcode.c \
-		 ui/input-keymap-xorgkbd-to-qcode.c \
-		 ui/input-keymap-xorgxquartz-to-qcode.c \
-		 ui/input-keymap-xorgxwin-to-qcode.c \
-		 ui/input-keymap-osx-to-qcode.c \
-		 $(NULL)
-
-generated-files-$(CONFIG_SOFTMMU) += $(KEYCODEMAP_FILES)
-
-ui/input-keymap-%.c: $(KEYCODEMAP_GEN) $(KEYCODEMAP_CSV) $(SRC_PATH)/ui/Makefile.objs
-	$(call quiet-command,\
-	    stem=$* && src=$${stem%-to-*} dst=$${stem#*-to-} && \
-	    test -e $(KEYCODEMAP_GEN) && \
-	    $(PYTHON) $(KEYCODEMAP_GEN) \
-	          --lang glib2 \
-	          --varname qemu_input_map_$${src}_to_$${dst} \
-	          code-map $(KEYCODEMAP_CSV) $${src} $${dst} \
-	        > $@ || rm -f $@, "GEN", "$@")
-
-$(KEYCODEMAP_GEN): .git-submodule-status
-$(KEYCODEMAP_CSV): .git-submodule-status
-
-edk2-decompressed = $(basename $(wildcard pc-bios/edk2-*.fd.bz2))
-pc-bios/edk2-%.fd: pc-bios/edk2-%.fd.bz2
-	$(call quiet-command,bzip2 -d -c $< > $@,"BUNZIP2",$<)
-
 # Don't try to regenerate Makefile or configure
 # We don't generate any of them
 Makefile: ;
 configure: ;
 
-.PHONY: all clean cscope distclean html info install install-doc \
-	pdf txt recurse-all dist msi FORCE
+.PHONY: all clean distclean html info install install-doc \
+	pdf txt recurse-all dist FORCE
 
 $(call set-vpath, $(SRC_PATH))
 
 LIBS+=-lz $(LIBS_TOOLS)
-
-vhost-user-json-y =
-HELPERS-y =
-
-HELPERS-$(call land,$(CONFIG_SOFTMMU),$(CONFIG_LINUX)) = qemu-bridge-helper$(EXESUF)
-
-ifeq ($(CONFIG_LINUX)$(CONFIG_VIRGL)$(CONFIG_GBM)$(CONFIG_TOOLS),yyyy)
-HELPERS-y += vhost-user-gpu$(EXESUF)
-vhost-user-json-y += contrib/vhost-user-gpu/50-qemu-gpu.json
-endif
-
-ifeq ($(CONFIG_SOFTMMU)$(CONFIG_LINUX)$(CONFIG_SECCOMP)$(CONFIG_LIBCAP_NG),yyyy)
-HELPERS-y += virtiofsd$(EXESUF)
-vhost-user-json-y += tools/virtiofsd/50-qemu-virtiofsd.json
-endif
 
 # Sphinx does not allow building manuals into the same directory as
 # the source files, so if we're doing an in-tree PROOT build we must
