@@ -4,6 +4,14 @@ How to setup a development environment for PRoot?
 This document provides instructions for preparing
 a system for developing PRoot and CARE.
 
+Docker
+------
+
+The following command will attempt to build an image for
+each supported distribution::
+
+  make -C test check-test-docker.sh V=1
+
 Vagrant
 -------
 
