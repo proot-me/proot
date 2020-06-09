@@ -1,8 +1,9 @@
-DIR    = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
+DIR = $(dir $(abspath $(firstword $(MAKEFILE_LIST))))
 ROOTFS = $(DIR)/rootfs
-PROOT  = $(DIR)/../src/proot
-CARE   = $(DIR)/../src/care
-CC     = gcc
+SRC_DIR = $(DIR)/../src
+PROOT = $(SRC_DIR)/proot
+CARE = $(SRC_DIR)/care
+CC = gcc
 PROOT_RAW = $(PROOT)
 
 CHECK_TESTS = $(patsubst %,check-%, $(wildcard test-*.sh) $(wildcard test-*.c))
