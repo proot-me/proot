@@ -27,16 +27,14 @@ Build status
 Compiling
 =========
 
-The following commands can be used to compile PRoot and CARE::
+This project utilizes the build system from the QEMU project::
 
-    make -C src loader.elf loader-m32.elf build.h # first build the config and loader
-    make -C src proot care # then compile PRoot and CARE
-    make -C test # run test suite
+    mkdir build
+    cd build
+    ../configure
+    make
 
-|asciicast|
-
-.. |asciicast| image:: https://asciinema.org/a/315367.svg
-   :target: https://asciinema.org/a/315367
+For more information read `build-system <doc/build-system.rst`_.
 
 Dependencies
 ============
