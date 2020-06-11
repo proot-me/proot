@@ -207,7 +207,7 @@ gcov_tool="gcov"
 EXESUF=""
 DSOSUF=".so"
 LDFLAGS_SHARED="-shared"
-modules="no"
+extensions="no"
 prefix="/usr/local"
 mandir="\${prefix}/share/man"
 datadir="\${prefix}/share"
@@ -215,9 +215,6 @@ proot_docdir="\${prefix}/share/doc/proot"
 bindir="\${prefix}/bin"
 libdir="\${prefix}/lib"
 includedir="\${prefix}/include"
-sysconfdir="\${prefix}/etc"
-local_statedir="\${prefix}/var"
-confsuffix="/proot"
 profiler="no"
 pkgversion=""
 pie=""
@@ -282,8 +279,6 @@ ar="${AR-${cross_prefix}ar}"
 as="${AS-${cross_prefix}as}"
 objcopy="${OBJCOPY-${cross_prefix}objcopy}"
 ld="${LD-${cross_prefix}ld}"
-ranlib="${RANLIB-${cross_prefix}ranlib}"
-nm="${NM-${cross_prefix}nm}"
 strip="${STRIP-${cross_prefix}strip}"
 pkg_config_exe="${PKG_CONFIG-${cross_prefix}pkg-config}"
 query_pkg_config() {
@@ -443,11 +438,11 @@ for opt do
   ;;
   --cross-cc-*)
   ;;
-  --enable-modules)
-      modules="yes"
+  --enable-extensions)
+      extensions="yes"
   ;;
-  --disable-modules)
-      modules="no"
+  --disable-extensions)
+      extensions="no"
   ;;
   --cpu=*)
   ;;
@@ -482,10 +477,6 @@ for opt do
   --with-confsuffix=*) confsuffix="$optarg"
   ;;
   --docdir=*) proot_docdir="$optarg"
-  ;;
-  --sysconfdir=*) sysconfdir="$optarg"
-  ;;
-  --localstatedir=*) local_statedir="$optarg"
   ;;
   --host=*|--build=*|\
   --disable-dependency-tracking|\
@@ -624,13 +615,9 @@ Advanced options (experts only):
   --with-git=GIT           use specified git [$git]
   --static                 enable static build [$static]
   --mandir=PATH            install man pages in PATH
-  --datadir=PATH           install firmware in PATH$confsuffix
-  --docdir=PATH            install documentation in PATH$confsuffix
+  --docdir=PATH            install documentation in PATH
   --bindir=PATH            install binaries in PATH
   --libdir=PATH            install libraries in PATH
-  --sysconfdir=PATH        install config in PATH$confsuffix
-  --localstatedir=PATH     install local state in PATH (set at runtime on win32)
-  --with-confsuffix=SUFFIX suffix for PROOT data inside datadir/libdir/sysconfdir [$confsuffix]
   --with-pkgversion=VERS   use specified string as sub-version of the package
   --enable-debug           enable common debug build options
   --disable-strip          disable stripping binaries
@@ -639,7 +626,7 @@ Advanced options (experts only):
   --cpu=CPU                Build for host CPU [$cpu]
   --enable-gcov            enable test coverage analysis with gcov
   --gcov=GCOV              use specified gcov [$gcov_tool]
-  --enable-gprof           PROOT profiling with gprof
+  --enable-gprof           PRoot profiling with gprof
   --enable-profiler        profiler support
   --disable-containers     don't use containers for cross-building
   --gdb=GDB-path           gdb to use for gdbstub tests [$gdb_bin]
@@ -647,9 +634,9 @@ Advanced options (experts only):
 Optional features, enabled with --enable-FEATURE and
 disabled with --disable-FEATURE, default is enabled if available:
 
-  doc            build documentation
+  doc             build documentation
   pie             Position Independent Executables
-  modules         modules support (non-Windows)
+  extensions      extensions support
   debug-info      debugging information
   seccomp         seccomp support
 
@@ -764,10 +751,10 @@ else
   PROOT_CFLAGS="$PROOT_CFLAGS -Wno-missing-braces"
 fi
 
-# Static linking is not possible with modules or PIE
+# Static linking is not possible with extensions or PIE
 if test "$static" = "yes" ; then
-  if test "$modules" = "yes" ; then
-    error_exit "static and modules are mutually incompatible"
+  if test "$extensions" = "yes" ; then
+    error_exit "static and extensions are mutually incompatible"
   fi
 fi
 
@@ -857,9 +844,7 @@ if test "$werror" = "yes"; then
     PROOT_CFLAGS="-Werror $PROOT_CFLAGS"
 fi
 
-proot_confdir=$sysconfdir$confsuffix
-proot_moddir=$libdir$confsuffix
-proot_datadir=$datadir$confsuffix
+proot_datadir=$datadir
 
 echo_version() {
     if test "$1" = "yes" ; then
@@ -870,10 +855,7 @@ echo_version() {
 echo "Install prefix    $prefix"
 echo "binary directory  $(eval echo $bindir)"
 echo "library directory $(eval echo $libdir)"
-echo "module directory  $(eval echo $proot_moddir)"
 echo "include directory $(eval echo $includedir)"
-echo "config directory  $(eval echo $sysconfdir)"
-echo "local state directory   $(eval echo $local_statedir)"
 echo "Manual directory  $(eval echo $mandir)"
 echo "Build directory   $(pwd)"
 echo "Source path       $source_path"
@@ -884,7 +866,7 @@ echo "CFLAGS            $CFLAGS"
 echo "make              $make"
 echo "install           $install"
 echo "python            $python ($python_version)"
-echo "module support    $modules"
+echo "extension support    $extensions"
 echo "host CPU          $cpu"
 echo "target list       $target_list"
 echo "gprof enabled     $gprof"
@@ -907,12 +889,11 @@ echo "prefix=$prefix" >> $config_host_mak
 echo "bindir=$bindir" >> $config_host_mak
 echo "includedir=$includedir" >> $config_host_mak
 echo "mandir=$mandir" >> $config_host_mak
-echo "sysconfdir=$sysconfdir" >> $config_host_mak
 echo "proot_confdir=$proot_confdir" >> $config_host_mak
 echo "proot_datadir=$proot_datadir" >> $config_host_mak
 echo "proot_docdir=$proot_docdir" >> $config_host_mak
 echo "GIT=$git" >> $config_host_mak
-echo "GIT_SUBMODULES=$git_submodules" >> $config_host_mak
+echo "GIT_SUBMODULES=$git_subextensions" >> $config_host_mak
 echo "GIT_UPDATE=$git_update" >> $config_host_mak
 
 echo "ARCH=$ARCH" >> $config_host_mak
@@ -951,11 +932,8 @@ echo "INSTALL_LIB=$install -c -m 0644" >> $config_host_mak
 echo "PYTHON=$python" >> $config_host_mak
 echo "CC=$cc" >> $config_host_mak
 echo "HOST_CC=$host_cc" >> $config_host_mak
-echo "OBJCC=$objcc" >> $config_host_mak
 echo "OBJCOPY=$objcopy" >> $config_host_mak
 echo "LD=$ld" >> $config_host_mak
-echo "RANLIB=$ranlib" >> $config_host_mak
-echo "NM=$nm" >> $config_host_mak
 echo "PKG_CONFIG=$pkg_config_exe" >> $config_host_mak
 echo "CFLAGS=$CFLAGS" >> $config_host_mak
 echo "PROOT_CFLAGS=$PROOT_CFLAGS" >> $config_host_mak

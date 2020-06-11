@@ -229,7 +229,7 @@ help:
 	@echo  'Generic targets:'
 	$(call print-help,all,Build all)
 ifdef CONFIG_MODULES
-	$(call print-help,modules,Build all modules)
+	$(call print-help,extensions,Build all extensions)
 endif
 	$(call print-help,dir/file.o,Build specified target only)
 	$(call print-help,install,Install PROOT, documentation and tools)
