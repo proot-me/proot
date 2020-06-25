@@ -1,0 +1,3 @@
+ptrace-obj-y += ptrace.o
+ptrace-obj-y += user.o
+ptrace-obj-y += wait.o

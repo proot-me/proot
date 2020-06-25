@@ -1,0 +1,3 @@
+cli-obj-y = cli.o
+cli-obj-y += proot.o
+cli-obj-y += note.o

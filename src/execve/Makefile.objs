@@ -1,0 +1,7 @@
+execve-obj-y += enter.o
+execve-obj-y += exit.o
+execve-obj-y += shebang.o
+execve-obj-y += elf.o
+execve-obj-y += ldso.o
+execve-obj-y += auxv.o
+execve-obj-y += aoxp.o

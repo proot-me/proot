@@ -1,0 +1,6 @@
+extension-obj-y += extension.o
+extension-obj-y += kompat/kompat.o
+extension-obj-y += fake_id0/fake_id0.o
+extension-obj-y += link2symlink/link2symlink.o
+extension-obj-y += portmap/portmap.o
+extension-obj-y += portmap/map.o

@@ -1,0 +1,8 @@
+cli-obj-y = cli/
+execve-obj-y = execve/
+extension-obj-y = extension/
+loader-obj-y = loader/
+path-obj-y = path/
+ptrace-obj-y = ptrace/
+syscall-obj-y = syscall/
+tracee-obj-y = tracee/

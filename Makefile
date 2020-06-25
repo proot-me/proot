@@ -89,7 +89,7 @@ endif
 SUBDIR_MAKEFLAGS=$(if $(V),,--no-print-directory --quiet) BUILD_DIR=$(BUILD_DIR)
 
 ifneq ($(wildcard config-host.mk),)
-include $(SRC_PATH)/Makefile.objs
+include $(SRC_PATH)/src/Makefile.objs
 endif
 
 dummy := $(call unnest-vars,, \
@@ -129,7 +129,11 @@ clean:
 	find . \( -name '*.so' -o -name '*.[oa]' \) -type f \
 		-exec rm {} +
 
-VERSION ?= $(shell cat VERSION)
+GIT_VERSION := $(shell git describe --tags `git rev-list --tags --max-count=1`)
+
+GIT_COMMIT := $(shell git rev-list --all --max-count=1 | cut -c 1-8)
+
+VERSION = $(GIT_VERSION)-$(GIT_COMMIT)
 
 dist: proot-$(VERSION).tar.bz2
 
@@ -209,10 +213,6 @@ ifneq ($(filter-out $(UNCHECKED_GOALS),$(MAKECMDGOALS)),$(if $(MAKECMDGOALS),,fa
 Makefile: $(generated-files-y)
 endif
 endif
-
-.SECONDARY: $(TRACE_HEADERS) $(TRACE_HEADERS:%=%-timestamp) \
-	$(TRACE_SOURCES) $(TRACE_SOURCES:%=%-timestamp) \
-	$(TRACE_DTRACE) $(TRACE_DTRACE:%=%-timestamp)
 
 # Include automatically generated dependency files
 # Dependencies in Makefile.objs files come from our recursive subdir rules

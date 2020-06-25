@@ -1,0 +1,4 @@
+tracee-obj-y += tracee.o
+tracee-obj-y += mem.o
+tracee-obj-y += reg.o
+tracee-obj-y += event.o

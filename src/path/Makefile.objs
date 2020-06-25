@@ -1,0 +1,6 @@
+path-obj-y += binding.o
+path-obj-y += glue.o
+path-obj-y += canon.o
+path-obj-y += path.o
+path-obj-y += proc.o
+path-obj-y += temp.o

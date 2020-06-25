@@ -1,0 +1,9 @@
+syscall-obj-y += seccomp.o
+syscall-obj-y += syscall.o
+syscall-obj-y += chain.o
+syscall-obj-y += enter.o
+syscall-obj-y += exit.o
+syscall-obj-y += sysnum.o
+syscall-obj-y += socket.o
+syscall-obj-y += heap.o
+syscall-obj-y += rlimit.o
