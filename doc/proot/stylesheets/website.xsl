@@ -51,7 +51,7 @@
 	    href="https://groups.google.com/forum/?fromgroups#!forum/proot_me">the
 	    forum</a>, or chat with us on <a href="https://gitter.im/proot-me/devs">Gitter</a>;
             but please be sure that your answer isn't in the
-            <a href="https://raw.githubusercontent.com/proot-me/proot/master/doc/proot/manual.txt">user
+            <a href="https://raw.githubusercontent.com/proot-me/proot/master/doc/proot/manual.rst">user
 	    manual</a> first.
 	    </p>
 	  </div>
