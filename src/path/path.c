@@ -282,7 +282,7 @@ void chop_finality(char *path)
 
 /**
  * Put in @path the result of readlink(/proc/@pid/fd/@fd).  This
- * function returns -errno if an error occured, othrwise 0.
+ * function returns -errno if an error occured, otherwise 0.
  */
 int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
 {
