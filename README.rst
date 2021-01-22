@@ -43,7 +43,7 @@ Dependencies
 
 - `libarchive <https://libarchive.org>`_
 - `libtalloc <https://talloc.samba.org>`_
-- `uthash <https://troydhanson.github.io/uthash>`_
+- `uthash <https://troydhanson.github.io/uthash>`_ (only required for building CARE)
 
 Manuals
 =======
