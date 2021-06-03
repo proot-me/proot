@@ -434,17 +434,7 @@ Downloads
 =========
 
 CARE is heavily based on PRoot_, that's why they are both hosted in
-the same repository: https://github.com/proot-me/proot.  Since CARE is supposed
-to work on any Linux systems, it is recommended to use following
-highly compatible static binaries:
-
-* for x86_64: https://github.com/proot-me/proot-static-build/raw/master/static/care-x86_64
-
-* for x86: https://github.com/proot-me/proot-static-build/raw/master/static/care-x86
-
-* for ARM: https://github.com/proot-me/proot-static-build/raw/master/static/care-arm
-
-* other architectures: on demand.
+the same repository: https://github.com/proot-me/proot. Previous CARE releases were packaged at https://github.com/proot-me/proot-static-build/releases, however, that repository has since been archived. The latest builds can be found under the job artifacts for the `GitLab CI/CD Pipelines <https://gitlab.com/proot/proot/pipelines>`_ for each commit.
 
 .. _PRoot: https://proot-me.github.io
 
@@ -460,3 +450,4 @@ Copyright (C) 2020 PRoot Developers, licensed under GPL v2 or later.
        /   __/ __ |  __ \  __|
       /   /_/     |     /  __|
       \_____|__|__|__|__\____|
+
