@@ -512,7 +512,11 @@ PRoot
 
 The source code for PRoot and CARE are hosted in the same repository on `GitHub <https://github.com/proot-me/proot>`_.
 Previous PRoot releases were packaged at https://github.com/proot-me/proot-static-build/releases, however, that
-repository has since been archived. The latest builds can be found under the job artifacts for the `GitLab CI/CD Pipelines <https://gitlab.com/proot/proot/pipelines>`_ for each commit.
+repository has since been archived. The latest builds can be found under the job artifacts for the `GitLab CI/CD Pipelines <https://gitlab.com/proot/proot/pipelines>`_ for each commit. The following commands can be used to download the latest x86_64 binary for convenience::
+
+    curl -LO https://proot.gitlab.io/proot/bin/proot
+    chmod +x ./proot
+    proot --version
 
 Rootfs
 ------
