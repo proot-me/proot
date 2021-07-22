@@ -77,7 +77,7 @@ static Cli proot_cli = {
 	.subtitle = "chroot, mount --bind, and binfmt_misc without privilege/setup",
 	.synopsis = "proot [option] ... [command]",
 	.colophon = "Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...\n\
-Copyright (C) 2020 PRoot Developers, licensed under GPL v2 or later.",
+Copyright (C) 2021 PRoot Developers, licensed under GPL v2 or later.",
 	.logo = "\
  _____ _____              ___\n\
 |  __ \\  __ \\_____  _____|   |_\n\

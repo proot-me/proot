@@ -11,7 +11,7 @@ Unreleased
 
 Please see `Unreleased Changes`_ for more information.
 
-5.2.0-alpha - 2020-04-14
+5.2.0 - 2021-09-01
 ------------------------
 
 Added
@@ -100,6 +100,6 @@ Fixed
 
 -  Non-executable stack for binaries.
 
-.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.2.0-alpha...master
+.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.2.0...master
 .. _Keep a Changelog: https://keepachangelog.com/en/1.0.0
 .. _Semantic Versioning: https://semver.org/spec/v2.0.0.html
