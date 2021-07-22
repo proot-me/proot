@@ -43,9 +43,9 @@ That means it is possible to alter explicitly the reproduced
 executions by changing content of the saved file-system, or by
 replaying different external events.
 
-.. _umockdev: https://github.com/martinpitt/umockdev/
+.. _umockdev: https://github.com/martinpitt/umockdev
 
-.. _artifact evaluation: http://www.artifact-eval.org/
+.. _artifact evaluation: http://www.artifact-eval.org
 
 Privacy
 -------
@@ -441,8 +441,8 @@ the same repository: https://github.com/proot-me/proot. Previous CARE releases w
 Colophon
 ========
 
-Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
-Copyright (C) 2020 PRoot Developers, licensed under GPL v2 or later.
+Visit https://proot-me.github.io/care for help, bug reports, suggestions, patches, ...
+Copyright (C) 2021 PRoot Developers, licensed under GPL v2 or later.
 
 ::
 
