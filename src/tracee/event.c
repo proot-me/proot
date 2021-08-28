@@ -503,15 +503,23 @@ int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 				unsigned long flags = 0;
 				signal = 0;
 
-				/* SECCOMP TRAP can only be received for
-				 * sysenter events, ignore otherwise */
-				if (!IS_IN_SYSENTER(tracee)) {
-					tracee->restart_how = PTRACE_CONT;
-					return 0;
-				}
 				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
 				if (status < 0)
 					break;
+
+				/* SECCOMP TRAP can only be received for
+				 * sysenter events. It is sometimes possible for sysenter
+				 * to be handled at the normal PTRACE_SYSCALL SIGTRAP handler,
+				 * before seccomp trap arrives.
+				 * This may happen for example during handling of the first 
+				 * syscall the traced process makes, before seccomp is enabled,
+				 * however there is some other random and unknown factor that affects that.
+				 * If this happened, then continue until the next syscall
+				 * or sysexit if necessary. */
+				if (!IS_IN_SYSENTER(tracee)) {
+					tracee->restart_how = (flags & FILTER_SYSEXIT) ? PTRACE_SYSCALL : PTRACE_CONT;
+					break;
+				}
 
 				if (tracee->seccomp == ENABLED && (flags & FILTER_SYSEXIT) == 0) {
 					tracee->restart_how = PTRACE_CONT;
