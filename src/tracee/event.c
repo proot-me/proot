@@ -212,14 +212,14 @@ static int last_exit_status = -1;
  */
 bool is_kernel_4_8(void)
 {
-    static int version_48 = -1;
-    static int major = 0;
-    static int minor = 0;
+	static int version_48 = -1;
+	int major = 0;
+	int minor = 0;
 
 	if (version_48 != -1)
 		return version_48;
 
-    version_48 = false;
+	version_48 = false;
 
 	struct utsname utsname;
 
@@ -228,8 +228,8 @@ bool is_kernel_4_8(void)
 
 	sscanf(utsname.release, "%d.%d", &major, &minor);
 
-	if (major >= 4 && minor >= 8)
-			version_48 = true;
+	if ((major == 4 && minor >= 8) || major > 4)
+		version_48 = true;
 
 	return version_48;
 }
