@@ -29,6 +29,9 @@ check-%.c: $(ROOTFS)/bin/% setup
 	$(call check_c,$*,$(PROOT) -b /proc -r $(ROOTFS) /bin/$*)
 
 # Special cases.
+check-test-sysexit.c: test-sysexit
+	$(call check_c,$<,env PROOT_FORCE_KOMPAT=1 $(PROOT) -k 3.4242XX ./$<)
+
 check-test-bdc90417.c: test-bdc90417
 	$(call check_c,$<,$(PROOT) -w . ./$<)
 
