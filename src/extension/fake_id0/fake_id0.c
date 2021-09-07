@@ -313,7 +313,7 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
  * Copy config->@field to the tracee's memory location pointed to by @sysarg.
  */
 #define POKE_MEM_ID(sysarg, field) do {					\
-	poke_uint16(tracee, peek_reg(tracee, ORIGINAL, sysarg), config->field);	\
+	poke_uint32(tracee, peek_reg(tracee, ORIGINAL, sysarg), config->field);	\
 	if (errno != 0)							\
 		return -errno;						\
 } while (0)
