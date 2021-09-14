@@ -9,9 +9,6 @@ Build status
 .. image:: https://img.shields.io/gitlab/pipeline/proot/proot.svg?label=gitlab-ci&style=flat-square
    :target: https://gitlab.com/proot/proot/pipelines
 
-.. image:: https://img.shields.io/travis/proot-me/proot.svg?label=travis-ci&style=flat-square
-   :target: https://travis-ci.org/proot-me/proot
-
 .. image:: https://img.shields.io/badge/scan--build-latest-yellow.svg?style=flat-square
    :target: https://proot.gitlab.io/proot/reports/scan-build
 
