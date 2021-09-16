@@ -502,7 +502,7 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 		goto end;
 	}
 
-	status = fchmod(fd, S_IRUSR|S_IXUSR);
+	status = fchmod(fd, S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
 	if (status < 0) {
 		note(tracee, ERROR, SYSTEM, "can't change loader permissions (u+rx)");
 		goto end;
