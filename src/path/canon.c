@@ -185,6 +185,7 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		 char guest_path[PATH_MAX], unsigned int recursion_level)
 {
 	char scratch_path[PATH_MAX];
+	char host_path[PATH_MAX];
 	Finality finality;
 	const char *cursor;
 	int status;
@@ -210,13 +211,20 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 	else
 		strcpy(guest_path, "/");
 
+
+	/* Resolve bindings for the initial '/' component or user_path,
+	 * which is not handled in the loop below.
+	 * In particular HOST_PATH extensions are called from there.  */
+	status = substitute_binding_stat(tracee, NOT_FINAL, recursion_level, guest_path, host_path);
+	if (status < 0)
+		return status;
+
 	/* Canonicalize recursely 'user_path' into 'guest_path'.  */
 	cursor = user_path;
 	finality = NOT_FINAL;
 	while (!IS_FINAL(finality)) {
 		Comparison comparison;
 		char component[NAME_MAX];
-		char host_path[PATH_MAX];
 
 		finality = next_component(component, &cursor);
 		status = (int) finality;
