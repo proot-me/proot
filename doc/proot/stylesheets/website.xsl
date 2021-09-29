@@ -31,6 +31,7 @@
 	    <ul>
 	      <li><a href="#description">Description</a></li>
 	      <li><a href="#examples">Examples</a></li>
+	      <li><a href="https://github.com/proot-me/proot">Source</a></li>
 	      <li><a href="#downloads">Downloads</a></li>
 	      <li><a href="#ecosystem">Ecosystem</a></li>
 	      <li><a href="#support">Support</a></li>
