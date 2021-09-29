@@ -313,10 +313,10 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 			}
 		};
 
-		flags = peek_reg(tracee, CURRENT, SYSARG_4);
-		if ((flags & ~AT_SYMLINK_NOFOLLOW) != 0)
-			return -EINVAL; /* Exposed by LTP.  */
+		if (config->actual_release == 0)
+			return 0;
 
+		flags = peek_reg(tracee, CURRENT, SYSARG_4);
 #if defined(ARCH_X86_64)
 		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
 			modif.new_sysarg_num = (get_abi(tracee) != ABI_2 ? PR_lstat : PR_lstat64);
@@ -329,7 +329,14 @@ static int handle_sysenter_end(Tracee *tracee, Config *config)
 			modif.new_sysarg_num = PR_stat64;
 #endif
 
-		modify_syscall(tracee, config, &modif);
+		if (modify_syscall(tracee, config, &modif)) {
+			// Do this check only if we are patching this syscall.
+			// New flags have been added since 2.6.38
+			// that we should not error on.
+			if ((flags & ~AT_SYMLINK_NOFOLLOW) != 0) {
+				return -EINVAL; /* Exposed by LTP.  */
+			}
+		}
 		return 0;
 	}
 
