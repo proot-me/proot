@@ -34,6 +34,9 @@ typedef unsigned char byte_t;
 #define SYSCALL_AVOIDER ((word_t) -2)
 #define SYSTRAP_NUM SYSARG_NUM
 
+#define OFFSETOF_STATX_UID 20
+#define OFFSETOF_STATX_GID 24
+
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
 #        define ARCH_X86_64 1
