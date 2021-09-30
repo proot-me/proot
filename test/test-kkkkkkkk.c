@@ -50,7 +50,9 @@ int main()
 
 	test_title("Don't set the \"brk\" below its initial value");
 	test_brk(page_size, 1);
-	test_brk(-2 * page_size, 0);
+	// Try to shrink the size of the heap by more than it's current size
+	// and it should fail.
+	test_brk(-1000 * page_size, 0);
 	test_brk(-page_size, 1);
 	test_result();
 
