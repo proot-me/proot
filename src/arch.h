@@ -33,6 +33,7 @@ typedef unsigned char byte_t;
 
 #define SYSCALL_AVOIDER ((word_t) -2)
 #define SYSTRAP_NUM SYSARG_NUM
+#define STACK_ALIGNMENT 16
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
