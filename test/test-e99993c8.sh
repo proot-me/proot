@@ -2,7 +2,9 @@ if [ -z `which uname` ] || [ -z `which grep` ]; then
     exit 125;
 fi
 
+kver=$(uname -r)
+
 LONG_RELEASE=0123456789012345678901234567890123456789012345678901234567890123456789
 
-${PROOT} -k 3.33.333 uname -r | grep ^3.33.333$
+${PROOT} -k $kver-3.33.333 uname -r | grep ^.*-3\.33\.333$
 ${PROOT} -k ${LONG_RELEASE} uname -r | grep ^0123456789012345678901234567890123456789012345678901234567890123$
