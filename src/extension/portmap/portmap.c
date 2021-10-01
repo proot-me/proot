@@ -446,8 +446,14 @@ static int handle_syschained_exit(Tracee *tracee, Config *config)
 	case PR_getsockname:{
 		word_t sockfd, sock_addr;
 		int result;
-	
-		sockfd = peek_reg(tracee, CURRENT, SYSARG_1);
+
+		// On AArch64 and ARM, SYSARG_1 is the same as SYSARG_RESULT (r0/x0)
+		// so `peek_reg(tracee, CURRENT, SYSARG_1)` would have returned
+		// the result of the syscall instead.
+		// Since the chained call is currently only used for syscall with
+		// `sockfd` as the first argument, we can just use
+		// the ORIGINAL version to get the fd.
+		sockfd = peek_reg(tracee, ORIGINAL, SYSARG_1);
 		sock_addr = peek_reg(tracee, CURRENT, SYSARG_2);
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
 	
