@@ -17,7 +17,8 @@ PYTHON   = python3
 
 HAS_SWIG := $(shell swig -version 2>/dev/null)
 PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
-HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags 2>/dev/null)
+PYTHON_EMBED = $(shell ${PYTHON} -c "import sys; print('--embed' if sys.hexversion > 0x03080000 else '')" 2>/dev/null)
+HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/null)
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -g -Wall -Wextra -O2
@@ -205,7 +206,7 @@ cli/%-licenses.o: licenses cli/cli.o
 
 define build_python_extension
 CPPFLAGS 	+= $(shell ${PYTHON}-config --includes)
-LDFLAGS 	+= $(shell ${PYTHON}-config --ldflags)
+LDFLAGS 	+= $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED})
 SWIG     	= swig
 quiet_SWIG 	= @echo "  SWIG	$$@"; swig
 SWIG_OPT 	= -python
