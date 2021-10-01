@@ -111,26 +111,25 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 
 	/* Be careful: sun_path doesn't have to be null-terminated.  */
 	if (strlen(host_path) > sizeof_path) {
-		char *shorter_host_path;
+		const char *shorter_host_dir;
+		const char *shorter_host_path;
 		Binding *binding;
-
-		/* The translated path is too long to fit the sun_path
-		 * array, so let's bind it to a shorter path.  */
-		shorter_host_path = create_temp_name(tracee->ctx, "proot");
-		if (shorter_host_path == NULL || strlen(shorter_host_path) > sizeof_path)
-			return -EINVAL;
-
-		if (mkstemp(shorter_host_path) == EEXIST)
-			return -EINVAL;
-
-		if (strlen(shorter_host_path) > sizeof_path)
-			return -EINVAL;
 
 		/* Ensure the guest path of this new binding is
 		 * canonicalized, as it is always assumed.  */
 		strcpy(user_path, host_path);
 		status = detranslate_path(tracee, user_path, NULL);
 		if (status < 0)
+			return -EINVAL;
+
+		/* The translated path is too long to fit the sun_path
+		 * array, so let's bind it to a shorter path.  */
+		shorter_host_dir = create_temp_directory(tracee->ctx, "proot");
+		if (shorter_host_dir == NULL)
+			return -EINVAL;
+
+		shorter_host_path = talloc_asprintf(tracee->ctx, "%s/s", shorter_host_dir);
+		if (strlen(shorter_host_path) > sizeof_path)
 			return -EINVAL;
 
 		/* Bing the guest path to a shorter host path.  */
@@ -140,6 +139,7 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 
 		/* This temporary file (shorter_host_path) will be removed once the
 		 * binding is destroyed.  */
+		talloc_reparent(tracee->ctx, binding, shorter_host_dir);
 		talloc_reparent(tracee->ctx, binding, shorter_host_path);
 
 		/* Let's use this shorter path now.  */
