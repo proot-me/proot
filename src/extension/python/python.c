@@ -23,14 +23,14 @@ extern void PyInit__proot(void);
 
 /* create python files */
 extern unsigned char _binary_python_extension_py_start;
-extern unsigned char _binary_python_extension_py_size;
+extern unsigned char _binary_python_extension_py_end;
 extern unsigned char _binary_proot_py_start;
-extern unsigned char _binary_proot_py_size;
+extern unsigned char _binary_proot_py_end;
 
-static int create_python_file(const char *tmp_dir, const char *python_file_name, unsigned char *start_file, unsigned char *size_file)
+static int create_python_file(const char *tmp_dir, const char *python_file_name, unsigned char *start_file, unsigned char *end_file)
 {
 	void *start = (void *) start_file;
-	size_t size = (size_t) size_file;
+	size_t size = end_file - start_file;
 	char python_full_file_name[PATH_MAX];
 	int fd;
 	int status;
@@ -53,14 +53,14 @@ static int create_python_extension(const char *tmp_dir)
 {
 	return create_python_file(tmp_dir, "python_extension.py",
 								&_binary_python_extension_py_start,
-								&_binary_python_extension_py_size);
+								&_binary_python_extension_py_end);
 }
 
 static int create_proot(const char *tmp_dir)
 {
 	return create_python_file(tmp_dir, "proot.py",
 								&_binary_proot_py_start,
-								&_binary_proot_py_size);
+								&_binary_proot_py_end);
 }
 
 /* init python once */
