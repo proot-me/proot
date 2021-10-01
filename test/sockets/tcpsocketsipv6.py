@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import socket
 import sys
 import os
@@ -9,7 +11,7 @@ PORT = 6432
 pid = os.fork()
 addrs = socket.getaddrinfo(HOST, PORT, socket.AF_INET6, 0, socket.SOL_TCP)[0][-1]
 #addrs = (HOST, PORT)
-print addrs
+print(addrs)
 
 # Server
 if pid:
@@ -21,16 +23,16 @@ if pid:
         time.sleep(int(sys.argv[1]))
 
     # Bind syscall
-    print "Server bind"
+    print("Server bind")
     sock.bind(addrs)
 
     # Listen syscall
-    print "Server listen"
+    print("Server listen")
     sock.listen(1)
 
     try:
         # Accept syscall
-        print "Server accept"
+        print("Server accept")
         conn, addr = sock.accept()
 
         while True:
@@ -42,7 +44,7 @@ if pid:
                 #    with open("fakeoutput" + sys.argv[4] + ".txt", "a") as testfile:
                 #        testfile.write(data)
                 #    os.remove("fakeoutput" + sys.argv[4] + ".txt")
-                print "Server data received : " + data
+                print("Server data received : " + data.decode())
                 break
     finally:
         # Close syscall
@@ -58,10 +60,10 @@ else:
 
     try:
         # Connect syscall
-        print "Client connect"
+        print("Client connect")
         sock.connect(addrs)
-    except socket.error, msg:
-        print >>sys.stderr, msg
+    except socket.error as msg:
+        print(msg, file=sys.stderr)
         sys.exit(1)
 
     if len(sys.argv) > 3:
@@ -69,6 +71,6 @@ else:
 
     try:
         # send Syscall
-        sock.send("test " + sys.argv[4])
+        sock.send(("test " + sys.argv[4]).encode())
     finally:
         sock.close()
