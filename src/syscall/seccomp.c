@@ -391,6 +391,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_setxattr,		0 },
 	{ PR_socketcall,	FILTER_SYSEXIT },
 	{ PR_stat,		0 },
+	{ PR_statx,		0 },
 	{ PR_stat64,		0 },
 	{ PR_statfs,		0 },
 	{ PR_statfs64,		0 },

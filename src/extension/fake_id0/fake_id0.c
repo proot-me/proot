@@ -125,6 +125,7 @@ static FilteredSysnum filtered_sysnums[] = {
 	{ PR_lsetxattr,		FILTER_SYSEXIT },
 	{ PR_fsetxattr,		FILTER_SYSEXIT },
 	{ PR_stat,		FILTER_SYSEXIT },
+	{ PR_statx,		FILTER_SYSEXIT },
 	{ PR_stat64,		FILTER_SYSEXIT },
 	{ PR_statfs,		FILTER_SYSEXIT },
 	{ PR_statfs64,		FILTER_SYSEXIT },
@@ -201,6 +202,7 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
 		case PR_oldlstat:
 		case PR_oldstat:
 		case PR_stat:
+		case PR_statx:
 		case PR_stat64:
 		case PR_statfs:
 		case PR_statfs64:
@@ -618,12 +620,15 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	case PR_lstat64:
 	case PR_fstat64:
 	case PR_stat:
+	case PR_statx:
 	case PR_lstat:
 	case PR_fstat: {
 		word_t address;
 		Reg sysarg;
 		uid_t uid;
 		gid_t gid;
+		off_t uid_offset;
+		off_t gid_offset;
 
 		/* Override only if it succeed.  */
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
@@ -631,10 +636,19 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 			return 0;
 
 		/* Get the address of the 'stat' structure.  */
-		if (sysnum == PR_fstatat64 || sysnum == PR_newfstatat)
-			sysarg = SYSARG_3;
-		else
-			sysarg = SYSARG_2;
+		if (sysnum == PR_statx) {
+			sysarg = SYSARG_5;
+			uid_offset = OFFSETOF_STATX_UID;
+			gid_offset = OFFSETOF_STATX_GID;
+		}
+		else {
+			if (sysnum == PR_fstatat64 || sysnum == PR_newfstatat)
+				sysarg = SYSARG_3;
+			else
+				sysarg = SYSARG_2;
+			uid_offset = offsetof_stat_uid(tracee);
+			gid_offset = offsetof_stat_gid(tracee);
+		}
 
 		address = peek_reg(tracee, ORIGINAL, sysarg);
 
@@ -643,21 +657,21 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		assert(__builtin_types_compatible_p(gid_t, uint32_t));
 
 		/* Get the uid & gid values from the 'stat' structure.  */
-		uid = peek_uint32(tracee, address + offsetof_stat_uid(tracee));
+		uid = peek_uint32(tracee, address + uid_offset);
 		if (errno != 0)
 			uid = 0; /* Not fatal.  */
 
-		gid = peek_uint32(tracee, address + offsetof_stat_gid(tracee));
+		gid = peek_uint32(tracee, address + gid_offset);
 		if (errno != 0)
 			gid = 0; /* Not fatal.  */
 
 		/* Override only if the file is owned by the current user.
 		 * Errors are not fatal here.  */
 		if (uid == getuid())
-			poke_uint32(tracee, address + offsetof_stat_uid(tracee), config->suid);
+			poke_uint32(tracee, address + uid_offset, config->suid);
 
 		if (gid == getgid())
-			poke_uint32(tracee, address + offsetof_stat_gid(tracee), config->sgid);
+			poke_uint32(tracee, address + gid_offset, config->sgid);
 
 		return 0;
 	}
