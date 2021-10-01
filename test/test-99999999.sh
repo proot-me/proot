@@ -39,8 +39,11 @@ TEST=$(${PROOT} -b /proc -r ${ROOTFS} readlink /proc/self/fd/0 | grep -E "^/proc
 test -z $TEST
 
 if [ ! -z $$ ]; then
-TEST=$(readlink -f /proc/$$/exe)
-${PROOT} sh -c 'true; readlink /proc/$$/exe' | grep ${TEST}
+    TEST=$(readlink -f /proc/$$/exe)
+    # The `true` after the readlink makes sure that
+    # the shell doesn't `exec` the `readlink` command and causes the process exe
+    # to be readlink instead
+    ${PROOT} sh -c 'readlink /proc/$$/exe; true' | grep ${TEST}
 fi
 
 MD5=$(md5sum $(which md5sum) | cut -f 1 -d ' ')
