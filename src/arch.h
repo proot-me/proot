@@ -33,6 +33,7 @@ typedef unsigned char byte_t;
 
 #define SYSCALL_AVOIDER ((word_t) -2)
 #define SYSTRAP_NUM SYSARG_NUM
+#define STACK_ALIGNMENT 16
 
 #define OFFSETOF_STATX_UID 20
 #define OFFSETOF_STATX_GID 24

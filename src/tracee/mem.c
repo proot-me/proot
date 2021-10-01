@@ -508,6 +508,9 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 	if (stack_pointer == peek_reg(tracee, ORIGINAL, STACK_POINTER))
 		size += RED_ZONE_SIZE;
 
+	/* Align the stack */
+	size = ((size - 1) / STACK_ALIGNMENT + 1) * STACK_ALIGNMENT;
+
 	/* Sanity check. */
 	if (   (size > 0 && stack_pointer <= (word_t) size)
 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {

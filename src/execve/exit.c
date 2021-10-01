@@ -223,10 +223,9 @@ static int transfer_load_script(Tracee *tracee)
 			: strlen(tracee->load_info->raw_path) + 1);
 
 	/* A padding will be appended at the end of the load script
-	 * (a.k.a "strings area") to ensure this latter is aligned to
-	 * a word boundary, for sake of performance.  */
+	 * (a.k.a "strings area") to ensure this latter is aligned properly. */
 	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
-			% sizeof_word(tracee);
+			% STACK_ALIGNMENT;
 
 	strings_size = string1_size + string2_size + string3_size + padding_size;
 	string1_address = stack_pointer - strings_size;
