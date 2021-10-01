@@ -26,15 +26,17 @@ RESULT="$(${PROOT} ${TMP})"
 EXPECTED="$(${TMP})"
 
 [ "${RESULT}" = "${EXPECTED}" ]
-[ "${RESULT}" = "${TMP}" ]
 
 echo '#!/../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../../usr/bin/echo XXXXXXXXX' > "${TMP}"
 
-! ${PROOT} ${TMP}
-[ $? -eq 0 ]
-
-! ${TMP}
-[ $? -eq 0 ]
+if ${TMP}; then
+    # Linux kernel 5.1-rc1 increases the shebang limit to 256
+    [ "${RESULT}" = "XXXXXXXXX ${TMP}" ]
+    ${PROOT} ${TMP}
+else
+    [ "${RESULT}" = "${TMP}" ]
+    ! ${PROOT} ${TMP}
+fi
 
 echo '#!                                                                                                                                                                                                        ' > ${TMP}
 
