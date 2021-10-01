@@ -269,7 +269,7 @@ Copyright (C) 2021 PRoot Developers, licensed under GPL v2 or later.",
 	  .arguments = {
 		{ .name = "-P", .separator = ' ', .value = "string" },
 		{ .name = NULL, .separator = '\0', .value = NULL } },
-	  .handler = handle_option_p,
+	  .handler = handle_option_P,
 	  .description = "Allow to access tracee information from python (experimental).",
 	  .detail = "\tThis option allow to launch a python script as an extension (experimental).",
 	},
