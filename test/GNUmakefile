@@ -209,10 +209,11 @@ test-c47aeb7d: test-c47aeb7d.c
 # Beautified output
 
 V = 0
+QUIET_LOG = /dev/null
 ifeq ($(V), 0)
     quiet = quiet_
     Q     = @
-    silently = >/dev/null 2>&1
+    silently = >> $(QUIET_LOG) 2>&1
 else
     quiet = 
     Q     = 
