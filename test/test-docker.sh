@@ -3,12 +3,11 @@ set -eu
 
 # Test can run using either builder
 BUILDER="docker"
-if [ -z "$(command -v ${BUILDER})" ]; then
-BUILDER="img"
-else
-  if [ -z "$(command -v ${BUILDER})" ]; then
-    exit 125
-  fi
+if [ -z "$(command -v ${BUILDER})" ] || ! docker run hello-world > /dev/null 2>&1; then
+    BUILDER="img"
+    if [ -z "$(command -v ${BUILDER})" ]; then
+        exit 125
+    fi
 fi
 
 # Export for use in subshell
