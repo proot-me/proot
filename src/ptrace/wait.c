@@ -99,7 +99,8 @@ int translate_wait_enter(Tracee *ptracer)
 	 * not a ptracee.  */
 	pid = (pid_t) peek_reg(ptracer, ORIGINAL, SYSARG_1);
 	if (pid != -1) {
-		ptracee = get_tracee(ptracer, pid, false);
+		ptracee = get_ptracee(ptracer, pid, false, true,
+				      peek_reg(ptracer, ORIGINAL, SYSARG_3));
 		if (ptracee == NULL || PTRACEE.ptracer != ptracer)
 			return 0;
 	}

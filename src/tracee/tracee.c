@@ -243,7 +243,7 @@ static Tracee *new_tracee(pid_t pid)
  * wait(2) manual for the meaning of @wait_options.  This function
  * returns NULL if there's no such ptracee.
  */
-static Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
+Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
 			bool only_with_pevent, word_t wait_options)
 {
 	Tracee *ptracee;
