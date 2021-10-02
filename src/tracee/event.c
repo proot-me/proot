@@ -210,7 +210,7 @@ static int last_exit_status = -1;
 /**
  * Check if kernel >= 4.8
  */
-bool is_kernel_4_8(void)
+static bool is_kernel_4_8(void)
 {
 	static int version_48 = -1;
 	int major = 0;
@@ -283,9 +283,6 @@ int event_loop()
 	struct sigaction signal_action;
 	long status;
 	int signum;
-	int kernel_4_8;
-
-	kernel_4_8 = is_kernel_4_8();
 
 	/* Kill all tracees when exiting.  */
 	status = atexit(kill_all_tracees);
@@ -379,12 +376,7 @@ int event_loop()
 				continue;
 		}
 
-		if (kernel_4_8) {
-			signal = handle_tracee_event_kernel_4_8(tracee, tracee_status);
-		}
-		else {
-			signal = handle_tracee_event(tracee, tracee_status);
-		}
+		signal = handle_tracee_event(tracee, tracee_status);
 		(void) restart_tracee(tracee, signal);
 	}
 
@@ -397,7 +389,7 @@ int event_loop()
  * This function returns the "computed" signal that should be used to
  * restart the given @tracee.
  */
-int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
+static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 {
 	static bool seccomp_detected = false;
 	static bool seccomp_enabled = false; /* added for 4.8.0 */
@@ -640,6 +632,8 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	long status;
 	int signal;
 
+	if (is_kernel_4_8())
+		return handle_tracee_event_kernel_4_8(tracee, tracee_status);
 	/* Don't overwrite restart_how if it is explicitly set
 	 * elsewhere, i.e in the ptrace emulation when single
 	 * stepping.  */
