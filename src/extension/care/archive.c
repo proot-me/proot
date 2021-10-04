@@ -300,14 +300,22 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		}
 
 		status = archive_write_disk_set_options(archive->handle, flags);
-		if (status != ARCHIVE_OK) {
+		if (status == ARCHIVE_WARN) {
+			note(tracee, WARNING, INTERNAL, "set archive options: %s",
+				archive_error_string(archive->handle));
+		}
+		else if (status != ARCHIVE_OK) {
 			note(tracee, ERROR, INTERNAL, "can't set archive options: %s",
 				archive_error_string(archive->handle));
 			return NULL;
 		}
 
 		status = archive_write_disk_set_standard_lookup(archive->handle);
-		if (status != ARCHIVE_OK) {
+		if (status == ARCHIVE_WARN) {
+			note(tracee, WARNING, INTERNAL, "set archive lookup: %s",
+				archive_error_string(archive->handle));
+		}
+		else if (status != ARCHIVE_OK) {
 			note(tracee, ERROR, INTERNAL, "can't set archive lookup: %s",
 				archive_error_string(archive->handle));
 			return NULL;
@@ -329,7 +337,11 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 
 	assert(format.set_format != NULL);
 	status = format.set_format(archive->handle);
-	if (status != ARCHIVE_OK) {
+	if (status == ARCHIVE_WARN) {
+		note(tracee, WARNING, INTERNAL, "set archive format: %s",
+			archive_error_string(archive->handle));
+	}
+	else if (status != ARCHIVE_OK) {
 		note(tracee, ERROR, INTERNAL, "can't set archive format: %s",
 			archive_error_string(archive->handle));
 		return NULL;
@@ -344,7 +356,11 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 
 	if (format.add_filter != NULL) {
 		status = format.add_filter(archive->handle);
-		if (status != ARCHIVE_OK) {
+		if (status == ARCHIVE_WARN) {
+			note(tracee, WARNING, INTERNAL, "add archive filter: %s",
+				archive_error_string(archive->handle));
+		}
+		else if (status != ARCHIVE_OK) {
 			note(tracee, ERROR, INTERNAL, "can't add archive filter: %s",
 				archive_error_string(archive->handle));
 			return NULL;
@@ -353,7 +369,11 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 
 	if (format.options != NULL) {
 		status = archive_write_set_options(archive->handle, format.options);
-		if (status != ARCHIVE_OK) {
+		if (status == ARCHIVE_WARN) {
+			note(tracee, WARNING, INTERNAL, "set archive options: %s",
+				archive_error_string(archive->handle));
+		}
+		else if (status != ARCHIVE_OK) {
 			note(tracee, ERROR, INTERNAL, "can't set archive options: %s",
 				archive_error_string(archive->handle));
 			return NULL;
@@ -396,7 +416,11 @@ Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
 		status = archive_write_open_filename(archive->handle, output);
 		break;
 	}
-	if (status != ARCHIVE_OK) {
+	if (status == ARCHIVE_WARN) {
+		note(tracee, WARNING, INTERNAL, "open archive '%s': %s",
+			output, archive_error_string(archive->handle));
+	}
+	else if (status != ARCHIVE_OK) {
 		note(tracee, ERROR, INTERNAL, "can't open archive '%s': %s",
 			output, archive_error_string(archive->handle));
 		return NULL;
@@ -420,11 +444,11 @@ int finalize_archive(Archive *archive)
 		archive_entry_linkresolver_free(archive->hardlink_resolver);
 
 	status = archive_write_close(archive->handle);
-	if (status != ARCHIVE_OK)
+	if (status != ARCHIVE_OK && status != ARCHIVE_WARN)
 		return -1;
 
 	status = archive_write_free(archive->handle);
-	if (status != ARCHIVE_OK)
+	if (status != ARCHIVE_OK && status != ARCHIVE_WARN)
 		return -1;
 
 	return 0;
@@ -487,8 +511,12 @@ int archive(const Tracee* tracee, Archive *archive,
 	}
 
 	status = archive_write_header(archive->handle, entry);
-	if (status != ARCHIVE_OK) {
-		note(tracee, WARNING, INTERNAL, "can't write header for '%s': %s",
+	if (status == ARCHIVE_WARN) {
+		note(tracee, WARNING, INTERNAL, "write header for '%s': %s",
+			path, archive_error_string(archive->handle));
+	}
+	else if (status != ARCHIVE_OK) {
+		note(tracee, ERROR, INTERNAL, "can't write header for '%s': %s",
 			path, archive_error_string(archive->handle));
 		status = -1;
 		goto end;

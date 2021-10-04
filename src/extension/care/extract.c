@@ -63,6 +63,11 @@ static int extract_archive(struct archive *archive)
 	while (archive_read_next_header(archive, &entry) == ARCHIVE_OK) {
 		status = archive_read_extract(archive, entry, flags);
 		switch (status) {
+		case ARCHIVE_WARN:
+			note(NULL, WARNING, INTERNAL, "%s: %s",
+				archive_error_string(archive),
+				strerror(archive_errno(archive)));
+			/* FALLTHROUGH */
 		case ARCHIVE_OK:
 			note(NULL, INFO, USER, "extracted: %s", archive_entry_pathname(entry));
 			break;
@@ -235,7 +240,11 @@ int extract_archive_from_file(const char *path)
 	}
 
 	status = archive_read_support_format_cpio(archive);
-	if (status != ARCHIVE_OK) {
+	if (status == ARCHIVE_WARN) {
+		note(NULL, WARNING, INTERNAL, "set archive format: %s",
+			archive_error_string(archive));
+	}
+	else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't set archive format: %s",
 			archive_error_string(archive));
 		status = -1;
@@ -243,7 +252,11 @@ int extract_archive_from_file(const char *path)
 	}
 
 	status = archive_read_support_format_gnutar(archive);
-	if (status != ARCHIVE_OK) {
+	if (status == ARCHIVE_WARN) {
+		note(NULL, WARNING, INTERNAL, "set archive format: %s",
+			archive_error_string(archive));
+	}
+	else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't set archive format: %s",
 			archive_error_string(archive));
 		status = -1;
@@ -251,7 +264,11 @@ int extract_archive_from_file(const char *path)
 	}
 
 	status = archive_read_support_filter_gzip(archive);
-	if (status != ARCHIVE_OK) {
+	if (status == ARCHIVE_WARN) {
+		note(NULL, WARNING, INTERNAL, "add archive filter: %s",
+			archive_error_string(archive));
+	}
+	else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
 			archive_error_string(archive));
 		status = -1;
@@ -259,7 +276,11 @@ int extract_archive_from_file(const char *path)
 	}
 
 	status = archive_read_support_filter_lzop(archive);
-	if (status != ARCHIVE_OK) {
+	if (status == ARCHIVE_WARN) {
+		note(NULL, WARNING, INTERNAL, "add archive filter: %s",
+			archive_error_string(archive));
+	}
+	else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
 			archive_error_string(archive));
 		status = -1;
@@ -283,7 +304,12 @@ int extract_archive_from_file(const char *path)
 	}
 
 	status = archive_read_open(archive, data, open_callback, read_callback, close_callback);
-	if (status != ARCHIVE_OK) {
+	if (status == ARCHIVE_WARN) {
+		if (archive_error_string(archive) != NULL)
+			note(NULL, WARNING, INTERNAL, "read archive: %s",
+				archive_error_string(archive));
+	}
+	else if (status != ARCHIVE_OK) {
 		/* Don't complain if no error message were registered,
 		 * ie. when testing for a self-extracting archive.  */
 		if (archive_error_string(archive) != NULL)
