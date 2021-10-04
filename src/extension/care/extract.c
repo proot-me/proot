@@ -89,7 +89,7 @@ typedef struct
 {
 	uint8_t buffer[4096];
 	const char *path;
-	size_t size;
+	size_t size_remaining;
 	int fd;
 } CallbackData;
 
@@ -141,20 +141,21 @@ static int open_callback(struct archive *archive, void *data_)
 
 	if (   status == sizeof(AutoExtractInfo)
 	    && strcmp(info.signature, AUTOEXTRACT_SIGNATURE) == 0) {
-		/* This is a self-extracting archive, retrive it's
+		/* This is a self-extracting archive, retrieve it's
 		 * offset and size.  */
 
-		data->size = be64toh(info.size);
-		offset = statf.st_size - data->size - sizeof(AutoExtractInfo);
+		data->size_remaining = be64toh(info.size);
+		offset = statf.st_size - data->size_remaining - sizeof(AutoExtractInfo);
 
 		note(NULL, INFO, USER,
 			"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
-			(uint64_t) offset, data->size);
+			(uint64_t) offset, data->size_remaining);
 	}
 	else {
 		/* This is not a self-extracting archive, assume it's
 		 * a regular one...  */
 		offset = 0;
+		data->size_remaining = SIZE_MAX;
 
 		/* ... unless a self-extracting archive really was
 		 * expected.  */
@@ -187,13 +188,22 @@ static int open_callback(struct archive *archive, void *data_)
 static ssize_t read_callback(struct archive *archive, void *data_, const void **buffer)
 {
 	CallbackData *data = talloc_get_type_abort(data_, CallbackData);
-	ssize_t size;
+	ssize_t size = sizeof(data->buffer);
 
-	size = read(data->fd, data->buffer, sizeof(data->buffer));
+	if (sizeof(data->buffer) > data->size_remaining) {
+		size = data->size_remaining;
+		if (size == 0) {
+			return 0;
+		}
+	}
+
+	size = read(data->fd, data->buffer, size);
 	if (size < 0) {
 		archive_set_error(archive, errno, "can't read archive");
 		return -1;
 	}
+	assert(size <= data->size_remaining);
+	data->size_remaining -= size;
 
 	*buffer = data->buffer;
 	return size;
