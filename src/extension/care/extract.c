@@ -136,7 +136,7 @@ static int open_callback(struct archive *archive, void *data_)
 
 	if (   status == sizeof(AutoExtractInfo)
 	    && strcmp(info.signature, AUTOEXTRACT_SIGNATURE) == 0) {
-		/* This is a self-extracting archive, retrive it's
+		/* This is a self-extracting archive, retrieve it's
 		 * offset and size.  */
 
 		data->size_remaining = be64toh(info.size);
