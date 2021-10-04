@@ -88,7 +88,7 @@ static int parse_suffix(const Tracee* tracee, Format *format,
 
 	found = slurp_suffix(string, &cursor, ".raw");
 	if (found) {
-		format->special = SELF_EXTRACTING;
+		format->special = RAW;
 		goto parse_filter;
 	}
 
@@ -168,17 +168,17 @@ sanity_checks:
 		format->set_format = archive_write_set_format_gnutar;
 		format->hardlink_resolver_strategy = ARCHIVE_FORMAT_TAR_GNUTAR;
 
+		if (no_wrapper_found) {
 #if defined(CARE_BINARY_IS_PORTABLE)
-		format->special = SELF_EXTRACTING;
-		if (no_wrapper_found)
+			format->special = SELF_EXTRACTING;
 			note(tracee, WARNING, USER,
 				"unknown suffix, assuming self-extracting format.");
 #else
-		format->special = RAW;
-		if (no_wrapper_found)
+			format->special = RAW;
 			note(tracee, WARNING, USER,
 				"unknown suffix, assuming raw format.");
 #endif
+		}
 
 		no_wrapper_found = false;
 		no_filter_found  = false;
