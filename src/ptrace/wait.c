@@ -179,13 +179,14 @@ static int update_wait_status(Tracee *ptracer, Tracee *ptracee)
  * of the ptrace mechanism. This function returns -errno if an error
  * occured, otherwise the pid of the expected tracee.
  */
-int translate_wait_exit(Tracee *ptracer)
+int translate_wait_exit(Tracee *ptracer, bool *set_result)
 {
 	Tracee *ptracee;
 	word_t options;
 	int status;
 	pid_t pid;
 
+	*set_result = true;
 	assert(PTRACER.waits_in == WAITS_IN_PROOT);
 	PTRACER.waits_in = DOESNT_WAIT;
 
@@ -221,9 +222,10 @@ int translate_wait_exit(Tracee *ptracer)
 	}
 
 	status = update_wait_status(ptracer, ptracee);
-	if (status < 0)
-		return status;
-
+	// If the syscall is restarted, don't touch the result.
+	// Not only is it unnecessary, it could overwrite syscall argument on ARM.
+	if (status == 0)
+		*set_result = false;
 	return status;
 }
 
@@ -340,9 +342,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 		int status;
 
 		status = update_wait_status(ptracer, ptracee);
-		if (status == 0)
-			chain_next_syscall(ptracer);
-		else
+		if (status != 0)
 			poke_reg(ptracer, SYSARG_RESULT, (word_t) status);
 
 		/* Write ptracer's register cache back.  */

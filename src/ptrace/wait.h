@@ -26,7 +26,7 @@
 #include "tracee/tracee.h"
 
 extern int translate_wait_enter(Tracee *ptracer);
-extern int translate_wait_exit(Tracee *ptracer);
+extern int translate_wait_exit(Tracee *ptracer, bool *set_result);
 extern bool handle_ptracee_event(Tracee *ptracee, int wait_status);
 
 /* __WCLONE: Wait for "clone" children only.  If omitted then wait for
