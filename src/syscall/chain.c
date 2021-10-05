@@ -145,12 +145,17 @@ void force_chain_final_result(Tracee *tracee, word_t forced_result)
  */
 int restart_original_syscall(Tracee *tracee)
 {
-	return register_chained_syscall(tracee,
-					get_sysnum(tracee, ORIGINAL),
-					peek_reg(tracee, ORIGINAL, SYSARG_1),
-					peek_reg(tracee, ORIGINAL, SYSARG_2),
-					peek_reg(tracee, ORIGINAL, SYSARG_3),
-					peek_reg(tracee, ORIGINAL, SYSARG_4),
-					peek_reg(tracee, ORIGINAL, SYSARG_5),
-					peek_reg(tracee, ORIGINAL, SYSARG_6));
+	poke_reg(tracee, SYSARG_1, peek_reg(tracee, ORIGINAL, SYSARG_1));
+	poke_reg(tracee, SYSARG_2, peek_reg(tracee, ORIGINAL, SYSARG_2));
+	poke_reg(tracee, SYSARG_3, peek_reg(tracee, ORIGINAL, SYSARG_3));
+	poke_reg(tracee, SYSARG_4, peek_reg(tracee, ORIGINAL, SYSARG_4));
+	poke_reg(tracee, SYSARG_5, peek_reg(tracee, ORIGINAL, SYSARG_5));
+	poke_reg(tracee, SYSARG_6, peek_reg(tracee, ORIGINAL, SYSARG_6));
+	poke_reg(tracee, SYSTRAP_NUM, peek_reg(tracee, ORIGINAL, SYSARG_NUM));
+
+	/* Move the instruction pointer back to the original trap.  */
+	poke_reg(tracee, INSTR_POINTER,
+		peek_reg(tracee, CURRENT, INSTR_POINTER) - SYSTRAP_SIZE);
+
+	return 0;
 }

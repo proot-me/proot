@@ -108,7 +108,7 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/argv0 $(ROOTFS)/bin/readdir $(ROOTFS)/bin/cat		 \
        $(ROOTFS)/bin/chdir_getcwd $(ROOTFS)/bin/fchdir_getcwd $(ROOTFS)/bin/argv \
        $(ROOTFS)/bin/fork-wait $(ROOTFS)/bin/ptrace $(ROOTFS)/bin/ptrace-2	 \
-       $(ROOTFS)/bin/ptrace-3 $(ROOTFS)/bin/gdb-ptrace-test	\
+       $(ROOTFS)/bin/ptrace-3 $(ROOTFS)/bin/gdb-ptrace-test $(ROOTFS)/bin/gdb-ptrace-test-signal	\
        $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32 \
        $(ROOTFS)/bin/exec-suid $(ROOTFS)/bin/exec-sgid $(ROOTFS)/bin/exec-m32-suid \
        $(ROOTFS)/bin/exec-m32-sgid $(ROOTFS)/bin/getresuid $(ROOTFS)/bin/getresgid \
