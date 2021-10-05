@@ -503,13 +503,22 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 				 * sysenter events. It is sometimes possible for sysenter
 				 * to be handled at the normal PTRACE_SYSCALL SIGTRAP handler,
 				 * before seccomp trap arrives.
-				 * This may happen for example during handling of the first 
+				 * This may happen for example during handling of the first
 				 * syscall the traced process makes, before seccomp is enabled,
 				 * however there is some other random and unknown factor that affects that.
 				 * If this happened, then continue until the next syscall
 				 * or sysexit if necessary. */
 				if (!IS_IN_SYSENTER(tracee)) {
-					tracee->restart_how = (flags & FILTER_SYSEXIT) ? PTRACE_SYSCALL : PTRACE_CONT;
+					if (flags & FILTER_SYSEXIT) {
+						tracee->restart_how = PTRACE_SYSCALL;
+					}
+					else {
+						// We are not interested in the sysexit
+						// continue to the next sysenter
+						// and clear the status to expect a sysenter next.
+						tracee->restart_how = PTRACE_CONT;
+						tracee->status = 0;
+					}
 					break;
 				}
 
