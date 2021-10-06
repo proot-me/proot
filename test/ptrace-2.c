@@ -31,6 +31,7 @@
 #include <stdlib.h>     /* exit, EXIT_*, */
 #include <stdio.h>      /* fprintf(3), stderr, */
 #include <stdint.h>     /* *int*_t, */
+#include <string.h>     /* strerror */
 #include <sys/uio.h>    /* struct iovec */
 #include <elf.h>        /* NT_PRSTATUS */
 

@@ -1,4 +1,6 @@
+#include <stdio.h> /* perror(3) */
 #include <stdlib.h> /* exit(3), */
+#include <sys/wait.h> /* wait(3) */
 #include <unistd.h> /* fork(2), */
 
 int main(void)
