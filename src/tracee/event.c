@@ -395,6 +395,7 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 	static bool seccomp_enabled = false; /* added for 4.8.0 */
 	long status;
 	int signal;
+	bool need_exit = true;
 
 	/* Don't overwrite restart_how if it is explicitly set
 	 * elsewhere, i.e in the ptrace emulation when single
@@ -498,6 +499,7 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
 				if (status < 0)
 					break;
+				need_exit = flags & FILTER_SYSEXIT;
 
 				/* SECCOMP TRAP can only be received for
 				 * sysenter events. It is sometimes possible for sysenter
@@ -509,7 +511,7 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 				 * If this happened, then continue until the next syscall
 				 * or sysexit if necessary. */
 				if (!IS_IN_SYSENTER(tracee)) {
-					if (flags & FILTER_SYSEXIT) {
+					if (need_exit || tracee->restart_how == PTRACE_SYSCALL) {
 						tracee->restart_how = PTRACE_SYSCALL;
 					}
 					else {
@@ -548,7 +550,7 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 
 			switch (tracee->seccomp) {
 			case ENABLED:
-				if (IS_IN_SYSENTER(tracee)) {
+				if (IS_IN_SYSENTER(tracee) && need_exit) {
 					/* sysenter: ensure the sysexit
 					 * stage will be hit under seccomp.  */
 					tracee->restart_how = PTRACE_SYSCALL;
