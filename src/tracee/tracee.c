@@ -432,6 +432,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
 	child->sysexit_pending = parent->sysexit_pending;
+	child->restart_how = parent->restart_how;
 
 	/* If CLONE_VM is set, the calling process and the child
 	 * process run in the same memory space [...] any memory
