@@ -35,6 +35,8 @@
 #include <sys/uio.h>    /* struct iovec */
 #include <elf.h>        /* NT_PRSTATUS */
 
+#include "../src/arch.h"
+
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
 #        define ARCH_X86_64 1
