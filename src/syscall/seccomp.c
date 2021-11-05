@@ -409,6 +409,7 @@ static FilteredSysnum proot_sysnums[] = {
 	{ PR_uselib,		0 },
 	{ PR_utime,		0 },
 	{ PR_utimensat,		0 },
+	{ PR_utimensat_time64,		0 },
 	{ PR_utimes,		0 },
 	{ PR_wait4,		FILTER_SYSEXIT },
 	{ PR_waitpid,		FILTER_SYSEXIT },
