@@ -22,11 +22,11 @@ HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/n
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH)
 CFLAGS   += -g -Wall -Wextra -O2
-CFLAGS   += $(shell pkg-config --cflags talloc libarchive)
+CFLAGS   += $(shell pkg-config --cflags talloc)
 LDFLAGS  += -Wl,-z,noexecstack
-LDFLAGS  += $(shell pkg-config --libs talloc libarchive)
+LDFLAGS  += $(shell pkg-config --libs talloc)
 
-CARE_LDFLAGS = -larchive
+CARE_LDFLAGS  = $(shell pkg-config --libs libarchive)
 
 OBJECTS += \
 	cli/cli.o		\
