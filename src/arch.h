@@ -31,7 +31,7 @@
 typedef unsigned long word_t;
 typedef unsigned char byte_t;
 
-#define SYSCALL_AVOIDER ((word_t) -2)
+#define SYSCALL_AVOIDER ((word_t) -1)
 #define SYSTRAP_NUM SYSARG_NUM
 #define STACK_ALIGNMENT 16
 
@@ -109,11 +109,6 @@ typedef unsigned char byte_t;
 
     #define EXEC_PIC_ADDRESS   0x0f000000
     #define INTERP_PIC_ADDRESS 0x1f000000
-
-    /* The syscall number has to be valid on ARM, so use tuxcall(2) as
-     * the "void" syscall since it has no side effects.  */
-    #undef SYSCALL_AVOIDER
-    #define SYSCALL_AVOIDER ((word_t) 222)
 
 #elif defined(ARCH_ARM64)
 

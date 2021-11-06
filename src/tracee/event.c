@@ -366,6 +366,9 @@ int event_loop()
 
 		tracee->running = false;
 
+		VERBOSE(tracee, 6, "vpid %" PRIu64 ": got event %x",
+			tracee->vpid, tracee_status);
+
 		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
 		if (status != 0)
 			continue;
@@ -425,7 +428,7 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
-		VERBOSE(tracee, (int) (last_exit_status != -1),
+		VERBOSE(tracee, 1,
 			"vpid %" PRIu64 ": terminated with signal %d",
 			tracee->vpid, WTERMSIG(tracee_status));
 		terminate_tracee(tracee);
@@ -654,7 +657,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	}
 	else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
-		VERBOSE(tracee, (int) (last_exit_status != -1),
+		VERBOSE(tracee, 1,
 			"vpid %" PRIu64 ": terminated with signal %d",
 			tracee->vpid, WTERMSIG(tracee_status));
 		terminate_tracee(tracee);
@@ -858,6 +861,9 @@ bool restart_tracee(Tracee *tracee, int signal)
 	status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
 	if (status < 0)
 		return false; /* The process likely died in a syscall.  */
+
+	VERBOSE(tracee, 6, "vpid %" PRIu64 ": restarted using %d, signal %d",
+		tracee->vpid, tracee->restart_how, signal);
 
 	tracee->restart_how = 0;
 	tracee->running = true;

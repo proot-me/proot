@@ -396,6 +396,7 @@ int translate_syscall_enter(Tracee *tracee)
 	case PR_newfstatat:
 	case PR_statx:
 	case PR_utimensat:
+	case PR_utimensat_time64:
 	case PR_name_to_handle_at:
 		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
 
