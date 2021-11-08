@@ -521,8 +521,8 @@ repository has since been archived. The latest builds can be found under the job
 Rootfs
 ------
 
-Here follows a couple of URLs where some rootfs archives can be freely
-downloaded.  Note that ``mknod`` errors reported by ``tar`` when
+The following URLs contain rootfs archives that can be freely downloaded.
+Note that ``mknod`` errors reported by ``tar`` when
 extracting these archives can be safely ignored since special files
 are typically bound (see ``-R`` option for details).
 
