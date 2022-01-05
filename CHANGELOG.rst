@@ -11,7 +11,7 @@ Unreleased
 
 Please see `Unreleased Changes`_ for more information.
 
-5.3.0 - 2021-11-07
+5.3.0 - 2021-01-04
 ------------------
 
 Added
