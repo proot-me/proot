@@ -76,39 +76,39 @@ Removed
 Fixed
 ~~~~~
 
-- Fix fchmod permissions for loader.
+- Fchmod permissions for loader.
 
-- Fix test compilation on ARM.
+- Test compilation on ARM.
 
-- Fix include in tests.
+- Includes in tests.
 
-- Fix handling of receiving seccomp after normal ptrace event.
+- Handling of receiving seccomp after normal ptrace event.
 
-- Fix waitpid on zombies.
+- Waitpid on zombies.
 
-- Fix extraction of wrapped file.
+- Extraction of wrapped file.
 
-- Fix archive suffix handling.
+- Archive suffix handling.
 
-- Fix and improve docker test skip detection.
+- Improve docker test skip detection.
 
-- Fix event handling on newer kernels.
+- Event handling on newer kernels.
 
-- Fix command line handler for the python extension.
+- Command line handler for the python extension.
 
-- Fix linking against the swig generated symbol for the python extension.
+- Linking against the swig generated symbol for the python extension.
 
-- Fix linking on python 3.8 and newer.
+- Linking on python 3.8 and newer.
 
-- Fix regression in socket name shortening.
+- Regression in socket name shortening.
 
-- Fix test caused by shell optimization.
+- Test caused by shell optimization.
 
-- Fix test failure due to increased shebang limit.
+- Test failure due to increased shebang limit.
 
-- Fix handling of fstatat on new kernels.
+- Handling of fstatat on new kernels.
 
-- Fix seccomp event handling logic causing sysexit events to be missed.
+- Seccomp event handling logic causing sysexit events to be missed.
 
 - fake_id0: Fix POKE_MEM_ID to call poke_uint32 instead of poke_uint16.
 
