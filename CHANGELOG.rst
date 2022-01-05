@@ -7,12 +7,113 @@ The format is based on `Keep a Changelog`_, and this project adheres to
 `Semantic Versioning`_.
 
 Unreleased
-------------
+----------
 
 Please see `Unreleased Changes`_ for more information.
 
+5.3.0 - 2021-01-04
+------------------
+
+Added
+~~~~~
+
+- Link to repository on website.
+
+- Support for utimensat_time64 on 32bit architectures.
+
+- Install LZOP on CI for CARE archive extraction.
+
+- Enable GitHub Actions for testing.
+
+- Message for stopping and starting of tracees.
+
+- Python 3 support in tests.
+
+- Support for statx syscall.
+
+- Test case for sysexit handler.
+
+Changed
+~~~~~~~
+
+- Update wording in manual regarding rootfs.
+
+- Change restart_original_syscall to not use chained syscall.
+
+- Access sockfd in the chained getsocketname via the original version.
+
+- Pin Debian 8 for docker image.
+
+- Make sure not to fake too old an kernel release.
+
+- Ensure the stack is aligned for AArch64 and X86 for SIMD code.
+
+- Include /bin in PATH during tests.
+
+- Kernel version detection for kernels 5.0 and newer.
+
+- Allow a higher initial heap size in test.
+
+- Allow the value of AT_HWCAP to be empty.
+
+- Do not unconditionally use PTRACE_CONT when recieving a useless SECCOMP event.
+
+- Do not treat libarchive warnings as errors.
+
+- canon: call bindings substitution on '/' component of user path.
+
+Removed
+~~~~~~~
+
+- Remove special handling of syscall avoider number on ARM.
+
+- Delete roadmap.rst file.
+
+- Remove Travis CI configuration.
+
+- Remove preprocessor directives and associated code.
+
+Fixed
+~~~~~
+
+- Fchmod permissions for loader.
+
+- Test compilation on ARM.
+
+- Includes in tests.
+
+- Handling of receiving seccomp after normal ptrace event.
+
+- Waitpid on zombies.
+
+- Extraction of wrapped file.
+
+- Archive suffix handling.
+
+- Improve docker test skip detection.
+
+- Event handling on newer kernels.
+
+- Command line handler for the python extension.
+
+- Linking against the swig generated symbol for the python extension.
+
+- Linking on python 3.8 and newer.
+
+- Regression in socket name shortening.
+
+- Test caused by shell optimization.
+
+- Test failure due to increased shebang limit.
+
+- Handling of fstatat on new kernels.
+
+- Seccomp event handling logic causing sysexit events to be missed.
+
+- fake_id0: Fix POKE_MEM_ID to call poke_uint32 instead of poke_uint16.
+
 5.2.0 - 2021-09-01
-------------------------
+------------------
 
 Added
 ~~~~~
@@ -100,6 +201,6 @@ Fixed
 
 -  Non-executable stack for binaries.
 
-.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.2.0...master
+.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.3.0...master
 .. _Keep a Changelog: https://keepachangelog.com/en/1.0.0
 .. _Semantic Versioning: https://semver.org/spec/v2.0.0.html
