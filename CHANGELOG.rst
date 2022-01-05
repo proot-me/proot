@@ -9,10 +9,22 @@ The format is based on `Keep a Changelog`_, and this project adheres to
 Unreleased
 ----------
 
+Please see `Unreleased Changes`_ for more information.
+
 5.3.0 - 2021-11-07
 ------------------
 
-Please see `Unreleased Changes`_ for more information.
+Added
+~~~~~
+
+Changed
+~~~~~~~
+
+Removed
+~~~~~~~
+
+Fixed
+~~~~~
 
 fake_id0: Fix POKE_MEM_ID to call poke_uint32 instead of poke_uint16
 
@@ -28,73 +40,73 @@ Remove preprocessor directives and associated code,
 
 Pin Debian 8 for Docker
 
-Remove Travis CI (#270)
+Remove Travis CI
 
-Add support for statx syscall (#272)
+Add support for statx syscall
 
-Make sure /bin is in PATH during test (#274)
+Make sure /bin is in PATH during test
 
-Fix handling of fstatat on new kernels (#275)
+Fix handling of fstatat on new kernels
 
-Fix test failure due to increased shebang limit (#276)
+Fix test failure due to increased shebang limit
 
-Fix test caused by shell optimization (#277)
+Fix test caused by shell optimization
 
-Fix regression in socket name shortening (#278)
+Fix regression in socket name shortening
 
-Allow a higher initial heap size in test (#279)
+Allow a higher initial heap size in test
 
-Python 3 support in test (#280)
+Python 3 support in test
 
-Make sure the stack is aligned (#282)
+Make sure the stack is aligned
 
-Make sure not to fake too old an kernel release (#281)
+Make sure not to fake too old an kernel release
 
-Access sockfd in the chained getsocketname via the original version (#…
+Access sockfd in the chained getsocketname via the original version
 
-canon: call bindings substitution on '/' component of user path (#100)
+canon: call bindings substitution on '/' component of user path
 
-A few fixes for the python extension (#285)
+A few fixes for the python extension
 
 Delete roadmap.rst
 
-Fix event handling on newer kernels (#288)
+Fix event handling on newer kernels
 
-Fix and improve docker test skip detection (#289)
+Fix and improve docker test skip detection
 
-Enable github action for testing (#287)
+Enable github action for testing
 
-Do not treat libarchive warnings as errors (#293)
+Do not treat libarchive warnings as errors
 
-Install LZOP on CI for CARE archive extraction (#296)
+Install LZOP on CI for CARE archive extraction
 
-Fix archive suffix handling (#294)
+Fix archive suffix handling
 
-Fix extraction of wrapped file (#295)
+Fix extraction of wrapped file
 
-Fix waitpid on zombies (#291)
+Fix waitpid on zombies
 
-Change restart_original_syscall to not use chained syscall (#297)
+Change restart_original_syscall to not use chained syscall
 
-Fix handling of receiving seccomp after normal ptrace event (#298)
+Fix handling of receiving seccomp after normal ptrace event
 
-Fix include in tests (#299)
+Fix include in tests
 
-Allow the value of AT_HWCAP to be empty (#305)
+Allow the value of AT_HWCAP to be empty
 
-Remove special handling of syscall avoider number on ARM (#304)
+Remove special handling of syscall avoider number on ARM
 
-Support utimensat_time64 on 32bit architectures (#303)
+Support utimensat_time64 on 32bit architectures
 
-Fix test compilation on ARM (#302)
+Fix test compilation on ARM
 
 Do not unconditionally use PTRACE_CONT when recieving a useless SECCO…
 
-Some printing tweaks (#300)
+Some printing tweaks
 
-Fix fchmod permissions for loader (#268)
+Fix fchmod permissions for loader
 
-Add link to repository on website (#273)
+Add link to repository on website
 
 Update wording in manual regarding rootfs
 
