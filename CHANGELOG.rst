@@ -17,98 +17,100 @@ Please see `Unreleased Changes`_ for more information.
 Added
 ~~~~~
 
+- Link to repository on website.
+
+- Support for utimensat_time64 on 32bit architectures.
+
+- Install LZOP on CI for CARE archive extraction.
+
+- Enable GitHub Actions for testing.
+
+- Message for stopping and starting of tracees.
+
+- Python 3 support in tests.
+
+- Support for statx syscall.
+
+- Test case for sysexit handler.
+
 Changed
 ~~~~~~~
+
+- Update wording in manual regarding rootfs.
+
+- Change restart_original_syscall to not use chained syscall.
+
+- Access sockfd in the chained getsocketname via the original version.
+
+- Pin Debian 8 for docker image.
+
+- Make sure not to fake too old an kernel release.
+
+- Ensure the stack is aligned for AArch64 and X86 for SIMD code.
+
+- Include /bin in PATH during tests.
+
+- Kernel version detection for kernels 5.0 and newer.
+
+- Allow a higher initial heap size in test.
+
+- Allow the value of AT_HWCAP to be empty.
+
+- Do not unconditionally use PTRACE_CONT when recieving a useless SECCOMP event.
+
+- Do not treat libarchive warnings as errors.
+
+- canon: call bindings substitution on '/' component of user path.
 
 Removed
 ~~~~~~~
 
+- Remove special handling of syscall avoider number on ARM.
+
+- Delete roadmap.rst file.
+
+- Remove Travis CI configuration.
+
+- Remove preprocessor directives and associated code.
+
 Fixed
 ~~~~~
 
-fake_id0: Fix POKE_MEM_ID to call poke_uint32 instead of poke_uint16
+- Fix fchmod permissions for loader.
 
-Fix indentation
+- Fix test compilation on ARM.
 
-Add a testcase.
+- Fix include in tests.
 
-Fix an issue in seccomp event handling logic, that could cause
+- Fix handling of receiving seccomp after normal ptrace event.
 
-Make kernel version detection work for kernels 5.0+ and fix indentation.
+- Fix waitpid on zombies.
 
-Remove preprocessor directives and associated code,
+- Fix extraction of wrapped file.
 
-Pin Debian 8 for Docker
+- Fix archive suffix handling.
 
-Remove Travis CI
+- Fix and improve docker test skip detection.
 
-Add support for statx syscall
+- Fix event handling on newer kernels.
 
-Make sure /bin is in PATH during test
+- Fix command line handler for the python extension.
 
-Fix handling of fstatat on new kernels
+- Fix linking against the swig generated symbol for the python extension.
 
-Fix test failure due to increased shebang limit
+- Fix linking on python 3.8 and newer.
 
-Fix test caused by shell optimization
+- Fix regression in socket name shortening.
 
-Fix regression in socket name shortening
+- Fix test caused by shell optimization.
 
-Allow a higher initial heap size in test
+- Fix test failure due to increased shebang limit.
 
-Python 3 support in test
+- Fix handling of fstatat on new kernels.
 
-Make sure the stack is aligned
+- Fix seccomp event handling logic causing sysexit events to be missed.
 
-Make sure not to fake too old an kernel release
-
-Access sockfd in the chained getsocketname via the original version
-
-canon: call bindings substitution on '/' component of user path
-
-A few fixes for the python extension
-
-Delete roadmap.rst
-
-Fix event handling on newer kernels
-
-Fix and improve docker test skip detection
-
-Enable github action for testing
-
-Do not treat libarchive warnings as errors
-
-Install LZOP on CI for CARE archive extraction
-
-Fix archive suffix handling
-
-Fix extraction of wrapped file
-
-Fix waitpid on zombies
-
-Change restart_original_syscall to not use chained syscall
-
-Fix handling of receiving seccomp after normal ptrace event
-
-Fix include in tests
-
-Allow the value of AT_HWCAP to be empty
-
-Remove special handling of syscall avoider number on ARM
-
-Support utimensat_time64 on 32bit architectures
-
-Fix test compilation on ARM
-
-Do not unconditionally use PTRACE_CONT when recieving a useless SECCO…
-
-Some printing tweaks
-
-Fix fchmod permissions for loader
-
-Add link to repository on website
-
-Update wording in manual regarding rootfs
+- fake_id0: Fix POKE_MEM_ID to call poke_uint32 instead of poke_uint16.
 
 5.2.0 - 2021-09-01
 ------------------
