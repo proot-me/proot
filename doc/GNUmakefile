@@ -37,10 +37,9 @@ dist: $(OUTPUTS)
 %.h: %/stylesheets/cli.xsl %/manual-quoted.xml
 	xsltproc --output $@ $^
 
-%/rpm-spec:  %/stylesheets/rpm-spec.xsl %/manual.xml # %/changelog.rst
+%/rpm-spec:  %/stylesheets/rpm-spec.xsl %/manual.xml
 	xsltproc --output $@ $^
 	echo "* $(shell date +'%a %b %d %Y') PRoot Team <proot_me@googlegroups.com>" >> $@
-	cat $*/changelog.rst >> $@
 
 %/index.html: stylesheets/website.xsl %/stylesheets/website.xsl %/manual.xml
 	xsltproc --output $@ $*/stylesheets/website.xsl $*/manual.xml
