@@ -11,6 +11,26 @@ Unreleased
 
 Please see `Unreleased Changes`_ for more information.
 
+5.3.1 - 2022-04-24
+------------------
+
+Changed
+~~~~~~~
+
+- Error out when trying to set PTRACE_O_TRACESECCOMP under ptrace emulation.
+- Set the restart_how field in a newly created child tracee.
+
+Removed
+~~~~~~~
+
+- Unnecessary dependency of PRoot on libarchive.
+- Changelog target from doc makefile.
+
+Fixed
+~~~~~
+
+- Incorrect year for 5.3.0 release in changelog and manual.
+
 5.3.0 - 2022-01-04
 ------------------
 
@@ -201,6 +221,6 @@ Fixed
 
 -  Non-executable stack for binaries.
 
-.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.3.0...master
+.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.3.1...master
 .. _Keep a Changelog: https://keepachangelog.com/en/1.0.0
 .. _Semantic Versioning: https://semver.org/spec/v2.0.0.html
