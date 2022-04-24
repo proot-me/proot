@@ -6,7 +6,7 @@
 ``chroot``, ``mount --bind``, and ``binfmt_misc`` without privilege/setup
 -------------------------------------------------------------------------
 
-:Date: 2021-01-04
+:Date: 2022-01-04
 :Version: 5.3.0
 :Manual section: 1
 
