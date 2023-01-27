@@ -6,6 +6,13 @@ PRoot
 Build status
 ============
 
+**Please take the PRoot Usage Survey for 2023!**
+
+.. image:: https://img.shields.io/badge/survey-2023-green?style=flat-square
+   :target: https://www.surveymonkey.com/r/7GVXS7W
+   
+--
+
 .. image:: https://img.shields.io/gitlab/pipeline/proot/proot.svg?label=gitlab-ci&style=flat-square
    :target: https://gitlab.com/proot/proot/pipelines
 
