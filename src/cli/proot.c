@@ -143,6 +143,12 @@ static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
+static int handle_option_mixed_mode(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+{
+	tracee->mixed_mode = value;
+	return 0;
+}
+
 static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
 	tracee->fs->cwd = talloc_strdup(tracee->fs, value);

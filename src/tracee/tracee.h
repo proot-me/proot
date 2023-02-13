@@ -204,6 +204,8 @@ typedef struct tracee {
 	 * execve sysexit.  */
 	struct load_info *load_info;
 
+	/* Disable mixed-execution (native host) check */
+	bool mixed_mode;
 
 	/**********************************************************************
 	 * Private but inherited resources                                    *

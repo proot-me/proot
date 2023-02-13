@@ -51,6 +51,7 @@ static const char *recommended_su_bindings[] = {
 static int handle_option_r(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_b(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_q(Tracee *tracee, const Cli *cli, const char *value);
+static int handle_option_mixed_mode(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_w(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_v(Tracee *tracee, const Cli *cli, const char *value);
 static int handle_option_V(Tracee *tracee, const Cli *cli, const char *value);
@@ -137,6 +138,15 @@ Copyright (C) 2023 PRoot Developers, licensed under GPL v2 or later.",
 \temulated by QEMU user-mode.  The native execution of host programs\n\
 \tis still effective and the whole host rootfs is bound to\n\
 \t/host-rootfs in the guest environment.",
+	},
+	{ .class = "Regular options",
+	  .arguments = {
+		{ .name = "--mixed-mode", .separator = ' ', .value = "value" },
+		{ .name = NULL, .separator = '\0', .value = NULL } },
+	  .handler = handle_option_mixed_mode,
+	  .description = "Disable the mixed-execution feature.",
+	  .detail = "\tDo not treat ELF executables specially when they appear to be\n\
+\tnative executables of the host system.",
 	},
 	{ .class = "Regular options",
 	  .arguments = {
