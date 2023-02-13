@@ -382,7 +382,7 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 
 	/* No need to adjust argv[] if it's a host binary (a.k.a
 	 * mixed-mode).  */
-	if (!is_host_elf(tracee, host_path)) {
+	if (tracee->mixed_mode || !is_host_elf(tracee, host_path)) {
 		ArrayOfXPointers *argv;
 		size_t nb_qemu_args;
 		size_t i;
