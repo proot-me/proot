@@ -143,6 +143,12 @@ static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
+static int handle_option_no_host_elf(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+{
+	tracee->no_host_elf = true;
+	return 0;
+}
+
 static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED, const char *value)
 {
 	tracee->fs->cwd = talloc_strdup(tracee->fs, value);
