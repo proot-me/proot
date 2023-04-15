@@ -47,6 +47,7 @@ jobs:
 
       - name: Log
         if: always()
+        continue-on-error: true
         run: ([ -f test.log ] && cat test.log) || true
 
       - name: Run sonar-scanner
