@@ -1,0 +1,58 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: "${{ matrix.SECCOMP == '1' && 'seccomp' || 'no-seccomp' }}"
+    runs-on: ubuntu-latest
+    env:
+      BUILD_WRAPPER_OUT_DIR: tmp
+    strategy:
+      fail-fast: false
+      matrix:
+        SECCOMP: [ 0, 1 ]
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install sonar-scanner and build-wrapper
+        uses: sonarsource/sonarcloud-github-c-cpp@v1
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq clang-tools-12 curl gdb lcov libarchive-dev libtalloc-dev sloccount strace swig uthash-dev python3-dev lzop
+
+      - name: Gather analytics
+        run: sloccount --details .
+
+      - name: Build elf loader, proot, and care
+        run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -C src loader.elf loader-m32.elf build.h
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env CFLAGS=--coverage LDFLAGS=--coverage make -C src proot care V=1
+
+      - name: Execute test suite
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env ${{ matrix.SECCOMP == '0' && 'PROOT_NO_SECCOMP=1' || '' }} PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C test -j $(nproc) QUIET_LOG=$PWD/test.log
+
+      - name: Output test log
+        if: always()
+        continue-on-error: true
+        run: ([ -f test.log ] && cat test.log) || true
+
+      - name: Run sonar-scanner
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+        run: |
+          sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
