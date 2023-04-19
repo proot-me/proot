@@ -198,7 +198,12 @@ static int remove_temp_directory2(const char *path)
 	int status;
 	char *cwd;
 
+#ifdef __ANDROID__
+	cwd = malloc(PATH_MAX);
+	getcwd(cwd, PATH_MAX);
+#else
 	cwd = get_current_dir_name();
+#endif
 
 	status = chmod(path, 0700);
 	if (status < 0) {
