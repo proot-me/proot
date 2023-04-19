@@ -671,7 +671,7 @@ Colophon
 ========
 
 Visit https://proot-me.github.io for help, bug reports, suggestions, patches, ...
-Copyright (C) 2022 PRoot Developers, licensed under GPL v2 or later.
+Copyright (C) 2023 PRoot Developers, licensed under GPL v2 or later.
 
 ::
 
