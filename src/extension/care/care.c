@@ -29,11 +29,11 @@
 #include <time.h>         /* time(2), localtime(3), */
 #include <stddef.h>       /* offsetof(3), */
 #include <talloc.h>       /* talloc*, */
-#include <uthash.h>       /* ut*, UT*, HASH*, */
 #include <sys/queue.h>    /* STAILQ_*, */
 #include <inttypes.h>     /* PRI*, */
 #include <linux/auxvec.h> /* AT_*, */
 
+#include "uthash.h"       /* ut*, UT*, HASH*, */
 #include "extension/care/care.h"
 #include "extension/care/final.h"
 #include "extension/care/archive.h"
