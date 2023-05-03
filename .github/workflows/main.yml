@@ -12,7 +12,7 @@ jobs:
     name: "${{ matrix.SECCOMP == '1' && 'seccomp' || 'no-seccomp' }}"
     runs-on: ubuntu-latest
     env:
-      BUILD_WRAPPER_OUT_DIR: tmp
+      BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
     strategy:
       fail-fast: false
       matrix:
@@ -36,8 +36,7 @@ jobs:
 
       - name: Build elf loader, proot, and care
         run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -C src loader.elf loader-m32.elf build.h
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env CFLAGS=--coverage LDFLAGS=--coverage make -C src proot care V=1
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -C src clean loader.elf loader-m32.elf build.h proot care V=1
 
       - name: Execute test suite
         continue-on-error: true
