@@ -11,6 +11,29 @@ Unreleased
 
 Please see `Unreleased Changes`_ for more information.
 
+5.4.0 - 2023-05-13
+------------------
+
+Added
+~~~~~
+
+- faccessat2 syscall
+- Enable SonarCloud for GitHub Actions
+- Include uthash v2.3.0 as submodule
+- Disable mixed execution with new --mixed-mode option
+
+Changed
+~~~~~~~
+
+- Rename test-0cf405b0.c to fix_memory_corruption_execve_proc_self_exe.c
+
+Fixed
+~~~~~
+
+- Android compatibility with cwd
+- Running test-0cf405b0 for newer versions of glibc
+- Running test-25069c12 and test-25069c13 on newer kernels
+
 5.3.1 - 2022-04-24
 ------------------
 
@@ -221,6 +244,6 @@ Fixed
 
 -  Non-executable stack for binaries.
 
-.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.3.1...master
+.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.4.0...master
 .. _Keep a Changelog: https://keepachangelog.com/en/1.0.0
 .. _Semantic Versioning: https://semver.org/spec/v2.0.0.html
