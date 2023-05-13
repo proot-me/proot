@@ -41,8 +41,8 @@ Static Binaries
 The following commands will generate statically-linked binaries
 which can be optionally distributed for each release::
 
-    make -C src loader.elf loader-m32.elf build.h
-    LDFLAGS="${LDFLAGS} -static" make -C src proot
+    make -C src clean loader.elf loader-m32.elf build.h
+    LDFLAGS="${LDFLAGS} -static" make -C src proot care
 
 Documentation Update
 --------------------
