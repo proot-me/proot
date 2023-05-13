@@ -6,7 +6,7 @@
 #include "cli/cli.h"
 
 #ifndef VERSION
-#define VERSION "2.2"
+#define VERSION "2.3.0"
 #endif
 
 #define CARE_MAX_SIZE 1024
