@@ -57,4 +57,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           #sonar-scanner -X --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
+          
+          #ava.io.UncheckedIOException: java.nio.file.AccessDenie
+          ls -la /home/runner/work/proot/proot/test/rootfs/tmp/
+          #8ed82090abe700785a60e5a8c6fc326
+
           sonar-scanner -X
