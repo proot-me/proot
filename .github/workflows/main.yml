@@ -11,8 +11,6 @@ jobs:
   build:
     name: "${{ matrix.SECCOMP == '1' && 'seccomp' || 'no-seccomp' }}"
     runs-on: ubuntu-latest
-    #env:
-    #  BUILD_WRAPPER_OUT_DIR: build_wrapper_output_directory
     strategy:
       fail-fast: false
       matrix:
@@ -36,14 +34,12 @@ jobs:
 
       - name: Build elf loader, proot, and care
         run: |
-          #build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -C src clean loader.elf loader-m32.elf build.h proot care V=1
           bear -- make -C src clean loader.elf loader-m32.elf build.h proot care V=1
 
       - name: Execute test suite
         continue-on-error: true
         timeout-minutes: 10
         run: |
-          #build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env ${{ matrix.SECCOMP == '0' && 'PROOT_NO_SECCOMP=1' || '' }} PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C test -j $(nproc) QUIET_LOG=$PWD/test.log
           env ${{ matrix.SECCOMP == '0' && 'PROOT_NO_SECCOMP=1' || '' }} PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src bear -- make -C test -j $(nproc) QUIET_LOG=$PWD/test.log
 
       - name: Output test log
@@ -56,9 +52,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          #sonar-scanner -X --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
-          whoami
           find /home/runner/work/proot/proot/test/ -type d -exec chmod 755 {} \;
           find /home/runner/work/proot/proot/test/ -type f -exec chmod 644 {} \;
-
           sonar-scanner
