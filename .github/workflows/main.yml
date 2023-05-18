@@ -61,4 +61,4 @@ jobs:
           find /home/runner/work/proot/proot/test/ -type d -exec chmod 755 {} \;
           find /home/runner/work/proot/proot/test/ -type f -exec chmod 644 {} \;
 
-          sonar-scanner -X
+          sonar-scanner
