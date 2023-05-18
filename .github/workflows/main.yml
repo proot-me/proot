@@ -36,7 +36,7 @@ jobs:
 
       - name: Build elf loader, proot, and care
         run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env CFLAGS=--coverage LDFLAGS=--coverage make -C src clean loader.elf loader-m32.elf build.h proot care
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env CFLAGS="-fprofile-arcs -ftest-coverage" LDFLAGS="-lgcov --coverage" make -C src clean loader.elf loader-m32.elf build.h proot care
 
       - name: Execute test suite
         continue-on-error: true
