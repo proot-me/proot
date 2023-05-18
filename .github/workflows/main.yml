@@ -58,7 +58,7 @@ jobs:
         run: |
           #sonar-scanner -X --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
           whoami
-          ls -la /home/runner/work/proot/proot/test/rootfs/tmp/
-          #8ed82090abe700785a60e5a8c6fc326
+          find /home/runner/work/proot/proot/test/ -type d -exec chmod 755 {} \;
+          find /home/runner/work/proot/proot/test/ -type f -exec chmod 644 {} \;
 
           sonar-scanner -X
