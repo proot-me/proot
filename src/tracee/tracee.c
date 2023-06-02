@@ -403,6 +403,10 @@ int new_child(Tracee *parent, word_t clone_flags)
 	status = fetch_regs(parent);
 	if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone)
 		clone_flags = peek_reg(parent, CURRENT, SYSARG_1);
+        else if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone3)
+                // Look at the first word of the clone_args structure, which
+                // contains the usual clone flags.
+                clone_flags = peek_word(parent, peek_reg(parent, CURRENT, SYSARG_1));
 
 	/* Get the pid of the parent's new child.  */
 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);

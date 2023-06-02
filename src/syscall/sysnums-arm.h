@@ -341,4 +341,5 @@ static const Sysnum sysnums_arm[] = {
 	[ 382 ] = PR_renameat2,
 	[ 397 ] = PR_statx,
 	[ 412 ] = PR_utimensat_time64,
+        [ 435 ] = PR_clone3,
 };
