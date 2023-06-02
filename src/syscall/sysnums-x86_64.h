@@ -319,5 +319,6 @@ static const Sysnum sysnums_x86_64[] = {
 	[ 315 ] = PR_sched_getattr,
 	[ 316 ] = PR_renameat2,
 	[ 332 ] = PR_statx,
+        [ 435 ] = PR_clone3,
 	[ 439 ] = PR_faccessat2,
 };

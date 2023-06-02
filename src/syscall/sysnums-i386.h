@@ -353,4 +353,5 @@ static const Sysnum sysnums_i386[] = {
 	[ 353 ] = PR_renameat2,
 	[ 383 ] = PR_statx,
 	[ 412 ] = PR_utimensat_time64,
+        [ 435 ] = PR_clone3,
 };

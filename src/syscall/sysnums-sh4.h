@@ -344,4 +344,5 @@ static const Sysnum sysnums_sh4[] = {
 	[ 369 ] = PR_sched_setattr,
 	[ 370 ] = PR_sched_getattr,
 	[ 371 ] = PR_renameat2,
+        [ 435 ] = PR_clone3,
 };
