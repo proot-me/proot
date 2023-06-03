@@ -532,7 +532,7 @@ are typically bound (see ``-R`` option for details).
 
 * http://distfiles.gentoo.org/releases
 
-* http://cdimage.ubuntu.com/ubuntu-core
+* http://cdimage.ubuntu.com/ubuntu-base
 
 * https://archlinuxarm.org/about/downloads
 
