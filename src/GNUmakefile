@@ -5,15 +5,17 @@
 VPATH := $(dir $(lastword $(MAKEFILE_LIST)))
 SRC    = $(dir $(firstword $(MAKEFILE_LIST)))
 
-GIT      = git
-RM       = rm
-INSTALL  = install
-CC       = $(CROSS_COMPILE)gcc
-LD       = $(CC)
-STRIP    = $(CROSS_COMPILE)strip
-OBJCOPY  = $(CROSS_COMPILE)objcopy
-OBJDUMP  = $(CROSS_COMPILE)objdump
-PYTHON   = python3
+GIT        = git
+RM         = rm
+INSTALL    = install
+CC         = $(CROSS_COMPILE)gcc
+LD         = $(CC)
+LD_CMD     = $(CROSS_COMPILE)ld
+STRIP      = $(CROSS_COMPILE)strip
+OBJCOPY    = $(CROSS_COMPILE)objcopy
+OBJDUMP    = $(CROSS_COMPILE)objdump
+PKG_CONFIG = $(CROSS_COMPILE)pkg-config
+PYTHON     = python3
 
 HAS_SWIG := $(shell swig -version 2>/dev/null)
 PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
@@ -22,13 +24,12 @@ HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/n
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
 CFLAGS   += -g -Wall -Wextra -O2
-
 # pkg-config silently returns an empty string for --cflags/--libs when it
 # can't find talloc.pc, which used to surface much later and much more
 # confusingly as "undefined reference to talloc_*" at link time (see
 # https://github.com/proot-me/proot/issues/233). Fail here instead, with
 # a message that points at the actual problem.
-ifeq ($(shell pkg-config --exists talloc && echo yes),)
+ifeq ($(shell ${PKG_CONFIG} --exists talloc && echo yes),)
 $(error talloc development files not found by pkg-config. Install the \
 talloc headers package for your distribution (e.g. libtalloc-dev on \
 Debian/Ubuntu, libtalloc-devel on Fedora/RHEL/CentOS) and make sure \
@@ -36,16 +37,16 @@ pkg-config can find talloc.pc (check the PKG_CONFIG_PATH environment \
 variable if it's installed in a non-standard location))
 endif
 
-CFLAGS   += $(shell pkg-config --cflags talloc)
+CFLAGS   += $(shell ${PKG_CONFIG} --cflags talloc)
 LDFLAGS  += -Wl,-z,noexecstack
-LDFLAGS  += $(shell pkg-config --libs talloc)
+LDFLAGS  += $(shell ${PKG_CONFIG} --libs talloc)
 
 ifneq ($(findstring -static,$(LDFLAGS)),)
-CARE_LDFLAGS  = -Wl,--start-group $(shell pkg-config --libs --static libarchive) \
-                $(shell pkg-config --exists libxml-2.0 && pkg-config --libs --static libxml-2.0) \
+CARE_LDFLAGS  = -Wl,--start-group $(shell ${PKG_CONFIG} --libs --static libarchive) \
+                $(shell ${PKG_CONFIG} --exists libxml-2.0 && ${PKG_CONFIG} --libs --static libxml-2.0) \
                 -lm -lstdc++ -Wl,--end-group
 else
-CARE_LDFLAGS  = $(shell pkg-config --libs libarchive)
+CARE_LDFLAGS  = $(shell ${PKG_CONFIG} --libs libarchive)
 endif
 
 OBJECTS += \
@@ -179,7 +180,7 @@ build.h: $(CHECK_RESULTS)
 	$(Q)cat $^                      >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
-BUILD_ID_NONE := $(shell if ld --build-id=none --version >/dev/null 2>&1; then echo ',--build-id=none'; fi)
+BUILD_ID_NONE := $(shell if ${LD_CMD} --build-id=none --version >/dev/null 2>&1; then echo ',--build-id=none'; fi)
 
 ######################################################################
 # Build rules
