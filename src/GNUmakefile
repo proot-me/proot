@@ -5,15 +5,17 @@
 VPATH := $(dir $(lastword $(MAKEFILE_LIST)))
 SRC    = $(dir $(firstword $(MAKEFILE_LIST)))
 
-GIT      = git
-RM       = rm
-INSTALL  = install
-CC       = $(CROSS_COMPILE)gcc
-LD       = $(CC)
-STRIP    = $(CROSS_COMPILE)strip
-OBJCOPY  = $(CROSS_COMPILE)objcopy
-OBJDUMP  = $(CROSS_COMPILE)objdump
-PYTHON   = python3
+GIT        = git
+RM         = rm
+INSTALL    = install
+CC         = $(CROSS_COMPILE)gcc
+LD         = $(CC)
+LD_CMD     = $(CROSS_COMPILE)ld
+STRIP      = $(CROSS_COMPILE)strip
+OBJCOPY    = $(CROSS_COMPILE)objcopy
+OBJDUMP    = $(CROSS_COMPILE)objdump
+PKG_CONFIG = $(CROSS_COMPILE)pkg-config
+PYTHON     = python3
 
 HAS_SWIG := $(shell swig -version 2>/dev/null)
 PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
@@ -22,11 +24,11 @@ HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/n
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
 CFLAGS   += -g -Wall -Wextra -O2
-CFLAGS   += $(shell pkg-config --cflags talloc)
+CFLAGS   += $(shell ${PKG_CONFIG} --cflags talloc)
 LDFLAGS  += -Wl,-z,noexecstack
-LDFLAGS  += $(shell pkg-config --libs talloc)
+LDFLAGS  += $(shell ${PKG_CONFIG} --libs talloc)
 
-CARE_LDFLAGS  = $(shell pkg-config --libs libarchive)
+CARE_LDFLAGS  = $(shell ${PKG_CONFIG} --libs libarchive)
 
 OBJECTS += \
 	cli/cli.o		\
@@ -159,7 +161,7 @@ build.h: $(CHECK_RESULTS)
 	$(Q)cat $^                      >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
-BUILD_ID_NONE := $(shell if ld --build-id=none --version >/dev/null 2>&1; then echo ',--build-id=none'; fi)
+BUILD_ID_NONE := $(shell if ${LD_CMD} --build-id=none --version >/dev/null 2>&1; then echo ',--build-id=none'; fi)
 
 ######################################################################
 # Build rules
