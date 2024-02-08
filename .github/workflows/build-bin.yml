@@ -1,49 +1,65 @@
-name: build-bin
+name: Build and Release
 
 on:
   push:
-    branches:
-      - master
-  pull_request:
-    types: [opened, synchronize, reopened]
+    tags:
+      - '*'
 
 jobs:
   build:
-    name: "${{ matrix.SECCOMP == '1' && 'seccomp' || 'no-seccomp' }}"
     runs-on: ubuntu-20.04
-    env:
-      BUILD_WRAPPER_OUT_DIR: tmp
-    strategy:
-      fail-fast: false
-      matrix:
-        SECCOMP: [ 0, 1 ]
-
     steps:
-      - uses: actions/checkout@v3
+    - name: Check out the code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtalloc-dev
+        
+    - name: Build the project
+      run: |
+        make -C src loader.elf loader-m32.elf build.h
+        make -C src proot
+        
+    - name: Create a package
+      run: tar -zcvf proot.tar.gz src/proot
+
+    - name: Run the test suite
+      run: make -C test
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: proot-executable
+        path: proot.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v2
         with:
-          fetch-depth: 0
-
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -qq clang-tools-12 curl gdb lcov libarchive-dev libtalloc-dev sloccount strace swig uthash-dev python3-dev lzop
-
-      - name: Gather analytics
-        run: sloccount --details .
-
-      - name: Build elf loader, proot, and care
-        run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -C src loader.elf loader-m32.elf build.h
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env CFLAGS=--coverage LDFLAGS=--coverage make -C src proot care V=1
-
-      - name: Execute test suite
-        continue-on-error: true
-        timeout-minutes: 10
-        run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env ${{ matrix.SECCOMP == '0' && 'PROOT_NO_SECCOMP=1' || '' }} PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C test -j $(nproc) QUIET_LOG=$PWD/test.log
-
-      - name: Output test log
-        if: always()
-        continue-on-error: true
-        run: ([ -f test.log ] && cat test.log) || true
-
+          name: proot-executable
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./proot-executable/proot.tar.gz
+          asset_name: proot.tar.gz
+          asset_content_type: application/octet-stream
