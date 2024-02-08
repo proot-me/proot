@@ -30,16 +30,15 @@ jobs:
 
     - name: Create a package
       run: |
-        mkdir -v dist
-        cd src && tar -zcvf ../dist/proot.tar.gz proot
+        mv src/proot ./proot
+        tar -zcvf ./proot.tar.gz proot
         ls -lhrt
-        ls -lh dist
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: dist/proot.tar.gz
+        path: proot.tar.gz
 
   release:
     needs: build
