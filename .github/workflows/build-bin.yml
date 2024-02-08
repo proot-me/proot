@@ -1,9 +1,9 @@
-name: Build and Release
+name: Nightly build
 
 on:
   push:
     tags:
-      - '*'
+      - 'v*'
 
 jobs:
   build:
@@ -24,20 +24,21 @@ jobs:
         make -C src loader.elf loader-m32.elf build.h
         make -C src proot
         
-    - name: Create a package
-      run: |
-        mkdir -v dist
-        cd src && tar -zcvf ../dist/proot.tar.gz proot
-
     - name: Run the test suite
       run: make -C test
       if: false
+
+    - name: Create a package
+      run: |
+        mv src/proot ./proot
+        tar -zcvf ./proot.tar.gz proot
+        ls -lhrt
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: dist/proot.tar.gz
+        path: proot.tar.gz
 
   release:
     needs: build
@@ -52,9 +53,10 @@ jobs:
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_DATE: ${{ github.event.push.timestamp }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
       - name: Upload Release Asset
@@ -63,6 +65,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./dist/proot.tar.gz
+          asset_path: ./proot.tar.gz
           asset_name: proot.tar.gz
           asset_content_type: application/octet-stream
