@@ -53,11 +53,12 @@ jobs:
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_DATE: ${{ github.event.push.timestamp }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: nightly-${{ github.run_number }}
+          release_name: Nightly Build ${{ env.CURRENT_DATE }}
           draft: false
-          prerelease: false
+          prerelease: true
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
         env:
