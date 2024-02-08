@@ -1,0 +1,70 @@
+name: Nightly build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Check out the code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libtalloc-dev
+        
+    - name: Build the project
+      run: |
+        make -C src loader.elf loader-m32.elf build.h
+        make -C src proot
+        
+    - name: Create a package
+      run: |
+        mkdir -v dist
+        cd src && tar -zcvf ../dist/proot.tar.gz proot
+        ls -lhrt
+        ls -lh dist
+
+    - name: Run the test suite
+      run: make -C test
+      if: false
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: dist
+        path: dist/proot.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Download Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: dist
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./dist/proot.tar.gz
+          asset_name: proot.tar.gz
+          asset_content_type: application/octet-stream
