@@ -24,16 +24,16 @@ jobs:
         make -C src loader.elf loader-m32.elf build.h
         make -C src proot
         
+    - name: Run the test suite
+      run: make -C test
+      if: false
+
     - name: Create a package
       run: |
         mkdir -v dist
         cd src && tar -zcvf ../dist/proot.tar.gz proot
         ls -lhrt
         ls -lh dist
-
-    - name: Run the test suite
-      run: make -C test
-      if: false
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
