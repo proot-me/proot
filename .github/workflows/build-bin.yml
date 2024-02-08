@@ -36,7 +36,7 @@ jobs:
     - name: Upload Artifact
       uses: actions/upload-artifact@v2
       with:
-        name: proot-executable
+        name: dist
         path: proot.tar.gz
 
   release:
@@ -46,7 +46,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v2
         with:
-          name: proot-executable
+          name: dist
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
