@@ -3,7 +3,7 @@ name: Nightly build
 on:
   push:
     branches:
-      - master
+      - build-01
 
 jobs:
   build:
