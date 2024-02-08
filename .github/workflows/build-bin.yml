@@ -25,7 +25,9 @@ jobs:
         make -C src proot
         
     - name: Create a package
-      run: cd src && tar -zcvf ../proot.tar.gz proot
+      run: |
+        mkdir -v dist
+        cd src && tar -zcvf ../dist/proot.tar.gz proot
 
     - name: Run the test suite
       run: make -C test
@@ -61,6 +63,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./proot-executable/proot.tar.gz
+          asset_path: ./dist/proot.tar.gz
           asset_name: proot.tar.gz
           asset_content_type: application/octet-stream
