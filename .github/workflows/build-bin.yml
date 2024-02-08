@@ -23,9 +23,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Install sonar-scanner and build-wrapper
-        uses: sonarsource/sonarcloud-github-c-cpp@v1
-
       - name: Install build dependencies
         run: |
           sudo apt-get update -qq
@@ -50,9 +47,3 @@ jobs:
         continue-on-error: true
         run: ([ -f test.log ] && cat test.log) || true
 
-      - name: Run sonar-scanner
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
-        run: |
-          sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
