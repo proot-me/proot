@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: "${{ matrix.SECCOMP == '1' && 'seccomp' || 'no-seccomp' }}"
-    runs-on: ubuntu-20.04.6
+    runs-on: ubuntu-20.04
     env:
       BUILD_WRAPPER_OUT_DIR: tmp
     strategy:
