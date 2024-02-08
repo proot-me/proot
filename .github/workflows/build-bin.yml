@@ -27,7 +27,7 @@ jobs:
         make -C src proot
         
     - name: Create a package
-      run: tar -zcvf proot.tar.gz src/proot
+      run: cd src && tar -zcvf ../proot.tar.gz proot
 
     - name: Run the test suite
       run: make -C test
