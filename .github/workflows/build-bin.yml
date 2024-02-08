@@ -37,7 +37,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: dist
-        path: proot.tar.gz
+        path: dist/proot.tar.gz
 
   release:
     needs: build
