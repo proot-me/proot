@@ -35,6 +35,7 @@
 
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
+#include "tracee/mem.h"
 #include "path/binding.h"
 #include "syscall/sysnum.h"
 #include "tracee/event.h"
