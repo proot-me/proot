@@ -1,0 +1,25 @@
+# CI/CD and project config
+.github/
+.gitlab-ci.yml
+.dockerignore
+sonar-project.properties
+.mailmap
+AUTHORS
+HACKING.rst
+ISSUE_TEMPLATE
+
+# Documentation
+doc/
+
+# Test files
+test/
+
+# Source build artifacts (the src/proot binary IS needed)
+src/**/*.o
+src/loader/loader
+src/loader/loader-m32
+src/cli/care
+src/cli/care.o
+
+# Vagrant config
+vagrant/

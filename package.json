@@ -1,0 +1,35 @@
+{
+  "name": "@soymaycol/proot",
+  "version": "1.0.0",
+  "description": "A Node.js wrapper for proot, allowing chroot, mount --bind, and binfmt_misc without privilege/setup.",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "example.js",
+    "README.rst",
+    "CHANGELOG.rst",
+    "COPYING",
+    "src/"
+  ],
+  "scripts": {
+    "install": "make -C src proot",
+    "test": "node example.js"
+  },
+  "author": {
+    "name": "SoyMaycol",
+    "url": "https://github.com/SoySapo6"
+  },
+  "license": "GPL-2.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SoySapo6/proot.git"
+  },
+  "keywords": [
+    "proot",
+    "chroot",
+    "mount",
+    "binfmt_misc",
+    "sandbox",
+    "jail"
+  ]
+}
