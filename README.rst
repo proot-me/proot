@@ -28,6 +28,18 @@ Build status
 .. image:: https://img.shields.io/badge/DOI-10.5281%2Fzenodo.5371409-blue?style=flat-square
    :target: https://doi.org/10.5281/zenodo.5371409
 
+Dependencies
+============
+
+- `libarchive <https://libarchive.org>`_
+- `libtalloc <https://talloc.samba.org>`_
+- `uthash <https://troydhanson.github.io/uthash>`_ (only required for building CARE)
+
+To install all dependencies automatically, run the following commands::
+
+    chmod +x dependencies/<your_package_manager>_install.sh
+    ./dependencies/<your_package_manager>_install.sh
+
 Compiling
 =========
 
@@ -41,13 +53,6 @@ The following commands can be used to compile PRoot and CARE::
 
 .. |asciicast| image:: https://asciinema.org/a/315367.svg
    :target: https://asciinema.org/a/315367
-
-Dependencies
-============
-
-- `libarchive <https://libarchive.org>`_
-- `libtalloc <https://talloc.samba.org>`_
-- `uthash <https://troydhanson.github.io/uthash>`_ (only required for building CARE)
 
 Manuals
 =======
