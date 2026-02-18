@@ -418,17 +418,24 @@ int translate_syscall_enter(Tracee *tracee)
 		break;
 
 	case PR_fchmodat:
+	case PR_fchmodat2:
 	case PR_faccessat:
 	case PR_faccessat2:
 	case PR_futimesat:
 	case PR_mknodat:
+		flags = syscall_number == PR_fchmodat2
+			? peek_reg(tracee, CURRENT, SYSARG_3)
+			: 0;
 		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
 
 		status = get_sysarg_path(tracee, path, SYSARG_2);
 		if (status < 0)
 			break;
 
-		status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
+		else
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
 		break;
 
 	case PR_inotify_add_watch:

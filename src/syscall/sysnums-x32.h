@@ -279,6 +279,7 @@ static const Sysnum sysnums_x32[] = {
 	[ 332 ] = PR_statx,
         [ 435 ] = PR_clone3,
 	[ 439 ] = PR_faccessat2,
+	[ 452 ] = PR_fchmodat2,
 	[ 512 ] = PR_rt_sigaction,
 	[ 513 ] = PR_rt_sigreturn,
 	[ 514 ] = PR_ioctl,
