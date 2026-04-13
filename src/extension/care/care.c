@@ -497,7 +497,7 @@ static void handle_getdents(Tracee *tracee, bool is_new_getdents)
 
 		/* Archive through the host_path notification. */
 		strcpy(path, "/");
-		translate_path(tracee, path, fd, component, false);
+		translate_path(tracee, path, fd, component, false, false);
 	next:
 		offset += size;
 	}

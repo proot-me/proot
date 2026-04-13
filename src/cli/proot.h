@@ -123,7 +123,9 @@ Copyright (C) 2023 PRoot Developers, licensed under GPL v2 or later.",
 \tpoint to the overlaid content.  In most cases this default\n\
 \tbehavior shouldn't be a problem, although it is possible to\n\
 \texplicitly not dereference the guest location by appending it the\n\
-\t! character: -b *host_path*:*guest_location!*.",
+\t! character: -b *host_path*:*guest_location!*.\n\
+\tAppend :ro to the whole argument (after ! if any) for a read-only\n\
+\tbind, e.g. -b *host_path*:*guest_location*:ro",
 	},
 	{ .class = "Regular options",
 	  .arguments = {

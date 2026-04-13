@@ -93,7 +93,7 @@ void translate_syscall_exit(Tracee *tracee)
 		}
 
 		/* Ensure cwd still exists.  */
-		status = translate_path(tracee, path, AT_FDCWD, ".", false);
+		status = translate_path(tracee, path, AT_FDCWD, ".", false, false);
 		if (status < 0)
 			break;
 

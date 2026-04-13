@@ -105,11 +105,20 @@ static void print_bindings(const Tracee *tracee)
 		return;
 
 	CIRCLEQ_FOREACH_(tracee, binding, GUEST) {
-		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
-			note(tracee, INFO, USER, "binding = %s", binding->host.path);
-		else
-			note(tracee, INFO, USER, "binding = %s:%s",
-				binding->host.path, binding->guest.path);
+		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL) {
+			if (binding->read_only)
+				note(tracee, INFO, USER, "binding = %s (ro)", binding->host.path);
+			else
+				note(tracee, INFO, USER, "binding = %s", binding->host.path);
+		}
+		else {
+			if (binding->read_only)
+				note(tracee, INFO, USER, "binding = %s:%s (ro)",
+					binding->host.path, binding->guest.path);
+			else
+				note(tracee, INFO, USER, "binding = %s:%s",
+					binding->host.path, binding->guest.path);
+		}
 	}
 }
 
@@ -162,6 +171,23 @@ Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 	}
 
 	return NULL;
+}
+
+/**
+ * If @guest_path lies under a read-only binding, return -EROFS, else 0.
+ */
+int deny_if_read_only_binding(const Tracee *tracee, const char guest_path[PATH_MAX])
+{
+	const Binding *binding;
+
+	if (tracee == NULL || tracee->fs == NULL || tracee->fs->bindings.guest == NULL)
+		return 0;
+
+	binding = get_binding(tracee, GUEST, guest_path);
+	if (binding != NULL && binding->read_only)
+		return -EROFS;
+
+	return 0;
 }
 
 /**
@@ -454,7 +480,8 @@ static int remove_bindings(Bindings *bindings)
  * missing @host path only if @must_exist is true.  This function
  * returns the allocated binding on success, NULL on error.
  */
-Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist)
+Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist,
+			bool read_only)
 {
 	Binding *binding;
 	char base[PATH_MAX];
@@ -474,6 +501,8 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	binding = talloc_zero(tracee->ctx, Binding);
 	if (binding == NULL)
 		return NULL;
+
+	binding->read_only = read_only;
 
 	/* Canonicalize the host part of the binding, as expected by
 	 * get_binding().  */

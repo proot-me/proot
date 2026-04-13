@@ -45,13 +45,31 @@
 #include "arch.h"
 
 /**
+ * True if open(2)/openat(2) with @flags may mutate the file system
+ * under a read-only bind mount.
+ */
+static bool syscall_open_mutates(word_t flags)
+{
+#if defined(O_PATH)
+	if ((flags & O_PATH) != 0)
+		return false;
+#endif
+	if ((flags & O_CREAT) != 0)
+		return true;
+	if ((flags & O_TRUNC) != 0)
+		return true;
+	return ((flags & O_ACCMODE) != O_RDONLY);
+}
+
+/**
  * Translate @path and put the result in the @tracee's memory address
  * space pointed to by the @reg argument of the current syscall. See
  * the documentation of translate_path() about the meaning of
  * @type. This function returns -errno if an error occured, otherwise
  * 0.
  */
-static int translate_path2(Tracee *tracee, int dir_fd, char path[PATH_MAX], Reg reg, Type type)
+static int translate_path2(Tracee *tracee, int dir_fd, char path[PATH_MAX], Reg reg, Type type,
+			bool ro_mutates)
 {
 	char new_path[PATH_MAX];
 	int status;
@@ -61,7 +79,7 @@ static int translate_path2(Tracee *tracee, int dir_fd, char path[PATH_MAX], Reg 
 		return 0;
 
 	/* Translate the original path. */
-	status = translate_path(tracee, new_path, dir_fd, path, type != SYMLINK);
+	status = translate_path(tracee, new_path, dir_fd, path, type != SYMLINK, ro_mutates);
 	if (status < 0)
 		return status;
 
@@ -71,7 +89,7 @@ static int translate_path2(Tracee *tracee, int dir_fd, char path[PATH_MAX], Reg 
 /**
  * A helper, see the comment of the function above.
  */
-static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
+static int translate_sysarg(Tracee *tracee, Reg reg, Type type, bool ro_mutates)
 {
 	char old_path[PATH_MAX];
 	int status;
@@ -81,7 +99,7 @@ static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
 	if (status < 0)
 		return status;
 
-	return translate_path2(tracee, AT_FDCWD, old_path, reg, type);
+	return translate_path2(tracee, AT_FDCWD, old_path, reg, type, ro_mutates);
 }
 
 /**
@@ -167,7 +185,7 @@ int translate_syscall_enter(Tracee *tracee)
 			dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
 		}
 
-		status = translate_path(tracee, path, dirfd, oldpath, true);
+		status = translate_path(tracee, path, dirfd, oldpath, true, false);
 		if (status < 0)
 			break;
 
@@ -353,32 +371,35 @@ int translate_syscall_enter(Tracee *tracee)
 #undef POKE_WORD
 
 	case PR_access:
-	case PR_acct:
-	case PR_chmod:
-	case PR_chown:
-	case PR_chown32:
 	case PR_chroot:
 	case PR_getxattr:
 	case PR_listxattr:
-	case PR_mknod:
 	case PR_oldstat:
-	case PR_creat:
-	case PR_removexattr:
-	case PR_setxattr:
 	case PR_stat:
 	case PR_stat64:
 	case PR_statfs:
 	case PR_statfs64:
+	case PR_uselib:
+		status = translate_sysarg(tracee, SYSARG_1, REGULAR, false);
+		break;
+
+	case PR_acct:
+	case PR_chmod:
+	case PR_chown:
+	case PR_chown32:
+	case PR_mknod:
+	case PR_creat:
+	case PR_removexattr:
+	case PR_setxattr:
 	case PR_swapoff:
 	case PR_swapon:
 	case PR_truncate:
 	case PR_truncate64:
 	case PR_umount:
 	case PR_umount2:
-	case PR_uselib:
 	case PR_utime:
 	case PR_utimes:
-		status = translate_sysarg(tracee, SYSARG_1, REGULAR);
+		status = translate_sysarg(tracee, SYSARG_1, REGULAR, true);
 		break;
 
 	case PR_open:
@@ -386,17 +407,16 @@ int translate_syscall_enter(Tracee *tracee)
 
 		if (   ((flags & O_NOFOLLOW) != 0)
 		    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
-			status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
+			status = translate_sysarg(tracee, SYSARG_1, SYMLINK,
+					syscall_open_mutates(flags));
 		else
-			status = translate_sysarg(tracee, SYSARG_1, REGULAR);
+			status = translate_sysarg(tracee, SYSARG_1, REGULAR,
+					syscall_open_mutates(flags));
 		break;
 
-	case PR_fchownat:
 	case PR_fstatat64:
 	case PR_newfstatat:
 	case PR_statx:
-	case PR_utimensat:
-	case PR_utimensat_time64:
 	case PR_name_to_handle_at:
 		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
 
@@ -404,22 +424,38 @@ int translate_syscall_enter(Tracee *tracee)
 		if (status < 0)
 			break;
 
-		flags = (  syscall_number == PR_fchownat
-			|| syscall_number == PR_name_to_handle_at)
+		flags = (syscall_number == PR_name_to_handle_at)
 			? peek_reg(tracee, CURRENT, SYSARG_5)
 			: ((syscall_number == PR_statx) ?
 			   peek_reg(tracee, CURRENT, SYSARG_3) :
 			   peek_reg(tracee, CURRENT, SYSARG_4));
 
 		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
-			status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK, false);
 		else
-			status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR, false);
+		break;
+
+	case PR_fchownat:
+	case PR_utimensat:
+	case PR_utimensat_time64:
+		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+
+		status = get_sysarg_path(tracee, path, SYSARG_2);
+		if (status < 0)
+			break;
+
+		flags = (syscall_number == PR_fchownat)
+			? peek_reg(tracee, CURRENT, SYSARG_5)
+			: peek_reg(tracee, CURRENT, SYSARG_4);
+
+		if ((flags & AT_SYMLINK_NOFOLLOW) != 0)
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK, true);
+		else
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR, true);
 		break;
 
 	case PR_fchmodat:
-	case PR_faccessat:
-	case PR_faccessat2:
 	case PR_futimesat:
 	case PR_mknodat:
 		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
@@ -428,40 +464,54 @@ int translate_syscall_enter(Tracee *tracee)
 		if (status < 0)
 			break;
 
-		status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+		status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR, true);
+		break;
+
+	case PR_faccessat:
+	case PR_faccessat2:
+		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+
+		status = get_sysarg_path(tracee, path, SYSARG_2);
+		if (status < 0)
+			break;
+
+		status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR, false);
 		break;
 
 	case PR_inotify_add_watch:
 		flags = peek_reg(tracee, CURRENT, SYSARG_3);
 
 		if ((flags & IN_DONT_FOLLOW) != 0)
-			status = translate_sysarg(tracee, SYSARG_2, SYMLINK);
+			status = translate_sysarg(tracee, SYSARG_2, SYMLINK, false);
 		else
-			status = translate_sysarg(tracee, SYSARG_2, REGULAR);
+			status = translate_sysarg(tracee, SYSARG_2, REGULAR, false);
 		break;
 
 	case PR_readlink:
-	case PR_lchown:
-	case PR_lchown32:
 	case PR_lgetxattr:
 	case PR_llistxattr:
-	case PR_lremovexattr:
-	case PR_lsetxattr:
 	case PR_lstat:
 	case PR_lstat64:
 	case PR_oldlstat:
+		status = translate_sysarg(tracee, SYSARG_1, SYMLINK, false);
+		break;
+
+	case PR_lchown:
+	case PR_lchown32:
+	case PR_lremovexattr:
+	case PR_lsetxattr:
 	case PR_unlink:
 	case PR_rmdir:
 	case PR_mkdir:
-		status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
+		status = translate_sysarg(tracee, SYSARG_1, SYMLINK, true);
 		break;
 
 	case PR_pivot_root:
-		status = translate_sysarg(tracee, SYSARG_1, REGULAR);
+		status = translate_sysarg(tracee, SYSARG_1, REGULAR, true);
 		if (status < 0)
 			break;
 
-		status = translate_sysarg(tracee, SYSARG_2, REGULAR);
+		status = translate_sysarg(tracee, SYSARG_2, REGULAR, true);
 		break;
 
 	case PR_linkat:
@@ -478,13 +528,13 @@ int translate_syscall_enter(Tracee *tracee)
 			break;
 
 		if ((flags & AT_SYMLINK_FOLLOW) != 0)
-			status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, REGULAR);
+			status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, REGULAR, true);
 		else
-			status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK);
+			status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK, true);
 		if (status < 0)
 			break;
 
-		status = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK);
+		status = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK, true);
 		break;
 
 	case PR_mount:
@@ -494,12 +544,12 @@ int translate_syscall_enter(Tracee *tracee)
 
 		/* The following check covers only 90% of the cases. */
 		if (path[0] == '/' || path[0] == '.') {
-			status = translate_path2(tracee, AT_FDCWD, path, SYSARG_1, REGULAR);
+			status = translate_path2(tracee, AT_FDCWD, path, SYSARG_1, REGULAR, true);
 			if (status < 0)
 				break;
 		}
 
-		status = translate_sysarg(tracee, SYSARG_2, REGULAR);
+		status = translate_sysarg(tracee, SYSARG_2, REGULAR, true);
 		break;
 
 	case PR_openat:
@@ -512,12 +562,23 @@ int translate_syscall_enter(Tracee *tracee)
 
 		if (   ((flags & O_NOFOLLOW) != 0)
 			|| ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
-			status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK,
+					syscall_open_mutates(flags));
 		else
-			status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+			status = translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR,
+					syscall_open_mutates(flags));
 		break;
 
 	case PR_readlinkat:
+		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
+
+		status = get_sysarg_path(tracee, path, SYSARG_2);
+		if (status < 0)
+			break;
+
+		status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK, false);
+		break;
+
 	case PR_unlinkat:
 	case PR_mkdirat:
 		dirfd = peek_reg(tracee, CURRENT, SYSARG_1);
@@ -526,16 +587,16 @@ int translate_syscall_enter(Tracee *tracee)
 		if (status < 0)
 			break;
 
-		status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK);
+		status = translate_path2(tracee, dirfd, path, SYSARG_2, SYMLINK, true);
 		break;
 
 	case PR_link:
 	case PR_rename:
-		status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
+		status = translate_sysarg(tracee, SYSARG_1, SYMLINK, true);
 		if (status < 0)
 			break;
 
-		status = translate_sysarg(tracee, SYSARG_2, SYMLINK);
+		status = translate_sysarg(tracee, SYSARG_2, SYMLINK, true);
 		break;
 
 	case PR_renameat:
@@ -551,15 +612,15 @@ int translate_syscall_enter(Tracee *tracee)
 		if (status < 0)
 			break;
 
-		status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK);
+		status = translate_path2(tracee, olddirfd, oldpath, SYSARG_2, SYMLINK, true);
 		if (status < 0)
 			break;
 
-		status = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK);
+		status = translate_path2(tracee, newdirfd, newpath, SYSARG_4, SYMLINK, true);
 		break;
 
 	case PR_symlink:
-		status = translate_sysarg(tracee, SYSARG_2, SYMLINK);
+		status = translate_sysarg(tracee, SYSARG_2, SYMLINK, true);
 		break;
 
 	case PR_symlinkat:
@@ -569,7 +630,7 @@ int translate_syscall_enter(Tracee *tracee)
 		if (status < 0)
 			break;
 
-		status = translate_path2(tracee, newdirfd, newpath, SYSARG_3, SYMLINK);
+		status = translate_path2(tracee, newdirfd, newpath, SYSARG_3, SYMLINK, true);
 		break;
 
 	case PR_prctl:

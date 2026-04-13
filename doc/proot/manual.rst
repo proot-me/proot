@@ -100,6 +100,14 @@ Regular options
     explicitly not dereference the guest location by appending it the
     ``!`` character: ``-b *host_path*:*guest_location!*``.
 
+    Append ``:ro`` to the whole argument (after ``!`` if any) to make
+    the bind read-only from the tracee's point of view: path-based
+    operations that would mutate the file system (such as ``open`` with
+    write access, ``unlink``, ``rename``, ``mkdir``, ``chmod``, …) return
+    ``EROFS`` for paths under that bind. This does not replace kernel
+    mount read-only semantics: writes via already-open file descriptors
+    or memory mappings are not tracked.
+
 -q command, --qemu=command
     Execute guest programs through QEMU as specified by *command*.
 
