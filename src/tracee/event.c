@@ -247,7 +247,7 @@ static void check_architecture(Tracee *tracee)
 	if (tracee->exe == NULL)
 		return;
 
-	status = translate_path(tracee, path, AT_FDCWD, tracee->exe, false);
+	status = translate_path(tracee, path, AT_FDCWD, tracee->exe, false, false);
 	if (status < 0)
 		return;
 

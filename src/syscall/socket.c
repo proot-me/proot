@@ -105,7 +105,7 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 	if (status <= 0)
 		return status;
 
-	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
+	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true, false);
 	if (status < 0)
 		return status;
 

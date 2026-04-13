@@ -183,7 +183,7 @@ static Binding *new_concealing_binding(Tracee *tracee, const char *path, bool mu
 		return NULL;
 	}
 
-	binding = new_binding(tracee, temp, path, must_exist);
+	binding = new_binding(tracee, temp, path, must_exist, false);
 	if (binding == NULL)
 		return NULL;
 
@@ -241,7 +241,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 		 * paths.  */
 		for (i = 0; default_revealed_paths[i] != NULL; i++) {
 			expanded = expand_front_variable(tracee->ctx, default_revealed_paths[i]);
-			binding = new_binding(tracee, expanded, NULL, false);
+			binding = new_binding(tracee, expanded, NULL, false, false);
 			if (binding != NULL)
 				VERBOSE(tracee, 0, "revealed path: %s %s",
 					default_revealed_paths[i],
@@ -253,7 +253,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 		if (status < 0)
 			return -1; /* This failure was already noticed by which().  */
 
-		binding = new_binding(tracee, path, NULL, false);
+		binding = new_binding(tracee, path, NULL, false, false);
 		if (binding != NULL)
 			VERBOSE(tracee, 0, "revealed path: %s", path);
 
@@ -303,7 +303,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	/* Bind user revealed paths over concealed paths.  */
 	if (options->revealed_paths != NULL) {
 		STAILQ_FOREACH(item, options->revealed_paths, link) {
-			binding = new_binding(tracee, item->load, NULL, true);
+			binding = new_binding(tracee, item->load, NULL, true, false);
 			if (binding != NULL)
 				VERBOSE(tracee, 0, "revealed path: %s",	(char *) item->load);
 		}
@@ -312,7 +312,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	/* Bind volatile paths over concealed paths.  */
 	if (options->volatile_paths != NULL) {
 		STAILQ_FOREACH(item, options->volatile_paths, link) {
-			binding = new_binding(tracee, item->load, NULL, false);
+			binding = new_binding(tracee, item->load, NULL, false, false);
 			if (binding != NULL)
 				VERBOSE(tracee, 1, "volatile path: %s",	(char *) item->load);
 		}
@@ -333,7 +333,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 	talloc_set_name_const(tracee->fs->cwd, "$cwd");
 
 	/* Initialize @tracee's root (required by PRoot).  */
-	binding = new_binding(tracee, "/", "/", true);
+	binding = new_binding(tracee, "/", "/", true, false);
 	if (binding == NULL)
 		return -1;
 

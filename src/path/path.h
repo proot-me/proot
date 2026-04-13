@@ -76,8 +76,9 @@ extern int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path,
 extern int getcwd2(Tracee *tracee, char guest_path[PATH_MAX]);
 extern void chop_finality(char *path);
 
+/* If @ro_mutates, refuse paths under a read-only bind (see -b …:ro).  */
 extern int translate_path(Tracee *tracee, char host_path[PATH_MAX],
-			int dir_fd, const char *guest_path, bool deref_final);
+			int dir_fd, const char *guest_path, bool deref_final, bool ro_mutates);
 
 extern int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX]);
 extern bool belongs_to_guestfs(const Tracee *tracee, const char *path);

@@ -230,7 +230,7 @@ int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool d
 	if (tracee == NULL)
 		status = (realpath(path, host_path) == NULL ? -errno : 0);
 	else
-		status = translate_path(tracee, host_path, AT_FDCWD, path, deref_final);
+		status = translate_path(tracee, host_path, AT_FDCWD, path, deref_final, false);
 	return status;
 }
 
@@ -312,11 +312,12 @@ int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
  * @user_path)".  If @user_path is not absolute then it is relative to
  * the directory referred by the descriptor @dir_fd (AT_FDCWD is for
  * the current working directory).  See the documentation of
- * canonicalize() for the meaning of @deref_final.  This function
- * returns -errno if an error occured, otherwise 0.
+ * canonicalize() for the meaning of @deref_final.  If @ro_mutates is
+ * true and the canonical guest path lies under a read-only bind, return
+ * -EROFS.  This function returns -errno if an error occured, otherwise 0.
  */
 int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
-		const char *user_path, bool deref_final)
+		const char *user_path, bool deref_final, bool ro_mutates)
 {
 	char guest_path[PATH_MAX];
 	int status;
@@ -373,6 +374,12 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 	status = canonicalize(tracee, guest_path, deref_final, result, 0);
 	if (status < 0)
 		return status;
+
+	if (ro_mutates) {
+		status = deny_if_read_only_binding(tracee, result);
+		if (status < 0)
+			return status;
+	}
 
 	/* Final binding substitution to convert "result" into a host
 	 * path, since canonicalize() works from the guest

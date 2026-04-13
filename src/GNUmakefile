@@ -22,11 +22,41 @@ HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/n
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
 CFLAGS   += -g -Wall -Wextra -O2
-CFLAGS   += $(shell pkg-config --cflags talloc)
-LDFLAGS  += -Wl,-z,noexecstack
-LDFLAGS  += $(shell pkg-config --libs talloc)
 
-CARE_LDFLAGS  = $(shell pkg-config --libs libarchive)
+# Optional full static link of proot/care (example: make -C src proot STATIC=1).
+# Note: glibc static binaries may need extra libs for NSS/DNS; musl toolchains often work more smoothly.
+ifdef STATIC
+LDFLAGS  += -static
+PKG_CONFIG_TALLOC_STATIC = --static
+PKG_CONFIG_ARCHIVE_STATIC = --static
+else
+PKG_CONFIG_TALLOC_STATIC =
+PKG_CONFIG_ARCHIVE_STATIC =
+endif
+
+# pkg-config is optional if headers/libs are in the compiler default search path.
+PKG_CONFIG ?= pkg-config
+ifeq ($(shell $(PKG_CONFIG) --version >/dev/null 2>&1 && echo yes),yes)
+TALLOC_CFLAGS   := $(shell $(PKG_CONFIG) --cflags talloc 2>/dev/null)
+TALLOC_LIBS     := $(shell $(PKG_CONFIG) $(PKG_CONFIG_TALLOC_STATIC) --libs talloc 2>/dev/null)
+LIBARCHIVE_LIBS := $(shell $(PKG_CONFIG) $(PKG_CONFIG_ARCHIVE_STATIC) --libs libarchive 2>/dev/null)
+ifeq ($(strip $(TALLOC_LIBS)),)
+TALLOC_LIBS := -ltalloc
+endif
+ifeq ($(strip $(LIBARCHIVE_LIBS)),)
+LIBARCHIVE_LIBS := -larchive
+endif
+else
+TALLOC_CFLAGS   :=
+TALLOC_LIBS     := -ltalloc
+LIBARCHIVE_LIBS := -larchive
+endif
+
+CFLAGS   += $(TALLOC_CFLAGS)
+LDFLAGS  += -Wl,-z,noexecstack
+LDFLAGS  += $(TALLOC_LIBS)
+
+CARE_LDFLAGS  = $(LIBARCHIVE_LIBS)
 
 OBJECTS += \
 	cli/cli.o		\
@@ -94,6 +124,12 @@ CARE_OBJECTS = 				\
 	extension/care/extract.o	\
 	extension/care/archive.o
 
+UTHASH_H = $(abspath $(VPATH)../lib/uthash/include/uthash.h)
+$(UTHASH_H):
+	@echo >&2 "error: missing uthash header ($(UTHASH_H))."
+	@echo >&2 "Run: git submodule update --init lib/uthash"
+	@false
+
 .DEFAULT_GOAL = proot
 all: proot
 
@@ -119,11 +155,8 @@ endif
 ######################################################################
 # Auto-configuration
 
-GIT_VERSION := $(shell git describe --tags `git rev-list --tags --max-count=1`)
-
-GIT_COMMIT := $(shell git rev-list --all --max-count=1 | cut -c 1-8)
-
-VERSION = $(GIT_VERSION)-$(GIT_COMMIT)
+# Works with or without annotated tags; avoids failing git describe when the repo has no tags.
+VERSION := $(shell git describe --tags --always --dirty=-dirty 2>/dev/null || echo unknown)
 
 CHECK_VERSION = if [ ! -z "$(VERSION)" ]; \
                 then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$(VERSION)\""; \
@@ -179,8 +212,10 @@ OBJIFY = $($(quiet)GEN)									\
 proot: $(OBJECTS)
 	$(LINK)
 
-care: $(OBJECTS) $(CARE_OBJECTS)
+care: $(UTHASH_H) $(OBJECTS) $(CARE_OBJECTS)
 	$(LINK) $(CARE_LDFLAGS)
+
+extension/care/care.o: $(UTHASH_H)
 
 # Special case to compute which files depend on the auto-generated
 # file "build.h".
