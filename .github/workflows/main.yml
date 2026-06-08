@@ -24,7 +24,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install sonar-scanner and build-wrapper
-        uses: sonarsource/sonarcloud-github-c-cpp@v1
+        uses: SonarSource/sonarqube-github-c-cpp@v2
 
       - name: Install build dependencies
         run: |
