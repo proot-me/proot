@@ -36,8 +36,7 @@ jobs:
 
       - name: Build elf loader, proot, and care
         run: |
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -C src loader.elf loader-m32.elf build.h
-          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} env CFLAGS=--coverage LDFLAGS=--coverage make -C src proot care V=1
+          build-wrapper-linux-x86-64 --out-dir ${{ env.BUILD_WRAPPER_OUT_DIR }} make -C src clean loader.elf loader-m32.elf build.h proot care
 
       - name: Execute test suite
         continue-on-error: true
@@ -53,6 +52,8 @@ jobs:
       - name: Run sonar-scanner
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONARCLOUD_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
+          find /home/runner/work/proot/proot/test/ -type d -exec chmod 755 {} \;
+          find /home/runner/work/proot/proot/test/ -type f -exec chmod 644 {} \;
           sonar-scanner --define sonar.cfamily.build-wrapper-output="${{ env.BUILD_WRAPPER_OUT_DIR }}"
