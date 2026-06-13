@@ -107,6 +107,39 @@ static inline size_t sizeof_word(const Tracee *tracee)
 #include <sys/stat.h>
 
 /**
+ * Return the offset of the 'dev' field in a 'stat' structure
+ * according to the ABI currently used by the given @tracee.
+ */
+static inline off_t offsetof_stat_dev(const Tracee *tracee)
+{
+	return (is_32on64_mode(tracee)
+		? OFFSETOF_STAT_DEV_32
+		: offsetof(struct stat, st_dev));
+}
+
+/**
+ * Return the offset of the 'ino' field in a 'stat' structure
+ * according to the ABI currently used by the given @tracee.
+ */
+static inline off_t offsetof_stat_ino(const Tracee *tracee)
+{
+	return (is_32on64_mode(tracee)
+		? OFFSETOF_STAT_INO_32
+		: offsetof(struct stat, st_ino));
+}
+
+/**
+ * Return the offset of the 'mode' field in a 'stat' structure
+ * according to the ABI currently used by the given @tracee.
+ */
+static inline off_t offsetof_stat_mode(const Tracee *tracee)
+{
+	return (is_32on64_mode(tracee)
+		? OFFSETOF_STAT_MODE_32
+		: offsetof(struct stat, st_mode));
+}
+
+/**
  * Return the offset of the 'uid' field in a 'stat' structure
  * according to the ABI currently used by the given @tracee.
  */
@@ -126,6 +159,17 @@ static inline off_t offsetof_stat_gid(const Tracee *tracee)
 	return (is_32on64_mode(tracee)
 		? OFFSETOF_STAT_GID_32
 		: offsetof(struct stat, st_gid));
+}
+
+/**
+ * Return the offset of the 'rdev' field in a 'stat' structure
+ * according to the ABI currently used by the given @tracee.
+ */
+static inline off_t offsetof_stat_rdev(const Tracee *tracee)
+{
+	return (is_32on64_mode(tracee)
+		? OFFSETOF_STAT_RDEV_32
+		: offsetof(struct stat, st_rdev));
 }
 
 #endif /* TRACEE_ABI_H */

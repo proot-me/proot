@@ -20,17 +20,18 @@
  * 02110-1301 USA.
  */
 
-#include <assert.h>      /* assert(3), */
-#include <stdint.h>      /* intptr_t, */
-#include <errno.h>       /* E*, */
-#include <sys/stat.h>    /* chmod(2), stat(2) */
-#include <sys/types.h>   /* uid_t, gid_t, get*id(2), */
-#include <unistd.h>      /* get*id(2),  */
-#include <sys/ptrace.h>  /* linux.git:c0a3a20b  */
-#include <linux/audit.h> /* AUDIT_ARCH_*,  */
-#include <string.h>      /* memcpy(3), */
-#include <stdlib.h>      /* strtol(3), */
-#include <linux/auxvec.h>/* AT_,  */
+#include <assert.h>        /* assert(3), */
+#include <stdint.h>        /* intptr_t, */
+#include <errno.h>         /* E*, */
+#include <sys/stat.h>      /* chmod(2), stat(2) */
+#include <sys/types.h>     /* uid_t, gid_t, get*id(2), */
+#include <unistd.h>        /* get*id(2),  */
+#include <sys/ptrace.h>    /* linux.git:c0a3a20b  */
+#include <linux/audit.h>   /* AUDIT_ARCH_*,  */
+#include <string.h>        /* memcpy(3), */
+#include <stdlib.h>        /* strtol(3), */
+#include <linux/auxvec.h>  /* AT_,  */
+#include <sys/sysmacros.h> /* makedev, major, minor */
 
 #include "extension/extension.h"
 #include "syscall/syscall.h"
@@ -45,6 +46,18 @@
 #include "arch.h"
 
 typedef struct {
+	unsigned int dev_major, dev_minor, rdev_major, rdev_minor;
+	ino_t ino;
+	mode_t file_type;
+	int fd;
+} Node;
+
+typedef struct {
+	Node *ptr;
+	size_t len, cap;
+} NodeList;
+
+typedef struct {
 	uid_t ruid;
 	uid_t euid;
 	uid_t suid;
@@ -54,6 +67,8 @@ typedef struct {
 	gid_t egid;
 	gid_t sgid;
 	gid_t fsgid;
+
+	NodeList *nodes;
 } Config;
 
 typedef struct {
@@ -579,12 +594,74 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		POKE_MEM_ID(SYSARG_3, sgid);
 		return 0;
 
+	case PR_mknod:
+	case PR_mknodat:
+		/* Override only permission errors.  */
+		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+		if ((int) result == -EPERM && config->euid == 0) {
+			char old_path[PATH_MAX], path[PATH_MAX];
+			struct stat statbuf;
+			int dirfd, fd, status;
+			mode_t mode;
+			dev_t dev;
+
+			if(sysnum == PR_mknod) {
+				dirfd = AT_FDCWD;
+				status = get_sysarg_path(tracee, old_path, SYSARG_1);
+				if (status < 0)
+					return 0;
+				status = translate_path(tracee, path, dirfd, old_path, 0);
+				if (status < 0)
+					return 0;
+				mode = peek_reg(tracee, ORIGINAL, SYSARG_2);
+				dev = peek_reg(tracee, ORIGINAL, SYSARG_3);
+			} else {
+				dirfd = peek_reg(tracee, ORIGINAL, SYSARG_1);
+				status = get_sysarg_path(tracee, old_path, SYSARG_2);
+				if (status < 0)
+					return 0;
+				status = translate_path(tracee, path, dirfd, old_path, 0);
+				if (status < 0)
+					return 0;
+				mode = peek_reg(tracee, ORIGINAL, SYSARG_3);
+				dev = peek_reg(tracee, ORIGINAL, SYSARG_4);
+			}
+
+			if (!S_ISCHR(mode) && !S_ISBLK(mode))
+				return 0;
+
+			fd = creat(path, mode & ~S_IFMT);
+			if (fd < 0)
+				return 0;
+
+			status = fstat(fd, &statbuf);
+			if (status < 0) {
+				close(fd);
+				return 0;
+			}
+
+			if (config->nodes->cap == config->nodes->len) {
+				config->nodes->cap *= 2;
+				config->nodes->ptr = realloc(config->nodes->ptr, sizeof(Node) * config->nodes->cap);
+			}
+			config->nodes->ptr[config->nodes->len++] = (Node) {
+				.dev_major = major(statbuf.st_dev),
+				.dev_minor = minor(statbuf.st_dev),
+				.rdev_major = major(dev),
+				.rdev_minor = minor(dev),
+				.ino = statbuf.st_ino,
+				.file_type = mode & S_IFMT,
+				.fd = fd,
+			};
+
+			poke_reg(tracee, SYSARG_RESULT, 0);
+			return 0;
+		}
+		/* Fall through.  */
 	case PR_setdomainname:
 	case PR_sethostname:
 	case PR_setgroups:
 	case PR_setgroups32:
-	case PR_mknod:
-	case PR_mknodat:
 	case PR_capset:
 	case PR_setxattr:
 	case PR_lsetxattr:
@@ -625,10 +702,17 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	case PR_fstat: {
 		word_t address;
 		Reg sysarg;
+		ino_t ino;
+		mode_t mode;
 		uid_t uid;
 		gid_t gid;
+		dev_t dev_tmp;
+		unsigned int dev_major, dev_minor;
+		off_t ino_offset;
+		off_t mode_offset;
 		off_t uid_offset;
 		off_t gid_offset;
+		size_t i;
 
 		/* Override only if it succeed.  */
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
@@ -638,6 +722,8 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		/* Get the address of the 'stat' structure.  */
 		if (sysnum == PR_statx) {
 			sysarg = SYSARG_5;
+			ino_offset = OFFSETOF_STATX_INO;
+			mode_offset = OFFSETOF_STATX_MODE;
 			uid_offset = OFFSETOF_STATX_UID;
 			gid_offset = OFFSETOF_STATX_GID;
 		}
@@ -646,6 +732,8 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 				sysarg = SYSARG_3;
 			else
 				sysarg = SYSARG_2;
+			ino_offset = offsetof_stat_ino(tracee);
+			mode_offset = offsetof_stat_mode(tracee);
 			uid_offset = offsetof_stat_uid(tracee);
 			gid_offset = offsetof_stat_gid(tracee);
 		}
@@ -653,10 +741,16 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		address = peek_reg(tracee, ORIGINAL, sysarg);
 
 		/* Sanity checks.  */
+		assert(__builtin_types_compatible_p(ino_t, uint64_t));
 		assert(__builtin_types_compatible_p(uid_t, uint32_t));
 		assert(__builtin_types_compatible_p(gid_t, uint32_t));
+		assert(__builtin_types_compatible_p(mode_t, uint32_t));
 
-		/* Get the uid & gid values from the 'stat' structure.  */
+                /* Get the ino, uid, and gid values from the 'stat' structure.  */
+                ino = peek_uint64(tracee, address + ino_offset);
+		if (errno != 0)
+			ino = 0; /* Not fatal.  */
+
 		uid = peek_uint32(tracee, address + uid_offset);
 		if (errno != 0)
 			uid = 0; /* Not fatal.  */
@@ -664,6 +758,29 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		gid = peek_uint32(tracee, address + gid_offset);
 		if (errno != 0)
 			gid = 0; /* Not fatal.  */
+
+		/* Get the dev_major and dev_minor values from the 'stat' structure. */
+		if (sysnum == PR_statx) {
+			mode = peek_uint16(tracee, address + mode_offset);
+			if (errno != 0)
+				mode = 0;
+			dev_major = peek_uint32(tracee, address + OFFSETOF_STATX_DEV_MAJOR);
+			if (errno != 0)
+				dev_major = 0;
+			dev_minor = peek_uint32(tracee, address + OFFSETOF_STATX_DEV_MINOR);
+			if (errno != 0)
+				dev_minor = 0;
+		}
+		else {
+			mode = peek_uint32(tracee, address + mode_offset);
+			if (errno != 0)
+				mode = 0;
+			dev_tmp = peek_uint32(tracee, address + offsetof_stat_dev(tracee));
+			if (errno != 0)
+				dev_tmp = 0; /* Not fatal.  */
+			dev_major = major(dev_tmp);
+			dev_minor = minor(dev_tmp);
+		}
 
 		/* Override only if the file is owned by the current user.
 		 * Errors are not fatal here.  */
@@ -673,17 +790,44 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 		if (gid == getgid())
 			poke_uint32(tracee, address + gid_offset, config->sgid);
 
-		return 0;
-	}
+		/* If the file is one we created with mknod or mknodat, replace
+		 * its file type and rdev. */
+		for (i = 0; i < config->nodes->len; i++) {
+			if (config->nodes->ptr[i].dev_major == dev_major
+			 && config->nodes->ptr[i].dev_minor == dev_minor
+			 && config->nodes->ptr[i].ino       == ino) {
+				if (sysnum == PR_statx) {
+					poke_uint16(tracee, address + mode_offset,
+					            (mode & ~S_IFMT) | config->nodes->ptr[i].file_type);
+					poke_uint32(tracee, address + OFFSETOF_STATX_RDEV_MAJOR,
+					            config->nodes->ptr[i].rdev_major);
+					poke_uint32(tracee, address + OFFSETOF_STATX_RDEV_MINOR,
+					            config->nodes->ptr[i].rdev_minor);
+				} else {
+					poke_uint32(tracee, address + mode_offset,
+					            (mode & ~S_IFMT) | config->nodes->ptr[i].file_type);
+					poke_uint32(tracee, address + offsetof_stat_rdev(tracee),
+					            makedev(config->nodes->ptr[i].rdev_major,
+					                    config->nodes->ptr[i].rdev_minor));
+					poke_uint32(tracee, address + offsetof_stat_rdev(tracee),
+					            makedev(config->nodes->ptr[i].rdev_major,
+					                    config->nodes->ptr[i].rdev_minor));
+				}
+				break;
+			}
+		}
 
-	case PR_chroot: {
-		char path[PATH_MAX];
-		char abspath[PATH_MAX];
-		word_t input;
-		int status;
+                return 0;
+        }
 
-		if (config->euid != 0) /* TODO: && !HAS_CAP(SYS_CHROOT) */
-			return 0;
+        case PR_chroot: {
+                char path[PATH_MAX];
+                char abspath[PATH_MAX];
+                word_t input;
+                int status;
+
+                if (config->euid != 0) /* TODO: && !HAS_CAP(SYS_CHROOT) */
+                return 0;
 
 		/* Override only permission errors.  */
 		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
@@ -814,6 +958,13 @@ int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1
 		config->egid  = gid;
 		config->sgid  = gid;
 		config->fsgid = gid;
+
+		config->nodes = talloc(extension, NodeList);
+		if (config->nodes == NULL)
+			return -1;
+		config->nodes->cap = 8;
+		config->nodes->len = 0;
+		config->nodes->ptr = malloc(sizeof(Node) * config->nodes->cap);
 
 		extension->filtered_sysnums = filtered_sysnums;
 		return 0;

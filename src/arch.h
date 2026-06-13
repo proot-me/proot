@@ -37,6 +37,12 @@ typedef unsigned char byte_t;
 
 #define OFFSETOF_STATX_UID 20
 #define OFFSETOF_STATX_GID 24
+#define OFFSETOF_STATX_MODE 28
+#define OFFSETOF_STATX_INO 32
+#define OFFSETOF_STATX_RDEV_MAJOR 128
+#define OFFSETOF_STATX_RDEV_MINOR 132
+#define OFFSETOF_STATX_DEV_MAJOR 136
+#define OFFSETOF_STATX_DEV_MINOR 140
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
 #    if defined(__x86_64__)
@@ -78,8 +84,12 @@ typedef unsigned char byte_t;
 
     #define HOST_ELF_MACHINE {62, 3, 6, 0}
     #define RED_ZONE_SIZE 128
+    #define OFFSETOF_STAT_DEV_32 0
+    #define OFFSETOF_STAT_INO_32 12
+    #define OFFSETOF_STAT_MODE_32 16
     #define OFFSETOF_STAT_UID_32 24
     #define OFFSETOF_STAT_GID_32 28
+    #define OFFSETOF_STAT_RDEV_32 32
 
     #define LOADER_ADDRESS 0x600000000000
     #define HAS_LOADER_32BIT true
@@ -101,8 +111,10 @@ typedef unsigned char byte_t;
     #define user_regs_struct user_regs
     #define HOST_ELF_MACHINE {40, 0};
     #define RED_ZONE_SIZE 0
+    #define OFFSETOF_STAT_MODE_32 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
+    #define OFFSETOF_STAT_RDEV_32 0
     #define EM_ARM 40
 
     #define LOADER_ADDRESS 0x10000000
@@ -125,8 +137,10 @@ typedef unsigned char byte_t;
 
     #define HOST_ELF_MACHINE {183, 0};
     #define RED_ZONE_SIZE 0
+    #define OFFSETOF_STAT_MODE_32 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
+    #define OFFSETOF_STAT_RDEV_32 0
 
     #define LOADER_ADDRESS     0x2000000000
     #define EXEC_PIC_ADDRESS   0x3000000000
@@ -145,8 +159,10 @@ typedef unsigned char byte_t;
 
     #define HOST_ELF_MACHINE {3, 6, 0};
     #define RED_ZONE_SIZE 0
+    #define OFFSETOF_STAT_MODE_32 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
+    #define OFFSETOF_STAT_RDEV_32 0
 
     #define LOADER_ADDRESS 0xa0000000
     #define LOADER_ARCH_CFLAGS -mregparm=3
@@ -166,8 +182,10 @@ typedef unsigned char byte_t;
     #define user_regs_struct pt_regs
     #define HOST_ELF_MACHINE {42, 0};
     #define RED_ZONE_SIZE 0
+    #define OFFSETOF_STAT_MODE_32 0
     #define OFFSETOF_STAT_UID_32 0
     #define OFFSETOF_STAT_GID_32 0
+    #define OFFSETOF_STAT_RDEV_32 0
     #define NO_MISALIGNED_ACCESS 1
 
 #else
