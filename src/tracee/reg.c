@@ -34,7 +34,13 @@
 
 #include "arch.h"
 
-#if defined(ARCH_ARM64)
+#if defined(ARCH_RISCV64)
+/* ptrace user_regs for riscv is in asm/ptrace.h */
+/* not in sys/user.h */
+#include <asm/ptrace.h>
+#endif
+
+#if defined(ARCH_ARM64) || defined(ARCH_RISCV64)
 #include <linux/elf.h>  /* NT_PRSTATUS */
 #endif
 
@@ -95,6 +101,24 @@
 	(*(word_t*) (tracee->_regs[version].cs == 0x23			\
 		? (((uint8_t *) &tracee->_regs[version]) + reg_offset_x86[index]) \
 		: (((uint8_t *) &tracee->_regs[version]) + reg_offset[index])))
+
+#elif defined(ARCH_RISCV64)
+	#undef USER_REGS_OFFSET
+	#define USER_REGS_OFFSET(reg_name) (offsetof(struct user_regs_struct, reg_name))
+
+	static off_t reg_offset[] = {
+	[SYSARG_NUM]    = USER_REGS_OFFSET(a7),
+	[SYSARG_1]      = USER_REGS_OFFSET(a0),
+	[SYSARG_2]      = USER_REGS_OFFSET(a1),
+	[SYSARG_3]      = USER_REGS_OFFSET(a2),
+	[SYSARG_4]      = USER_REGS_OFFSET(a3),
+	[SYSARG_5]      = USER_REGS_OFFSET(a4),
+	[SYSARG_6]      = USER_REGS_OFFSET(a5),
+	[SYSARG_RESULT] = USER_REGS_OFFSET(a0),
+	[STACK_POINTER] = USER_REGS_OFFSET(sp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
+	[USERARG_1]     = USER_REGS_OFFSET(a0),
+	};
 
 #elif defined(ARCH_ARM_EABI)
 
@@ -246,7 +270,7 @@ int fetch_regs(Tracee *tracee)
 {
 	int status;
 
-#if defined(ARCH_ARM64)
+#if defined(ARCH_ARM64) || defined(ARCH_RISCV64)
 	struct iovec regs;
 
 	regs.iov_base = &tracee->_regs[CURRENT];
@@ -317,8 +341,14 @@ int push_regs(Tracee *tracee)
 		/* Update other registers.  */
 		regs.iov_base = &tracee->_regs[CURRENT];
 		regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
-
 		status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_PRSTATUS, &regs);
+#elif defined(ARCH_RISCV64)
+	struct iovec regs;
+	regs.iov_base = &tracee->_regs[CURRENT];
+	regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
+	// for riscv we also use PTRACE_SETREGSET option to update regs
+	// because PTRACE_SETREGS not support yet
+	status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_PRSTATUS, &regs);
 #else
 #    if defined(ARCH_ARM_EABI)
 		/* On ARM, a special ptrace request is required to

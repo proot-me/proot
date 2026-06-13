@@ -8,6 +8,12 @@
 #include <errno.h>      /* errno(3), */
 #include <sys/user.h>   /* struct user*, */
 
+#if defined(ARCH_RISCV64) && defined(__GLIBC__)
+/* ptrace user_regs in glibc for riscv is in asm/ptrace.h */
+/* not in sys/user.h */
+#include <asm/ptrace.h>
+#endif
+
 int main(int argc, char **argv)
 {
 	enum __ptrace_request restart_how;

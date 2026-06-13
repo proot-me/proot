@@ -50,6 +50,7 @@
 #include "attribute.h"
 #include "compat.h"
 
+#include "linux/elf.h"
 
 /**
  * Start @tracee->exe with the given @argv[].  This function
@@ -855,7 +856,6 @@ bool restart_tracee(Tracee *tracee, int signal)
 	/* Put in the "stopped"/"waiting for ptracee" state?.  */
 	if (tracee->as_ptracer.wait_pid != 0 || signal == -1)
 		return false;
-
 	/* Restart the tracee and stop it at the next instruction, or
 	 * at the next entry or exit of a system call. */
 	status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);

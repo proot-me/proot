@@ -40,6 +40,12 @@
 #define PTRACE_REQUEST_TYPE	int
 #endif
 
+#if defined(ARCH_RISCV64) && defined(__GLIBC__)
+/* ptrace user_regs in glibc for riscv is in asm/ptrace.h */
+/* not in sys/user.h */
+#include <asm/ptrace.h>
+#endif
+
 typedef enum {
 	CURRENT  = 0,
 	ORIGINAL = 1,

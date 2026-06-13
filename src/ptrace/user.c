@@ -30,6 +30,12 @@
 #include "ptrace/user.h"
 #include "cli/note.h"
 
+#if defined(ARCH_RISCV64) && defined(__GLIBC__)
+/* ptrace user_regs in glibc for riscv is in asm/ptrace.h */
+/* not in sys/user.h */
+#include <asm/ptrace.h>
+#endif
+
 #if defined(ARCH_X86_64)
 
 /**

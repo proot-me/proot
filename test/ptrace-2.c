@@ -35,6 +35,12 @@
 #include <sys/uio.h>    /* struct iovec */
 #include <elf.h>        /* NT_PRSTATUS */
 
+#if defined(ARCH_RISCV64) && defined(__GLIBC__)
+/* ptrace user_regs in glibc for riscv is in asm/ptrace.h */
+/* not in sys/user.h */
+#include <asm/ptrace.h>
+#endif
+
 #include "../src/arch.h"
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
@@ -44,6 +50,8 @@
 #        define ARCH_ARM_EABI 1
 #    elif defined(__aarch64__)
 #        define ARCH_ARM64 1
+#    elif defined(__riscv) && __riscv_flen == 64
+#        define ARCH_RISCV64 1
 #    elif defined(__arm__)
 #        error "Only EABI is currently supported for ARM"
 #    elif defined(__i386__)
@@ -146,6 +154,24 @@ typedef enum {
 	[STACK_POINTER] = USER_REGS_OFFSET(sp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
     };
+
+#elif defined(ARCH_RISCV64)
+	
+	#undef USER_REGS_OFFSET
+	#define USER_REGS_OFFSET(reg_name) (offsetof(struct user_regs_struct, reg_name))
+
+	static off_t reg_offset[] = {
+	[SYSARG_NUM]    = USER_REGS_OFFSET(a7),
+	[SYSARG_1]      = USER_REGS_OFFSET(a0),
+	[SYSARG_2]      = USER_REGS_OFFSET(a1),
+	[SYSARG_3]      = USER_REGS_OFFSET(a2),
+	[SYSARG_4]      = USER_REGS_OFFSET(a3),
+	[SYSARG_5]      = USER_REGS_OFFSET(a4),
+	[SYSARG_6]      = USER_REGS_OFFSET(a5),
+	[SYSARG_RESULT] = USER_REGS_OFFSET(a0),
+	[STACK_POINTER] = USER_REGS_OFFSET(sp),
+	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
+	};
 
 #elif defined(ARCH_X86)
 

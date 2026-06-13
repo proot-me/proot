@@ -14,6 +14,7 @@ STRIP    = $(CROSS_COMPILE)strip
 OBJCOPY  = $(CROSS_COMPILE)objcopy
 OBJDUMP  = $(CROSS_COMPILE)objdump
 PYTHON   = python3
+ARCH	 = $(shell uname -m)
 
 HAS_SWIG := $(shell swig -version 2>/dev/null)
 PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
@@ -21,8 +22,11 @@ PYTHON_EMBED = $(shell ${PYTHON} -c "import sys; print('--embed' if sys.hexversi
 HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/null)
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
-CFLAGS   += -g -Wall -Wextra -O2
+ifeq ($(ARCH),riscv64)
+CFLAGS	 += -g -Wall -Wextra -O0
+else
 CFLAGS   += $(shell pkg-config --cflags talloc)
+endif
 LDFLAGS  += -Wl,-z,noexecstack
 LDFLAGS  += $(shell pkg-config --libs talloc)
 

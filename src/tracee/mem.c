@@ -41,6 +41,12 @@
 #include "build.h"           /* HAVE_PROCESS_VM,  */
 #include "cli/note.h"
 
+#if defined(ARCH_RISCV64) && defined(__GLIBC__)
+/* ptrace user_regs in glibc for riscv is in asm/ptrace.h */
+/* not in sys/user.h */
+#include <asm/ptrace.h>
+#endif
+
 /**
  * Load the word at the given @address, potentially *not* aligned.
  */
