@@ -37,7 +37,7 @@ typedef enum {
 
 
 extern Action readlink_proc(const Tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX],
-			const char component[NAME_MAX],	Comparison comparison);
+			const char component[NAME_MAX+1],	Comparison comparison);
 
 extern ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char path[PATH_MAX]);
 

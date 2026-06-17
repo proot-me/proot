@@ -83,7 +83,7 @@ static inline void pop_component(char *path)
  *
  *     - 0 otherwise.
  */
-static inline Finality next_component(char component[NAME_MAX], const char **cursor)
+static inline Finality next_component(char component[NAME_MAX+1], const char **cursor)
 {
 	const char *start;
 	ptrdiff_t length;
@@ -103,7 +103,7 @@ static inline Finality next_component(char component[NAME_MAX], const char **cur
 		(*cursor)++;
 	length = *cursor - start;
 
-	if (length >= NAME_MAX)
+	if (length > NAME_MAX)
 		return -ENAMETOOLONG;
 
 	/* Extract the component. */
@@ -224,7 +224,7 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 	finality = NOT_FINAL;
 	while (!IS_FINAL(finality)) {
 		Comparison comparison;
-		char component[NAME_MAX];
+		char component[NAME_MAX+1];
 
 		finality = next_component(component, &cursor);
 		status = (int) finality;

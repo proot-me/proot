@@ -41,7 +41,7 @@
  * to @result.
  */
 Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
-			const char base[PATH_MAX], const char component[NAME_MAX],
+			const char base[PATH_MAX], const char component[NAME_MAX+1],
 			Comparison comparison)
 {
 	const Tracee *known_tracee;
