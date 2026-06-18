@@ -419,13 +419,14 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 	/* Is it a symlink?  */
 	if (t_referrer != NULL) {
 		Comparison comparison;
+		Comparison path_comparison;
 
 		sanity_check = false;
 		follow_binding = false;
-
 		/* In some cases bindings have to be resolved.  */
 		comparison = compare_paths("/proc", t_referrer);
-		if (comparison == PATH1_IS_PREFIX) {
+		path_comparison = compare_paths("/proc", path);
+		if (comparison == PATH1_IS_PREFIX && path_comparison != PATHS_ARE_NOT_COMPARABLE) {
 			/* Some links in "/proc" are generated
 			 * dynamically by the kernel.  PRoot has to
 			 * emulate some of them.  */
