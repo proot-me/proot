@@ -43,6 +43,8 @@
 #    include "loader/assembly-x86.h"
 #elif defined(ARCH_ARM64)
 #    include "loader/assembly-arm64.h"
+#elif defined(ARCH_LOONGARCH64)
+#    include "loader/assembly-loongarch64.h"
 #else
 #    error "Unsupported architecture"
 #endif

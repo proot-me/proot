@@ -34,7 +34,7 @@
 
 #include "arch.h"
 
-#if defined(ARCH_ARM64)
+#if defined(ARCH_ARM64) || defined(ARCH_LOONGARCH64)
 #include <linux/elf.h>  /* NT_PRSTATUS */
 #endif
 
@@ -165,6 +165,25 @@
 	[RTLD_FINI]     = USER_REGS_OFFSET(r4),
     };
 
+#elif defined(ARCH_LOONGARCH64)
+
+	#undef  USER_REGS_OFFSET
+	#define USER_REGS_OFFSET(reg_name) offsetof(struct user_regs_struct, reg_name)
+
+	static off_t reg_offset[] = {
+	[SYSARG_NUM]    = USER_REGS_OFFSET(regs[11]),
+	[SYSARG_1]      = USER_REGS_OFFSET(orig_a0),
+	[SYSARG_2]      = USER_REGS_OFFSET(regs[5]),
+	[SYSARG_3]      = USER_REGS_OFFSET(regs[6]),
+	[SYSARG_4]      = USER_REGS_OFFSET(regs[7]),
+	[SYSARG_5]      = USER_REGS_OFFSET(regs[8]),
+	[SYSARG_6]      = USER_REGS_OFFSET(regs[9]),
+	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[4]),
+	[STACK_POINTER] = USER_REGS_OFFSET(regs[3]),
+	[INSTR_POINTER] = USER_REGS_OFFSET(csr_era),
+	[USERARG_1]     = USER_REGS_OFFSET(regs[4]),
+	};
+
 #else
 
     #error "Unsupported architecture"
@@ -246,7 +265,7 @@ int fetch_regs(Tracee *tracee)
 {
 	int status;
 
-#if defined(ARCH_ARM64)
+#if defined(ARCH_ARM64) || defined(ARCH_LOONGARCH64)
 	struct iovec regs;
 
 	regs.iov_base = &tracee->_regs[CURRENT];
@@ -319,6 +338,12 @@ int push_regs(Tracee *tracee)
 		regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
 
 		status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_PRSTATUS, &regs);
+#elif defined(ARCH_LOONGARCH64)
+	struct iovec regs;
+	regs.iov_base = &tracee->_regs[CURRENT];
+	regs.iov_len  = sizeof(tracee->_regs[CURRENT]);
+
+	status = ptrace(PTRACE_SETREGSET, tracee->pid, NT_PRSTATUS, &regs);
 #else
 #    if defined(ARCH_ARM_EABI)
 		/* On ARM, a special ptrace request is required to
