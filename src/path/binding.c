@@ -20,15 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <sys/stat.h> /* lstat(2), */
-#include <unistd.h>   /* getcwd(2), lstat(2), */
-#include <string.h>   /* string(3),  */
-#include <strings.h>  /* bzero(3), */
-#include <assert.h>   /* assert(3), */
-#include <limits.h>   /* PATH_MAX, */
-#include <errno.h>    /* E* */
-#include <sys/queue.h> /* CIRCLEQ_*, */
-#include <talloc.h>   /* talloc_*, */
+#include <sys/stat.h>		/* lstat(2), */
+#include <unistd.h>		/* getcwd(2), lstat(2), */
+#include <string.h>		/* string(3),  */
+#include <strings.h>		/* bzero(3), */
+#include <assert.h>		/* assert(3), */
+#include <limits.h>		/* PATH_MAX, */
+#include <errno.h>		/* E* */
+#include <sys/queue.h>		/* CIRCLEQ_*, */
+#include <talloc.h>		/* talloc_*, */
 
 #include "path/binding.h"
 #include "path/path.h"
@@ -105,11 +105,13 @@ static void print_bindings(const Tracee *tracee)
 		return;
 
 	CIRCLEQ_FOREACH_(tracee, binding, GUEST) {
-		if (compare_paths(binding->host.path, binding->guest.path) == PATHS_ARE_EQUAL)
-			note(tracee, INFO, USER, "binding = %s", binding->host.path);
+		if (compare_paths(binding->host.path, binding->guest.path)
+		    == PATHS_ARE_EQUAL)
+			note(tracee, INFO, USER, "binding = %s",
+			     binding->host.path);
 		else
 			note(tracee, INFO, USER, "binding = %s:%s",
-				binding->host.path, binding->guest.path);
+			     binding->host.path, binding->guest.path);
 	}
 }
 
@@ -117,7 +119,8 @@ static void print_bindings(const Tracee *tracee)
  * Get the binding for the given @path (relatively to the given
  * binding @side).
  */
-Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
+Binding *get_binding(const Tracee *tracee, Side side,
+		     const char path[PATH_MAX])
 {
 	Binding *binding;
 	size_t path_length = strlen(path);
@@ -143,8 +146,10 @@ Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 			return NULL;
 		}
 
-		comparison = compare_paths2(ref->path, ref->length, path, path_length);
-		if (   comparison != PATHS_ARE_EQUAL
+		comparison =
+		    compare_paths2(ref->path, ref->length, path,
+				   path_length);
+		if (comparison != PATHS_ARE_EQUAL
 		    && comparison != PATH1_IS_PREFIX)
 			continue;
 
@@ -153,10 +158,11 @@ Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
 		 *
 		 *     proot -m /usr:/location /usr/local/slackware
 		 */
-		if (   side == HOST
-		    && compare_paths(get_root(tracee), "/") != PATHS_ARE_EQUAL
+		if (side == HOST
+		    && compare_paths(get_root(tracee),
+				     "/") != PATHS_ARE_EQUAL
 		    && belongs_to_guestfs(tracee, path))
-				continue;
+			continue;
 
 		return binding;
 	}
@@ -168,7 +174,8 @@ Binding *get_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
  * Get the binding path for the given @path (relatively to the given
  * binding @side).
  */
-const char *get_path_binding(const Tracee *tracee, Side side, const char path[PATH_MAX])
+const char *get_path_binding(const Tracee *tracee, Side side,
+			     const char path[PATH_MAX])
 {
 	const Binding *binding;
 
@@ -196,7 +203,7 @@ const char *get_path_binding(const Tracee *tracee, Side side, const char path[PA
  * the "bindings.guest" list or from the "bindings.pending" list,
  * respectively.
  */
-const char *get_root(const Tracee* tracee)
+const char *get_root(const Tracee *tracee)
 {
 	const Binding *binding;
 
@@ -209,7 +216,8 @@ const char *get_root(const Tracee* tracee)
 			return NULL;
 
 		binding = CIRCLEQ_LAST(tracee->fs->bindings.pending);
-		if (compare_paths(binding->guest.path, "/") != PATHS_ARE_EQUAL)
+		if (compare_paths(binding->guest.path, "/") !=
+		    PATHS_ARE_EQUAL)
 			return NULL;
 
 		return binding->host.path;
@@ -236,7 +244,8 @@ const char *get_root(const Tracee* tracee)
  *     * 1 if it is a binding location and a substitution was performed
  *       ("asymmetric" binding)
  */
-int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
+int substitute_binding(const Tracee *tracee, Side side,
+		       char path[PATH_MAX])
 {
 	const Path *reverse_ref;
 	const Path *ref;
@@ -266,7 +275,8 @@ int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
 		return -EACCES;
 	}
 
-	substitute_path_prefix(path, ref->length, reverse_ref->path, reverse_ref->length);
+	substitute_path_prefix(path, ref->length, reverse_ref->path,
+			       reverse_ref->length);
 
 	return 1;
 }
@@ -276,14 +286,14 @@ int substitute_binding(const Tracee *tracee, Side side, char path[PATH_MAX])
  */
 void remove_binding_from_all_lists(const Tracee *tracee, Binding *binding)
 {
-       if (IS_LINKED(binding, link.pending))
-	       CIRCLEQ_REMOVE_(tracee, binding, pending);
+	if (IS_LINKED(binding, link.pending))
+		CIRCLEQ_REMOVE_(tracee, binding, pending);
 
-       if (IS_LINKED(binding, link.guest))
-	       CIRCLEQ_REMOVE_(tracee, binding, guest);
+	if (IS_LINKED(binding, link.guest))
+		CIRCLEQ_REMOVE_(tracee, binding, guest);
 
-       if (IS_LINKED(binding, link.host))
-	       CIRCLEQ_REMOVE_(tracee, binding, host);
+	if (IS_LINKED(binding, link.host))
+		CIRCLEQ_REMOVE_(tracee, binding, host);
 }
 
 /**
@@ -294,7 +304,8 @@ void remove_binding_from_all_lists(const Tracee *tracee, Binding *binding)
  *
  * Note: "nested" from the @side point-of-view.
  */
-static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
+static void insort_binding(const Tracee *tracee, Side side,
+			   Binding *binding)
 {
 	Binding *iterator;
 	Binding *previous = NULL;
@@ -323,8 +334,11 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 			return;
 		}
 
-		comparison = compare_paths2(binding_path->path, binding_path->length,
-					    iterator_path->path, iterator_path->length);
+		comparison =
+		    compare_paths2(binding_path->path,
+				   binding_path->length,
+				   iterator_path->path,
+				   iterator_path->length);
 		switch (comparison) {
 		case PATHS_ARE_EQUAL:
 			if (side == HOST) {
@@ -332,16 +346,20 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 				break;
 			}
 
-			if (tracee->verbose > 0 && getenv("PROOT_IGNORE_MISSING_BINDINGS") == NULL) {
+			if (tracee->verbose > 0
+			    && getenv("PROOT_IGNORE_MISSING_BINDINGS") ==
+			    NULL) {
 				note(tracee, WARNING, USER,
-					"both '%s' and '%s' are bound to '%s', "
-					"only the last binding is active.",
-					iterator->host.path, binding->host.path,
-					binding->guest.path);
+				     "both '%s' and '%s' are bound to '%s', "
+				     "only the last binding is active.",
+				     iterator->host.path,
+				     binding->host.path,
+				     binding->guest.path);
 			}
 
 			/* Replace this iterator with the new binding.  */
-			CIRCLEQ_INSERT_AFTER_(tracee, iterator, binding, side);
+			CIRCLEQ_INSERT_AFTER_(tracee, iterator, binding,
+					      side);
 			remove_binding_from_all_lists(tracee, iterator);
 			return;
 
@@ -381,7 +399,8 @@ static void insort_binding(const Tracee *tracee, Side side, Binding *binding)
 static void insort_binding2(const Tracee *tracee, Binding *binding)
 {
 	binding->need_substitution =
-		compare_paths(binding->host.path, binding->guest.path) != PATHS_ARE_EQUAL;
+	    compare_paths(binding->host.path,
+			  binding->guest.path) != PATHS_ARE_EQUAL;
 
 	insort_binding(tracee, GUEST, binding);
 	insort_binding(tracee, HOST, binding);
@@ -394,8 +413,8 @@ static void insort_binding2(const Tracee *tracee, Binding *binding)
  * otherwise a pointer to the newly created binding.
  */
 Binding *insort_binding3(const Tracee *tracee, const TALLOC_CTX *context,
-			const char host_path[PATH_MAX],
-			const char guest_path[PATH_MAX])
+			 const char host_path[PATH_MAX],
+			 const char guest_path[PATH_MAX])
 {
 	Binding *binding;
 
@@ -454,7 +473,8 @@ static int remove_bindings(Bindings *bindings)
  * missing @host path only if @must_exist is true.  This function
  * returns the allocated binding on success, NULL on error.
  */
-Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool must_exist)
+Binding *new_binding(Tracee *tracee, const char *host, const char *guest,
+		     bool must_exist)
 {
 	Binding *binding;
 	char base[PATH_MAX];
@@ -463,11 +483,13 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 	/* Lasy allocation of the list of bindings specified by the
 	 * user.  This list will be used by initialize_bindings().  */
 	if (tracee->fs->bindings.pending == NULL) {
-		tracee->fs->bindings.pending = talloc_zero(tracee->fs, Bindings);
+		tracee->fs->bindings.pending =
+		    talloc_zero(tracee->fs, Bindings);
 		if (tracee->fs->bindings.pending == NULL)
 			return NULL;
 		CIRCLEQ_INIT(tracee->fs->bindings.pending);
-		talloc_set_destructor(tracee->fs->bindings.pending, remove_bindings);
+		talloc_set_destructor(tracee->fs->bindings.pending,
+				      remove_bindings);
 	}
 
 	/* Allocate an empty binding.  */
@@ -477,35 +499,39 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 
 	/* Canonicalize the host part of the binding, as expected by
 	 * get_binding().  */
-	status = realpath2(tracee->reconf.tracee, binding->host.path, host, true);
+	status =
+	    realpath2(tracee->reconf.tracee, binding->host.path, host,
+		      true);
 	if (status < 0) {
-		if (must_exist && getenv("PROOT_IGNORE_MISSING_BINDINGS") == NULL)
-			note(tracee, WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
-				host, strerror(-status));
+		if (must_exist
+		    && getenv("PROOT_IGNORE_MISSING_BINDINGS") == NULL)
+			note(tracee, WARNING, INTERNAL,
+			     "can't sanitize binding \"%s\": %s", host,
+			     strerror(-status));
 		goto error;
 	}
 	binding->host.length = strlen(binding->host.path);
 
 	/* Symetric binding?  */
-	guest = guest ?: host;
+	guest = guest ? : host;
 
 	/* When not absolute, assume the guest path is relative to the
 	 * current working directory, as with ``-b .`` for instance.  */
 	if (guest[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, base);
 		if (status < 0) {
-			note(tracee, WARNING, INTERNAL, "can't sanitize binding \"%s\": %s",
-				binding->guest.path, strerror(-status));
+			note(tracee, WARNING, INTERNAL,
+			     "can't sanitize binding \"%s\": %s",
+			     binding->guest.path, strerror(-status));
 			goto error;
 		}
-	}
-	else
+	} else
 		strcpy(base, "/");
 
 	status = join_paths(2, binding->guest.path, base, guest);
 	if (status < 0) {
-		note(tracee, WARNING, SYSTEM, "can't sanitize binding \"%s\"",
-			binding->guest.path);
+		note(tracee, WARNING, SYSTEM,
+		     "can't sanitize binding \"%s\"", binding->guest.path);
 		goto error;
 	}
 	binding->guest.length = strlen(binding->guest.path);
@@ -517,7 +543,7 @@ Binding *new_binding(Tracee *tracee, const char *host, const char *guest, bool m
 
 	return binding;
 
-error:
+      error:
 	TALLOC_FREE(binding);
 	return NULL;
 }
@@ -555,17 +581,20 @@ static void initialize_binding(Tracee *tracee, Binding *binding)
 		/* Remember the type of the final component, it will
 		 * be used in build_glue() later.  */
 		status = lstat(binding->host.path, &statl);
-		tracee->glue_type = (status < 0 || S_ISBLK(statl.st_mode) || S_ISCHR(statl.st_mode)
-				? S_IFREG : statl.st_mode & S_IFMT);
+		tracee->glue_type = (status < 0 || S_ISBLK(statl.st_mode)
+				     || S_ISCHR(statl.st_mode)
+				     ? S_IFREG : statl.st_mode & S_IFMT);
 
 		/* Sanitize the guest path of the binding within the
 		   alternate rootfs since it is assumed by
 		   substitute_binding().  */
-		status = canonicalize(tracee, path, dereference, binding->guest.path, 0);
+		status =
+		    canonicalize(tracee, path, dereference,
+				 binding->guest.path, 0);
 		if (status < 0) {
 			note(tracee, WARNING, INTERNAL,
-				"sanitizing the guest path (binding) \"%s\": %s",
-				path, strerror(-status));
+			     "sanitizing the guest path (binding) \"%s\": %s",
+			     path, strerror(-status));
 			return;
 		}
 
@@ -599,7 +628,8 @@ static void initialize_binding(Tracee *tracee, Binding *binding)
  *
  *      -b /home/ced:/media/local/ced
  */
-static void add_induced_bindings(Tracee *tracee, const Binding *new_binding)
+static void add_induced_bindings(Tracee *tracee,
+				 const Binding *new_binding)
 {
 	Binding *old_binding;
 	char path[PATH_MAX];
@@ -645,7 +675,9 @@ static void add_induced_bindings(Tracee *tracee, const Binding *new_binding)
 		if (prefix_length == 1)
 			prefix_length = 0;
 
-		status = join_paths(2, path2, new_binding->guest.path, old_binding->guest.path + prefix_length);
+		status =
+		    join_paths(2, path2, new_binding->guest.path,
+			       old_binding->guest.path + prefix_length);
 		if (status < 0)
 			continue;
 
@@ -660,12 +692,17 @@ static void add_induced_bindings(Tracee *tracee, const Binding *new_binding)
 		strcpy(induced_binding->host.path, old_binding->host.path);
 		strcpy(induced_binding->guest.path, path2);
 
-		induced_binding->host.length = strlen(induced_binding->host.path);
-		induced_binding->guest.length = strlen(induced_binding->guest.path);
+		induced_binding->host.length =
+		    strlen(induced_binding->host.path);
+		induced_binding->guest.length =
+		    strlen(induced_binding->guest.path);
 
-		VERBOSE(tracee, 2, "induced binding: %s:%s (old) & %s:%s (new) -> %s:%s (induced)",
-			old_binding->host.path, old_binding->guest.path, path, new_binding->guest.path,
-			induced_binding->host.path, induced_binding->guest.path);
+		VERBOSE(tracee, 2,
+			"induced binding: %s:%s (old) & %s:%s (new) -> %s:%s (induced)",
+			old_binding->host.path, old_binding->guest.path,
+			path, new_binding->guest.path,
+			induced_binding->host.path,
+			induced_binding->guest.path);
 
 		insort_binding2(tracee, induced_binding);
 	}
@@ -689,9 +726,11 @@ int initialize_bindings(Tracee *tracee)
 	/* Allocate @tracee->fs->bindings.guest and
 	 * @tracee->fs->bindings.host.  */
 	tracee->fs->bindings.guest = talloc_zero(tracee->fs, Bindings);
-	tracee->fs->bindings.host  = talloc_zero(tracee->fs, Bindings);
-	if (tracee->fs->bindings.guest == NULL || tracee->fs->bindings.host == NULL) {
-		note(tracee, ERROR, INTERNAL, "can't allocate enough memory");
+	tracee->fs->bindings.host = talloc_zero(tracee->fs, Bindings);
+	if (tracee->fs->bindings.guest == NULL
+	    || tracee->fs->bindings.host == NULL) {
+		note(tracee, ERROR, INTERNAL,
+		     "can't allocate enough memory");
 		TALLOC_FREE(tracee->fs->bindings.guest);
 		TALLOC_FREE(tracee->fs->bindings.host);
 		return -1;

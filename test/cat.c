@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 
-		while ((status = read(fd, buffer, sizeof(buffer))) > 0 && write(1, buffer, status) == status)
+		while ((status = read(fd, buffer, sizeof(buffer))) > 0
+		       && write(1, buffer, status) == status)
 			errno = 0;
 
 		if (errno != 0) {

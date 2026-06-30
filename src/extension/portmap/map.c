@@ -2,7 +2,7 @@
  * Copyright (C) 2016 Vincent Hage
  */
 
-#include <arpa/inet.h>      /* inet_ntop */
+#include <arpa/inet.h>		/* inet_ntop */
 
 #include "cli/note.h"
 #include "extension/portmap/portmap.h"
@@ -15,7 +15,7 @@ void initialize_portmap(PortMap *portmap)
 {
 	int i;
 
-	for(i = 0; i < PORTMAP_SIZE; i++) {
+	for (i = 0; i < PORTMAP_SIZE; i++) {
 		portmap->map[i].port_in = PORTMAP_DEFAULT_VALUE;
 		portmap->map[i].port_out = PORTMAP_DEFAULT_VALUE;
 	}
@@ -41,15 +41,15 @@ uint16_t get_index(PortMap *portmap, uint16_t key)
 	 *  2. an empty entry is reached (if check_empty is true)
 	 *  3. an entry with the same key is found
 	 */
-	while(index < PORTMAP_SIZE &&
-			portmap->map[index].port_in != PORTMAP_DEFAULT_VALUE &&
-			portmap->map[index].port_in != key) {
+	while (index < PORTMAP_SIZE &&
+	       portmap->map[index].port_in != PORTMAP_DEFAULT_VALUE &&
+	       portmap->map[index].port_in != key) {
 		index++;
 		i++;
 	}
 
 	/* if a good entry has been found, we can return it directly */
-	if(index < PORTMAP_SIZE)
+	if (index < PORTMAP_SIZE)
 		return index;
 
 	/* otherwise, we loop back from the beginning */
@@ -60,14 +60,14 @@ uint16_t get_index(PortMap *portmap, uint16_t key)
 	 *  2. an empty entry is reached
 	 *  3. an entry with the same key is found
 	 */
-	while(i < PORTMAP_SIZE &&
-			portmap->map[index].port_in != PORTMAP_DEFAULT_VALUE &&
-			portmap->map[index].port_in != key) {
+	while (i < PORTMAP_SIZE &&
+	       portmap->map[index].port_in != PORTMAP_DEFAULT_VALUE &&
+	       portmap->map[index].port_in != key) {
 		index++;
 		i++;
 	}
 
-	if(i < PORTMAP_SIZE)
+	if (i < PORTMAP_SIZE)
 		/* a good entry has been found */
 		return index;
 	else
@@ -86,13 +86,15 @@ int add_entry(PortMap *portmap, uint16_t port_in, uint16_t port_out)
 	uint16_t index = get_index(portmap, port_in);
 
 	/* no available entry has been found */
-	if(index == PORTMAP_SIZE)
+	if (index == PORTMAP_SIZE)
 		return -1;
 
 	portmap->map[index].port_in = port_in;
 	portmap->map[index].port_out = port_out;
 
-	VERBOSE(tracee, PORTMAP_VERBOSITY, "new port mapping entry: %d -> %d", ntohs(port_in), ntohs(port_out));
+	VERBOSE(tracee, PORTMAP_VERBOSITY,
+		"new port mapping entry: %d -> %d", ntohs(port_in),
+		ntohs(port_out));
 
 	return 0;
 }
@@ -107,10 +109,10 @@ uint16_t get_port(PortMap *portmap, uint16_t port_in)
 	uint16_t index = get_index(portmap, port_in);
 
 	/* no corresponding entry has been found */
-	if(index == PORTMAP_SIZE)
+	if (index == PORTMAP_SIZE)
 		return PORTMAP_DEFAULT_VALUE;
 
-	if(portmap->map[index].port_in == port_in)
+	if (portmap->map[index].port_in == port_in)
 		return portmap->map[index].port_out;
 	else
 		return PORTMAP_DEFAULT_VALUE;

@@ -20,16 +20,16 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>     /* open(2), */
-#include <sys/stat.h>      /* open(2), */
-#include <fcntl.h>         /* open(2), */
-#include <linux/limits.h>  /* PATH_MAX, */
-#include <linux/binfmts.h> /* BINPRM_BUF_SIZE, */
-#include <unistd.h>        /* read(2), close(2), */
-#include <errno.h>         /* -E*, */
-#include <sys/param.h>     /* MAXSYMLINKS, */
-#include <stdbool.h>       /* bool, */
-#include <assert.h>        /* assert(3), */
+#include <sys/types.h>		/* open(2), */
+#include <sys/stat.h>		/* open(2), */
+#include <fcntl.h>		/* open(2), */
+#include <linux/limits.h>	/* PATH_MAX, */
+#include <linux/binfmts.h>	/* BINPRM_BUF_SIZE, */
+#include <unistd.h>		/* read(2), close(2), */
+#include <errno.h>		/* -E*, */
+#include <sys/param.h>		/* MAXSYMLINKS, */
+#include <stdbool.h>		/* bool, */
+#include <assert.h>		/* assert(3), */
 
 #include "execve/shebang.h"
 #include "execve/execve.h"
@@ -48,8 +48,9 @@
  *     passed as a *single* argument to the interpreter, and this
  *     string can include white space.
  */
-static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
-		char user_path[PATH_MAX], char argument[BINPRM_BUF_SIZE])
+static int extract_shebang(const Tracee *tracee UNUSED,
+			   const char *host_path, char user_path[PATH_MAX],
+			   char argument[BINPRM_BUF_SIZE])
 {
 	char tmp2[2];
 	char tmp;
@@ -75,7 +76,7 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 		status = -errno;
 		goto end;
 	}
-	if ((size_t) status < 2 * sizeof(char)) { /* EOF */
+	if ((size_t) status < 2 * sizeof(char)) {	/* EOF */
 		status = 0;
 		goto end;
 	}
@@ -95,16 +96,18 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 			status = -errno;
 			goto end;
 		}
-		if ((size_t) status < sizeof(char)) { /* EOF */
+		if ((size_t) status < sizeof(char)) {	/* EOF */
 			status = -ENOEXEC;
 			goto end;
 		}
 
 		current_length++;
-	} while ((tmp == ' ' || tmp == '\t') && current_length < BINPRM_BUF_SIZE);
+	} while ((tmp == ' ' || tmp == '\t')
+		 && current_length < BINPRM_BUF_SIZE);
 
 	/* Slurp the interpreter path until the first space or end-of-line. */
-	for (i = 0; current_length < BINPRM_BUF_SIZE; current_length++, i++) {
+	for (i = 0; current_length < BINPRM_BUF_SIZE;
+	     current_length++, i++) {
 		switch (tmp) {
 		case ' ':
 		case '\t':
@@ -136,7 +139,7 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 			status = -errno;
 			goto end;
 		}
-		if ((size_t) status < sizeof(char)) { /* EOF */
+		if ((size_t) status < sizeof(char)) {	/* EOF */
 			user_path[i] = '\0';
 			argument[0] = '\0';
 			status = 1;
@@ -150,17 +153,20 @@ static int extract_shebang(const Tracee *tracee UNUSED, const char *host_path,
 	status = 1;
 	goto end;
 
-argument:
+      argument:
 
 	/* Slurp the argument until the end-of-line. */
-	for (i = 0; current_length < BINPRM_BUF_SIZE; current_length++, i++) {
+	for (i = 0; current_length < BINPRM_BUF_SIZE;
+	     current_length++, i++) {
 		switch (tmp) {
 		case '\n':
 		case '\r':
 			argument[i] = '\0';
 
 			/* Remove trailing spaces. */
-			for (i--; i > 0 && (argument[i] == ' ' || argument[i] == '\t'); i--)
+			for (i--;
+			     i > 0 && (argument[i] == ' '
+				       || argument[i] == '\t'); i--)
 				argument[i] = '\0';
 
 			status = 1;
@@ -176,7 +182,7 @@ argument:
 			status = -errno;
 			goto end;
 		}
-		if ((size_t) status < sizeof(char)) { /* EOF */
+		if ((size_t) status < sizeof(char)) {	/* EOF */
 			argument[0] = '\0';
 			status = 1;
 			goto end;
@@ -187,7 +193,7 @@ argument:
 	argument[i] = '\0';
 	status = 1;
 
-end:
+      end:
 	close(fd);
 
 	/* Did an error occur or isn't a script? */
@@ -205,7 +211,8 @@ end:
  * point-of-view and as-is), and @tracee's argv[] (pointed to by
  * SYSARG_2) is correctly updated.
  */
-int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
+int expand_shebang(Tracee *tracee, char host_path[PATH_MAX],
+		   char user_path[PATH_MAX])
 {
 	ArrayOfXPointers *argv = NULL;
 	bool has_shebang = false;
@@ -232,7 +239,8 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 		char *old_user_path;
 
 		/* Translate this path (user -> host), then check it is executable.  */
-		status = translate_and_check_exec(tracee, host_path, user_path);
+		status =
+		    translate_and_check_exec(tracee, host_path, user_path);
 		if (status < 0)
 			return status;
 
@@ -242,7 +250,9 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 			return -ENOMEM;
 
 		/* Extract into user_path and argument the shebang from host_path.  */
-		status = extract_shebang(tracee, host_path, user_path, argument);
+		status =
+		    extract_shebang(tracee, host_path, user_path,
+				    argument);
 		if (status < 0)
 			return status;
 
@@ -252,13 +262,16 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 		has_shebang = true;
 
 		/* Translate new path (user -> host), then check it is executable.  */
-		status = translate_and_check_exec(tracee, host_path, user_path);
+		status =
+		    translate_and_check_exec(tracee, host_path, user_path);
 		if (status < 0)
 			return status;
 
 		/* Fetch argv[] only on demand.  */
 		if (argv == NULL) {
-			status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
+			status =
+			    fetch_array_of_xpointers(tracee, &argv,
+						     SYSARG_2, 0);
 			if (status < 0)
 				return status;
 		}
@@ -274,20 +287,29 @@ int expand_shebang(Tracee *tracee, char host_path[PATH_MAX], char user_path[PATH
 		 *
 		 * See commit 8c8fbe85 about "argv->length == 1".  */
 		if (argument[0] != '\0') {
-			status = resize_array_of_xpointers(argv, 0, 2 + (argv->length == 1));
+			status =
+			    resize_array_of_xpointers(argv, 0,
+						      2 + (argv->length ==
+							   1));
 			if (status < 0)
 				return status;
 
-			status = write_xpointees(argv, 0, 3, user_path, argument, old_user_path);
+			status =
+			    write_xpointees(argv, 0, 3, user_path,
+					    argument, old_user_path);
 			if (status < 0)
 				return status;
-		}
-		else {
-			status = resize_array_of_xpointers(argv, 0, 1 + (argv->length == 1));
+		} else {
+			status =
+			    resize_array_of_xpointers(argv, 0,
+						      1 + (argv->length ==
+							   1));
 			if (status < 0)
 				return status;
 
-			status = write_xpointees(argv, 0, 2, user_path, old_user_path);
+			status =
+			    write_xpointees(argv, 0, 2, user_path,
+					    old_user_path);
 			if (status < 0)
 				return status;
 		}

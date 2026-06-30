@@ -22,14 +22,14 @@ int main(int argc, char *argv[])
 		errno = 0;
 		while ((dirents = readdir(dir)) != NULL) {
 			printf("%s %s\n",
-				dirents->d_type == DT_BLK  ? "DT_BLK " :
-				dirents->d_type == DT_CHR  ? "DT_CHR " :
-				dirents->d_type == DT_DIR  ? "DT_DIR " :
-				dirents->d_type == DT_FIFO ? "DT_FIFO" :
-				dirents->d_type == DT_LNK  ? "DT_LNK " :
-				dirents->d_type == DT_REG  ? "DT_REG " :
-				dirents->d_type == DT_SOCK ? "DT_SOCK" :
-				"DT_UNKNOWN", dirents->d_name);
+			       dirents->d_type == DT_BLK ? "DT_BLK " :
+			       dirents->d_type == DT_CHR ? "DT_CHR " :
+			       dirents->d_type == DT_DIR ? "DT_DIR " :
+			       dirents->d_type == DT_FIFO ? "DT_FIFO" :
+			       dirents->d_type == DT_LNK ? "DT_LNK " :
+			       dirents->d_type == DT_REG ? "DT_REG " :
+			       dirents->d_type == DT_SOCK ? "DT_SOCK" :
+			       "DT_UNKNOWN", dirents->d_name);
 			errno = 0;
 		}
 

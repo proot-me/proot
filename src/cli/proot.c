@@ -20,10 +20,10 @@
  * 02110-1301 USA.
  */
 
-#include <string.h>    /* str*(3), */
-#include <assert.h>    /* assert(3), */
-#include <stdio.h>     /* printf(3), fflush(3), */
-#include <unistd.h>    /* write(2), */
+#include <string.h>		/* str*(3), */
+#include <assert.h>		/* assert(3), */
+#include <stdio.h>		/* printf(3), fflush(3), */
+#include <unistd.h>		/* write(2), */
 
 #include "cli/cli.h"
 #include "cli/note.h"
@@ -35,7 +35,8 @@
 #include "build.h"
 #include "cli/proot.h"
 
-static int handle_option_r(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_r(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	Binding *binding;
 
@@ -48,7 +49,8 @@ static int handle_option_r(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
-static int handle_option_b(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_b(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	char *host;
 	char *guest;
@@ -69,7 +71,8 @@ static int handle_option_b(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
-static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	const char *ptr;
 	size_t nb_args;
@@ -129,8 +132,9 @@ static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED, const char *va
 			goto next;
 
 		last = false;
-	next:
-		tracee->qemu[i] = talloc_strndup(tracee->qemu, start, end - start);
+	      next:
+		tracee->qemu[i] =
+		    talloc_strndup(tracee->qemu, start, end - start);
 		if (tracee->qemu[i] == NULL)
 			return -1;
 		i++;
@@ -143,13 +147,15 @@ static int handle_option_q(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
-static int handle_option_mixed_mode(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_mixed_mode(Tracee *tracee, const Cli *cli UNUSED,
+				    const char *value UNUSED)
 {
 	tracee->mixed_mode = value;
 	return 0;
 }
 
-static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	tracee->fs->cwd = talloc_strdup(tracee->fs, value);
 	if (tracee->fs->cwd == NULL)
@@ -158,33 +164,40 @@ static int handle_option_w(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
-static int handle_option_k(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_k(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	void *extension;
 	int status;
 
 	extension = get_extension(tracee, kompat_callback);
 	if (extension != NULL) {
-		note(tracee, WARNING, USER, "option -k was already specified");
-		note(tracee, INFO, USER, "only the last -k option is enabled");
+		note(tracee, WARNING, USER,
+		     "option -k was already specified");
+		note(tracee, INFO, USER,
+		     "only the last -k option is enabled");
 		TALLOC_FREE(extension);
 	}
 
 	status = initialize_extension(tracee, kompat_callback, value);
 	if (status < 0)
-		note(tracee, WARNING, INTERNAL, "option \"-k %s\" discarded", value);
+		note(tracee, WARNING, INTERNAL,
+		     "option \"-k %s\" discarded", value);
 
 	return 0;
 }
 
-static int handle_option_i(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_i(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	void *extension;
 
 	extension = get_extension(tracee, fake_id0_callback);
 	if (extension != NULL) {
-		note(tracee, WARNING, USER, "option -i/-0/-S was already specified");
-		note(tracee, INFO, USER, "only the last -i/-0/-S option is enabled");
+		note(tracee, WARNING, USER,
+		     "option -i/-0/-S was already specified");
+		note(tracee, INFO, USER,
+		     "only the last -i/-0/-S option is enabled");
 		TALLOC_FREE(extension);
 	}
 
@@ -192,22 +205,27 @@ static int handle_option_i(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return 0;
 }
 
-static int handle_option_0(Tracee *tracee, const Cli *cli, const char *value UNUSED)
+static int handle_option_0(Tracee *tracee, const Cli *cli,
+			   const char *value UNUSED)
 {
 	return handle_option_i(tracee, cli, "0:0");
 }
 
-static int handle_option_kill_on_exit(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_kill_on_exit(Tracee *tracee,
+				      const Cli *cli UNUSED,
+				      const char *value UNUSED)
 {
 	tracee->killall_on_exit = true;
 	return 0;
 }
 
-static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	int status;
 
-	status = parse_integer_option(tracee, &tracee->verbose, value, "-v");
+	status =
+	    parse_integer_option(tracee, &tracee->verbose, value, "-v");
 	if (status < 0)
 		return status;
 
@@ -218,7 +236,8 @@ static int handle_option_v(Tracee *tracee, const Cli *cli UNUSED, const char *va
 extern unsigned char WEAK _binary_licenses_start;
 extern unsigned char WEAK _binary_licenses_end;
 
-static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, const char *value UNUSED)
+static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli,
+			   const char *value UNUSED)
 {
 	size_t size;
 
@@ -234,14 +253,16 @@ static int handle_option_V(Tracee *tracee UNUSED, const Cli *cli, const char *va
 	return -1;
 }
 
-static int handle_option_h(Tracee *tracee, const Cli *cli, const char *value UNUSED)
+static int handle_option_h(Tracee *tracee, const Cli *cli,
+			   const char *value UNUSED)
 {
 	print_usage(tracee, cli, true);
 	exit_failure = false;
 	return -1;
 }
 
-static void new_bindings(Tracee *tracee, const char *bindings[], const char *value)
+static void new_bindings(Tracee *tracee, const char *bindings[],
+			 const char *value)
 {
 	int i;
 
@@ -256,7 +277,8 @@ static void new_bindings(Tracee *tracee, const char *bindings[], const char *val
 	}
 }
 
-static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value)
+static int handle_option_R(Tracee *tracee, const Cli *cli,
+			   const char *value)
 {
 	int status;
 
@@ -269,7 +291,8 @@ static int handle_option_R(Tracee *tracee, const Cli *cli, const char *value)
 	return 0;
 }
 
-static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value)
+static int handle_option_S(Tracee *tracee, const Cli *cli,
+			   const char *value)
 {
 	int status;
 
@@ -286,7 +309,8 @@ static int handle_option_S(Tracee *tracee, const Cli *cli, const char *value)
 	return 0;
 }
 
-static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	int status = 0;
 	char *port_in;
@@ -304,9 +328,10 @@ static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *va
 		port_out++;
 	}
 
-	if(global_portmap_extension == NULL)
-		status = initialize_extension(tracee, portmap_callback, value);
-	if(status < 0)
+	if (global_portmap_extension == NULL)
+		status =
+		    initialize_extension(tracee, portmap_callback, value);
+	if (status < 0)
 		return status;
 
 	status = add_portmap_entry(atoi(port_in), atoi(port_out));
@@ -314,13 +339,15 @@ static int handle_option_p(Tracee *tracee, const Cli *cli UNUSED, const char *va
 	return status;
 }
 
-static int handle_option_n(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_n(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	int status = 0;
 
-	if(global_portmap_extension == NULL)
-		status = initialize_extension(tracee, portmap_callback, value);
-	if(status < 0)
+	if (global_portmap_extension == NULL)
+		status =
+		    initialize_extension(tracee, portmap_callback, value);
+	if (status < 0)
 		return status;
 
 	status = activate_netcoop_mode();
@@ -329,14 +356,16 @@ static int handle_option_n(Tracee *tracee, const Cli *cli UNUSED, const char *va
 }
 
 #ifdef HAVE_PYTHON_EXTENSION
-static int handle_option_P(Tracee *tracee, const Cli *cli UNUSED, const char *value)
+static int handle_option_P(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value)
 {
 	(void) initialize_extension(tracee, python_callback, value);
 	return 0;
 }
 #endif
 
-static int handle_option_l(Tracee *tracee, const Cli *cli UNUSED, const char *value UNUSED)
+static int handle_option_l(Tracee *tracee, const Cli *cli UNUSED,
+			   const char *value UNUSED)
 {
 	return initialize_extension(tracee, link2symlink_callback, NULL);
 }
@@ -345,7 +374,9 @@ static int handle_option_l(Tracee *tracee, const Cli *cli UNUSED, const char *va
  * Initialize @tracee->qemu.
  */
 static int post_initialize_exe(Tracee *tracee, const Cli *cli UNUSED,
-			size_t argc UNUSED, char *const argv[] UNUSED, size_t cursor UNUSED)
+			       size_t argc UNUSED,
+			       char *const argv[]UNUSED,
+			       size_t cursor UNUSED)
 {
 	char path[PATH_MAX];
 	int status;
@@ -355,7 +386,9 @@ static int post_initialize_exe(Tracee *tracee, const Cli *cli UNUSED,
 		return 0;
 
 	/* Resolve the full guest path to tracee->qemu[0].  */
-	status = which(tracee->reconf.tracee, tracee->reconf.paths, path, tracee->qemu[0]);
+	status =
+	    which(tracee->reconf.tracee, tracee->reconf.paths, path,
+		  tracee->qemu[0]);
 	if (status < 0)
 		return -1;
 
@@ -363,7 +396,8 @@ static int post_initialize_exe(Tracee *tracee, const Cli *cli UNUSED,
 	 * point-of-view, not from the PRoot's point-of-view.  See
 	 * translate_execve() for details.  */
 	if (tracee->reconf.tracee != NULL) {
-		status = detranslate_path(tracee->reconf.tracee, path, NULL);
+		status =
+		    detranslate_path(tracee->reconf.tracee, path, NULL);
 		if (status < 0)
 			return -1;
 	}
@@ -380,7 +414,8 @@ static int post_initialize_exe(Tracee *tracee, const Cli *cli UNUSED,
  * are not required on the command line, i.e.  "-w" and "-r".
  */
 static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
-			size_t argc UNUSED, char *const argv[] UNUSED, size_t cursor)
+				   size_t argc UNUSED,
+				   char *const argv[]UNUSED, size_t cursor)
 {
 	int status;
 
@@ -391,7 +426,7 @@ static int pre_initialize_bindings(Tracee *tracee, const Cli *cli,
 			return -1;
 	}
 
-	 /* The default guest rootfs is "/" if none was specified.  */
+	/* The default guest rootfs is "/" if none was specified.  */
 	if (get_root(tracee) == NULL) {
 		status = handle_option_r(tracee, cli, "/");
 		if (status < 0)

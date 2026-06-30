@@ -1,10 +1,10 @@
-#include <unistd.h>       /* syscall(2), sysconf(3), */
-#include <sys/syscall.h>  /* SYS_brk,         */
-#include <stdio.h>        /* puts(3),         */
-#include <stdlib.h>       /* exit(3), EXIT_*, */
-#include <stdint.h>       /* uint*_t,         */
-#include <sys/mman.h>     /* mmap(2), MAP_*,  */
-#include <string.h>       /* memset(3), */
+#include <unistd.h>		/* syscall(2), sysconf(3), */
+#include <sys/syscall.h>	/* SYS_brk,         */
+#include <stdio.h>		/* puts(3),         */
+#include <stdlib.h>		/* exit(3), EXIT_*, */
+#include <stdint.h>		/* uint*_t,         */
+#include <sys/mman.h>		/* mmap(2), MAP_*,  */
+#include <string.h>		/* memset(3), */
 
 int main()
 {
@@ -22,7 +22,8 @@ int main()
 		return 125;
 
 	void test_brk(int increment, int expected_result) {
-		new_brk = (uint8_t *) syscall(SYS_brk, current_brk + increment);
+		new_brk =
+		    (uint8_t *) syscall(SYS_brk, current_brk + increment);
 		if ((new_brk == current_brk) == expected_result)
 			failure = 1;
 		current_brk = (uint8_t *) syscall(SYS_brk, 0);
@@ -73,7 +74,8 @@ int main()
 	test_title("Re-allocated \"brk\" pages are initialized");
 	for (i = 0; i < page_size; i++) {
 		if (old_brk[i] != 0) {
-			printf("(index = %d, value = 0x%x) ", i, old_brk[i]);
+			printf("(index = %d, value = 0x%x) ", i,
+			       old_brk[i]);
 			failure = 1;
 			break;
 		}
@@ -82,7 +84,9 @@ int main()
 
 #if 0
 	test_title("Don't allocate \"brk\" pages over \"mmap\" pages");
-	new_brk = mmap(current_brk, page_size / 2, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+	new_brk =
+	    mmap(current_brk, page_size / 2, PROT_READ,
+		 MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
 	if (new_brk == (void *) -1)
 		puts("unknown");
 	else {
@@ -97,7 +101,7 @@ int main()
 		puts("unknown");
 	else {
 #endif
-		while (current_brk - initial_brk < 512*1024*1024UL) {
+		while (current_brk - initial_brk < 512 * 1024 * 1024UL) {
 			old_brk = current_brk;
 
 			test_brk(page_size, -1);
@@ -121,7 +125,7 @@ int main()
 	if (current_brk != initial_brk)
 		puts("unknown");
 	else {
-		while (current_brk - initial_brk < 1024*1024*1024UL) {
+		while (current_brk - initial_brk < 1024 * 1024 * 1024UL) {
 			old_brk = current_brk;
 
 			test_brk(3 * page_size, -1);
@@ -130,13 +134,15 @@ int main()
 
 			for (i = 0; i < 3 * page_size; i++) {
 				if (old_brk[i] != 0) {
-					printf("(index = %d, value = 0x%x) ", i, old_brk[i]);
+					printf
+					    ("(index = %d, value = 0x%x) ",
+					     i, old_brk[i]);
 					failure = 1;
 					goto end;
 				}
 			}
 		}
-	end:
+	      end:
 		test_result();
 	}
 

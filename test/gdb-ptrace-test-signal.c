@@ -50,14 +50,16 @@ static void kill_child(int child_pid)
 		exit(EXIT_FAILURE);
 	}
 
-	got_pid = waitpid (child_pid, &kill_status, 0);
+	got_pid = waitpid(child_pid, &kill_status, 0);
 	if (got_pid != child_pid) {
-		fprintf(stderr, "waitpid: unexpected result %d.", (int)got_pid);
+		fprintf(stderr, "waitpid: unexpected result %d.",
+			(int) got_pid);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!WIFSIGNALED(kill_status)) {
-		fprintf(stderr, "waitpid: unexpected status %d.", kill_status);
+		fprintf(stderr, "waitpid: unexpected status %d.",
+			kill_status);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -75,7 +77,7 @@ static void test_tracefork(int child_pid)
 		exit(125);
 	}
 
-	ret = ptrace (PTRACE_CONT, child_pid, 0, 0);
+	ret = ptrace(PTRACE_CONT, child_pid, 0, 0);
 	if (ret != 0) {
 		perror("ptrace(PTRACE_CONT)");
 		kill_child(child_pid);
@@ -84,25 +86,27 @@ static void test_tracefork(int child_pid)
 
 	ret = waitpid(child_pid, &status, 0);
 	/* Check if we received a fork event notification.  */
-	if (ret == child_pid && WIFSTOPPED(status) && (status >> 16) == PTRACE_EVENT_FORK) {
+	if (ret == child_pid && WIFSTOPPED(status)
+	    && (status >> 16) == PTRACE_EVENT_FORK) {
 		/* We did receive a fork event notification.  Make sure its PID
 		   is reported.  */
 		second_pid = 0;
-		ret = ptrace(PTRACE_GETEVENTMSG, child_pid, 0, &second_pid);
+		ret =
+		    ptrace(PTRACE_GETEVENTMSG, child_pid, 0, &second_pid);
 		if (ret == 0 && second_pid != 0) {
 			int second_status;
 
 			/* Do some cleanup and kill the grandchild.  */
 			waitpid(second_pid, &second_status, 0);
 			kill_child(second_pid);
-		}
-		else {
+		} else {
 			perror("ptrace(PTRACE_GETEVENTMSG)");
 			exit(EXIT_FAILURE);
 		}
-	}
-	else {
-		fprintf(stderr, "Unexpected result from waitpid: pid=%d, status=%d\n", ret, status);
+	} else {
+		fprintf(stderr,
+			"Unexpected result from waitpid: pid=%d, status=%d\n",
+			ret, status);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -117,12 +121,10 @@ static void check_ptrace_features(int do_fork)
 	if (ret == -1) {
 		perror("waitpid()");
 		exit(EXIT_FAILURE);
-	}
-	else if (ret != child_pid) {
+	} else if (ret != child_pid) {
 		fprintf(stderr, "waitpid: unexpected result %d.", ret);
 		exit(EXIT_FAILURE);
-	}
-	else if (!WIFSTOPPED(status)) {
+	} else if (!WIFSTOPPED(status)) {
 		fprintf(stderr, "waitpid: unexpected status %d.", status);
 		exit(EXIT_FAILURE);
 	}
@@ -151,14 +153,14 @@ static void sigchld_handler(int signo)
 
 int main(int argc, char **argv)
 {
-	struct sigaction sigchld_action = {};
+	struct sigaction sigchld_action = { };
 	sigchld_action.sa_handler = sigchld_handler;
-	sigemptyset (&sigchld_action.sa_mask);
+	sigemptyset(&sigchld_action.sa_mask);
 	sigchld_action.sa_flags = SA_RESTART;
 
 	/* Make it the default.  */
 	sigaction(SIGCHLD, &sigchld_action, NULL);
-	(void)argv;
+	(void) argv;
 	check_ptrace_features(argc > 1);
 	if (devnull == -1) {
 		fprintf(stderr, "SIGCHLD handler not called.\n");

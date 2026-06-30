@@ -1,7 +1,7 @@
 /* -*- c-set-style: "K&R"; c-basic-offset: 8 -*- */
 #include <stdlib.h>
 #include <sys/utsname.h>
-#include <sys/wait.h>  /* wait(2), */
+#include <sys/wait.h>		/* wait(2), */
 #include <unistd.h>
 #include <string.h>
 
@@ -25,7 +25,8 @@ int main()
 	uname(&s);
 	int child_status;
 	while ((status = wait(&child_status)) >= 0) {
-		if (!WIFEXITED(child_status) || (WEXITSTATUS(child_status) == EXIT_FAILURE))
+		if (!WIFEXITED(child_status)
+		    || (WEXITSTATUS(child_status) == EXIT_FAILURE))
 			exit(EXIT_FAILURE);
 	}
 	if (strcmp("3.4242XX", s.release) == 0) {

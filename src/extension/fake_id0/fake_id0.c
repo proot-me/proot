@@ -20,17 +20,17 @@
  * 02110-1301 USA.
  */
 
-#include <assert.h>      /* assert(3), */
-#include <stdint.h>      /* intptr_t, */
-#include <errno.h>       /* E*, */
-#include <sys/stat.h>    /* chmod(2), stat(2) */
-#include <sys/types.h>   /* uid_t, gid_t, get*id(2), */
-#include <unistd.h>      /* get*id(2),  */
-#include <sys/ptrace.h>  /* linux.git:c0a3a20b  */
-#include <linux/audit.h> /* AUDIT_ARCH_*,  */
-#include <string.h>      /* memcpy(3), */
-#include <stdlib.h>      /* strtol(3), */
-#include <linux/auxvec.h>/* AT_,  */
+#include <assert.h>		/* assert(3), */
+#include <stdint.h>		/* intptr_t, */
+#include <errno.h>		/* E*, */
+#include <sys/stat.h>		/* chmod(2), stat(2) */
+#include <sys/types.h>		/* uid_t, gid_t, get*id(2), */
+#include <unistd.h>		/* get*id(2),  */
+#include <sys/ptrace.h>		/* linux.git:c0a3a20b  */
+#include <linux/audit.h>	/* AUDIT_ARCH_*,  */
+#include <string.h>		/* memcpy(3), */
+#include <stdlib.h>		/* strtol(3), */
+#include <linux/auxvec.h>	/* AT_,  */
 
 #include "extension/extension.h"
 #include "syscall/syscall.h"
@@ -63,72 +63,72 @@ typedef struct {
 
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
-	{ PR_capset,		FILTER_SYSEXIT },
-	{ PR_chmod,		FILTER_SYSEXIT },
-	{ PR_chown,		FILTER_SYSEXIT },
-	{ PR_chown32,		FILTER_SYSEXIT },
-	{ PR_chroot,		FILTER_SYSEXIT },
-	{ PR_execve,		FILTER_SYSEXIT },
-	{ PR_fchmod,		FILTER_SYSEXIT },
-	{ PR_fchmodat,		FILTER_SYSEXIT },
-	{ PR_fchown,		FILTER_SYSEXIT },
-	{ PR_fchown32,		FILTER_SYSEXIT },
-	{ PR_fchownat,		FILTER_SYSEXIT },
-	{ PR_fstat,		FILTER_SYSEXIT },
-	{ PR_fstat,		FILTER_SYSEXIT },
-	{ PR_fstat64,		FILTER_SYSEXIT },
-	{ PR_fstatat64,		FILTER_SYSEXIT },
-	{ PR_getegid,		FILTER_SYSEXIT },
-	{ PR_getegid32,		FILTER_SYSEXIT },
-	{ PR_geteuid,		FILTER_SYSEXIT },
-	{ PR_geteuid32,		FILTER_SYSEXIT },
-	{ PR_getgid,		FILTER_SYSEXIT },
-	{ PR_getgid32,		FILTER_SYSEXIT },
-	{ PR_getgroups,		FILTER_SYSEXIT },
-	{ PR_getgroups32,	FILTER_SYSEXIT },
-	{ PR_getresgid,		FILTER_SYSEXIT },
-	{ PR_getresgid32,	FILTER_SYSEXIT },
-	{ PR_getresuid,		FILTER_SYSEXIT },
-	{ PR_getresuid32,	FILTER_SYSEXIT },
-	{ PR_getuid,		FILTER_SYSEXIT },
-	{ PR_getuid32,		FILTER_SYSEXIT },
-	{ PR_lchown,		FILTER_SYSEXIT },
-	{ PR_lchown32,		FILTER_SYSEXIT },
-	{ PR_lstat,		FILTER_SYSEXIT },
-	{ PR_lstat64,		FILTER_SYSEXIT },
-	{ PR_mknod,		FILTER_SYSEXIT },
-	{ PR_mknodat,		FILTER_SYSEXIT },
-	{ PR_newfstatat,	FILTER_SYSEXIT },
-	{ PR_oldlstat,		FILTER_SYSEXIT },
-	{ PR_oldstat,		FILTER_SYSEXIT },
-	{ PR_setfsgid,		FILTER_SYSEXIT },
-	{ PR_setfsgid32,	FILTER_SYSEXIT },
-	{ PR_setfsuid,		FILTER_SYSEXIT },
-	{ PR_setfsuid32,	FILTER_SYSEXIT },
-	{ PR_setgid,		FILTER_SYSEXIT },
-	{ PR_setgid32,		FILTER_SYSEXIT },
-	{ PR_setgroups,		FILTER_SYSEXIT },
-	{ PR_setgroups32,	FILTER_SYSEXIT },
-	{ PR_setregid,		FILTER_SYSEXIT },
-	{ PR_setregid32,	FILTER_SYSEXIT },
-	{ PR_setreuid,		FILTER_SYSEXIT },
-	{ PR_setreuid32,	FILTER_SYSEXIT },
-	{ PR_setresgid,		FILTER_SYSEXIT },
-	{ PR_setresgid32,	FILTER_SYSEXIT },
-	{ PR_setresuid,		FILTER_SYSEXIT },
-	{ PR_setresuid32,	FILTER_SYSEXIT },
-	{ PR_setuid,		FILTER_SYSEXIT },
-	{ PR_setuid32,		FILTER_SYSEXIT },
-	{ PR_setxattr,		FILTER_SYSEXIT },
-	{ PR_setdomainname,	FILTER_SYSEXIT },
-	{ PR_sethostname,	FILTER_SYSEXIT },
-	{ PR_lsetxattr,		FILTER_SYSEXIT },
-	{ PR_fsetxattr,		FILTER_SYSEXIT },
-	{ PR_stat,		FILTER_SYSEXIT },
-	{ PR_statx,		FILTER_SYSEXIT },
-	{ PR_stat64,		FILTER_SYSEXIT },
-	{ PR_statfs,		FILTER_SYSEXIT },
-	{ PR_statfs64,		FILTER_SYSEXIT },
+	{ PR_capset, FILTER_SYSEXIT },
+	{ PR_chmod, FILTER_SYSEXIT },
+	{ PR_chown, FILTER_SYSEXIT },
+	{ PR_chown32, FILTER_SYSEXIT },
+	{ PR_chroot, FILTER_SYSEXIT },
+	{ PR_execve, FILTER_SYSEXIT },
+	{ PR_fchmod, FILTER_SYSEXIT },
+	{ PR_fchmodat, FILTER_SYSEXIT },
+	{ PR_fchown, FILTER_SYSEXIT },
+	{ PR_fchown32, FILTER_SYSEXIT },
+	{ PR_fchownat, FILTER_SYSEXIT },
+	{ PR_fstat, FILTER_SYSEXIT },
+	{ PR_fstat, FILTER_SYSEXIT },
+	{ PR_fstat64, FILTER_SYSEXIT },
+	{ PR_fstatat64, FILTER_SYSEXIT },
+	{ PR_getegid, FILTER_SYSEXIT },
+	{ PR_getegid32, FILTER_SYSEXIT },
+	{ PR_geteuid, FILTER_SYSEXIT },
+	{ PR_geteuid32, FILTER_SYSEXIT },
+	{ PR_getgid, FILTER_SYSEXIT },
+	{ PR_getgid32, FILTER_SYSEXIT },
+	{ PR_getgroups, FILTER_SYSEXIT },
+	{ PR_getgroups32, FILTER_SYSEXIT },
+	{ PR_getresgid, FILTER_SYSEXIT },
+	{ PR_getresgid32, FILTER_SYSEXIT },
+	{ PR_getresuid, FILTER_SYSEXIT },
+	{ PR_getresuid32, FILTER_SYSEXIT },
+	{ PR_getuid, FILTER_SYSEXIT },
+	{ PR_getuid32, FILTER_SYSEXIT },
+	{ PR_lchown, FILTER_SYSEXIT },
+	{ PR_lchown32, FILTER_SYSEXIT },
+	{ PR_lstat, FILTER_SYSEXIT },
+	{ PR_lstat64, FILTER_SYSEXIT },
+	{ PR_mknod, FILTER_SYSEXIT },
+	{ PR_mknodat, FILTER_SYSEXIT },
+	{ PR_newfstatat, FILTER_SYSEXIT },
+	{ PR_oldlstat, FILTER_SYSEXIT },
+	{ PR_oldstat, FILTER_SYSEXIT },
+	{ PR_setfsgid, FILTER_SYSEXIT },
+	{ PR_setfsgid32, FILTER_SYSEXIT },
+	{ PR_setfsuid, FILTER_SYSEXIT },
+	{ PR_setfsuid32, FILTER_SYSEXIT },
+	{ PR_setgid, FILTER_SYSEXIT },
+	{ PR_setgid32, FILTER_SYSEXIT },
+	{ PR_setgroups, FILTER_SYSEXIT },
+	{ PR_setgroups32, FILTER_SYSEXIT },
+	{ PR_setregid, FILTER_SYSEXIT },
+	{ PR_setregid32, FILTER_SYSEXIT },
+	{ PR_setreuid, FILTER_SYSEXIT },
+	{ PR_setreuid32, FILTER_SYSEXIT },
+	{ PR_setresgid, FILTER_SYSEXIT },
+	{ PR_setresgid32, FILTER_SYSEXIT },
+	{ PR_setresuid, FILTER_SYSEXIT },
+	{ PR_setresuid32, FILTER_SYSEXIT },
+	{ PR_setuid, FILTER_SYSEXIT },
+	{ PR_setuid32, FILTER_SYSEXIT },
+	{ PR_setxattr, FILTER_SYSEXIT },
+	{ PR_setdomainname, FILTER_SYSEXIT },
+	{ PR_sethostname, FILTER_SYSEXIT },
+	{ PR_lsetxattr, FILTER_SYSEXIT },
+	{ PR_fsetxattr, FILTER_SYSEXIT },
+	{ PR_stat, FILTER_SYSEXIT },
+	{ PR_statx, FILTER_SYSEXIT },
+	{ PR_stat64, FILTER_SYSEXIT },
+	{ PR_statfs, FILTER_SYSEXIT },
+	{ PR_statfs64, FILTER_SYSEXIT },
 	FILTERED_SYSNUM_END,
 };
 
@@ -149,7 +149,8 @@ static int restore_mode(ModifiedNode *node)
  * The original permissions are restored through talloc destructors.
  * See canonicalize() for the meaning of @is_final.
  */
-static void override_permissions(const Tracee *tracee, const char *path, bool is_final)
+static void override_permissions(const Tracee *tracee, const char *path,
+				 bool is_final)
 {
 	ModifiedNode *node;
 	struct stat perms;
@@ -182,10 +183,9 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
 	if (!is_final) {
 		/* Restore the previous mode of any non final components.  */
 		node->mode = perms.st_mode;
-	}
-	else {
+	} else {
 		switch (get_sysnum(tracee, ORIGINAL)) {
-		/* For chmod syscalls: restore the new mode of the final component.  */
+			/* For chmod syscalls: restore the new mode of the final component.  */
 		case PR_chmod:
 			node->mode = peek_reg(tracee, ORIGINAL, SYSARG_2);
 			break;
@@ -194,7 +194,7 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
 			node->mode = peek_reg(tracee, ORIGINAL, SYSARG_3);
 			break;
 
-		/* For stat syscalls: don't touch the mode of the final component.  */
+			/* For stat syscalls: don't touch the mode of the final component.  */
 		case PR_fstatat64:
 		case PR_lstat:
 		case PR_lstat64:
@@ -208,7 +208,7 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
 		case PR_statfs64:
 			return;
 
-		/* Otherwise: restore the previous mode of the final component.  */
+			/* Otherwise: restore the previous mode of the final component.  */
 		default:
 			node->mode = perms.st_mode;
 			break;
@@ -267,33 +267,32 @@ static int handle_sysenter_end(Tracee *tracee, const Config *config)
 	case PR_lchown32:
 	case PR_fchown:
 	case PR_fchown32:
-	case PR_fchownat: {
-		Reg uid_sysarg;
-		Reg gid_sysarg;
-		uid_t uid;
-		gid_t gid;
+	case PR_fchownat:{
+			Reg uid_sysarg;
+			Reg gid_sysarg;
+			uid_t uid;
+			gid_t gid;
 
-		if (sysnum == PR_fchownat) {
-			uid_sysarg = SYSARG_3;
-			gid_sysarg = SYSARG_4;
+			if (sysnum == PR_fchownat) {
+				uid_sysarg = SYSARG_3;
+				gid_sysarg = SYSARG_4;
+			} else {
+				uid_sysarg = SYSARG_2;
+				gid_sysarg = SYSARG_3;
+			}
+
+			uid = peek_reg(tracee, ORIGINAL, uid_sysarg);
+			gid = peek_reg(tracee, ORIGINAL, gid_sysarg);
+
+			/* Swap actual and emulated ids to get a chance of
+			 * success.  */
+			if (uid == config->ruid)
+				poke_reg(tracee, uid_sysarg, getuid());
+			if (gid == config->rgid)
+				poke_reg(tracee, gid_sysarg, getgid());
+
+			return 0;
 		}
-		else {
-			uid_sysarg = SYSARG_2;
-			gid_sysarg = SYSARG_3;
-		}
-
-		uid = peek_reg(tracee, ORIGINAL, uid_sysarg);
-		gid = peek_reg(tracee, ORIGINAL, gid_sysarg);
-
-		/* Swap actual and emulated ids to get a chance of
-		 * success.  */
-		if (uid == config->ruid)
-			poke_reg(tracee, uid_sysarg, getuid());
-		if (gid == config->rgid)
-			poke_reg(tracee, gid_sysarg, getgid());
-
-		return 0;
-	}
 
 	case PR_setgroups:
 	case PR_setgroups32:
@@ -598,21 +597,21 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	case PR_fchown32:
 	case PR_lchown32:
 	case PR_fchmodat:
-	case PR_fchownat: {
-		word_t result;
+	case PR_fchownat:{
+			word_t result;
 
-		/* Override only permission errors.  */
-		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-		if ((int) result != -EPERM)
+			/* Override only permission errors.  */
+			result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+			if ((int) result != -EPERM)
+				return 0;
+
+			/* Force success if the tracee was supposed to have
+			 * the capability.  */
+			if (config->euid == 0)	/* TODO: || HAS_CAP(...) */
+				poke_reg(tracee, SYSARG_RESULT, 0);
+
 			return 0;
-
-		/* Force success if the tracee was supposed to have
-		 * the capability.  */
-		if (config->euid == 0) /* TODO: || HAS_CAP(...) */
-			poke_reg(tracee, SYSARG_RESULT, 0);
-
-		return 0;
-	}
+		}
 
 	case PR_fstatat64:
 	case PR_newfstatat:
@@ -622,93 +621,97 @@ static int handle_sysexit_end(Tracee *tracee, Config *config)
 	case PR_stat:
 	case PR_statx:
 	case PR_lstat:
-	case PR_fstat: {
-		word_t address;
-		Reg sysarg;
-		uid_t uid;
-		gid_t gid;
-		off_t uid_offset;
-		off_t gid_offset;
+	case PR_fstat:{
+			word_t address;
+			Reg sysarg;
+			uid_t uid;
+			gid_t gid;
+			off_t uid_offset;
+			off_t gid_offset;
 
-		/* Override only if it succeed.  */
-		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-		if (result != 0)
+			/* Override only if it succeed.  */
+			result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+			if (result != 0)
+				return 0;
+
+			/* Get the address of the 'stat' structure.  */
+			if (sysnum == PR_statx) {
+				sysarg = SYSARG_5;
+				uid_offset = OFFSETOF_STATX_UID;
+				gid_offset = OFFSETOF_STATX_GID;
+			} else {
+				if (sysnum == PR_fstatat64
+				    || sysnum == PR_newfstatat)
+					sysarg = SYSARG_3;
+				else
+					sysarg = SYSARG_2;
+				uid_offset = offsetof_stat_uid(tracee);
+				gid_offset = offsetof_stat_gid(tracee);
+			}
+
+			address = peek_reg(tracee, ORIGINAL, sysarg);
+
+			/* Sanity checks.  */
+			assert(__builtin_types_compatible_p
+			       (uid_t, uint32_t));
+			assert(__builtin_types_compatible_p
+			       (gid_t, uint32_t));
+
+			/* Get the uid & gid values from the 'stat' structure.  */
+			uid = peek_uint32(tracee, address + uid_offset);
+			if (errno != 0)
+				uid = 0;	/* Not fatal.  */
+
+			gid = peek_uint32(tracee, address + gid_offset);
+			if (errno != 0)
+				gid = 0;	/* Not fatal.  */
+
+			/* Override only if the file is owned by the current user.
+			 * Errors are not fatal here.  */
+			if (uid == getuid())
+				poke_uint32(tracee, address + uid_offset,
+					    config->suid);
+
+			if (gid == getgid())
+				poke_uint32(tracee, address + gid_offset,
+					    config->sgid);
+
 			return 0;
-
-		/* Get the address of the 'stat' structure.  */
-		if (sysnum == PR_statx) {
-			sysarg = SYSARG_5;
-			uid_offset = OFFSETOF_STATX_UID;
-			gid_offset = OFFSETOF_STATX_GID;
 		}
-		else {
-			if (sysnum == PR_fstatat64 || sysnum == PR_newfstatat)
-				sysarg = SYSARG_3;
-			else
-				sysarg = SYSARG_2;
-			uid_offset = offsetof_stat_uid(tracee);
-			gid_offset = offsetof_stat_gid(tracee);
+
+	case PR_chroot:{
+			char path[PATH_MAX];
+			char abspath[PATH_MAX];
+			word_t input;
+			int status;
+
+			if (config->euid != 0)	/* TODO: && !HAS_CAP(SYS_CHROOT) */
+				return 0;
+
+			/* Override only permission errors.  */
+			result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+			if ((int) result != -EPERM)
+				return 0;
+
+			input = peek_reg(tracee, MODIFIED, SYSARG_1);
+
+			status = read_path(tracee, path, input);
+			if (status < 0)
+				return status;
+
+			/* Resolve relative path segments. */
+			if (!realpath(path, abspath))
+				return 0;
+
+			/* Only "new rootfs == current rootfs" is supported yet.  */
+			status = compare_paths(get_root(tracee), abspath);
+			if (status != PATHS_ARE_EQUAL)
+				return 0;
+
+			/* Force success.  */
+			poke_reg(tracee, SYSARG_RESULT, 0);
+			return 0;
 		}
-
-		address = peek_reg(tracee, ORIGINAL, sysarg);
-
-		/* Sanity checks.  */
-		assert(__builtin_types_compatible_p(uid_t, uint32_t));
-		assert(__builtin_types_compatible_p(gid_t, uint32_t));
-
-		/* Get the uid & gid values from the 'stat' structure.  */
-		uid = peek_uint32(tracee, address + uid_offset);
-		if (errno != 0)
-			uid = 0; /* Not fatal.  */
-
-		gid = peek_uint32(tracee, address + gid_offset);
-		if (errno != 0)
-			gid = 0; /* Not fatal.  */
-
-		/* Override only if the file is owned by the current user.
-		 * Errors are not fatal here.  */
-		if (uid == getuid())
-			poke_uint32(tracee, address + uid_offset, config->suid);
-
-		if (gid == getgid())
-			poke_uint32(tracee, address + gid_offset, config->sgid);
-
-		return 0;
-	}
-
-	case PR_chroot: {
-		char path[PATH_MAX];
-		char abspath[PATH_MAX];
-		word_t input;
-		int status;
-
-		if (config->euid != 0) /* TODO: && !HAS_CAP(SYS_CHROOT) */
-			return 0;
-
-		/* Override only permission errors.  */
-		result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-		if ((int) result != -EPERM)
-			return 0;
-
-		input = peek_reg(tracee, MODIFIED, SYSARG_1);
-
-		status = read_path(tracee, path, input);
-		if (status < 0)
-			return status;
-
-		/* Resolve relative path segments. */
-		if (!realpath(path, abspath))
-			return 0;
-
-		/* Only "new rootfs == current rootfs" is supported yet.  */
-		status = compare_paths(get_root(tracee), abspath);
-		if (status != PATHS_ARE_EQUAL)
-			return 0;
-
-		/* Force success.  */
-		poke_reg(tracee, SYSARG_RESULT, 0);
-		return 0;
-	}
 
 	default:
 		return 0;
@@ -775,131 +778,145 @@ static int adjust_elf_auxv(Tracee *tracee, Config *config)
  * Handler for this @extension.  It is triggered each time an @event
  * occurred.  See ExtensionEvent for the meaning of @data1 and @data2.
  */
-int fake_id0_callback(Extension *extension, ExtensionEvent event, intptr_t data1, intptr_t data2)
+int fake_id0_callback(Extension *extension, ExtensionEvent event,
+		      intptr_t data1, intptr_t data2)
 {
 	switch (event) {
-	case INITIALIZATION: {
-		const char *uid_string = (const char *) data1;
-		const char *gid_string;
-		Config *config;
-		int uid, gid;
+	case INITIALIZATION:{
+			const char *uid_string = (const char *) data1;
+			const char *gid_string;
+			Config *config;
+			int uid, gid;
 
-		errno = 0;
-		uid = strtol(uid_string, NULL, 10);
-		if (errno != 0)
-			uid = getuid();
-
-		gid_string = strchr(uid_string, ':');
-		if (gid_string == NULL) {
-			errno = EINVAL;
-		}
-		else {
 			errno = 0;
-			gid = strtol(gid_string + 1, NULL, 10);
+			uid = strtol(uid_string, NULL, 10);
+			if (errno != 0)
+				uid = getuid();
+
+			gid_string = strchr(uid_string, ':');
+			if (gid_string == NULL) {
+				errno = EINVAL;
+			} else {
+				errno = 0;
+				gid = strtol(gid_string + 1, NULL, 10);
+			}
+			/* Fallback to the current gid if an error occured.  */
+			if (errno != 0)
+				gid = getgid();
+
+			extension->config = talloc(extension, Config);
+			if (extension->config == NULL)
+				return -1;
+
+			config =
+			    talloc_get_type_abort(extension->config,
+						  Config);
+			config->ruid = uid;
+			config->euid = uid;
+			config->suid = uid;
+			config->fsuid = uid;
+			config->rgid = gid;
+			config->egid = gid;
+			config->sgid = gid;
+			config->fsgid = gid;
+
+			extension->filtered_sysnums = filtered_sysnums;
+			return 0;
 		}
-		/* Fallback to the current gid if an error occured.  */
-		if (errno != 0)
-			gid = getgid();
 
-		extension->config = talloc(extension, Config);
-		if (extension->config == NULL)
-			return -1;
-
-		config = talloc_get_type_abort(extension->config, Config);
-		config->ruid  = uid;
-		config->euid  = uid;
-		config->suid  = uid;
-		config->fsuid = uid;
-		config->rgid  = gid;
-		config->egid  = gid;
-		config->sgid  = gid;
-		config->fsgid = gid;
-
-		extension->filtered_sysnums = filtered_sysnums;
-		return 0;
-	}
-
-	case INHERIT_PARENT: /* Inheritable for sub reconfiguration ...  */
+	case INHERIT_PARENT:	/* Inheritable for sub reconfiguration ...  */
 		return 1;
 
-	case INHERIT_CHILD: {
-		/* Copy the parent configuration to the child.  The
-		 * structure should not be shared as uid/gid changes
-		 * in one process should not affect other processes.
-		 * This assertion is not true for POSIX threads
-		 * sharing the same group, however Linux threads never
-		 * share uid/gid information.  As a consequence, the
-		 * GlibC emulates the POSIX behavior on Linux by
-		 * sending a signal to all group threads to cause them
-		 * to invoke the system call too.  Finally, PRoot
-		 * doesn't have to worry about clone flags.
-		 */
+	case INHERIT_CHILD:{
+			/* Copy the parent configuration to the child.  The
+			 * structure should not be shared as uid/gid changes
+			 * in one process should not affect other processes.
+			 * This assertion is not true for POSIX threads
+			 * sharing the same group, however Linux threads never
+			 * share uid/gid information.  As a consequence, the
+			 * GlibC emulates the POSIX behavior on Linux by
+			 * sending a signal to all group threads to cause them
+			 * to invoke the system call too.  Finally, PRoot
+			 * doesn't have to worry about clone flags.
+			 */
 
-		Extension *parent = (Extension *) data1;
-		extension->config = talloc_zero(extension, Config);
-		if (extension->config == NULL)
-			return -1;
+			Extension *parent = (Extension *) data1;
+			extension->config = talloc_zero(extension, Config);
+			if (extension->config == NULL)
+				return -1;
 
-		memcpy(extension->config, parent->config, sizeof(Config));
-		return 0;
-	}
-
-	case HOST_PATH: {
-		Tracee *tracee = TRACEE(extension);
-		Config *config = talloc_get_type_abort(extension->config, Config);
-
-		/* Force permissions if the tracee was supposed to
-		 * have the capability.  */
-		if (config->euid == 0) /* TODO: || HAS_CAP(DAC_OVERRIDE) */
-			override_permissions(tracee, (char*) data1, (bool) data2);
-		return 0;
-	}
-
-	case SYSCALL_ENTER_END: {
-		Tracee *tracee = TRACEE(extension);
-		Config *config = talloc_get_type_abort(extension->config, Config);
-
-		return handle_sysenter_end(tracee, config);
-	}
-
-	case SYSCALL_EXIT_END: {
-		Tracee *tracee = TRACEE(extension);
-		Config *config = talloc_get_type_abort(extension->config, Config);
-
-		return handle_sysexit_end(tracee, config);
-	}
-
-	case SYSCALL_EXIT_START: {
-		Tracee *tracee = TRACEE(extension);
-		Config *config = talloc_get_type_abort(extension->config, Config);
-		word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
-		word_t sysnum = get_sysnum(tracee, ORIGINAL);
-		struct stat mode;
-		int status;
-
-		if ((int) result < 0 || sysnum != PR_execve)
+			memcpy(extension->config, parent->config,
+			       sizeof(Config));
 			return 0;
-
-		/* This has to be done before PRoot pushes the load
-		 * script into tracee's stack.  */
-		adjust_elf_auxv(tracee, config);
-
-		status = stat(tracee->load_info->host_path, &mode);
-		if (status < 0)
-			return 0; /* Not fatal.  */
-
-		if ((mode.st_mode & S_ISUID) != 0) {
-			config->euid = 0;
-			config->suid = 0;
 		}
 
-		if ((mode.st_mode & S_ISGID) != 0) {
-			config->egid = 0;
-			config->sgid = 0;
+	case HOST_PATH:{
+			Tracee *tracee = TRACEE(extension);
+			Config *config =
+			    talloc_get_type_abort(extension->config,
+						  Config);
+
+			/* Force permissions if the tracee was supposed to
+			 * have the capability.  */
+			if (config->euid == 0)	/* TODO: || HAS_CAP(DAC_OVERRIDE) */
+				override_permissions(tracee,
+						     (char *) data1,
+						     (bool) data2);
+			return 0;
 		}
 
-		return 0;
-	}
+	case SYSCALL_ENTER_END:{
+			Tracee *tracee = TRACEE(extension);
+			Config *config =
+			    talloc_get_type_abort(extension->config,
+						  Config);
+
+			return handle_sysenter_end(tracee, config);
+		}
+
+	case SYSCALL_EXIT_END:{
+			Tracee *tracee = TRACEE(extension);
+			Config *config =
+			    talloc_get_type_abort(extension->config,
+						  Config);
+
+			return handle_sysexit_end(tracee, config);
+		}
+
+	case SYSCALL_EXIT_START:{
+			Tracee *tracee = TRACEE(extension);
+			Config *config =
+			    talloc_get_type_abort(extension->config,
+						  Config);
+			word_t result =
+			    peek_reg(tracee, CURRENT, SYSARG_RESULT);
+			word_t sysnum = get_sysnum(tracee, ORIGINAL);
+			struct stat mode;
+			int status;
+
+			if ((int) result < 0 || sysnum != PR_execve)
+				return 0;
+
+			/* This has to be done before PRoot pushes the load
+			 * script into tracee's stack.  */
+			adjust_elf_auxv(tracee, config);
+
+			status = stat(tracee->load_info->host_path, &mode);
+			if (status < 0)
+				return 0;	/* Not fatal.  */
+
+			if ((mode.st_mode & S_ISUID) != 0) {
+				config->euid = 0;
+				config->suid = 0;
+			}
+
+			if ((mode.st_mode & S_ISGID) != 0) {
+				config->egid = 0;
+				config->sgid = 0;
+			}
+
+			return 0;
+		}
 
 	default:
 		return 0;

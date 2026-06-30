@@ -20,21 +20,22 @@
  * 02110-1301 USA.
  */
 
-#include <stdio.h>         /* printf(3), */
-#include <stdbool.h>       /* bool, true, false,  */
-#include <linux/limits.h>  /* ARG_MAX, PATH_MAX, */
-#include <string.h>        /* str*(3), basename(3),  */
-#include <talloc.h>        /* talloc*,  */
-#include <stdlib.h>        /* exit(3), EXIT_*, strtol(3), {g,s}etenv(3), */
-#include <assert.h>        /* assert(3),  */
-#include <sys/types.h>     /* getpid(2),  */
-#include <unistd.h>        /* getpid(2),  */
-#include <errno.h>         /* errno(3), */
-#include <limits.h>        /* INT_MAX, */
+#include <stdio.h>		/* printf(3), */
+#include <stdbool.h>		/* bool, true, false,  */
+#include <linux/limits.h>	/* ARG_MAX, PATH_MAX, */
+#include <string.h>		/* str*(3), basename(3),  */
+#include <talloc.h>		/* talloc*,  */
+#include <stdlib.h>		/* exit(3), EXIT_*, strtol(3), {g,s}etenv(3), */
+#include <assert.h>		/* assert(3),  */
+#include <sys/types.h>		/* getpid(2),  */
+#include <unistd.h>		/* getpid(2),  */
+#include <errno.h>		/* errno(3), */
+#include <limits.h>		/* INT_MAX, */
+#include <libgen.h>
 
 /* execinfo.h is GNU extension, disable it not using glibc */
 #if defined(__GLIBC__)
-#include <execinfo.h>      /* backtrace_symbols(3), */
+#include <execinfo.h>		/* backtrace_symbols(3), */
 #endif
 
 #include "cli/cli.h"
@@ -60,21 +61,24 @@ void print_usage(Tracee *tracee, const Cli *cli, bool detailed)
 
 #define DETAIL(a) if (detailed) a
 
-	DETAIL(printf("%s %s: %s.\n\n", cli->name, cli->version, cli->subtitle));
+	DETAIL(printf
+	       ("%s %s: %s.\n\n", cli->name, cli->version, cli->subtitle));
 	printf("Usage:\n  %s\n", cli->synopsis);
 	DETAIL(printf("\n"));
 
 	options = cli->options;
 	for (i = 0; options[i].class != NULL; i++) {
-		for (j = 0; ; j++) {
-			const Argument *argument = &(options[i].arguments[j]);
+		for (j = 0;; j++) {
+			const Argument *argument =
+			    &(options[i].arguments[j]);
 
 			if (!argument->name || (!detailed && j != 0)) {
 				DETAIL(printf("\n"));
 				printf("\t%s\n", options[i].description);
 				if (detailed) {
 					if (options[i].detail[0] != '\0')
-						printf("\n%s\n\n", options[i].detail);
+						printf("\n%s\n\n",
+						       options[i].detail);
 					else
 						printf("\n");
 				}
@@ -92,7 +96,8 @@ void print_usage(Tracee *tracee, const Cli *cli, bool detailed)
 				printf(", %s", argument->name);
 
 			if (argument->separator != '\0')
-				printf("%c*%s*", argument->separator, argument->value);
+				printf("%c*%s*", argument->separator,
+				       argument->value);
 			else if (!detailed)
 				printf("\t");
 		}
@@ -110,50 +115,56 @@ void print_usage(Tracee *tracee, const Cli *cli, bool detailed)
 void print_version(const Cli *cli)
 {
 	printf("%s %s\n\n", cli->logo, cli->version);
-	printf("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
+	printf
+	    ("built-in accelerators: process_vm = %s, seccomp_filter = %s\n",
 #if defined(HAVE_PROCESS_VM)
-		"yes",
+	     "yes",
 #else
-		"no",
+	     "no",
 #endif
 #if defined(HAVE_SECCOMP_FILTER)
-		"yes"
+	     "yes"
 #else
-		"no"
+	     "no"
 #endif
-		);
+	    );
 }
 
-static void print_execve_help(const Tracee *tracee, const char *argv0, int status)
+static void print_execve_help(const Tracee *tracee, const char *argv0,
+			      int status)
 {
 	note(tracee, ERROR, SYSTEM, "execve(\"%s\")", argv0);
 
 	/* Ubuntu kernel bug?  */
 	if (status == -EPERM && getenv("PROOT_NO_SECCOMP") == NULL) {
 		note(tracee, INFO, USER,
-"It seems your kernel contains this bug: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1202161\n"
-"To workaround it, set the env. variable PROOT_NO_SECCOMP to 1.");
+		     "It seems your kernel contains this bug: https://bugs.launchpad.net/ubuntu/+source/linux/+bug/1202161\n"
+		     "To workaround it, set the env. variable PROOT_NO_SECCOMP to 1.");
 		return;
 	}
 
 	note(tracee, INFO, USER, "possible causes:\n"
-"  * the program is a script but its interpreter (eg. /bin/sh) was not found;\n"
-"  * the program is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
-"  * the program is a foreign binary but qemu was not specified;\n"
-"  * qemu does not work correctly (if specified);\n"
-"  * the loader was not found or doesn't work.");
+	     "  * the program is a script but its interpreter (eg. /bin/sh) was not found;\n"
+	     "  * the program is an ELF but its interpreter (eg. ld-linux.so) was not found;\n"
+	     "  * the program is a foreign binary but qemu was not specified;\n"
+	     "  * qemu does not work correctly (if specified);\n"
+	     "  * the loader was not found or doesn't work.");
 }
 
-static void print_error_separator(const Tracee *tracee, const Argument *argument)
+static void print_error_separator(const Tracee *tracee,
+				  const Argument *argument)
 {
 	if (argument->separator == '\0')
-		note(tracee, ERROR, USER, "option '%s' expects no value.", argument->name);
+		note(tracee, ERROR, USER, "option '%s' expects no value.",
+		     argument->name);
 	else
-		note(tracee, ERROR, USER, "option '%s' and its value must be separated by '%c'.",
-			argument->name, argument->separator);
+		note(tracee, ERROR, USER,
+		     "option '%s' and its value must be separated by '%c'.",
+		     argument->name, argument->separator);
 }
 
-static void print_argv(const Tracee *tracee, const char *prompt, char *const argv[])
+static void print_argv(const Tracee *tracee, const char *prompt,
+		       char *const argv[])
 {
 	char string[ARG_MAX] = "";
 	size_t i;
@@ -218,11 +229,11 @@ static int initialize_cwd(Tracee *tracee)
 	if (tracee->fs->cwd[0] != '/') {
 		status = getcwd2(tracee->reconf.tracee, path);
 		if (status < 0) {
-			note(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+			note(tracee, ERROR, INTERNAL, "getcwd: %s",
+			     strerror(-status));
 			return -1;
 		}
-	}
-	else
+	} else
 		strcpy(path, "/");
 
 	/* The ending "." ensures canonicalize() will report an error
@@ -230,7 +241,8 @@ static int initialize_cwd(Tracee *tracee)
 	 * directory.  */
 	status = join_paths(3, path2, path, tracee->fs->cwd, ".");
 	if (status < 0) {
-		note(tracee, ERROR, INTERNAL, "getcwd: %s", strerror(-status));
+		note(tracee, ERROR, INTERNAL, "getcwd: %s",
+		     strerror(-status));
 		return -1;
 	}
 
@@ -239,9 +251,11 @@ static int initialize_cwd(Tracee *tracee)
 
 	status = canonicalize(tracee, path2, true, path, 0);
 	if (status < 0) {
-		note(tracee, WARNING, USER, "can't chdir(\"%s\") in the guest rootfs: %s",
-			path2, strerror(-status));
-		note(tracee, INFO, USER, "default working directory is now \"/\"");
+		note(tracee, WARNING, USER,
+		     "can't chdir(\"%s\") in the guest rootfs: %s", path2,
+		     strerror(-status));
+		note(tracee, INFO, USER,
+		     "default working directory is now \"/\"");
 		strcpy(path, "/");
 	}
 	chop_finality(path);
@@ -268,7 +282,8 @@ static int initialize_exe(Tracee *tracee, const char *exe)
 	char path[PATH_MAX];
 	int status;
 
-	status = which(tracee, tracee->reconf.paths, path, exe ?: "/bin/sh");
+	status =
+	    which(tracee, tracee->reconf.paths, path, exe ? : "/bin/sh");
 	if (status < 0)
 		return -1;
 
@@ -308,7 +323,8 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 		}
 
 		/* Check if it's a valid CARE tool name.  */
-		if (strncasecmp(basename(argv[0]), "care", strlen("care")) == 0)
+		if (strncasecmp(basename(argv[0]), "care", strlen("care"))
+		    == 0)
 			cli = get_care_cli(tracee->ctx);
 	}
 
@@ -335,14 +351,14 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 		}
 
 		if (arg[0] != '-')
-			break; /* End of PRoot options. */
+			break;	/* End of PRoot options. */
 
 		options = cli->options;
 		for (j = 0; options[j].class != NULL; j++) {
 			const Option *option = &options[j];
 
 			/* A given option has several aliases.  */
-			for (k = 0; ; k++) {
+			for (k = 0;; k++) {
 				const Argument *argument;
 				size_t length;
 
@@ -353,19 +369,24 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 					break;
 
 				length = strlen(argument->name);
-				if (strncmp(arg, argument->name, length) != 0)
+				if (strncmp(arg, argument->name, length) !=
+				    0)
 					continue;
 
 				/* Avoid ambiguities.  */
 				if (strlen(arg) > length
-				    && arg[length] != argument->separator) {
-					print_error_separator(tracee, argument);
+				    && arg[length] !=
+				    argument->separator) {
+					print_error_separator(tracee,
+							      argument);
 					return -1;
 				}
 
 				/* No option value.  */
 				if (!argument->value) {
-					status = option->handler(tracee, cli, NULL);
+					status =
+					    option->handler(tracee, cli,
+							    NULL);
 					if (status < 0)
 						return -1;
 					goto known_option;
@@ -374,7 +395,10 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 				/* Value coalesced with to its option.  */
 				if (argument->separator == arg[length]) {
 					assert(strlen(arg) >= length);
-					status = option->handler(tracee, cli, &arg[length + 1]);
+					status =
+					    option->handler(tracee, cli,
+							    &arg[length +
+								 1]);
 					if (status < 0)
 						return -1;
 					goto known_option;
@@ -382,7 +406,8 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 
 				/* Avoid ambiguities.  */
 				if (argument->separator != ' ') {
-					print_error_separator(tracee, argument);
+					print_error_separator(tracee,
+							      argument);
 					return -1;
 				}
 
@@ -395,9 +420,10 @@ static int parse_config(Tracee *tracee, size_t argc, char *const argv[])
 		note(tracee, ERROR, USER, "unknown option '%s'.", arg);
 		return -1;
 
-	known_option:
+	      known_option:
 		if (handler != NULL && i == argc - 1) {
-			note(tracee, ERROR, USER, "missing value for option '%s'.", arg);
+			note(tracee, ERROR, USER,
+			     "missing value for option '%s'.", arg);
 			return -1;
 		}
 	}
@@ -484,14 +510,14 @@ int main(int argc, char *const argv[])
 	/* Start tracing the first tracee and all its children.  */
 	exit(event_loop());
 
-error:
+      error:
 	TALLOC_FREE(tracee);
 
 	if (exit_failure) {
-		fprintf(stderr, "fatal error: see `%s --help`.\n", basename(argv[0]));
+		fprintf(stderr, "fatal error: see `%s --help`.\n",
+			basename(argv[0]));
 		exit(EXIT_FAILURE);
-	}
-	else
+	} else
 		exit(EXIT_SUCCESS);
 }
 
@@ -500,14 +526,16 @@ error:
  * *@variable.  This function prints a warning and returns -1 if a
  * conversion error occured, otherwise it returns 0.
  */
-int parse_integer_option(const Tracee *tracee, int *variable, const char *value, const char *option)
+int parse_integer_option(const Tracee *tracee, int *variable,
+			 const char *value, const char *option)
 {
 	char *end_ptr = NULL;
 
 	errno = 0;
 	*variable = strtol(value, &end_ptr, 10);
 	if (errno != 0 || end_ptr == value) {
-		note(tracee, ERROR, USER, "option `%s` expects an integer value.", option);
+		note(tracee, ERROR, USER,
+		     "option `%s` expects an integer value.", option);
 		return -1;
 	}
 
@@ -529,7 +557,7 @@ const char *expand_front_variable(TALLOC_CTX *context, const char *string)
 
 	suffix = strchr(string, '/');
 	if (suffix == NULL)
-		return (getenv(&string[1]) ?: string);
+		return (getenv(&string[1]) ? : string);
 
 	size = suffix - string;
 	if (size <= 1)
@@ -559,7 +587,8 @@ const char *expand_front_variable(TALLOC_CTX *context, const char *string)
 #if defined(__GLIBC__)
 static int indent_level = 0;
 
-void __cyg_profile_func_enter(void *this_function, void *call_site) DONT_INSTRUMENT;
+void __cyg_profile_func_enter(void *this_function,
+			      void *call_site) DONT_INSTRUMENT;
 void __cyg_profile_func_enter(void *this_function, void *call_site)
 {
 	void *const pointers[] = { this_function, call_site };
@@ -569,9 +598,11 @@ void __cyg_profile_func_enter(void *this_function, void *call_site)
 	if (symbols == NULL)
 		goto end;
 
-	fprintf(stderr, "%*s from %s\n", (int) strlen(symbols[0]) + indent_level, symbols[0], symbols[1]);
+	fprintf(stderr, "%*s from %s\n",
+		(int) strlen(symbols[0]) + indent_level, symbols[0],
+		symbols[1]);
 
-end:
+      end:
 	if (symbols != NULL)
 		free(symbols);
 
@@ -579,8 +610,10 @@ end:
 		indent_level++;
 }
 
-void __cyg_profile_func_exit(void *this_function UNUSED, void *call_site UNUSED) DONT_INSTRUMENT;
-void __cyg_profile_func_exit(void *this_function UNUSED, void *call_site UNUSED)
+void __cyg_profile_func_exit(void *this_function UNUSED,
+			     void *call_site UNUSED) DONT_INSTRUMENT;
+void __cyg_profile_func_exit(void *this_function UNUSED,
+			     void *call_site UNUSED)
 {
 	if (indent_level > 0)
 		indent_level--;

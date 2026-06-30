@@ -17,7 +17,9 @@ int main()
 	if (status >= 0)
 		exit(EXIT_FAILURE);
 
-	status = fchownat(AT_FDCWD, path, getuid(), getgid(), AT_SYMLINK_NOFOLLOW);
+	status =
+	    fchownat(AT_FDCWD, path, getuid(), getgid(),
+		     AT_SYMLINK_NOFOLLOW);
 	if (status < 0)
 		exit(EXIT_FAILURE);
 

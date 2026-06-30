@@ -20,8 +20,9 @@ int main()
 	int status;
 	int fd;
 
-	sockname = strdup("proot-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-			"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxXXXXXX");
+	sockname =
+	    strdup("proot-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+		   "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxXXXXXX");
 	if (sockname == NULL)
 		return 125;
 
@@ -44,7 +45,9 @@ int main()
 	chdir("/tmp");
 
 	(void) unlink(sockaddr.sun_path);
-	status = bind(fd, (const struct sockaddr *) &sockaddr, sizeof(sockaddr));
+	status =
+	    bind(fd, (const struct sockaddr *) &sockaddr,
+		 sizeof(sockaddr));
 	if (status < 0) {
 		perror("bind");
 		exit(EXIT_FAILURE);

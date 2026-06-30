@@ -20,20 +20,20 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>    /* struct stat, */
-#include <sys/stat.h>     /* struct stat, */
-#include <unistd.h>       /* lstat(2), */
-#include <linux/limits.h> /* PATH_MAX, */
-#include <string.h>       /* strlen(3), */
-#include <assert.h>       /* assert(3), */
-#include <time.h>         /* time(2), localtime(3), */
-#include <stddef.h>       /* offsetof(3), */
-#include <talloc.h>       /* talloc*, */
-#include <sys/queue.h>    /* STAILQ_*, */
-#include <inttypes.h>     /* PRI*, */
-#include <linux/auxvec.h> /* AT_*, */
+#include <sys/types.h>		/* struct stat, */
+#include <sys/stat.h>		/* struct stat, */
+#include <unistd.h>		/* lstat(2), */
+#include <linux/limits.h>	/* PATH_MAX, */
+#include <string.h>		/* strlen(3), */
+#include <assert.h>		/* assert(3), */
+#include <time.h>		/* time(2), localtime(3), */
+#include <stddef.h>		/* offsetof(3), */
+#include <talloc.h>		/* talloc*, */
+#include <sys/queue.h>		/* STAILQ_*, */
+#include <inttypes.h>		/* PRI*, */
+#include <linux/auxvec.h>	/* AT_*, */
 
-#include "uthash.h"       /* ut*, UT*, HASH*, */
+#include "uthash.h"		/* ut*, UT*, HASH*, */
 #include "extension/care/care.h"
 #include "extension/care/final.h"
 #include "extension/care/archive.h"
@@ -100,25 +100,27 @@ static void generate_output_name(const Tracee *tracee, Care *care)
 	splitted_time = localtime(&flat_time);
 	if (splitted_time == NULL) {
 		note(tracee, ERROR, INTERNAL,
-			"can't generate a valid output name from the current time, "
-			"please specify an ouput name explicitly");
+		     "can't generate a valid output name from the current time, "
+		     "please specify an ouput name explicitly");
 		return;
 	}
 
-	care->output = talloc_asprintf(care, "care-%02d%02d%02d%02d%02d%02d.%s",
-					splitted_time->tm_year - 100, splitted_time->tm_mon + 1,
-					splitted_time->tm_mday, splitted_time->tm_hour,
-					splitted_time->tm_min, splitted_time->tm_sec,
+	care->output =
+	    talloc_asprintf(care, "care-%02d%02d%02d%02d%02d%02d.%s",
+			    splitted_time->tm_year - 100,
+			    splitted_time->tm_mon + 1,
+			    splitted_time->tm_mday, splitted_time->tm_hour,
+			    splitted_time->tm_min, splitted_time->tm_sec,
 #if defined(CARE_BINARY_IS_PORTABLE)
-					"bin"
+			    "bin"
 #else
-					"raw"
+			    "raw"
 #endif
-		);
+	    );
 	if (care->output == NULL) {
 		note(tracee, ERROR, INTERNAL,
-			"can't generate a valid output name from the current time, "
-			"please specify an ouput name explicitly");
+		     "can't generate a valid output name from the current time, "
+		     "please specify an ouput name explicitly");
 		return;
 	}
 }
@@ -161,7 +163,8 @@ static int generate_care(Extension *extension, const Options *options)
 		return -1;
 	}
 
-	care->archive = new_archive(care, tracee, care->output, &suffix_length);
+	care->archive =
+	    new_archive(care, tracee, care->output, &suffix_length);
 	if (care->archive == NULL)
 		return -1;
 
@@ -171,9 +174,11 @@ static int generate_care(Extension *extension, const Options *options)
 	else
 		cursor++;
 
-	care->prefix = talloc_strndup(care, cursor, strlen(cursor) - suffix_length);
+	care->prefix =
+	    talloc_strndup(care, cursor, strlen(cursor) - suffix_length);
 	if (care->prefix == NULL) {
-		note(tracee, WARNING, INTERNAL, "can't allocate archive prefix");
+		note(tracee, WARNING, INTERNAL,
+		     "can't allocate archive prefix");
 		return -1;
 	}
 
@@ -186,7 +191,9 @@ static int generate_care(Extension *extension, const Options *options)
 			/* Initial state before canonicalization.  */
 			strcpy(path, "/");
 
-			status = canonicalize(tracee, (const char *) item->load, false, path, 0);
+			status =
+			    canonicalize(tracee, (const char *) item->load,
+					 false, path, 0);
 			if (status < 0)
 				continue;
 
@@ -197,37 +204,46 @@ static int generate_care(Extension *extension, const Options *options)
 
 				name = talloc_get_name(item);
 				string = name == NULL || name[0] != '$'
-					? talloc_asprintf(tracee->ctx, "'%s'",
-							(const char *) item->load)
-					: talloc_asprintf(tracee->ctx, "'%s' (%s)",
-							(const char *) item->load, name);
+				    ? talloc_asprintf(tracee->ctx, "'%s'",
+						      (const char *) item->
+						      load)
+				    : talloc_asprintf(tracee->ctx,
+						      "'%s' (%s)",
+						      (const char *) item->
+						      load, name);
 
 				note(tracee, WARNING, USER,
-					"path %s was declared volatile but it leads to '/', "
-					"as a consequence it will *not* be considered volatile.",
-					string);
+				     "path %s was declared volatile but it leads to '/', "
+				     "as a consequence it will *not* be considered volatile.",
+				     string);
 				continue;
 			}
 
-			item2 = queue_item(care, &care->volatile_paths, path);
+			item2 =
+			    queue_item(care, &care->volatile_paths, path);
 			if (item2 == NULL)
 				continue;
 
 			/* Preserve the non expanded form.  */
-			talloc_set_name_const(item2, talloc_get_name(item));
+			talloc_set_name_const(item2,
+					      talloc_get_name(item));
 
-			VERBOSE(tracee, 1, "volatile path: %s",	(const char *) item2->load);
+			VERBOSE(tracee, 1, "volatile path: %s",
+				(const char *) item2->load);
 		}
 	}
 
 	/* Copy volatile env. variables.  */
 	if (options->volatile_envars != NULL) {
 		STAILQ_FOREACH(item, options->volatile_envars, link) {
-			item2 = queue_item(care, &care->volatile_envars, item->load);
+			item2 =
+			    queue_item(care, &care->volatile_envars,
+				       item->load);
 			if (item2 == NULL)
 				continue;
 
-			VERBOSE(tracee, 1, "volatile envar: %s", (const char *) item2->load);
+			VERBOSE(tracee, 1, "volatile envar: %s",
+				(const char *) item2->load);
 		}
 	}
 
@@ -246,7 +262,8 @@ static int generate_care(Extension *extension, const Options *options)
  * Add @path_ to the list of @care->concealed_accesses.  This function
  * does *not* check for duplicated entries.
  */
-static void register_concealed_access(const Tracee *tracee, Care *care, const char *path_)
+static void register_concealed_access(const Tracee *tracee, Care *care,
+				      const char *path_)
 {
 	char path[PATH_MAX];
 	size_t length;
@@ -317,21 +334,25 @@ static void handle_host_path(Extension *extension, const char *path)
 
 	entry = talloc_zero(care, Entry);
 	if (entry == NULL) {
-		note(tracee, WARNING, INTERNAL, "can't allocate entry for '%s'", path);
+		note(tracee, WARNING, INTERNAL,
+		     "can't allocate entry for '%s'", path);
 		return;
 	}
 
 	entry->path = talloc_strdup(entry, path);
 	if (entry->path == NULL) {
-		note(tracee, WARNING, INTERNAL, "can't allocate name for '%s'", path);
+		note(tracee, WARNING, INTERNAL,
+		     "can't allocate name for '%s'", path);
 		return;
 	}
 
 	/* Remember this new entry.  */
 	if (as_dentries)
-		HASH_ADD_KEYPTR(hh, care->dentries, entry->path, strlen(entry->path), entry);
+		HASH_ADD_KEYPTR(hh, care->dentries, entry->path,
+				strlen(entry->path), entry);
 	else
-		HASH_ADD_KEYPTR(hh, care->entries, entry->path, strlen(entry->path), entry);
+		HASH_ADD_KEYPTR(hh, care->entries, entry->path,
+				strlen(entry->path), entry);
 
 	/* Don't use faccessat(2) here since it would require Linux >=
 	 * 2.6.16 and Glibc >= 2.4, whereas CARE is supposed to work
@@ -345,17 +366,20 @@ static void handle_host_path(Extension *extension, const char *path)
 	/* FIFOs and Unix domain sockets should be volatile.  */
 	if (S_ISFIFO(statl.st_mode) || S_ISSOCK(statl.st_mode)) {
 		if (care->ipc_are_volatile) {
-			Item *item = queue_item(care, &care->volatile_paths, path);
+			Item *item =
+			    queue_item(care, &care->volatile_paths, path);
 			if (item != NULL)
-				VERBOSE(tracee, 0, "volatile path: %s", path);
+				VERBOSE(tracee, 0, "volatile path: %s",
+					path);
 			else
 				note(tracee, WARNING, USER,
-					"can't declare '%s' (fifo or socket) as volatile", path);
+				     "can't declare '%s' (fifo or socket) as volatile",
+				     path);
 			return;
-		}
-		else
+		} else
 			note(tracee, WARNING, USER,
-				"'%1$s' might be explicitely declared volatile (-p %1$s)", path);
+			     "'%1$s' might be explicitely declared volatile (-p %1$s)",
+			     path);
 	}
 
 	/* Don't archive the content of dentries, this save a lot of
@@ -388,18 +412,22 @@ static void handle_host_path(Extension *extension, const char *path)
 
 	if (care->max_size >= 0 && statl.st_size > care->max_size) {
 		note(tracee, WARNING, USER,
-			"file '%s' is archived with a null size since it is bigger than %"
-			PRIi64 "MB, you can specify an alternate limit with the option -m.",
-			path, care->max_size / 1024 / 1024);
+		     "file '%s' is archived with a null size since it is bigger than %"
+		     PRIi64
+		     "MB, you can specify an alternate limit with the option -m.",
+		     path, care->max_size / 1024 / 1024);
 		statl.st_size = 0;
 	}
 
 	/* Format the location within the archive.  */
 	location = NULL;
 	assert(path[0] == '/');
-	location = talloc_asprintf(tracee->ctx, "%s/rootfs%s", care->prefix, path);
+	location =
+	    talloc_asprintf(tracee->ctx, "%s/rootfs%s", care->prefix,
+			    path);
 	if (location == NULL) {
-		note(tracee, WARNING, INTERNAL, "can't allocate location for '%s'", path);
+		note(tracee, WARNING, INTERNAL,
+		     "can't allocate location for '%s'", path);
 		return;
 	}
 
@@ -424,9 +452,9 @@ typedef struct {
 
 typedef struct {
 	uint64_t inode;
-	int64_t  next;
+	int64_t next;
 	uint16_t size;
-	uint8_t  type;
+	uint8_t type;
 	char name[];
 } NewDirent;
 
@@ -452,7 +480,7 @@ static void handle_getdents(Tracee *tracee, bool is_new_getdents)
 	if ((int) result < 0)
 		return;
 
-	fd     = peek_reg(tracee, ORIGINAL, SYSARG_1);
+	fd = peek_reg(tracee, ORIGINAL, SYSARG_1);
 	buffer = peek_reg(tracee, ORIGINAL, SYSARG_2);
 
 	offset = 0;
@@ -471,39 +499,49 @@ static void handle_getdents(Tracee *tracee, bool is_new_getdents)
 #endif
 			if (is_32bit) {
 				name_offset = offsetof(Dirent32, name);
-				status = read_data(tracee, &dirent32, address, sizeof(dirent32));
+				status =
+				    read_data(tracee, &dirent32, address,
+					      sizeof(dirent32));
 				size = dirent32.size;
-			}
-			else {
+			} else {
 				name_offset = offsetof(Dirent64, name);
-				status = read_data(tracee, &dirent64, address, sizeof(dirent64));
+				status =
+				    read_data(tracee, &dirent64, address,
+					      sizeof(dirent64));
 				size = dirent64.size;
 			}
 		} else {
 			name_offset = offsetof(NewDirent, name);
-			status = read_data(tracee, &new_dirent, address, sizeof(new_dirent));
+			status =
+			    read_data(tracee, &new_dirent, address,
+				      sizeof(new_dirent));
 			size = new_dirent.size;
 		}
 		if (status < 0) {
-			note(tracee, WARNING, INTERNAL, "can't read dentry");
+			note(tracee, WARNING, INTERNAL,
+			     "can't read dentry");
 			break;
 		}
 
-		status = read_string(tracee, component, address + name_offset, PATH_MAX);
+		status =
+		    read_string(tracee, component, address + name_offset,
+				PATH_MAX);
 		if (status < 0 || status >= PATH_MAX) {
-			note(tracee, WARNING, INTERNAL, "can't read dentry" );
+			note(tracee, WARNING, INTERNAL,
+			     "can't read dentry");
 			goto next;
 		}
 
 		/* Archive through the host_path notification. */
 		strcpy(path, "/");
 		translate_path(tracee, path, fd, component, false);
-	next:
+	      next:
 		offset += size;
 	}
 
 	if (offset != result)
-		note(tracee, WARNING, INTERNAL, "dentry table out of sync.");
+		note(tracee, WARNING, INTERNAL,
+		     "dentry table out of sync.");
 }
 
 /**
@@ -539,8 +577,8 @@ static int adjust_elf_auxv(Tracee *tracee)
 
 /* List of syscalls handled by this extensions.  */
 static FilteredSysnum filtered_sysnums[] = {
-	{ PR_getdents,		FILTER_SYSEXIT },
-	{ PR_getdents64,	FILTER_SYSEXIT },
+	{ PR_getdents, FILTER_SYSEXIT },
+	{ PR_getdents64, FILTER_SYSEXIT },
 	FILTERED_SYSNUM_END,
 };
 
@@ -549,7 +587,7 @@ static FilteredSysnum filtered_sysnums[] = {
  * occurred.  See ExtensionEvent for the meaning of @data1 and @data2.
  */
 int care_callback(Extension *extension, ExtensionEvent event,
-		intptr_t data1, intptr_t data2 UNUSED)
+		  intptr_t data1, intptr_t data2 UNUSED)
 {
 	Tracee *tracee;
 
@@ -558,14 +596,17 @@ int care_callback(Extension *extension, ExtensionEvent event,
 		extension->filtered_sysnums = filtered_sysnums;
 		return generate_care(extension, (Options *) data1);
 
-	case NEW_STATUS: {
-		int status = (int) data1;
-		if (WIFEXITED(status)) {
-			Care *care = talloc_get_type_abort(extension->config, Care);
-			care->last_exit_status = WEXITSTATUS(status);
+	case NEW_STATUS:{
+			int status = (int) data1;
+			if (WIFEXITED(status)) {
+				Care *care =
+				    talloc_get_type_abort(extension->
+							  config, Care);
+				care->last_exit_status =
+				    WEXITSTATUS(status);
+			}
+			return 0;
 		}
-		return 0;
-	}
 
 	case HOST_PATH:
 		handle_host_path(extension, (const char *) data1);
@@ -583,15 +624,17 @@ int care_callback(Extension *extension, ExtensionEvent event,
 			handle_getdents(tracee, true);
 			break;
 
-		case PR_execve: {
-			word_t result = peek_reg(tracee, CURRENT, SYSARG_RESULT);
+		case PR_execve:{
+				word_t result =
+				    peek_reg(tracee, CURRENT,
+					     SYSARG_RESULT);
 
-			/* Note: this can be done only before PRoot pushes the
-			 * load script into tracee's stack.  */
-			if ((int) result >= 0)
-				adjust_elf_auxv(tracee);
-			break;
-		}
+				/* Note: this can be done only before PRoot pushes the
+				 * load script into tracee's stack.  */
+				if ((int) result >= 0)
+					adjust_elf_auxv(tracee);
+				break;
+			}
 
 		default:
 			break;

@@ -24,12 +24,14 @@ int main(void)
 			perror("fork");
 			exit(EXIT_FAILURE);
 
-		case 0: /* child */
-			do status = write(fds[1], "!", 1); while (status > 0);
+		case 0:	/* child */
+			do
+				status = write(fds[1], "!", 1);
+			while (status > 0);
 			perror("write");
 			exit(EXIT_FAILURE);
 
-		default: /* parent */
+		default:	/* parent */
 			status = kill(pid, SIGKILL);
 			if (status < 0) {
 				perror("kill");

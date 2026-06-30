@@ -20,15 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <linux/limits.h> /* ARG_MAX, */
-#include <assert.h>   /* assert(3), */
-#include <string.h>   /* strlen(3), memcmp(3), memcpy(3), */
-#include <strings.h>  /* bzero(3), */
-#include <stdbool.h>  /* bool, true, false, */
-#include <errno.h>    /* E*,  */
-#include <stdarg.h>   /* va_*, */
-#include <stdint.h>   /* uint32_t, */
-#include <talloc.h>   /* talloc_*, */
+#include <linux/limits.h>	/* ARG_MAX, */
+#include <assert.h>		/* assert(3), */
+#include <string.h>		/* strlen(3), memcmp(3), memcpy(3), */
+#include <strings.h>		/* bzero(3), */
+#include <stdbool.h>		/* bool, true, false, */
+#include <errno.h>		/* E*,  */
+#include <stdarg.h>		/* va_*, */
+#include <stdint.h>		/* uint32_t, */
+#include <talloc.h>		/* talloc_*, */
 
 #include "arch.h"
 #include "tracee/tracee.h"
@@ -53,7 +53,8 @@ struct mixed_pointer {
  * make @local_pointer points to the locally *cached* version.  This
  * function returns -errno when an error occured, otherwise 0.
  */
-int read_xpointee_as_object(ArrayOfXPointers *array, size_t index, void **local_pointer)
+int read_xpointee_as_object(ArrayOfXPointers *array, size_t index,
+			    void **local_pointer)
 {
 	int status;
 	int size;
@@ -86,7 +87,7 @@ int read_xpointee_as_object(ArrayOfXPointers *array, size_t index, void **local_
 		return status;
 	}
 
-end:
+      end:
 	*local_pointer = array->_xpointers[index].local;
 	return 0;
 }
@@ -96,7 +97,8 @@ end:
  * make @local_pointer points to the locally *cached* version.  This
  * function returns -errno when an error occured, otherwise 0.
  */
-int read_xpointee_as_string(ArrayOfXPointers *array, size_t index, char **local_pointer)
+int read_xpointee_as_string(ArrayOfXPointers *array, size_t index,
+			    char **local_pointer)
 {
 	char tmp[ARG_MAX];
 	int status;
@@ -114,7 +116,9 @@ int read_xpointee_as_string(ArrayOfXPointers *array, size_t index, char **local_
 	}
 
 	/* Copy locally the remote string into a temporary buffer.  */
-	status = read_string(TRACEE(array), tmp, array->_xpointers[index].remote, ARG_MAX);
+	status =
+	    read_string(TRACEE(array), tmp,
+			array->_xpointers[index].remote, ARG_MAX);
 	if (status < 0)
 		return status;
 	if (status >= ARG_MAX)
@@ -125,7 +129,7 @@ int read_xpointee_as_string(ArrayOfXPointers *array, size_t index, char **local_
 	if (array->_xpointers[index].local == NULL)
 		return -ENOMEM;
 
-end:
+      end:
 	*local_pointer = array->_xpointers[index].local;
 	return 0;
 }
@@ -156,7 +160,8 @@ int sizeof_xpointee_as_string(ArrayOfXPointers *array, size_t index)
  * by @local_reference.  This function returns 1 if they are
  * equivalent, 0 otherwise.  On error, -errno is returned.
  */
-int compare_xpointee_generic(ArrayOfXPointers *array, size_t index, const void *local_reference)
+int compare_xpointee_generic(ArrayOfXPointers *array, size_t index,
+			     const void *local_reference)
 {
 	void *object;
 	int status;
@@ -210,7 +215,8 @@ int find_xpointee(ArrayOfXPointers *array, const void *local_reference)
  * @string.  This function returns -errno when an error occured,
  * otherwise 0.
  */
-int write_xpointee_as_string(ArrayOfXPointers *array, size_t index, const char *string)
+int write_xpointee_as_string(ArrayOfXPointers *array, size_t index,
+			     const char *string)
 {
 	assert(index < array->length);
 
@@ -226,7 +232,8 @@ int write_xpointee_as_string(ArrayOfXPointers *array, size_t index, const char *
  * the variadic arguments.  This function returns -errno when an error
  * occured, otherwise 0.
  */
-int write_xpointees(ArrayOfXPointers *array, size_t index, size_t nb_xpointees, ...)
+int write_xpointees(ArrayOfXPointers *array, size_t index,
+		    size_t nb_xpointees, ...)
 {
 	va_list va_xpointees;
 	int status;
@@ -243,7 +250,7 @@ int write_xpointees(ArrayOfXPointers *array, size_t index, size_t nb_xpointees, 
 	}
 	status = 0;
 
-end:
+      end:
 	va_end(va_xpointees);
 	return status;
 }
@@ -253,7 +260,8 @@ end:
  * Resize the @array at the given @index by the @delta_nb_entries.
  * This function returns -errno when an error occured, otherwise 0.
  */
-int resize_array_of_xpointers(ArrayOfXPointers *array, size_t index, ssize_t delta_nb_entries)
+int resize_array_of_xpointers(ArrayOfXPointers *array, size_t index,
+			      ssize_t delta_nb_entries)
 {
 	size_t nb_moved_entries;
 	size_t new_length;
@@ -268,24 +276,30 @@ int resize_array_of_xpointers(ArrayOfXPointers *array, size_t index, ssize_t del
 	nb_moved_entries = array->length - index;
 
 	if (delta_nb_entries > 0) {
-		tmp = talloc_realloc(array, array->_xpointers, XPointer, new_length);
+		tmp =
+		    talloc_realloc(array, array->_xpointers, XPointer,
+				   new_length);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_xpointers = tmp;
 
-		memmove(array->_xpointers + index + delta_nb_entries, array->_xpointers + index,
+		memmove(array->_xpointers + index + delta_nb_entries,
+			array->_xpointers + index,
 			nb_moved_entries * sizeof(XPointer));
 
-		bzero(array->_xpointers + index, delta_nb_entries * sizeof(XPointer));
-	}
-	else {
+		bzero(array->_xpointers + index,
+		      delta_nb_entries * sizeof(XPointer));
+	} else {
 		assert(delta_nb_entries <= 0);
 		assert(index >= (size_t) -delta_nb_entries);
 
-		memmove(array->_xpointers + index + delta_nb_entries, array->_xpointers + index,
+		memmove(array->_xpointers + index + delta_nb_entries,
+			array->_xpointers + index,
 			nb_moved_entries * sizeof(XPointer));
 
-		tmp = talloc_realloc(array, array->_xpointers, XPointer, new_length);
+		tmp =
+		    talloc_realloc(array, array->_xpointers, XPointer,
+				   new_length);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_xpointers = tmp;
@@ -302,9 +316,10 @@ int resize_array_of_xpointers(ArrayOfXPointers *array, size_t index, ssize_t del
  * copied.  This function returns -errno when an error occured,
  * otherwise 0.
  */
-int fetch_array_of_xpointers(Tracee *tracee, ArrayOfXPointers **array_, Reg reg, size_t nb_entries)
+int fetch_array_of_xpointers(Tracee *tracee, ArrayOfXPointers **array_,
+			     Reg reg, size_t nb_entries)
 {
-	word_t pointer = 1; /* ie. != 0 */
+	word_t pointer = 1;	/* ie. != 0 */
 	word_t address;
 	ArrayOfXPointers *array;
 	size_t i;
@@ -319,12 +334,15 @@ int fetch_array_of_xpointers(Tracee *tracee, ArrayOfXPointers **array_, Reg reg,
 	address = peek_reg(tracee, CURRENT, reg);
 
 	for (i = 0; nb_entries != 0 ? i < nb_entries : pointer != 0; i++) {
-		void *tmp = talloc_realloc(array, array->_xpointers, XPointer, i + 1);
+		void *tmp =
+		    talloc_realloc(array, array->_xpointers, XPointer,
+				   i + 1);
 		if (tmp == NULL)
 			return -ENOMEM;
 		array->_xpointers = tmp;
 
-		pointer = peek_word(tracee, address + i * sizeof_word(tracee));
+		pointer =
+		    peek_word(tracee, address + i * sizeof_word(tracee));
 		if (errno != 0)
 			return -errno;
 
@@ -334,9 +352,10 @@ int fetch_array_of_xpointers(Tracee *tracee, ArrayOfXPointers **array_, Reg reg,
 	array->length = i;
 
 	/* By default, assume it is an array of string pointers.  */
-	array->read_xpointee   = (read_xpointee_t) read_xpointee_as_string;
+	array->read_xpointee = (read_xpointee_t) read_xpointee_as_string;
 	array->sizeof_xpointee = sizeof_xpointee_as_string;
-	array->write_xpointee  = (write_xpointee_t) write_xpointee_as_string;
+	array->write_xpointee =
+	    (write_xpointee_t) write_xpointee_as_string;
 
 	/* By default, use generic callbacks: they rely on
 	 * array->read_xpointee() and array->sizeof_xpointee().  */
@@ -368,13 +387,17 @@ int push_array_of_xpointers(ArrayOfXPointers *array, Reg reg)
 	tracee = TRACEE(array);
 
 	/* The pointer table is a POD array in the tracee's memory.  */
-	pod_array = talloc_zero_size(tracee->ctx, array->length * sizeof_word(tracee));
+	pod_array =
+	    talloc_zero_size(tracee->ctx,
+			     array->length * sizeof_word(tracee));
 	if (pod_array == NULL)
 		return -ENOMEM;
 
 	/* There's one vector per modified pointee + one vector for the
 	 * pod array.  */
-	local = talloc_zero_array(tracee->ctx, struct iovec, array->length + 1);
+	local =
+	    talloc_zero_array(tracee->ctx, struct iovec,
+			      array->length + 1);
 	if (local == NULL)
 		return -ENOMEM;
 
@@ -382,7 +405,7 @@ int push_array_of_xpointers(ArrayOfXPointers *array, Reg reg)
 	 * allocated memory by the caller.  */
 	total_size = array->length * sizeof_word(tracee);
 	local[0].iov_base = pod_array;
-	local[0].iov_len  = total_size;
+	local[0].iov_len = total_size;
 	local_count = 1;
 
 	/* Create one vector for each modified pointee.  */
@@ -402,7 +425,7 @@ int push_array_of_xpointers(ArrayOfXPointers *array, Reg reg)
 		total_size += size;
 
 		local[local_count].iov_base = array->_xpointers[i].local;
-		local[local_count].iov_len  = size;
+		local[local_count].iov_len = size;
 		local_count++;
 	}
 
@@ -424,7 +447,8 @@ int push_array_of_xpointers(ArrayOfXPointers *array, Reg reg)
 			array->_xpointers[i].remote += tracee_ptr;
 
 		if (is_32on64_mode(tracee))
-			((uint32_t *) pod_array)[i] = array->_xpointers[i].remote;
+			((uint32_t *) pod_array)[i] =
+			    array->_xpointers[i].remote;
 		else
 			pod_array[i] = array->_xpointers[i].remote;
 	}

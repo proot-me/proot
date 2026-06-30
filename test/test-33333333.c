@@ -4,8 +4,8 @@
  *              on Ubuntu 11.10 x86_64
  */
 
-#include <stdlib.h> /* exit(3), */
-#include <unistd.h> /* fork(2), */
+#include <stdlib.h>		/* exit(3), */
+#include <unistd.h>		/* fork(2), */
 
 int main(void)
 {
@@ -13,11 +13,11 @@ int main(void)
 	case -1:
 		exit(EXIT_FAILURE);
 
-	case 0: /* Child: XXX */
+	case 0:		/* Child: XXX */
 		sleep(2);
 		return 0;
 
-	default: /* Parent: "look child, no wait(2)!" */
+	default:		/* Parent: "look child, no wait(2)!" */
 		return 1;
 	}
 }

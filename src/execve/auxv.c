@@ -20,13 +20,13 @@
  * 02110-1301 USA.
  */
 
-#include <linux/auxvec.h>  /* AT_*,  */
-#include <assert.h>        /* assert(3),  */
-#include <errno.h>         /* E*,  */
-#include <unistd.h>        /* write(3), close(3), */
-#include <sys/types.h>     /* open(2), */
-#include <sys/stat.h>      /* open(2), */
-#include <fcntl.h>         /* open(2), */
+#include <linux/auxvec.h>	/* AT_*,  */
+#include <assert.h>		/* assert(3),  */
+#include <errno.h>		/* E*,  */
+#include <unistd.h>		/* write(3), close(3), */
+#include <sys/types.h>		/* open(2), */
+#include <sys/stat.h>		/* open(2), */
+#include <fcntl.h>		/* open(2), */
 
 #include "execve/auxv.h"
 #include "syscall/sysnum.h"
@@ -54,17 +54,19 @@ int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value)
 	assert(nb_vectors > 0);
 	assert((*vectors)[nb_vectors - 1].type == AT_NULL);
 
-	tmp = talloc_realloc(talloc_parent(*vectors), *vectors, ElfAuxVector, nb_vectors + 1);
+	tmp =
+	    talloc_realloc(talloc_parent(*vectors), *vectors, ElfAuxVector,
+			   nb_vectors + 1);
 	if (tmp == NULL)
 		return -ENOMEM;
 	*vectors = tmp;
 
 	/* Replace the sentinel with the new vector.  */
-	(*vectors)[nb_vectors - 1].type  = type;
+	(*vectors)[nb_vectors - 1].type = type;
 	(*vectors)[nb_vectors - 1].value = value;
 
 	/* Restore the sentinel.  */
-	(*vectors)[nb_vectors].type  = AT_NULL;
+	(*vectors)[nb_vectors].type = AT_NULL;
 	(*vectors)[nb_vectors].value = 0;
 
 	return 0;
@@ -124,7 +126,7 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 	vectors = talloc_array(tracee->ctx, ElfAuxVector, 1);
 	if (vectors == NULL)
 		return NULL;
-	vectors[0].type  = AT_NULL;
+	vectors[0].type = AT_NULL;
 	vectors[0].value = 0;
 
 	while (1) {
@@ -134,14 +136,16 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 		address += sizeof_word(tracee);
 
 		if (vector.type == AT_NULL)
-			break; /* Already added.  */
+			break;	/* Already added.  */
 
 		vector.value = peek_word(tracee, address);
 		if (errno != 0)
 			return NULL;
 		address += sizeof_word(tracee);
 
-		status = add_elf_aux_vector(&vectors, vector.type, vector.value);
+		status =
+		    add_elf_aux_vector(&vectors, vector.type,
+				       vector.value);
 		if (status < 0)
 			return NULL;
 	}
@@ -154,7 +158,8 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
  * memory.  This function returns -errno if an error occurred,
  * otherwise 0.
  */
-int push_elf_aux_vectors(const Tracee* tracee, ElfAuxVector *vectors, word_t address)
+int push_elf_aux_vectors(const Tracee *tracee, ElfAuxVector *vectors,
+			 word_t address)
 {
 	size_t i;
 

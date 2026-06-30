@@ -40,10 +40,12 @@ int main(void)
 	 * honor this flag, the faccessat(2) is performed against the
 	 * referee anyway.
 	 */
-	status = syscall(SYS_faccessat, AT_FDCWD, path, X_OK, AT_SYMLINK_NOFOLLOW);
+	status =
+	    syscall(SYS_faccessat, AT_FDCWD, path, X_OK,
+		    AT_SYMLINK_NOFOLLOW);
 	result = (status == 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 
-end:
+      end:
 	(void) unlink(path);
 	exit(result);
 }

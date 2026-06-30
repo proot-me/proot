@@ -20,15 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h> /* pid_t */
-#include <limits.h>    /* PATH_MAX, */
-#include <sys/param.h> /* MAXSYMLINKS, */
-#include <errno.h>     /* E*, */
-#include <sys/stat.h>  /* lstat(2), S_ISREG(), */
-#include <unistd.h>    /* access(2), lstat(2), */
-#include <string.h>    /* string(3), */
-#include <assert.h>    /* assert(3), */
-#include <stdio.h>     /* sscanf(3), */
+#include <sys/types.h>		/* pid_t */
+#include <limits.h>		/* PATH_MAX, */
+#include <sys/param.h>		/* MAXSYMLINKS, */
+#include <errno.h>		/* E*, */
+#include <sys/stat.h>		/* lstat(2), S_ISREG(), */
+#include <unistd.h>		/* access(2), lstat(2), */
+#include <string.h>		/* string(3), */
+#include <assert.h>		/* assert(3), */
+#include <stdio.h>		/* sscanf(3), */
 
 #include "path/canon.h"
 #include "path/path.h"
@@ -83,7 +83,8 @@ static inline void pop_component(char *path)
  *
  *     - 0 otherwise.
  */
-static inline Finality next_component(char component[NAME_MAX], const char **cursor)
+static inline Finality next_component(char component[NAME_MAX],
+				      const char **cursor)
 {
 	const char *start;
 	ptrdiff_t length;
@@ -91,7 +92,7 @@ static inline Finality next_component(char component[NAME_MAX], const char **cur
 
 	/* Sanity checks. */
 	assert(component != NULL);
-	assert(cursor    != NULL);
+	assert(cursor != NULL);
 
 	/* Skip leading path separators. */
 	while (**cursor != '\0' && **cursor == '/')
@@ -118,9 +119,7 @@ static inline Finality next_component(char component[NAME_MAX], const char **cur
 		(*cursor)++;
 
 	if (**cursor == '\0')
-		return (want_dir
-			? FINAL_SLASH
-			: FINAL_NORMAL);
+		return (want_dir ? FINAL_SLASH : FINAL_NORMAL);
 
 	return NOT_FINAL;
 }
@@ -131,8 +130,11 @@ static inline Finality next_component(char component[NAME_MAX], const char **cur
  * component is either a directory (returned value is 0) or a symlink
  * (returned value is 1), otherwise it returns -errno or -ENOTDIR.
  */
-static inline int substitute_binding_stat(Tracee *tracee, Finality finality, unsigned int recursion_level,
-					const char guest_path[PATH_MAX], char host_path[PATH_MAX])
+static inline int substitute_binding_stat(Tracee *tracee,
+					  Finality finality,
+					  unsigned int recursion_level,
+					  const char guest_path[PATH_MAX],
+					  char host_path[PATH_MAX])
 {
 	struct stat statl;
 	int status;
@@ -144,8 +146,11 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality finality, uns
 
 	/* Don't notify extensions during the initialization of a binding.  */
 	if (tracee->glue_type == 0) {
-		status = notify_extensions(tracee, HOST_PATH, (intptr_t)host_path,
-					IS_FINAL(finality) && recursion_level == 0);
+		status =
+		    notify_extensions(tracee, HOST_PATH,
+				      (intptr_t) host_path,
+				      IS_FINAL(finality)
+				      && recursion_level == 0);
 		if (status < 0)
 			return status;
 	}
@@ -156,7 +161,8 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality finality, uns
 	/* Build the glue between the hostfs and the guestfs during
 	 * the initialization of a binding.  */
 	if (status < 0 && tracee->glue_type != 0) {
-		statl.st_mode = build_glue(tracee, guest_path, host_path, finality);
+		statl.st_mode =
+		    build_glue(tracee, guest_path, host_path, finality);
 		if (statl.st_mode == 0)
 			status = -1;
 	}
@@ -165,7 +171,8 @@ static inline int substitute_binding_stat(Tracee *tracee, Finality finality, uns
 	 * nor a symlink.  The error depends on why the component
 	 * could not be accessed (ENOENT, EACCES, ...), otherwise the
 	 * error is "Not a directory".  */
-	if (!IS_FINAL(finality) && !S_ISDIR(statl.st_mode) && !S_ISLNK(statl.st_mode))
+	if (!IS_FINAL(finality) && !S_ISDIR(statl.st_mode)
+	    && !S_ISLNK(statl.st_mode))
 		return (status < 0 ? -errno : -ENOTDIR);
 
 	return (S_ISLNK(statl.st_mode) ? 1 : 0);
@@ -207,15 +214,16 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		 * the relative `user_path`.  */
 		if (guest_path[0] != '/')
 			return -EINVAL;
-	}
-	else
+	} else
 		strcpy(guest_path, "/");
 
 
 	/* Resolve bindings for the initial '/' component or user_path,
 	 * which is not handled in the loop below.
 	 * In particular HOST_PATH extensions are called from there.  */
-	status = substitute_binding_stat(tracee, NOT_FINAL, recursion_level, guest_path, host_path);
+	status =
+	    substitute_binding_stat(tracee, NOT_FINAL, recursion_level,
+				    guest_path, host_path);
 	if (status < 0)
 		return status;
 
@@ -244,7 +252,8 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 			continue;
 		}
 
-		status = join_paths(2, scratch_path, guest_path, component);
+		status =
+		    join_paths(2, scratch_path, guest_path, component);
 		if (status < 0)
 			return status;
 
@@ -253,7 +262,10 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		 * symlink.  For this latter case, we check that the
 		 * symlink points to a directory once it is
 		 * canonicalized, at the end of this loop.  */
-		status = substitute_binding_stat(tracee, finality, recursion_level, scratch_path, host_path);
+		status =
+		    substitute_binding_stat(tracee, finality,
+					    recursion_level, scratch_path,
+					    host_path);
 		if (status < 0)
 			return status;
 
@@ -263,9 +275,12 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		 * later condition does not apply to intermediate path
 		 * components.  Errors are explicitly ignored since
 		 * they should be handled by the caller. */
-		if (status <= 0 || (finality == FINAL_NORMAL && !deref_final)) {
+		if (status <= 0
+		    || (finality == FINAL_NORMAL && !deref_final)) {
 			strcpy(scratch_path, guest_path);
-			status = join_paths(2, guest_path, scratch_path, component);
+			status =
+			    join_paths(2, guest_path, scratch_path,
+				       component);
 			if (status < 0)
 				return status;
 			continue;
@@ -282,7 +297,8 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 			 * dynamically by the kernel.  PRoot has to
 			 * emulate some of them.  */
 			status = readlink_proc(tracee, scratch_path,
-					       guest_path, component, comparison);
+					       guest_path, component,
+					       comparison);
 			switch (status) {
 			case CANONICALIZE:
 				/* The symlink is already dereferenced,
@@ -307,7 +323,9 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 			break;
 		}
 
-		status = readlink(host_path, scratch_path, sizeof(scratch_path));
+		status =
+		    readlink(host_path, scratch_path,
+			     sizeof(scratch_path));
 		if (status < 0)
 			return status;
 		else if (status == sizeof(scratch_path))
@@ -320,24 +338,31 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 		if (status < 0)
 			return status;
 
-	canon:
+	      canon:
 		/* Canonicalize recursively the referee in case it
 		 * is/contains a link, moreover if it is not an
 		 * absolute link then it is relative to
 		 * 'guest_path'. */
-		status = canonicalize(tracee, scratch_path, true, guest_path, recursion_level + 1);
+		status =
+		    canonicalize(tracee, scratch_path, true, guest_path,
+				 recursion_level + 1);
 		if (status < 0)
 			return status;
 
 		/* Check that a non-final canonicalized/dereferenced
 		 * symlink exists and is a directory.  */
-		status = substitute_binding_stat(tracee, finality, recursion_level, guest_path, host_path);
+		status =
+		    substitute_binding_stat(tracee, finality,
+					    recursion_level, guest_path,
+					    host_path);
 		if (status < 0)
 			return status;
 
 		/* Here, 'guest_path' shouldn't be a symlink anymore,
 		 * unless it is a named file descriptor.  */
-		assert(status != 1 || sscanf(guest_path, "/proc/%*d/fd/%d", &status) == 1);
+		assert(status != 1
+		       || sscanf(guest_path, "/proc/%*d/fd/%d",
+				 &status) == 1);
 	}
 
 	/* At the exit stage of the first level of recursion,
@@ -351,14 +376,16 @@ int canonicalize(Tracee *tracee, const char *user_path, bool deref_final,
 
 		case FINAL_SLASH:
 			strcpy(scratch_path, guest_path);
-			status = join_paths(2, guest_path, scratch_path, "");
+			status =
+			    join_paths(2, guest_path, scratch_path, "");
 			if (status < 0)
 				return status;
 			break;
 
 		case FINAL_DOT:
 			strcpy(scratch_path, guest_path);
-			status = join_paths(2, guest_path, scratch_path, ".");
+			status =
+			    join_paths(2, guest_path, scratch_path, ".");
 			if (status < 0)
 				return status;
 			break;

@@ -20,39 +20,39 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>  /* pid_t, waitpid(2), */
-#include <sys/ptrace.h> /* ptrace(3), PTRACE_*, */
-#include <sys/user.h>   /* struct user*, */
-#include <sys/wait.h>   /* waitpid(2), */
-#include <stddef.h>     /* offsetof(), */
-#include <unistd.h>     /* fork(2), getpid(2), */
-#include <errno.h>      /* errno(3), */
-#include <stdbool.h>    /* bool, true, false, */
-#include <stdlib.h>     /* exit, EXIT_*, */
-#include <stdio.h>      /* fprintf(3), stderr, */
-#include <stdint.h>     /* *int*_t, */
-#include <string.h>     /* strerror */
-#include <sys/uio.h>    /* struct iovec */
-#include <elf.h>        /* NT_PRSTATUS */
+#include <sys/types.h>		/* pid_t, waitpid(2), */
+#include <sys/ptrace.h>		/* ptrace(3), PTRACE_*, */
+#include <sys/user.h>		/* struct user*, */
+#include <sys/wait.h>		/* waitpid(2), */
+#include <stddef.h>		/* offsetof(), */
+#include <unistd.h>		/* fork(2), getpid(2), */
+#include <errno.h>		/* errno(3), */
+#include <stdbool.h>		/* bool, true, false, */
+#include <stdlib.h>		/* exit, EXIT_*, */
+#include <stdio.h>		/* fprintf(3), stderr, */
+#include <stdint.h>		/* *int*_t, */
+#include <string.h>		/* strerror */
+#include <sys/uio.h>		/* struct iovec */
+#include <elf.h>		/* NT_PRSTATUS */
 
 #include "../src/arch.h"
 
 #if !defined(ARCH_X86_64) && !defined(ARCH_ARM_EABI) && !defined(ARCH_X86) && !defined(ARCH_SH4)
-#    if defined(__x86_64__)
-#        define ARCH_X86_64 1
-#    elif defined(__ARM_EABI__)
-#        define ARCH_ARM_EABI 1
-#    elif defined(__aarch64__)
-#        define ARCH_ARM64 1
-#    elif defined(__arm__)
-#        error "Only EABI is currently supported for ARM"
-#    elif defined(__i386__)
-#        define ARCH_X86 1
-#    elif defined(__SH4__)
-#        define ARCH_SH4 1
-#    else
-#        error "Unsupported architecture"
-#    endif
+#if defined(__x86_64__)
+#define ARCH_X86_64 1
+#elif defined(__ARM_EABI__)
+#define ARCH_ARM_EABI 1
+#elif defined(__aarch64__)
+#define ARCH_ARM64 1
+#elif defined(__arm__)
+#error "Only EABI is currently supported for ARM"
+#elif defined(__i386__)
+#define ARCH_X86 1
+#elif defined(__SH4__)
+#define ARCH_SH4 1
+#else
+#error "Unsupported architecture"
+#endif
 #endif
 
 /**
@@ -82,104 +82,104 @@ typedef enum {
  * See sysdeps/unix/sysv/linux/${ARCH}/syscall.S from the GNU C Library. */
 #if defined(ARCH_X86_64)
 
-    static off_t reg_offset[] = {
-	[SYSARG_NUM]    = USER_REGS_OFFSET(orig_rax),
-	[SYSARG_1]      = USER_REGS_OFFSET(rdi),
-	[SYSARG_2]      = USER_REGS_OFFSET(rsi),
-	[SYSARG_3]      = USER_REGS_OFFSET(rdx),
-	[SYSARG_4]      = USER_REGS_OFFSET(r10),
-	[SYSARG_5]      = USER_REGS_OFFSET(r8),
-	[SYSARG_6]      = USER_REGS_OFFSET(r9),
+static off_t reg_offset[] = {
+	[SYSARG_NUM] = USER_REGS_OFFSET(orig_rax),
+	[SYSARG_1] = USER_REGS_OFFSET(rdi),
+	[SYSARG_2] = USER_REGS_OFFSET(rsi),
+	[SYSARG_3] = USER_REGS_OFFSET(rdx),
+	[SYSARG_4] = USER_REGS_OFFSET(r10),
+	[SYSARG_5] = USER_REGS_OFFSET(r8),
+	[SYSARG_6] = USER_REGS_OFFSET(r9),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
-    };
+};
 
-    static off_t reg_offset_x86[] = {
-	[SYSARG_NUM]    = USER_REGS_OFFSET(orig_rax),
-	[SYSARG_1]      = USER_REGS_OFFSET(rbx),
-	[SYSARG_2]      = USER_REGS_OFFSET(rcx),
-	[SYSARG_3]      = USER_REGS_OFFSET(rdx),
-	[SYSARG_4]      = USER_REGS_OFFSET(rsi),
-	[SYSARG_5]      = USER_REGS_OFFSET(rdi),
-	[SYSARG_6]      = USER_REGS_OFFSET(rbp),
+static off_t reg_offset_x86[] = {
+	[SYSARG_NUM] = USER_REGS_OFFSET(orig_rax),
+	[SYSARG_1] = USER_REGS_OFFSET(rbx),
+	[SYSARG_2] = USER_REGS_OFFSET(rcx),
+	[SYSARG_3] = USER_REGS_OFFSET(rdx),
+	[SYSARG_4] = USER_REGS_OFFSET(rsi),
+	[SYSARG_5] = USER_REGS_OFFSET(rdi),
+	[SYSARG_6] = USER_REGS_OFFSET(rbp),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(rax),
 	[STACK_POINTER] = USER_REGS_OFFSET(rsp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(rip),
-    };
+};
 
-    #undef  REG
-    #define REG(regs, index)					\
+#undef  REG
+#define REG(regs, index)					\
 	(*(unsigned long*) (regs.cs == 0x23			\
 		? (((uint8_t *) &regs) + reg_offset_x86[index]) \
 		: (((uint8_t *) &regs) + reg_offset[index])))
 
 #elif defined(ARCH_ARM_EABI)
 
-    static off_t reg_offset[] = {
-	[SYSARG_NUM]    = USER_REGS_OFFSET(uregs[7]),
-	[SYSARG_1]      = USER_REGS_OFFSET(uregs[0]),
-	[SYSARG_2]      = USER_REGS_OFFSET(uregs[1]),
-	[SYSARG_3]      = USER_REGS_OFFSET(uregs[2]),
-	[SYSARG_4]      = USER_REGS_OFFSET(uregs[3]),
-	[SYSARG_5]      = USER_REGS_OFFSET(uregs[4]),
-	[SYSARG_6]      = USER_REGS_OFFSET(uregs[5]),
+static off_t reg_offset[] = {
+	[SYSARG_NUM] = USER_REGS_OFFSET(uregs[7]),
+	[SYSARG_1] = USER_REGS_OFFSET(uregs[0]),
+	[SYSARG_2] = USER_REGS_OFFSET(uregs[1]),
+	[SYSARG_3] = USER_REGS_OFFSET(uregs[2]),
+	[SYSARG_4] = USER_REGS_OFFSET(uregs[3]),
+	[SYSARG_5] = USER_REGS_OFFSET(uregs[4]),
+	[SYSARG_6] = USER_REGS_OFFSET(uregs[5]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(uregs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(uregs[13]),
 	[INSTR_POINTER] = USER_REGS_OFFSET(uregs[15]),
-    };
+};
 
 #elif defined(ARCH_ARM64)
 
-    #undef  USER_REGS_OFFSET
-    #define USER_REGS_OFFSET(reg_name) offsetof(struct user_regs_struct, reg_name)
+#undef  USER_REGS_OFFSET
+#define USER_REGS_OFFSET(reg_name) offsetof(struct user_regs_struct, reg_name)
 
-    static off_t reg_offset[] = {
-	[SYSARG_NUM]    = USER_REGS_OFFSET(regs[8]),
-	[SYSARG_1]      = USER_REGS_OFFSET(regs[0]),
-	[SYSARG_2]      = USER_REGS_OFFSET(regs[1]),
-	[SYSARG_3]      = USER_REGS_OFFSET(regs[2]),
-	[SYSARG_4]      = USER_REGS_OFFSET(regs[3]),
-	[SYSARG_5]      = USER_REGS_OFFSET(regs[4]),
-	[SYSARG_6]      = USER_REGS_OFFSET(regs[5]),
+static off_t reg_offset[] = {
+	[SYSARG_NUM] = USER_REGS_OFFSET(regs[8]),
+	[SYSARG_1] = USER_REGS_OFFSET(regs[0]),
+	[SYSARG_2] = USER_REGS_OFFSET(regs[1]),
+	[SYSARG_3] = USER_REGS_OFFSET(regs[2]),
+	[SYSARG_4] = USER_REGS_OFFSET(regs[3]),
+	[SYSARG_5] = USER_REGS_OFFSET(regs[4]),
+	[SYSARG_6] = USER_REGS_OFFSET(regs[5]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(sp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
-    };
+};
 
 #elif defined(ARCH_X86)
 
-    static off_t reg_offset[] = {
-	[SYSARG_NUM]    = USER_REGS_OFFSET(orig_eax),
-	[SYSARG_1]      = USER_REGS_OFFSET(ebx),
-	[SYSARG_2]      = USER_REGS_OFFSET(ecx),
-	[SYSARG_3]      = USER_REGS_OFFSET(edx),
-	[SYSARG_4]      = USER_REGS_OFFSET(esi),
-	[SYSARG_5]      = USER_REGS_OFFSET(edi),
-	[SYSARG_6]      = USER_REGS_OFFSET(ebp),
+static off_t reg_offset[] = {
+	[SYSARG_NUM] = USER_REGS_OFFSET(orig_eax),
+	[SYSARG_1] = USER_REGS_OFFSET(ebx),
+	[SYSARG_2] = USER_REGS_OFFSET(ecx),
+	[SYSARG_3] = USER_REGS_OFFSET(edx),
+	[SYSARG_4] = USER_REGS_OFFSET(esi),
+	[SYSARG_5] = USER_REGS_OFFSET(edi),
+	[SYSARG_6] = USER_REGS_OFFSET(ebp),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(eax),
 	[STACK_POINTER] = USER_REGS_OFFSET(esp),
 	[INSTR_POINTER] = USER_REGS_OFFSET(eip),
-    };
+};
 
 #elif defined(ARCH_SH4)
 
-    static off_t reg_offset[] = {
-	[SYSARG_NUM]    = USER_REGS_OFFSET(regs[3]),
-	[SYSARG_1]      = USER_REGS_OFFSET(regs[4]),
-	[SYSARG_2]      = USER_REGS_OFFSET(regs[5]),
-	[SYSARG_3]      = USER_REGS_OFFSET(regs[6]),
-	[SYSARG_4]      = USER_REGS_OFFSET(regs[7]),
-	[SYSARG_5]      = USER_REGS_OFFSET(regs[0]),
-	[SYSARG_6]      = USER_REGS_OFFSET(regs[1]),
+static off_t reg_offset[] = {
+	[SYSARG_NUM] = USER_REGS_OFFSET(regs[3]),
+	[SYSARG_1] = USER_REGS_OFFSET(regs[4]),
+	[SYSARG_2] = USER_REGS_OFFSET(regs[5]),
+	[SYSARG_3] = USER_REGS_OFFSET(regs[6]),
+	[SYSARG_4] = USER_REGS_OFFSET(regs[7]),
+	[SYSARG_5] = USER_REGS_OFFSET(regs[0]),
+	[SYSARG_6] = USER_REGS_OFFSET(regs[1]),
 	[SYSARG_RESULT] = USER_REGS_OFFSET(regs[0]),
 	[STACK_POINTER] = USER_REGS_OFFSET(regs[15]),
 	[INSTR_POINTER] = USER_REGS_OFFSET(pc),
-    };
+};
 
 #else
 
-    #error "Unsupported architecture"
+#error "Unsupported architecture"
 
 #endif
 
@@ -211,17 +211,18 @@ int main(int argc, char *argv[])
 	pid_t pid;
 
 	if (argc <= 1) {
-		fprintf(stderr, "Usage: %s /path/to/exe [args]\n", argv[0]);
+		fprintf(stderr, "Usage: %s /path/to/exe [args]\n",
+			argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	pid = fork();
-	switch(pid) {
+	switch (pid) {
 	case -1:
 		perror("fork()");
 		exit(EXIT_FAILURE);
 
-	case 0: /* child */
+	case 0:		/* child */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		if (status < 0) {
 			perror("ptrace(TRACEME)");
@@ -234,13 +235,12 @@ int main(int argc, char *argv[])
 		execvp(argv[1], &argv[1]);
 		exit(EXIT_FAILURE);
 
-	default: /* parent */
+	default:		/* parent */
 		break;
 	}
 
 	restart_how = (getenv("PTRACER_BEHAVIOR_1") == NULL
-		? PTRACE_SYSCALL
-		: PTRACE_CONT);
+		       ? PTRACE_SYSCALL : PTRACE_CONT);
 
 	pids = calloc(1, sizeof(pid_t));
 	if (pids == NULL) {
@@ -287,18 +287,16 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "sid %d: exited with status %d\n",
 				sid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
-			continue; /* Skip the call to ptrace(SYSCALL). */
-		}
-		else if (WIFSIGNALED(tracee_status)) {
-			fprintf(stderr, "sid %d: terminated with signal %d\n",
-				sid, WTERMSIG(tracee_status));
-			continue; /* Skip the call to ptrace(SYSCALL). */
-		}
-		else if (WIFCONTINUED(tracee_status)) {
+			continue;	/* Skip the call to ptrace(SYSCALL). */
+		} else if (WIFSIGNALED(tracee_status)) {
+			fprintf(stderr,
+				"sid %d: terminated with signal %d\n", sid,
+				WTERMSIG(tracee_status));
+			continue;	/* Skip the call to ptrace(SYSCALL). */
+		} else if (WIFCONTINUED(tracee_status)) {
 			fprintf(stderr, "sid %d: continued\n", sid);
 			signal = SIGCONT;
-		}
-		else if (WIFSTOPPED(tracee_status)) {
+		} else if (WIFSTOPPED(tracee_status)) {
 			struct user_regs_struct regs;
 
 			/* Don't use WSTOPSIG() to extract the signal
@@ -314,12 +312,13 @@ int main(int argc, char *argv[])
 
 				status = read_regs(pid, &regs);
 				if (status < 0) {
-					fprintf(stderr,
-						"sigtrap: ?, ?\n");
+					fprintf(stderr, "sigtrap: ?, ?\n");
 				} else {
-					fprintf(stderr, "sigtrap: %ld == 0 ? %d\n",
+					fprintf(stderr,
+						"sigtrap: %ld == 0 ? %d\n",
 						REG(regs, SYSARG_NUM),
-						REG(regs, SYSARG_RESULT) == 0);
+						REG(regs,
+						    SYSARG_RESULT) == 0);
 				}
 
 				/* PTRACER_BEHAVIOR_1 */
@@ -345,23 +344,29 @@ int main(int argc, char *argv[])
 				skip_bare_sigtrap = true;
 
 				ptrace_options = PTRACE_O_TRACESYSGOOD
-					| PTRACE_O_TRACEFORK
-					| PTRACE_O_TRACEVFORK
-					| PTRACE_O_TRACEVFORKDONE
-					| PTRACE_O_TRACECLONE
-					| PTRACE_O_TRACEEXIT;
+				    | PTRACE_O_TRACEFORK
+				    | PTRACE_O_TRACEVFORK
+				    | PTRACE_O_TRACEVFORKDONE
+				    | PTRACE_O_TRACECLONE
+				    | PTRACE_O_TRACEEXIT;
 
 				if (getenv("PTRACER_BEHAVIOR_2") == NULL)
-					ptrace_options |= PTRACE_O_TRACEEXEC;
+					ptrace_options |=
+					    PTRACE_O_TRACEEXEC;
 
-				status = ptrace(PTRACE_SETOPTIONS, pid, NULL, ptrace_options);
+				status =
+				    ptrace(PTRACE_SETOPTIONS, pid, NULL,
+					   ptrace_options);
 				if (status < 0) {
-					perror("ptrace(PTRACE_SETOPTIONS)");
+					perror
+					    ("ptrace(PTRACE_SETOPTIONS)");
 					exit(EXIT_FAILURE);
 				}
 				/* Fall through. */
 			case SIGTRAP | 0x80:
-				fprintf(stderr, "sid %d: PTRACE_EVENT_SYSGOOD\n", sid);
+				fprintf(stderr,
+					"sid %d: PTRACE_EVENT_SYSGOOD\n",
+					sid);
 				signal = 0;
 
 				status = read_regs(pid, &regs);
@@ -369,39 +374,53 @@ int main(int argc, char *argv[])
 					fprintf(stderr,
 						"syscall(?) = ?\n");
 				} else {
-					fprintf(stderr, "syscall(%ld) == 0 ? %d\n",
+					fprintf(stderr,
+						"syscall(%ld) == 0 ? %d\n",
 						REG(regs, SYSARG_NUM),
-						REG(regs, SYSARG_RESULT) == 0);
+						REG(regs,
+						    SYSARG_RESULT) == 0);
 				}
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_VFORK << 8:
-				fprintf(stderr, "sid %d: PTRACE_EVENT_VFORK\n", sid);
+				fprintf(stderr,
+					"sid %d: PTRACE_EVENT_VFORK\n",
+					sid);
 				signal = 0;
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
-				fprintf(stderr, "sid %d: PTRACE_EVENT_VFORK\n", sid);
+				fprintf(stderr,
+					"sid %d: PTRACE_EVENT_VFORK\n",
+					sid);
 				signal = 0;
 				break;
 
-			case SIGTRAP | PTRACE_EVENT_FORK  << 8:
-				fprintf(stderr, "sid %d: PTRACE_EVENT_FORK\n", sid);
+			case SIGTRAP | PTRACE_EVENT_FORK << 8:
+				fprintf(stderr,
+					"sid %d: PTRACE_EVENT_FORK\n",
+					sid);
 				signal = 0;
 				break;
 
 			case SIGTRAP | PTRACE_EVENT_CLONE << 8:
-				fprintf(stderr, "sid %d: PTRACE_EVENT_CLONE\n", sid);
+				fprintf(stderr,
+					"sid %d: PTRACE_EVENT_CLONE\n",
+					sid);
 				signal = 0;
 				break;
 
-			case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
-				fprintf(stderr, "sid %d: PTRACE_EVENT_EXEC\n", sid);
+			case SIGTRAP | PTRACE_EVENT_EXEC << 8:
+				fprintf(stderr,
+					"sid %d: PTRACE_EVENT_EXEC\n",
+					sid);
 				signal = 0;
 				break;
 
-			case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
-				fprintf(stderr, "sid %d: PTRACE_EVENT_EXIT\n", sid);
+			case SIGTRAP | PTRACE_EVENT_EXIT << 8:
+				fprintf(stderr,
+					"sid %d: PTRACE_EVENT_EXIT\n",
+					sid);
 				signal = 0;
 				break;
 
@@ -413,9 +432,9 @@ int main(int argc, char *argv[])
 			default:
 				break;
 			}
-		}
-		else {
-			fprintf(stderr, "sid %d: unknown trace event\n", sid);
+		} else {
+			fprintf(stderr, "sid %d: unknown trace event\n",
+				sid);
 			signal = 0;
 		}
 
@@ -423,7 +442,9 @@ int main(int argc, char *argv[])
 		 * exit of a system call. */
 		status = ptrace(restart_how, pid, NULL, signal);
 		if (status < 0)
-			fprintf(stderr, "ptrace(<restart_how>, %d, %d): %s\n", sid, signal, strerror(errno));
+			fprintf(stderr,
+				"ptrace(<restart_how>, %d, %d): %s\n", sid,
+				signal, strerror(errno));
 	}
 
 	return last_exit_status;

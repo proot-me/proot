@@ -1,8 +1,8 @@
-#include <unistd.h> /* syscall(2), */
-#include <stdio.h>  /* perror(3), */
-#include <limits.h> /* PATH_MAX, */
-#include <stdlib.h> /* exit(3), */
-#include <sys/syscall.h> /* SYS_getcwd, */
+#include <unistd.h>		/* syscall(2), */
+#include <stdio.h>		/* perror(3), */
+#include <limits.h>		/* PATH_MAX, */
+#include <stdlib.h>		/* exit(3), */
+#include <sys/syscall.h>	/* SYS_getcwd, */
 
 
 int main(void)

@@ -12,8 +12,9 @@ int main()
 {
 	int status;
 	struct timeval times[2] = {
-		{.tv_sec = 52353, .tv_usec = 0},
-		{ .tv_sec = 52353, .tv_usec = 0 } };
+		{.tv_sec = 52353,.tv_usec = 0 },
+		{.tv_sec = 52353,.tv_usec = 0 }
+	};
 	char tmp[] = "proot-XXXXXX";
 
 	mktemp(tmp);
@@ -29,4 +30,3 @@ int main()
 	status = lutimes(tmp, times);
 	exit(status < 0 && errno != ENOSYS ? EXIT_FAILURE : EXIT_SUCCESS);
 }
-

@@ -13,12 +13,12 @@ static void *setuid_124(void *unused)
 	status = setuid(124);
 	if (status < 0) {
 		perror("setuid");
-		pthread_exit((void *)-1);
+		pthread_exit((void *) -1);
 	}
 
 	if (getuid() != 124) {
 		perror("getuid");
-		pthread_exit((void *)-1);
+		pthread_exit((void *) -1);
 	}
 
 	pthread_exit(NULL);
@@ -36,12 +36,12 @@ int main(void)
 	void *result;
 	int status;
 
-	switch(fork()) {
+	switch (fork()) {
 	case -1:
 		perror("fork");
 		exit(EXIT_FAILURE);
 
-	case 0: /* child */
+	case 0:		/* child */
 		status = setuid(123);
 		if (status < 0) {
 			perror("setuid");
@@ -54,7 +54,7 @@ int main(void)
 		}
 		exit(EXIT_SUCCESS);
 
-	default: /* parent */
+	default:		/* parent */
 		break;
 	}
 

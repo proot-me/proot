@@ -75,4 +75,4 @@ typedef struct load_statement LoadStatement;
 #define LOAD_ACTION_START_TRACED	5
 #define LOAD_ACTION_START		6
 
-#endif /* SCRIPT */
+#endif				/* SCRIPT */

@@ -1,7 +1,7 @@
-#include <stdio.h> /* perror(3) */
-#include <stdlib.h> /* exit(3), */
-#include <sys/wait.h> /* wait(3) */
-#include <unistd.h> /* fork(2), */
+#include <stdio.h>		/* perror(3) */
+#include <stdlib.h>		/* exit(3), */
+#include <sys/wait.h>		/* wait(3) */
+#include <unistd.h>		/* fork(2), */
 
 int main(void)
 {
@@ -12,10 +12,10 @@ int main(void)
 	case -1:
 		exit(EXIT_FAILURE);
 
-	case 0: /* child */
+	case 0:		/* child */
 		return 13;
 
-	default: /* parent */
+	default:		/* parent */
 		status = wait(&child_status);
 		if (status < 0) {
 			perror("wait()");

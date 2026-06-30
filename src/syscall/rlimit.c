@@ -68,7 +68,7 @@ int translate_setrlimit_exit(const Tracee *tracee, bool is_prlimit)
 	sysarg = (is_prlimit ? SYSARG_2 : SYSARG_1);
 
 	resource = peek_reg(tracee, ORIGINAL, sysarg);
-	address  = peek_reg(tracee, ORIGINAL, sysarg + 1);
+	address = peek_reg(tracee, ORIGINAL, sysarg + 1);
 
 	/* Not the resource we're looking for?  */
 	if (resource != RLIMIT_STACK)
@@ -81,13 +81,13 @@ int translate_setrlimit_exit(const Tracee *tracee, bool is_prlimit)
 			return 0;
 
 		tracee_stack_limit = peek_uint64(tracee, address);
-	}
-	else {
+	} else {
 		tracee_stack_limit = peek_word(tracee, address);
 
 		/* Convert this special value from 32-bit to 64-bit,
 		 * if needed.  */
-		if (is_32on64_mode(tracee) && tracee_stack_limit == (uint32_t) -1)
+		if (is_32on64_mode(tracee)
+		    && tracee_stack_limit == (uint32_t) - 1)
 			tracee_stack_limit = RLIM_INFINITY;
 	}
 	if (errno != 0)
@@ -97,7 +97,7 @@ int translate_setrlimit_exit(const Tracee *tracee, bool is_prlimit)
 	status = prlimit(0, RLIMIT_STACK, NULL, &proot_stack);
 	if (status < 0) {
 		VERBOSE(tracee, 1, "can't get stack limit.");
-		return 0; /* Not fatal.  */
+		return 0;	/* Not fatal.  */
 	}
 
 	/* No need to increase current PRoot's stack limit?  */
@@ -110,8 +110,9 @@ int translate_setrlimit_exit(const Tracee *tracee, bool is_prlimit)
 	status = prlimit(0, RLIMIT_STACK, &proot_stack, NULL);
 	if (status < 0)
 		VERBOSE(tracee, 1, "can't set stack limit.");
-	return 0; /* Not fatal.  */
+	return 0;		/* Not fatal.  */
 
-	VERBOSE(tracee, 1, "stack soft limit increased to %ld bytes", proot_stack.rlim_cur);
+	VERBOSE(tracee, 1, "stack soft limit increased to %ld bytes",
+		proot_stack.rlim_cur);
 	return 0;
 }

@@ -20,17 +20,17 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>  /* lstat(2), lseek(2), */
-#include <sys/stat.h>   /* lstat(2), lseek(2), fchmod(2), */
-#include <unistd.h>     /* access(2), lstat(2), close(2), read(2), */
-#include <errno.h>      /* E*, */
-#include <assert.h>     /* assert(3), */
-#include <talloc.h>     /* talloc*, */
-#include <sys/mman.h>   /* PROT_*, */
-#include <string.h>     /* strlen(3), strcpy(3), */
-#include <stdlib.h>     /* getenv(3), */
-#include <stdio.h>      /* fwrite(3), */
-#include <assert.h>     /* assert(3), */
+#include <sys/types.h>		/* lstat(2), lseek(2), */
+#include <sys/stat.h>		/* lstat(2), lseek(2), fchmod(2), */
+#include <unistd.h>		/* access(2), lstat(2), close(2), read(2), */
+#include <errno.h>		/* E*, */
+#include <assert.h>		/* assert(3), */
+#include <talloc.h>		/* talloc*, */
+#include <sys/mman.h>		/* PROT_*, */
+#include <string.h>		/* strlen(3), strcpy(3), */
+#include <stdlib.h>		/* getenv(3), */
+#include <stdio.h>		/* fwrite(3), */
+#include <assert.h>		/* assert(3), */
 
 #include "execve/execve.h"
 #include "execve/shebang.h"
@@ -54,7 +54,7 @@
  * 0.
  */
 static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
-		const ProgramHeader *program_header)
+		       const ProgramHeader *program_header)
 {
 	size_t index;
 	word_t start_address;
@@ -74,21 +74,24 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 	else
 		index = talloc_array_length(load_info->mappings);
 
-	load_info->mappings = talloc_realloc(load_info, load_info->mappings, Mapping, index + 1);
+	load_info->mappings =
+	    talloc_realloc(load_info, load_info->mappings, Mapping,
+			   index + 1);
 	if (load_info->mappings == NULL)
 		return -ENOMEM;
 
 	start_address = P(vaddr) & page_mask;
-	end_address   = (P(vaddr) + P(filesz) + page_size) & page_mask;
+	end_address = (P(vaddr) + P(filesz) + page_size) & page_mask;
 
-	load_info->mappings[index].fd     = -1; /* Unknown yet.  */
+	load_info->mappings[index].fd = -1;	/* Unknown yet.  */
 	load_info->mappings[index].offset = P(offset) & page_mask;
-	load_info->mappings[index].addr   = start_address;
+	load_info->mappings[index].addr = start_address;
 	load_info->mappings[index].length = end_address - start_address;
-	load_info->mappings[index].flags  = MAP_PRIVATE | MAP_FIXED;
-	load_info->mappings[index].prot   =  ( (P(flags) & PF_R ? PROT_READ  : 0)
-					| (P(flags) & PF_W ? PROT_WRITE : 0)
-					| (P(flags) & PF_X ? PROT_EXEC  : 0));
+	load_info->mappings[index].flags = MAP_PRIVATE | MAP_FIXED;
+	load_info->mappings[index].prot =
+	    ((P(flags) & PF_R ? PROT_READ : 0)
+	     | (P(flags) & PF_W ? PROT_WRITE : 0)
+	     | (P(flags) & PF_X ? PROT_EXEC : 0));
 
 	/* "If the segment's memory size p_memsz is larger than the
 	 * file size p_filesz, the "extra" bytes are defined to hold
@@ -96,28 +99,33 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
 	 * -- man 7 elf.  */
 	if (P(memsz) > P(filesz)) {
 		/* How many extra bytes in the current page?  */
-		load_info->mappings[index].clear_length = end_address - P(vaddr) - P(filesz);
+		load_info->mappings[index].clear_length =
+		    end_address - P(vaddr) - P(filesz);
 
 		/* Create new pages for the remaining extra bytes.  */
 		start_address = end_address;
-		end_address   = (P(vaddr) + P(memsz) + page_size) & page_mask;
+		end_address =
+		    (P(vaddr) + P(memsz) + page_size) & page_mask;
 		if (end_address > start_address) {
 			index++;
-			load_info->mappings = talloc_realloc(load_info, load_info->mappings,
-							Mapping, index + 1);
+			load_info->mappings =
+			    talloc_realloc(load_info, load_info->mappings,
+					   Mapping, index + 1);
 			if (load_info->mappings == NULL)
 				return -ENOMEM;
 
-			load_info->mappings[index].fd     = -1;  /* Anonymous.  */
-			load_info->mappings[index].offset =  0;
-			load_info->mappings[index].addr   = start_address;
-			load_info->mappings[index].length = end_address - start_address;
+			load_info->mappings[index].fd = -1;	/* Anonymous.  */
+			load_info->mappings[index].offset = 0;
+			load_info->mappings[index].addr = start_address;
+			load_info->mappings[index].length =
+			    end_address - start_address;
 			load_info->mappings[index].clear_length = 0;
-			load_info->mappings[index].flags = MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
-			load_info->mappings[index].prot   = load_info->mappings[index - 1].prot;
+			load_info->mappings[index].flags =
+			    MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED;
+			load_info->mappings[index].prot =
+			    load_info->mappings[index - 1].prot;
 		}
-	}
-	else
+	} else
 		load_info->mappings[index].clear_length = 0;
 
 	return 0;
@@ -128,7 +136,8 @@ static int add_mapping(const Tracee *tracee UNUSED, LoadInfo *load_info,
  * executable and is a regular file.  This function returns -errno if
  * an error occured, 0 otherwise.
  */
-int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const char *user_path)
+int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX],
+			     const char *user_path)
 {
 	struct stat statl;
 	int status;
@@ -136,7 +145,8 @@ int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const cha
 	if (user_path[0] == '\0')
 		return -ENOEXEC;
 
-	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
+	status =
+	    translate_path(tracee, host_path, AT_FDCWD, user_path, true);
 	if (status < 0)
 		return status;
 
@@ -161,7 +171,7 @@ int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const cha
  * 0.
  */
 static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
-		const ProgramHeader *program_header)
+		      const ProgramHeader *program_header)
 {
 	char host_path[PATH_MAX];
 	char *user_path;
@@ -182,7 +192,7 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 	/* Remember pread(2) doesn't change the
 	 * current position in the file.  */
 	status = pread(fd, user_path, P(filesz), P(offset));
-	if ((size_t) status != P(filesz)) /* Unexpected size.  */
+	if ((size_t) status != P(filesz))	/* Unexpected size.  */
 		status = -EACCES;
 	if (status < 0)
 		return status;
@@ -200,7 +210,9 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 	 * In both case, it lies in "/host-rootfs" from a guest
 	 * point-of-view.  */
 	if (tracee->qemu != NULL && user_path[0] == '/') {
-		user_path = talloc_asprintf(tracee->ctx, "%s%s", HOST_ROOTFS, user_path);
+		user_path =
+		    talloc_asprintf(tracee->ctx, "%s%s", HOST_ROOTFS,
+				    user_path);
 		if (user_path == NULL)
 			return -ENOMEM;
 	}
@@ -209,11 +221,13 @@ static int add_interp(Tracee *tracee, int fd, LoadInfo *load_info,
 	if (status < 0)
 		return status;
 
-	load_info->interp->host_path = talloc_strdup(load_info->interp, host_path);
+	load_info->interp->host_path =
+	    talloc_strdup(load_info->interp, host_path);
 	if (load_info->interp->host_path == NULL)
 		return -ENOMEM;
 
-	load_info->interp->user_path = talloc_strdup(load_info->interp, user_path);
+	load_info->interp->user_path =
+	    talloc_strdup(load_info->interp, user_path);
 	if (load_info->interp->user_path == NULL)
 		return -ENOMEM;
 
@@ -235,27 +249,32 @@ struct add_load_info_data {
  * occurred, otherwise 0.
  */
 static int add_load_info(const ElfHeader *elf_header,
-			const ProgramHeader *program_header, void *data_)
+			 const ProgramHeader *program_header, void *data_)
 {
 	struct add_load_info_data *data = data_;
 	int status;
 
 	switch (PROGRAM_FIELD(*elf_header, *program_header, type)) {
 	case PT_LOAD:
-		status = add_mapping(data->tracee, data->load_info, program_header);
+		status =
+		    add_mapping(data->tracee, data->load_info,
+				program_header);
 		if (status < 0)
 			return status;
 		break;
 
 	case PT_INTERP:
-		status = add_interp(data->tracee, data->fd, data->load_info, program_header);
+		status =
+		    add_interp(data->tracee, data->fd, data->load_info,
+			       program_header);
 		if (status < 0)
 			return status;
 		break;
 
 	case PT_GNU_STACK:
 		data->load_info->needs_executable_stack |=
-			((PROGRAM_FIELD(*elf_header, *program_header, flags) & PF_X) != 0);
+		    ((PROGRAM_FIELD(*elf_header, *program_header, flags) &
+		      PF_X) != 0);
 		break;
 
 	default:
@@ -294,11 +313,13 @@ static int extract_load_info(Tracee *tracee, LoadInfo *load_info)
 	}
 
 	data.load_info = load_info;
-	data.tracee    = tracee;
-	data.fd        = fd;
+	data.tracee = tracee;
+	data.fd = fd;
 
-	status = iterate_program_headers(tracee, fd, &load_info->elf_header, add_load_info, &data);
-end:
+	status =
+	    iterate_program_headers(tracee, fd, &load_info->elf_header,
+				    add_load_info, &data);
+      end:
 	if (fd >= 0)
 		close(fd);
 
@@ -335,10 +356,11 @@ static void compute_load_addresses(Tracee *tracee)
 	    && tracee->load_info->mappings[0].addr == 0) {
 #if defined(HAS_LOADER_32BIT)
 		if (IS_CLASS32(tracee->load_info->elf_header))
-			add_load_base(tracee->load_info, EXEC_PIC_ADDRESS_32);
+			add_load_base(tracee->load_info,
+				      EXEC_PIC_ADDRESS_32);
 		else
 #endif
-		add_load_base(tracee->load_info, EXEC_PIC_ADDRESS);
+			add_load_base(tracee->load_info, EXEC_PIC_ADDRESS);
 	}
 
 	/* Nothing more to do?  */
@@ -349,10 +371,12 @@ static void compute_load_addresses(Tracee *tracee)
 	    && tracee->load_info->interp->mappings[0].addr == 0) {
 #if defined(HAS_LOADER_32BIT)
 		if (IS_CLASS32(tracee->load_info->elf_header))
-			add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS_32);
+			add_load_base(tracee->load_info->interp,
+				      INTERP_PIC_ADDRESS_32);
 		else
 #endif
-		add_load_base(tracee->load_info->interp, INTERP_PIC_ADDRESS);
+			add_load_base(tracee->load_info->interp,
+				      INTERP_PIC_ADDRESS);
 	}
 }
 
@@ -364,7 +388,8 @@ static void compute_load_addresses(Tracee *tracee)
  * @tracee's argv[] (pointed to by SYSARG_2) @tracee's envp[] (pointed
  * to by SYSARG_3) are correctly updated.
  */
-static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_path[PATH_MAX])
+static int expand_runner(Tracee *tracee, char host_path[PATH_MAX],
+			 char user_path[PATH_MAX])
 {
 	ArrayOfXPointers *envp;
 	char *argv0;
@@ -387,7 +412,8 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 		size_t nb_qemu_args;
 		size_t i;
 
-		status = fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
+		status =
+		    fetch_array_of_xpointers(tracee, &argv, SYSARG_2, 0);
 		if (status < 0)
 			return status;
 
@@ -410,7 +436,8 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 		 */
 
 		nb_qemu_args = talloc_array_length(tracee->qemu) - 1;
-		status = resize_array_of_xpointers(argv, 1, nb_qemu_args + 2);
+		status =
+		    resize_array_of_xpointers(argv, 1, nb_qemu_args + 2);
 		if (status < 0)
 			return status;
 
@@ -420,13 +447,15 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 				return status;
 		}
 
-		status = write_xpointees(argv, i, 3, "-0", argv0, user_path);
+		status =
+		    write_xpointees(argv, i, 3, "-0", argv0, user_path);
 		if (status < 0)
 			return status;
 
 		/* Ensure LD_ features should not be applied to QEMU
 		 * iteself.  */
-		status = ldso_env_passthru(tracee, envp, argv, "-E", "-U", i);
+		status =
+		    ldso_env_passthru(tracee, envp, argv, "-E", "-U", i);
 		if (status < 0)
 			return status;
 
@@ -436,7 +465,8 @@ static int expand_runner(Tracee* tracee, char host_path[PATH_MAX], char user_pat
 
 		/* Launch the runner in lieu of the initial
 		 * program. */
-		assert(strlen(tracee->qemu[0]) + strlen(HOST_ROOTFS) < PATH_MAX);
+		assert(strlen(tracee->qemu[0]) + strlen(HOST_ROOTFS) <
+		       PATH_MAX);
 		assert(tracee->qemu[0][0] == '/');
 
 		strcpy(host_path, tracee->qemu[0]);
@@ -489,11 +519,14 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 
 	if (wants_32bit_version) {
 		start = (void *) _binary_loader_m32_elf_start;
-		size  = (size_t)(_binary_loader_m32_elf_end-_binary_loader_m32_elf_start);
-	}
-	else {
+		size =
+		    (size_t) (_binary_loader_m32_elf_end -
+			      _binary_loader_m32_elf_start);
+	} else {
 		start = (void *) _binary_loader_elf_start;
-		size  = (size_t) (_binary_loader_elf_end-_binary_loader_elf_start);
+		size =
+		    (size_t) (_binary_loader_elf_end -
+			      _binary_loader_elf_start);
 	}
 
 	status2 = write(fd, start, size);
@@ -502,27 +535,32 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 		goto end;
 	}
 
-	status = fchmod(fd, S_IRUSR|S_IXUSR|S_IRGRP|S_IXGRP|S_IROTH|S_IXOTH);
+	status =
+	    fchmod(fd,
+		   S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
+		   S_IXOTH);
 	if (status < 0) {
-		note(tracee, ERROR, SYSTEM, "can't change loader permissions (u+rx)");
+		note(tracee, ERROR, SYSTEM,
+		     "can't change loader permissions (u+rx)");
 		goto end;
 	}
 
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
-		note(tracee, ERROR, INTERNAL, "can't retrieve loader path (/proc/self/fd/)");
+		note(tracee, ERROR, INTERNAL,
+		     "can't retrieve loader path (/proc/self/fd/)");
 		goto end;
 	}
 
 	status = access(path, X_OK);
 	if (status < 0) {
 		note(tracee, ERROR, INTERNAL,
-			"it seems the current temporary directory (%s) "
-			"is mounted with no execution permission.",
-			get_temp_directory());
+		     "it seems the current temporary directory (%s) "
+		     "is mounted with no execution permission.",
+		     get_temp_directory());
 		note(tracee, INFO, USER,
-			"Please set PROOT_TMP_DIR env. variable to an alternate "
-			"location ('%s/tmp' for example).", get_root(tracee));
+		     "Please set PROOT_TMP_DIR env. variable to an alternate "
+		     "location ('%s/tmp' for example).", get_root(tracee));
 		goto end;
 	}
 
@@ -535,11 +573,12 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 	if (tracee->verbose >= 2)
 		note(tracee, INFO, INTERNAL, "loader: %s", loader_path);
 
-end:
+      end:
 	if (file != NULL) {
 		status = fclose(file);
 		if (status < 0)
-			note(tracee, WARNING, SYSTEM, "can't close loader file");
+			note(tracee, WARNING, SYSTEM,
+			     "can't close loader file");
 	}
 
 	return loader_path;
@@ -557,13 +596,16 @@ static inline const char *get_loader_path(const Tracee *tracee)
 	static char *loader32_path = NULL;
 
 	if (IS_CLASS32(tracee->load_info->elf_header)) {
-		loader32_path = loader32_path ?: getenv("PROOT_LOADER_32") ?: extract_loader(tracee, true);
+		loader32_path =
+		    loader32_path ? : getenv("PROOT_LOADER_32") ? :
+		    extract_loader(tracee, true);
 		return loader32_path;
-	}
-	else
+	} else
 #endif
 	{
-		loader_path = loader_path ?: getenv("PROOT_LOADER") ?: extract_loader(tracee, false);
+		loader_path =
+		    loader_path ? : getenv("PROOT_LOADER") ? :
+		    extract_loader(tracee, false);
 		return loader_path;
 	}
 }
@@ -622,8 +664,7 @@ int translate_execve_enter(Tracee *tracee)
 	if (status >= 0) {
 		talloc_unlink(tracee, tracee->new_exe);
 		tracee->new_exe = talloc_strdup(tracee, new_exe);
-	}
-	else
+	} else
 		tracee->new_exe = NULL;
 
 	if (tracee->qemu != NULL) {
@@ -638,17 +679,25 @@ int translate_execve_enter(Tracee *tracee)
 	if (tracee->load_info == NULL)
 		return -ENOMEM;
 
-	tracee->load_info->host_path = talloc_strdup(tracee->load_info, host_path);
+	tracee->load_info->host_path =
+	    talloc_strdup(tracee->load_info, host_path);
 	if (tracee->load_info->host_path == NULL)
 		return -ENOMEM;
 
-	tracee->load_info->user_path = talloc_strdup(tracee->load_info, user_path);
+	tracee->load_info->user_path =
+	    talloc_strdup(tracee->load_info, user_path);
 	if (tracee->load_info->user_path == NULL)
 		return -ENOMEM;
 
 	tracee->load_info->raw_path = (raw_path != NULL
-			? talloc_reparent(tracee->ctx, tracee->load_info, raw_path)
-			: talloc_reference(tracee->load_info, tracee->load_info->user_path));
+				       ? talloc_reparent(tracee->ctx,
+							 tracee->load_info,
+							 raw_path)
+				       : talloc_reference(tracee->
+							  load_info,
+							  tracee->
+							  load_info->
+							  user_path));
 	if (tracee->load_info->raw_path == NULL)
 		return -ENOMEM;
 
@@ -657,7 +706,8 @@ int translate_execve_enter(Tracee *tracee)
 		return status;
 
 	if (tracee->load_info->interp != NULL) {
-		status = extract_load_info(tracee, tracee->load_info->interp);
+		status =
+		    extract_load_info(tracee, tracee->load_info->interp);
 		if (status < 0)
 			return status;
 

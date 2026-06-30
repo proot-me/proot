@@ -1,12 +1,12 @@
-#include <sys/types.h>  /* stat(2), opendir(3), */
-#include <sys/stat.h>   /* stat(2), chmod(2), */
-#include <unistd.h>     /* stat(2), rmdir(2), unlink(2), readlink(2), */
-#include <errno.h>      /* errno(2), */
-#include <dirent.h>     /* readdir(3), opendir(3), */
-#include <string.h>     /* strcmp(3), */
-#include <stdlib.h>     /* free(3), getenv(3), */
-#include <stdio.h>      /* P_tmpdir, */
-#include <talloc.h>     /* talloc(3), */
+#include <sys/types.h>		/* stat(2), opendir(3), */
+#include <sys/stat.h>		/* stat(2), chmod(2), */
+#include <unistd.h>		/* stat(2), rmdir(2), unlink(2), readlink(2), */
+#include <errno.h>		/* errno(2), */
+#include <dirent.h>		/* readdir(3), opendir(3), */
+#include <string.h>		/* strcmp(3), */
+#include <stdlib.h>		/* free(3), getenv(3), */
+#include <stdio.h>		/* P_tmpdir, */
+#include <talloc.h>		/* talloc(3), */
 
 #include "cli/note.h"
 
@@ -31,8 +31,8 @@ const char *get_temp_directory()
 	tmp = realpath(temp_directory, NULL);
 	if (tmp == NULL) {
 		note(NULL, WARNING, SYSTEM,
-			"can't canonicalize %s, using %s instead of PROOT_TMP_DIR",
-			temp_directory, P_tmpdir);
+		     "can't canonicalize %s, using %s instead of PROOT_TMP_DIR",
+		     temp_directory, P_tmpdir);
 
 		temp_directory = P_tmpdir;
 		return temp_directory;
@@ -99,7 +99,8 @@ static int clean_temp_cwd()
 	 * "/tmp".  */
 	status = readlink("/proc/self/cwd", prefix, length_temp_directory);
 	if (status < 0) {
-		note(NULL, WARNING, SYSTEM, "can't readlink '/proc/self/cwd'");
+		note(NULL, WARNING, SYSTEM,
+		     "can't readlink '/proc/self/cwd'");
 		nb_errors++;
 		goto end;
 	}
@@ -107,8 +108,8 @@ static int clean_temp_cwd()
 
 	if (strncmp(prefix, temp_directory, length_temp_directory) != 0) {
 		note(NULL, ERROR, INTERNAL,
-			"trying to remove a directory outside of '%s', "
-			"please report this error.\n", temp_directory);
+		     "trying to remove a directory outside of '%s', "
+		     "please report this error.\n", temp_directory);
 		nb_errors++;
 		goto end;
 	}
@@ -128,13 +129,14 @@ static int clean_temp_cwd()
 		if (entry == NULL)
 			break;
 
-		if (   strcmp(entry->d_name, ".")  == 0
+		if (strcmp(entry->d_name, ".") == 0
 		    || strcmp(entry->d_name, "..") == 0)
 			continue;
 
 		status = chmod(entry->d_name, 0700);
 		if (status < 0) {
-			note(NULL, WARNING, SYSTEM, "cant chmod '%s'", entry->d_name);
+			note(NULL, WARNING, SYSTEM, "cant chmod '%s'",
+			     entry->d_name);
 			nb_errors++;
 			continue;
 		}
@@ -142,7 +144,8 @@ static int clean_temp_cwd()
 		if (get_dtype(entry) == DT_DIR) {
 			status = chdir(entry->d_name);
 			if (status < 0) {
-				note(NULL, WARNING, SYSTEM, "can't chdir '%s'", entry->d_name);
+				note(NULL, WARNING, SYSTEM,
+				     "can't chdir '%s'", entry->d_name);
 				nb_errors++;
 				continue;
 			}
@@ -157,18 +160,19 @@ static int clean_temp_cwd()
 
 			status = chdir("..");
 			if (status < 0) {
-				note(NULL, ERROR, SYSTEM, "can't chdir to '..'");
+				note(NULL, ERROR, SYSTEM,
+				     "can't chdir to '..'");
 				nb_errors = -1;
 				goto end;
 			}
 
 			status = rmdir(entry->d_name);
-		}
-		else {
+		} else {
 			status = unlink(entry->d_name);
 		}
 		if (status < 0) {
-			note(NULL, WARNING, SYSTEM, "can't remove '%s'", entry->d_name);
+			note(NULL, WARNING, SYSTEM, "can't remove '%s'",
+			     entry->d_name);
 			nb_errors++;
 			continue;
 		}
@@ -178,7 +182,7 @@ static int clean_temp_cwd()
 		nb_errors++;
 	}
 
-end:
+      end:
 	TALLOC_FREE(prefix);
 
 	if (dir != NULL)
@@ -237,12 +241,13 @@ static int remove_temp_directory2(const char *path)
 		goto end;
 	}
 
-end:
+      end:
 	if (cwd != NULL) {
 		status = chdir(cwd);
 		if (status < 0) {
 			result = -1;
-			note(NULL, ERROR, SYSTEM, "can't chdir to '%s'", cwd);
+			note(NULL, ERROR, SYSTEM, "can't chdir to '%s'",
+			     cwd);
 		}
 		free(cwd);
 	}
@@ -291,7 +296,9 @@ char *create_temp_name(TALLOC_CTX *context, const char *prefix)
 	if (context == NULL)
 		context = talloc_autofree_context();
 
-	name = talloc_asprintf(context, "%s/%s-%d-XXXXXX", temp_directory, prefix, getpid());
+	name =
+	    talloc_asprintf(context, "%s/%s-%d-XXXXXX", temp_directory,
+			    prefix, getpid());
 	if (name == NULL) {
 		note(NULL, ERROR, INTERNAL, "can't allocate memory");
 		return NULL;
@@ -317,9 +324,11 @@ const char *create_temp_directory(TALLOC_CTX *context, const char *prefix)
 
 	name = mkdtemp(name);
 	if (name == NULL) {
-		note(NULL, ERROR, SYSTEM, "can't create temporary directory");
-		note(NULL, INFO, USER, "Please set PROOT_TMP_DIR env. variable "
-			"to an alternate location (with write permission).");
+		note(NULL, ERROR, SYSTEM,
+		     "can't create temporary directory");
+		note(NULL, INFO, USER,
+		     "Please set PROOT_TMP_DIR env. variable "
+		     "to an alternate location (with write permission).");
 		return NULL;
 	}
 
@@ -346,8 +355,9 @@ const char *create_temp_file(TALLOC_CTX *context, const char *prefix)
 	fd = mkstemp(name);
 	if (fd < 0) {
 		note(NULL, ERROR, SYSTEM, "can't create temporary file");
-		note(NULL, INFO, USER, "Please set PROOT_TMP_DIR env. variable "
-			"to an alternate location (with write permission).");
+		note(NULL, INFO, USER,
+		     "Please set PROOT_TMP_DIR env. variable "
+		     "to an alternate location (with write permission).");
 		return NULL;
 	}
 	close(fd);
@@ -361,7 +371,7 @@ const char *create_temp_file(TALLOC_CTX *context, const char *prefix)
  * Like create_temp_file() but returns an open file stream to the
  * created file.  It's up to the caller to close returned stream.
  */
-FILE* open_temp_file(TALLOC_CTX *context, const char *prefix)
+FILE *open_temp_file(TALLOC_CTX *context, const char *prefix)
 {
 	char *name;
 	FILE *file;
@@ -383,11 +393,11 @@ FILE* open_temp_file(TALLOC_CTX *context, const char *prefix)
 
 	return file;
 
-error:
+      error:
 	if (fd >= 0)
 		close(fd);
 	note(NULL, ERROR, SYSTEM, "can't create temporary file");
 	note(NULL, INFO, USER, "Please set PROOT_TMP_DIR env. variable "
-		"to an alternate location (with write permission).");
+	     "to an alternate location (with write permission).");
 	return NULL;
 }

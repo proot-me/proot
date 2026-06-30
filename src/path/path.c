@@ -1,37 +1,37 @@
-/* -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
+/*
+ * -*- c-set-style: "K&R"; c-basic-offset: 8 -*-
  *
  * This file is part of PRoot.
  *
  * Copyright (C) 2015 STMicroelectronics
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version.
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  *
  * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+ * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301 USA.
+ * You should have received a copy of the GNU General Public License along
+ * with this program; if not, write to the Free Software Foundation, Inc., 51
+ * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#include <string.h>    /* string(3), */
-#include <stdarg.h>    /* va_*(3), */
-#include <assert.h>    /* assert(3), */
-#include <fcntl.h>     /* AT_*,  */
-#include <unistd.h>    /* readlink*(2), *stat(2), getpid(2), */
-#include <sys/types.h> /* pid_t, */
-#include <sys/stat.h>  /* S_ISDIR, */
-#include <dirent.h>    /* opendir(3), readdir(3), */
-#include <stdio.h>     /* snprintf(3), */
-#include <errno.h>     /* E*, */
-#include <stddef.h>    /* ptrdiff_t, */
-#include <inttypes.h>  /* PRI*, */
+#include <string.h>		/* string(3), */
+#include <stdarg.h>		/* va_*(3), */
+#include <assert.h>		/* assert(3), */
+#include <fcntl.h>		/* AT_*,  */
+#include <unistd.h>		/* readlink*(2), *stat(2), getpid(2), */
+#include <sys/types.h>		/* pid_t, */
+#include <sys/stat.h>		/* S_ISDIR, */
+#include <dirent.h>		/* opendir(3), readdir(3), */
+#include <stdio.h>		/* snprintf(3), */
+#include <errno.h>		/* E*, */
+#include <stddef.h>		/* ptrdiff_t, */
+#include <inttypes.h>		/* PRI*, */
 
 #include "path/path.h"
 #include "path/binding.h"
@@ -72,7 +72,8 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 		path_length = strlen(path);
 
 		/* A new path separator is needed.  */
-		if (length > 0 && result[length - 1] != '/' && path[0] != '/') {
+		if (length > 0 && result[length - 1] != '/'
+		    && path[0] != '/') {
 			new_length = length + path_length + 1;
 			if (new_length + 1 >= PATH_MAX) {
 				status = -ENAMETOOLONG;
@@ -83,7 +84,8 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
 			length = new_length;
 		}
 		/* There are already two path separators.  */
-		else if (length > 0 && result[length - 1] == '/' && path[0] == '/') {
+		else if (length > 0 && result[length - 1] == '/'
+			 && path[0] == '/') {
 			new_length = length + path_length - 1;
 			if (new_length + 1 >= PATH_MAX) {
 				status = -ENAMETOOLONG;
@@ -116,7 +118,9 @@ int join_paths(int number_paths, char result[PATH_MAX], ...)
  * (relatively to the @tracee's file-system name-space).  This
  * function always returns -1 on error, otherwise 0.
  */
-int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], const char *command)
+int
+which(Tracee *tracee, const char *paths, char host_path[PATH_MAX],
+      const char *command)
 {
 	char path[PATH_MAX];
 	const char *cursor;
@@ -133,22 +137,25 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], const cha
 	status = realpath2(tracee, host_path, command, true);
 	if (status == 0 && stat(host_path, &statr) == 0) {
 		if (is_explicit && !S_ISREG(statr.st_mode)) {
-			note(tracee, ERROR, USER, "'%s' is not a regular file", command);
+			note(tracee, ERROR, USER,
+			     "'%s' is not a regular file", command);
 			return -EACCES;
 		}
 
 		if (is_explicit && (statr.st_mode & S_IXUSR) == 0) {
-			note(tracee, ERROR, USER, "'%s' is not executable", command);
+			note(tracee, ERROR, USER, "'%s' is not executable",
+			     command);
 			return -EACCES;
 		}
 
 		found = true;
 
-		/* Don't dereference the final component to preserve
-		 * argv0 in case it is a symlink to script.  */
+		/*
+		 * Don't dereference the final component to preserve argv0 in
+		 * case it is a symlink to script.
+		 */
 		(void) realpath2(tracee, host_path, command, false);
-	}
-	else
+	} else
 		found = false;
 
 	/* Is the the explicit command was found?  */
@@ -160,7 +167,7 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], const cha
 	}
 
 	/* Otherwise search the command in $PATH.  */
-	paths = paths ?: getenv("PATH");
+	paths = paths ? : getenv("PATH");
 	if (paths == NULL || strcmp(paths, "") == 0)
 		goto not_found;
 
@@ -192,26 +199,32 @@ int which(Tracee *tracee, const char *paths, char host_path[PATH_MAX], const cha
 		    && stat(host_path, &statr) == 0
 		    && S_ISREG(statr.st_mode)
 		    && (statr.st_mode & S_IXUSR) != 0) {
-			/* Don't dereference the final component to preserve
-			 * argv0 in case it is a symlink to script.  */
+			/*
+			 * Don't dereference the final component to preserve
+			 * argv0 in case it is a symlink to script.
+			 */
 			(void) realpath2(tracee, host_path, path, false);
 			return 0;
 		}
 	} while (*(cursor - 1) != '\0');
 
-not_found:
+      not_found:
 	status = getcwd2(tracee, path);
 	if (status < 0)
 		strcpy(path, "<unknown>");
 
-	note(tracee, ERROR, USER, "'%s' not found (root = %s, cwd = %s, $PATH=%s)",
-		command, get_root(tracee), path, paths);
+	note(tracee, ERROR, USER,
+	     "'%s' not found (root = %s, cwd = %s, $PATH=%s)", command,
+	     get_root(tracee), path, paths);
 
-	/* Check if the command was found without any $PATH look-up
-	 * but it didn't contain "/".  */
+	/*
+	 * Check if the command was found without any $PATH look-up but it
+	 * didn't contain "/".
+	 */
 	if (found && !is_explicit)
 		note(tracee, ERROR, USER,
-			"to execute a local program, use the './' prefix, for example: ./%s", command);
+		     "to execute a local program, use the './' prefix, for example: ./%s",
+		     command);
 
 	return -1;
 }
@@ -223,14 +236,18 @@ not_found:
  * canonicalized relatively to the current @tracee's file-system
  * name-space.  This function returns -errno on error, otherwise 0.
  */
-int realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path, bool deref_final)
+int
+realpath2(Tracee *tracee, char host_path[PATH_MAX], const char *path,
+	  bool deref_final)
 {
 	int status;
 
 	if (tracee == NULL)
 		status = (realpath(path, host_path) == NULL ? -errno : 0);
 	else
-		status = translate_path(tracee, host_path, AT_FDCWD, path, deref_final);
+		status =
+		    translate_path(tracee, host_path, AT_FDCWD, path,
+				   deref_final);
 	return status;
 }
 
@@ -247,8 +264,7 @@ int getcwd2(Tracee *tracee, char guest_path[PATH_MAX])
 	if (tracee == NULL) {
 		if (getcwd(guest_path, PATH_MAX) == NULL)
 			return -errno;
-	}
-	else {
+	} else {
 		if (strlen(tracee->fs->cwd) >= PATH_MAX)
 			return -ENAMETOOLONG;
 
@@ -272,8 +288,7 @@ void chop_finality(char *path)
 			path[length - 1] = '\0';
 		else
 			path[length - 2] = '\0';
-	}
-	else if (path[length - 1] == '/') {
+	} else if (path[length - 1] == '/') {
 		/* Special case for "/" */
 		if (length > 1)
 			path[length - 1] = '\0';
@@ -286,11 +301,12 @@ void chop_finality(char *path)
  */
 int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
 {
-	char link[32]; /* 32 > sizeof("/proc//cwd") + sizeof(#ULONG_MAX) */
+	char link[32];		/* 32 > sizeof("/proc//cwd") +
+				 * sizeof(#ULONG_MAX) */
 	int status;
 
 	/* Format the path to the "virtual" link. */
-	status = snprintf(link, sizeof(link), "/proc/%d/fd/%d",	pid, fd);
+	status = snprintf(link, sizeof(link), "/proc/%d/fd/%d", pid, fd);
 	if (status < 0)
 		return -EBADF;
 	if ((size_t) status >= sizeof(link))
@@ -315,8 +331,9 @@ int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
  * canonicalize() for the meaning of @deref_final.  This function
  * returns -errno if an error occured, otherwise 0.
  */
-int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
-		const char *user_path, bool deref_final)
+int
+translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
+	       const char *user_path, bool deref_final)
 {
 	char guest_path[PATH_MAX];
 	int status;
@@ -325,22 +342,27 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 	if (user_path[0] == '/') {
 		strcpy(result, "/");
 	}
-	/* It is relative to a directory referred by a descriptor, see
-	 * openat(2) for details. */
+	/*
+	 * It is relative to a directory referred by a descriptor, see
+	 * openat(2) for details.
+	 */
 	else if (dir_fd != AT_FDCWD) {
 		/* /proc/@tracee->pid/fd/@dir_fd -> result.  */
 		status = readlink_proc_pid_fd(tracee->pid, dir_fd, result);
 		if (status < 0)
 			return status;
 
-		/* Named file descriptors may reference special
-		 * objects like pipes, sockets, inodes, ...  Such
-		 * objects do not belong to the file-system.  */
+		/*
+		 * Named file descriptors may reference special objects like
+		 * pipes, sockets, inodes, ...  Such objects do not belong to
+		 * the file-system.
+		 */
 		if (result[0] != '/')
 			return -ENOTDIR;
 
-		/* Remove the leading "root" part of the base
-		 * (required!). */
+		/*
+		 * Remove the leading "root" part of the base (required!).
+		 */
 		status = detranslate_path(tracee, result, NULL);
 		if (status < 0)
 			return status;
@@ -355,14 +377,18 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 	VERBOSE(tracee, 2, "vpid %" PRIu64 ": translate(\"%s\" + \"%s\")",
 		tracee != NULL ? tracee->vpid : 0, result, user_path);
 
-	status = notify_extensions(tracee, GUEST_PATH, (intptr_t) result, (intptr_t) user_path);
+	status =
+	    notify_extensions(tracee, GUEST_PATH, (intptr_t) result,
+			      (intptr_t) user_path);
 	if (status < 0)
 		return status;
 	if (status > 0)
 		goto skip;
 
-	/* So far "result" was used as a base path, it's time to join
-	 * it to the user path.  */
+	/*
+	 * So far "result" was used as a base path, it's time to join it to
+	 * the user path.
+	 */
 	assert(result[0] == '/');
 	status = join_paths(2, guest_path, result, user_path);
 	if (status < 0)
@@ -374,18 +400,21 @@ int translate_path(Tracee *tracee, char result[PATH_MAX], int dir_fd,
 	if (status < 0)
 		return status;
 
-	/* Final binding substitution to convert "result" into a host
-	 * path, since canonicalize() works from the guest
-	 * point-of-view.  */
+	/*
+	 * Final binding substitution to convert "result" into a host path,
+	 * since canonicalize() works from the guest point-of-view.
+	 */
 	status = substitute_binding(tracee, GUEST, result);
 	if (status < 0)
 		return status;
 
-skip:
+      skip:
 	VERBOSE(tracee, 2, "vpid %" PRIu64 ":          -> \"%s\"",
 		tracee != NULL ? tracee->vpid : 0, result);
 
-	status = notify_extensions(tracee, TRANSLATED_PATH, (intptr_t) result, 0);
+	status =
+	    notify_extensions(tracee, TRANSLATED_PATH, (intptr_t) result,
+			      0);
 	if (status < 0)
 		return status;
 
@@ -399,7 +428,9 @@ skip:
  * including the end-of-string terminator.  On error it returns
  * -errno.
  */
-int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[PATH_MAX])
+int
+detranslate_path(Tracee *tracee, char path[PATH_MAX],
+		 const char t_referrer[PATH_MAX])
 {
 	size_t prefix_length;
 	ssize_t new_length;
@@ -411,9 +442,18 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 	if (strnlen(path, PATH_MAX) >= PATH_MAX)
 		return -ENAMETOOLONG;
 
-	/* Don't try to detranslate relative paths (typically the
-	 * target of a relative symbolic link). */
+	/*
+	 * Don't try to detranslate relative paths (typically the target of a
+	 * relative symbolic link).
+	 */
 	if (path[0] != '/')
+		return 0;
+
+	/*
+	 * Don't try to detranslate when the referrer path is empty, e.g.
+	 * readlinkat(2) with AT_EMPTY_PATH (Linux >= 2.6.39).
+	 */
+	if (t_referrer != NULL && t_referrer[0] == '\0')
 		return 0;
 
 	/* Is it a symlink?  */
@@ -426,12 +466,14 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 		/* In some cases bindings have to be resolved.  */
 		comparison = compare_paths("/proc", t_referrer);
 		if (comparison == PATH1_IS_PREFIX) {
-			/* Some links in "/proc" are generated
-			 * dynamically by the kernel.  PRoot has to
-			 * emulate some of them.  */
+			/*
+			 * Some links in "/proc" are generated dynamically by
+			 * the kernel.  PRoot has to emulate some of them.
+			 */
 			char proc_path[PATH_MAX];
 			strcpy(proc_path, path);
-			new_length = readlink_proc2(tracee, proc_path, t_referrer);
+			new_length =
+			    readlink_proc2(tracee, proc_path, t_referrer);
 			if (new_length < 0)
 				return new_length;
 			if (new_length != 0) {
@@ -439,34 +481,40 @@ int detranslate_path(Tracee *tracee, char path[PATH_MAX], const char t_referrer[
 				return new_length + 1;
 			}
 
-			/* Always resolve bindings for symlinks in
-			 * "/proc", they always point to the emulated
-			 * file-system namespace by design. */
+			/*
+			 * Always resolve bindings for symlinks in "/proc",
+			 * they always point to the emulated file-system
+			 * namespace by design.
+			 */
 			follow_binding = true;
-		}
-		else if (!belongs_to_guestfs(tracee, t_referrer)) {
+		} else if (!belongs_to_guestfs(tracee, t_referrer)) {
 			const char *binding_referree;
 			const char *binding_referrer;
 
-			binding_referree = get_path_binding(tracee, HOST, path);
-			binding_referrer = get_path_binding(tracee, HOST, t_referrer);
+			binding_referree =
+			    get_path_binding(tracee, HOST, path);
+			binding_referrer =
+			    get_path_binding(tracee, HOST, t_referrer);
 			assert(binding_referrer != NULL);
 
-			/* Resolve bindings for symlinks that belong
-			 * to a binding and point to the same binding.
-			 * For example, if "-b /lib:/foo" is specified
-			 * and the symlink "/lib/a -> /lib/b" exists
-			 * in the host rootfs namespace, then it
-			 * should appear as "/foo/a -> /foo/b" in the
-			 * guest rootfs namespace for consistency
-			 * reasons.  */
+			/*
+			 * Resolve bindings for symlinks that belong to a
+			 * binding and point to the same binding. For
+			 * example, if "-b /lib:/foo" is specified and the
+			 * symlink "/lib/a -> /lib/b" exists in the host
+			 * rootfs namespace, then it should appear as "/foo/a
+			 * -> /foo/b" in the guest rootfs namespace for
+			 * consistency reasons.
+			 */
 			if (binding_referree != NULL) {
-				comparison = compare_paths(binding_referree, binding_referrer);
-				follow_binding = (comparison == PATHS_ARE_EQUAL);
+				comparison =
+				    compare_paths(binding_referree,
+						  binding_referrer);
+				follow_binding =
+				    (comparison == PATHS_ARE_EQUAL);
 			}
 		}
-	}
-	else {
+	} else {
 		sanity_check = true;
 		follow_binding = true;
 	}
@@ -523,7 +571,8 @@ bool belongs_to_guestfs(const Tracee *tracee, const char *host_path)
 	Comparison comparison;
 
 	comparison = compare_paths(get_root(tracee), host_path);
-	return (comparison == PATHS_ARE_EQUAL || comparison == PATH1_IS_PREFIX);
+	return (comparison == PATHS_ARE_EQUAL
+		|| comparison == PATH1_IS_PREFIX);
 }
 
 /**
@@ -533,7 +582,9 @@ bool belongs_to_guestfs(const Tracee *tracee, const char *host_path)
  * This function works only with paths canonicalized in the same
  * namespace (host/guest)!
  */
-Comparison compare_paths2(const char *path1, size_t length1, const char *path2, size_t length2)
+Comparison
+compare_paths2(const char *path1, size_t length1, const char *path2,
+	       size_t length2)
 {
 	size_t length_min;
 	bool is_prefix;
@@ -543,10 +594,10 @@ Comparison compare_paths2(const char *path1, size_t length1, const char *path2, 
 	assert(length(path1) == length1);
 	assert(length(path2) == length2);
 #endif
-	assert(length1 > 0);
-	assert(length2 > 0);
 
-	if (!length1 || !length2) {
+	/* If either path is empty, they cannot be compared as paths. */
+	if (length1 == 0 || length2 == 0) {
+		VERBOSE(NULL, 1, "paths are not comparable");
 		return PATHS_ARE_NOT_COMPARABLE;
 	}
 
@@ -560,8 +611,7 @@ Comparison compare_paths2(const char *path1, size_t length1, const char *path2, 
 	if (length1 < length2) {
 		length_min = length1;
 		sentinel = path2[length_min];
-	}
-	else {
+	} else {
 		length_min = length2;
 		sentinel = path1[length_min];
 	}
@@ -591,7 +641,8 @@ Comparison compare_paths(const char *path1, const char *path2)
 	return compare_paths2(path1, strlen(path1), path2, strlen(path2));
 }
 
-typedef int (*foreach_fd_t)(const Tracee *tracee, int fd, char path[PATH_MAX]);
+typedef int (*foreach_fd_t)(const Tracee * tracee, int fd,
+			    char path[PATH_MAX]);
 
 /**
  * Call @callback on each open file descriptors of @pid. It returns
@@ -602,12 +653,14 @@ static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 {
 	struct dirent *dirent;
 	char path[PATH_MAX];
-	char proc_fd[32]; /* 32 > sizeof("/proc//fd") + sizeof(#ULONG_MAX) */
+	char proc_fd[32];	/* 32 > sizeof("/proc//fd") +
+				 * sizeof(#ULONG_MAX) */
 	int status;
 	DIR *dirp;
 
 	/* Format the path to the "virtual" directory. */
-	status = snprintf(proc_fd, sizeof(proc_fd), "/proc/%d/fd", tracee->pid);
+	status =
+	    snprintf(proc_fd, sizeof(proc_fd), "/proc/%d/fd", tracee->pid);
 	if (status < 0 || (size_t) status >= sizeof(proc_fd))
 		return 0;
 
@@ -617,13 +670,16 @@ static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 		return 0;
 
 	while ((dirent = readdir(dirp)) != NULL) {
-		/* Read the value of this "virtual" link.  Don't use
-		 * readlinkat(2) here since it would require Linux >=
-		 * 2.6.16 and Glibc >= 2.4, whereas PRoot is supposed
-		 * to work on any Linux 2.6 systems.  */
+		/*
+		 * Read the value of this "virtual" link.  Don't use
+		 * readlinkat(2) here since it would require Linux >= 2.6.16
+		 * and Glibc >= 2.4, whereas PRoot is supposed to work on any
+		 * Linux 2.6 systems.
+		 */
 
 		char tmp[PATH_MAX];
-		if (strlen(proc_fd) + strlen(dirent->d_name) + 1 >= PATH_MAX)
+		if (strlen(proc_fd) + strlen(dirent->d_name) + 1 >=
+		    PATH_MAX)
 			continue;
 
 		strcpy(tmp, proc_fd);
@@ -635,7 +691,10 @@ static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 			continue;
 		path[status] = '\0';
 
-		/* Ensure it points to a path (not a socket or somethink like that). */
+		/*
+		 * Ensure it points to a path (not a socket or somethink like
+		 * that).
+		 */
 		if (path[0] != '/')
 			continue;
 
@@ -645,7 +704,7 @@ static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 	}
 	status = 0;
 
-end:
+      end:
 	closedir(dirp);
 	return status;
 }
@@ -653,11 +712,14 @@ end:
 /**
  * Helper for list_open_fd().
  */
-static int list_open_fd_callback(const Tracee *tracee, int fd, char path[PATH_MAX])
+static int
+list_open_fd_callback(const Tracee *tracee, int fd, char path[PATH_MAX])
 {
-	VERBOSE(tracee, 1, "pid %d: access to \"%s\" (fd %d) won't be translated until closed",
+	VERBOSE(tracee, 1,
+		"pid %d: access to \"%s\" (fd %d) won't be translated until closed",
 		tracee->pid, path, fd);
-	notify_extensions((Tracee*)tracee, ALREADY_OPENED_FD, (intptr_t)path, (intptr_t)fd);
+	notify_extensions((Tracee *) tracee, ALREADY_OPENED_FD,
+			  (intptr_t) path, (intptr_t) fd);
 	return 0;
 }
 
@@ -677,8 +739,9 @@ int list_open_fd(const Tracee *tracee)
  * @path.  Note: this function takes care about special cases (like
  * "/").
  */
-size_t substitute_path_prefix(char path[PATH_MAX], size_t old_prefix_length,
-			const char *new_prefix, size_t new_prefix_length)
+size_t
+substitute_path_prefix(char path[PATH_MAX], size_t old_prefix_length,
+		       const char *new_prefix, size_t new_prefix_length)
 {
 	size_t path_length;
 	size_t new_length;
@@ -689,40 +752,44 @@ size_t substitute_path_prefix(char path[PATH_MAX], size_t old_prefix_length,
 	assert(new_prefix_length < PATH_MAX);
 
 	if (new_prefix_length == 1) {
-		/* Special case: "/foo" -> "/".  Substitute "/foo/bin"
-		 * with "/bin" not "//bin".  */
+		/*
+		 * Special case: "/foo" -> "/".  Substitute "/foo/bin" with
+		 * "/bin" not "//bin".
+		 */
 
 		new_length = path_length - old_prefix_length;
 		if (new_length != 0)
-			memmove(path, path + old_prefix_length, new_length);
+			memmove(path, path + old_prefix_length,
+				new_length);
 		else {
 			/* Special case: "/".  */
 			path[0] = '/';
 			new_length = 1;
 		}
-	}
-	else if (old_prefix_length == 1) {
-		/* Special case: "/" -> "/foo". Substitute "/bin" with
-		 * "/foo/bin" not "/foobin".  */
+	} else if (old_prefix_length == 1) {
+		/*
+		 * Special case: "/" -> "/foo". Substitute "/bin" with
+		 * "/foo/bin" not "/foobin".
+		 */
 
 		new_length = new_prefix_length + path_length;
 		if (new_length >= PATH_MAX)
 			return -ENAMETOOLONG;
 
 		if (path_length > 1) {
-			memmove(path + new_prefix_length, path, path_length);
+			memmove(path + new_prefix_length, path,
+				path_length);
 			memcpy(path, new_prefix, new_prefix_length);
-		}
-		else {
+		} else {
 			/* Special case: "/".  */
 			memcpy(path, new_prefix, new_prefix_length);
 			new_length = new_prefix_length;
 		}
-	}
-	else {
+	} else {
 		/* Generic case.  */
 
-		new_length = path_length - old_prefix_length + new_prefix_length;
+		new_length =
+		    path_length - old_prefix_length + new_prefix_length;
 		if (new_length >= PATH_MAX)
 			return -ENAMETOOLONG;
 

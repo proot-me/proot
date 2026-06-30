@@ -20,25 +20,25 @@
  * 02110-1301 USA.
  */
 
-#include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
-#include <sys/types.h>  /* pid_t, size_t, */
-#include <stdlib.h>     /* NULL, */
-#include <stddef.h>     /* offsetof(), */
-#include <sys/user.h>   /* struct user*, */
-#include <errno.h>      /* errno, */
-#include <assert.h>     /* assert(3), */
-#include <sys/wait.h>   /* waitpid(2), */
-#include <string.h>     /* memcpy(3), */
-#include <stdint.h>     /* uint*_t, */
-#include <sys/uio.h>    /* process_vm_*, struct iovec, */
-#include <unistd.h>     /* sysconf(3), */
-#include <sys/mman.h>   /* mmap(2), munmap(2), MAP_*, */
+#include <sys/ptrace.h>		/* ptrace(2), PTRACE_*, */
+#include <sys/types.h>		/* pid_t, size_t, */
+#include <stdlib.h>		/* NULL, */
+#include <stddef.h>		/* offsetof(), */
+#include <sys/user.h>		/* struct user*, */
+#include <errno.h>		/* errno, */
+#include <assert.h>		/* assert(3), */
+#include <sys/wait.h>		/* waitpid(2), */
+#include <string.h>		/* memcpy(3), */
+#include <stdint.h>		/* uint*_t, */
+#include <sys/uio.h>		/* process_vm_*, struct iovec, */
+#include <unistd.h>		/* sysconf(3), */
+#include <sys/mman.h>		/* mmap(2), munmap(2), MAP_*, */
 
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "syscall/heap.h"
-#include "arch.h"            /* word_t, NO_MISALIGNED_ACCESS */
-#include "build.h"           /* HAVE_PROCESS_VM,  */
+#include "arch.h"		/* word_t, NO_MISALIGNED_ACCESS */
+#include "build.h"		/* HAVE_PROCESS_VM,  */
 #include "cli/note.h"
 
 /**
@@ -47,15 +47,15 @@
 static inline word_t load_word(const void *address)
 {
 #ifdef NO_MISALIGNED_ACCESS
-	if (((word_t)address) % sizeof(word_t) == 0)
-		return *(word_t *)address;
+	if (((word_t) address) % sizeof(word_t) == 0)
+		return *(word_t *) address;
 	else {
 		word_t value;
 		memcpy(&value, address, sizeof(word_t));
 		return value;
 	}
 #else
-	return *(word_t *)address;
+	return *(word_t *) address;
 #endif
 }
 
@@ -66,12 +66,12 @@ static inline word_t load_word(const void *address)
 static inline void store_word(void *address, word_t value)
 {
 #ifdef NO_MISALIGNED_ACCESS
-	if (((word_t)address) % sizeof(word_t) == 0)
-		*((word_t *)address) = value;
+	if (((word_t) address) % sizeof(word_t) == 0)
+		*((word_t *) address) = value;
 	else
 		memcpy(address, &value, sizeof(word_t));
 #else
-	*((word_t *)address) = value;
+	*((word_t *) address) = value;
 #endif
 }
 
@@ -80,12 +80,13 @@ static inline void store_word(void *address, word_t value)
  * @dest_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer, word_t size)
+int write_data(const Tracee *tracee, word_t dest_tracee,
+	       const void *src_tracer, word_t size)
 {
-	word_t *src  = (word_t *)src_tracer;
-	word_t *dest = (word_t *)dest_tracee;
+	word_t *src = (word_t *) src_tracer;
+	word_t *dest = (word_t *) dest_tracee;
 
-	long   status;
+	long status;
 	word_t word, i, j;
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
@@ -98,24 +99,26 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 	struct iovec remote;
 
 	local.iov_base = src;
-	local.iov_len  = size;
+	local.iov_len = size;
 
 	remote.iov_base = dest;
-	remote.iov_len  = size;
+	remote.iov_len = size;
 
 	status = process_vm_writev(tracee->pid, &local, 1, &remote, 1, 0);
 	if ((size_t) status == size)
 		return 0;
 	/* Fallback to ptrace if something went wrong.  */
 
-#endif /* HAVE_PROCESS_VM */
+#endif				/* HAVE_PROCESS_VM */
 
 	nb_trailing_bytes = size % sizeof(word_t);
-	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
+	nb_full_words = (size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
-		status = ptrace(PTRACE_POKEDATA, tracee->pid, dest + i, load_word(&src[i]));
+		status =
+		    ptrace(PTRACE_POKEDATA, tracee->pid, dest + i,
+			   load_word(&src[i]));
 		if (status < 0) {
 			note(tracee, WARNING, SYSTEM, "ptrace(POKEDATA)");
 			return -EFAULT;
@@ -134,8 +137,8 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 		return -EFAULT;
 	}
 
-	last_dest_word = (uint8_t *)&word;
-	last_src_word  = (uint8_t *)&src[i];
+	last_dest_word = (uint8_t *) & word;
+	last_src_word = (uint8_t *) & src[i];
 
 	for (j = 0; j < nb_trailing_bytes; j++)
 		last_dest_word[j] = last_src_word[j];
@@ -155,7 +158,8 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
  * process.  This function returns -errno if an error occured,
  * otherwise 0.
  */
-int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *src_tracer, int src_tracer_count)
+int writev_data(const Tracee *tracee, word_t dest_tracee,
+		const struct iovec *src_tracer, int src_tracer_count)
 {
 	size_t size;
 	int status;
@@ -167,19 +171,22 @@ int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *sr
 	for (i = 0, size = 0; i < src_tracer_count; i++)
 		size += src_tracer[i].iov_len;
 
-	remote.iov_base = (word_t *)dest_tracee;
-	remote.iov_len  = size;
+	remote.iov_base = (word_t *) dest_tracee;
+	remote.iov_len = size;
 
-	status = process_vm_writev(tracee->pid, src_tracer, src_tracer_count, &remote, 1, 0);
+	status =
+	    process_vm_writev(tracee->pid, src_tracer, src_tracer_count,
+			      &remote, 1, 0);
 	if ((size_t) status == size)
 		return 0;
 	/* Fallback to iterative-write if something went wrong.  */
 
-#endif /* HAVE_PROCESS_VM */
+#endif				/* HAVE_PROCESS_VM */
 
 	for (i = 0, size = 0; i < src_tracer_count; i++) {
 		status = write_data(tracee, dest_tracee + size,
-				src_tracer[i].iov_base, src_tracer[i].iov_len);
+				    src_tracer[i].iov_base,
+				    src_tracer[i].iov_len);
 		if (status < 0)
 			return status;
 
@@ -194,10 +201,11 @@ int writev_data(const Tracee *tracee, word_t dest_tracee, const struct iovec *sr
  * @src_tracee within the memory space of the @tracee process. It
  * returns -errno if an error occured, otherwise 0.
  */
-int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t size)
+int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee,
+	      word_t size)
 {
-	word_t *src  = (word_t *)src_tracee;
-	word_t *dest = (word_t *)dest_tracer;
+	word_t *src = (word_t *) src_tracee;
+	word_t *dest = (word_t *) dest_tracer;
 
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
@@ -212,20 +220,20 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 	struct iovec remote;
 
 	local.iov_base = dest;
-	local.iov_len  = size;
+	local.iov_len = size;
 
 	remote.iov_base = src;
-	remote.iov_len  = size;
+	remote.iov_len = size;
 
 	status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
 	if ((size_t) status == size)
 		return 0;
 	/* Fallback to ptrace if something went wrong.  */
 
-#endif /* HAVE_PROCESS_VM */
+#endif				/* HAVE_PROCESS_VM */
 
 	nb_trailing_bytes = size % sizeof(word_t);
-	nb_full_words     = (size - nb_trailing_bytes) / sizeof(word_t);
+	nb_full_words = (size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
@@ -249,8 +257,8 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 		return -EFAULT;
 	}
 
-	last_dest_word = (uint8_t *)&dest[i];
-	last_src_word  = (uint8_t *)&word;
+	last_dest_word = (uint8_t *) & dest[i];
+	last_src_word = (uint8_t *) & word;
 
 	for (j = 0; j < nb_trailing_bytes; j++)
 		last_dest_word[j] = last_src_word[j];
@@ -265,10 +273,11 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
  * it returns the number in bytes of the string, including the
  * end-of-string terminator.
  */
-int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word_t max_size)
+int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee,
+		word_t max_size)
 {
-	word_t *src  = (word_t *)src_tracee;
-	word_t *dest = (word_t *)dest_tracer;
+	word_t *src = (word_t *) src_tracee;
+	word_t *dest = (word_t *) dest_tracer;
 
 	word_t nb_trailing_bytes;
 	word_t nb_full_words;
@@ -311,28 +320,33 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word
 	/* A chunk shall not cross a page boundary.  */
 	if (chunk_size == 0) {
 		chunk_size = sysconf(_SC_PAGE_SIZE);
-		chunk_size = (chunk_size > 0 && chunk_size < 1024 ? chunk_size : 1024);
+		chunk_size = (chunk_size > 0
+			      && chunk_size < 1024 ? chunk_size : 1024);
 		chunk_mask = ~(chunk_size - 1);
 	}
 
 	/* Read the string by chunk.  */
 	offset = 0;
 	do {
-		uintptr_t current_chunk = (src_tracee + offset) & chunk_mask;
-		uintptr_t next_chunk    = current_chunk + chunk_size;
+		uintptr_t current_chunk =
+		    (src_tracee + offset) & chunk_mask;
+		uintptr_t next_chunk = current_chunk + chunk_size;
 
 		/* Compute the number of bytes available up to the
 		 * next chunk or up to max_size.  */
 		size = next_chunk - (src_tracee + offset);
-		size = (size < max_size - offset ? size : max_size - offset);
+		size =
+		    (size < max_size - offset ? size : max_size - offset);
 
-		local.iov_base = (uint8_t *)dest + offset;
-		local.iov_len  = size;
+		local.iov_base = (uint8_t *) dest + offset;
+		local.iov_len = size;
 
-		remote.iov_base = (uint8_t *)src + offset;
-		remote.iov_len  = size;
+		remote.iov_base = (uint8_t *) src + offset;
+		remote.iov_len = size;
 
-		status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
+		status =
+		    process_vm_readv(tracee->pid, &local, 1, &remote, 1,
+				     0);
 		if ((size_t) status != size)
 			goto fallback;
 
@@ -348,11 +362,11 @@ int read_string(const Tracee *tracee, char *dest_tracer, word_t src_tracee, word
 	assert(offset == max_size);
 
 	/* Fallback to ptrace if something went wrong.  */
-fallback:
-#endif /* HAVE_PROCESS_VM */
+      fallback:
+#endif				/* HAVE_PROCESS_VM */
 
 	nb_trailing_bytes = max_size % sizeof(word_t);
-	nb_full_words     = (max_size - nb_trailing_bytes) / sizeof(word_t);
+	nb_full_words = (max_size - nb_trailing_bytes) / sizeof(word_t);
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
@@ -363,7 +377,7 @@ fallback:
 		store_word(&dest[i], word);
 
 		/* Stop once an end-of-string is detected. */
-		src_word = (uint8_t *)&word;
+		src_word = (uint8_t *) & word;
 		for (j = 0; j < sizeof(word_t); j++)
 			if (src_word[j] == '\0')
 				return i * sizeof(word_t) + j + 1;
@@ -376,8 +390,8 @@ fallback:
 	if (errno != 0)
 		return -EFAULT;
 
-	dest_word = (uint8_t *)&dest[i];
-	src_word  = (uint8_t *)&word;
+	dest_word = (uint8_t *) & dest[i];
+	src_word = (uint8_t *) & word;
 
 	for (j = 0; j < nb_trailing_bytes; j++) {
 		dest_word[j] = src_word[j];
@@ -403,10 +417,10 @@ word_t peek_word(const Tracee *tracee, word_t address)
 	struct iovec remote;
 
 	local.iov_base = &result;
-	local.iov_len  = sizeof_word(tracee);
+	local.iov_len = sizeof_word(tracee);
 
-	remote.iov_base = (void *)address;
-	remote.iov_len  = sizeof_word(tracee);
+	remote.iov_base = (void *) address;
+	remote.iov_len = sizeof_word(tracee);
 
 	errno = 0;
 	status = process_vm_readv(tracee->pid, &local, 1, &remote, 1, 0);
@@ -415,7 +429,8 @@ word_t peek_word(const Tracee *tracee, word_t address)
 	/* Fallback to ptrace if something went wrong.  */
 #endif
 	errno = 0;
-	result = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
+	result =
+	    (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
 
 	/* From ptrace(2) manual: "Unfortunately, under Linux,
 	 * different variations of this fault will return EIO or
@@ -448,10 +463,10 @@ void poke_word(const Tracee *tracee, word_t address, word_t value)
 	/* Note: &value points to the 32 LSB on 64-bit little-endian
 	 * architecture.  */
 	local.iov_base = &value;
-	local.iov_len  = sizeof_word(tracee);
+	local.iov_len = sizeof_word(tracee);
 
-	remote.iov_base = (void *)address;
-	remote.iov_len  = sizeof_word(tracee);
+	remote.iov_base = (void *) address;
+	remote.iov_len = sizeof_word(tracee);
 
 	errno = 0;
 	status = process_vm_writev(tracee->pid, &local, 1, &remote, 1, 0);
@@ -463,7 +478,9 @@ void poke_word(const Tracee *tracee, word_t address, word_t value)
 	 * a 64-bit kernel. */
 	if (is_32on64_mode(tracee)) {
 		errno = 0;
-		tmp = (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address, NULL);
+		tmp =
+		    (word_t) ptrace(PTRACE_PEEKDATA, tracee->pid, address,
+				    NULL);
 		if (errno != 0)
 			return;
 
@@ -512,10 +529,11 @@ word_t alloc_mem(Tracee *tracee, ssize_t size)
 	size = ((size - 1) / STACK_ALIGNMENT + 1) * STACK_ALIGNMENT;
 
 	/* Sanity check. */
-	if (   (size > 0 && stack_pointer <= (word_t) size)
+	if ((size > 0 && stack_pointer <= (word_t) size)
 	    || (size < 0 && stack_pointer >= ULONG_MAX + size)) {
-		note(tracee, WARNING, INTERNAL, "integer under/overflow detected in %s",
-			__FUNCTION__);
+		note(tracee, WARNING, INTERNAL,
+		     "integer under/overflow detected in %s",
+		     __FUNCTION__);
 		return 0;
 	}
 
@@ -538,7 +556,9 @@ int clear_mem(const Tracee *tracee, word_t address, size_t size)
 	int status;
 	void *zeros;
 
-	zeros = mmap(NULL, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	zeros =
+	    mmap(NULL, size, PROT_READ, MAP_PRIVATE | MAP_ANONYMOUS, -1,
+		 0);
 	if (zeros == MAP_FAILED)
 		return -errno;
 

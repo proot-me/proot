@@ -20,10 +20,10 @@
  * 02110-1301 USA.
  */
 
-#include <assert.h>      /* assert(3), */
-#include <limits.h>      /* PATH_MAX, */
-#include <string.h>      /* strlen(3), */
-#include <errno.h>       /* errno(3), E* */
+#include <assert.h>		/* assert(3), */
+#include <limits.h>		/* PATH_MAX, */
+#include <string.h>		/* strlen(3), */
+#include <errno.h>		/* errno(3), E* */
 
 #include "syscall/syscall.h"
 #include "syscall/chain.h"
@@ -68,7 +68,8 @@ int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg)
  * syscall points to this new block.  This function returns -errno if
  * an error occured, otherwise 0.
  */
-static int set_sysarg_data(Tracee *tracee, const void *tracer_ptr, word_t size, Reg reg)
+static int set_sysarg_data(Tracee *tracee, const void *tracer_ptr,
+			   word_t size, Reg reg)
 {
 	word_t tracee_ptr;
 	int status;
@@ -124,9 +125,10 @@ void translate_syscall(Tracee *tracee)
 			save_current_regs(tracee, ORIGINAL);
 			status = translate_syscall_enter(tracee);
 			save_current_regs(tracee, MODIFIED);
-		}
-		else {
-			status = notify_extensions(tracee, SYSCALL_CHAINED_ENTER, 0, 0);
+		} else {
+			status =
+			    notify_extensions(tracee,
+					      SYSCALL_CHAINED_ENTER, 0, 0);
 			tracee->restart_how = PTRACE_SYSCALL;
 		}
 
@@ -137,8 +139,7 @@ void translate_syscall(Tracee *tracee)
 			set_sysnum(tracee, PR_void);
 			poke_reg(tracee, SYSARG_RESULT, (word_t) status);
 			tracee->status = status;
-		}
-		else
+		} else
 			tracee->status = 1;
 
 		/* Restore tracee's stack pointer now if it won't hit
@@ -146,10 +147,11 @@ void translate_syscall(Tracee *tracee)
 		 * there's nothing else to do).  */
 		if (tracee->restart_how == PTRACE_CONT) {
 			tracee->status = 0;
-			poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
+			poke_reg(tracee, STACK_POINTER,
+				 peek_reg(tracee, ORIGINAL,
+					  STACK_POINTER));
 		}
-	}
-	else {
+	} else {
 		/* By default, restore original register values at the
 		 * end of this stage.  */
 		tracee->restore_original_regs = true;
@@ -162,7 +164,9 @@ void translate_syscall(Tracee *tracee)
 		if (tracee->chain.syscalls == NULL)
 			translate_syscall_exit(tracee);
 		else
-			(void) notify_extensions(tracee, SYSCALL_CHAINED_EXIT, 0, 0);
+			(void) notify_extensions(tracee,
+						 SYSCALL_CHAINED_EXIT, 0,
+						 0);
 
 		/* Reset the tracee's status. */
 		tracee->status = 0;
@@ -175,7 +179,7 @@ void translate_syscall(Tracee *tracee)
 	(void) push_regs(tracee);
 
 	if (is_enter_stage)
-		print_current_regs(tracee, 5, "sysenter end" );
+		print_current_regs(tracee, 5, "sysenter end");
 	else
 		print_current_regs(tracee, 4, "sysexit end");
 }

@@ -20,10 +20,10 @@
  * 02110-1301 USA.
  */
 
-#include <talloc.h>     /* talloc*, */
-#include <sys/queue.h>  /* STAILQ_*, */
-#include <errno.h>      /* E*, */
-#include <assert.h>     /* assert(3), */
+#include <talloc.h>		/* talloc*, */
+#include <sys/queue.h>		/* STAILQ_*, */
+#include <errno.h>		/* E*, */
+#include <assert.h>		/* assert(3), */
 
 #include "syscall/chain.h"
 #include "syscall/sysnum.h"
@@ -34,7 +34,7 @@
 struct chained_syscall {
 	Sysnum sysnum;
 	word_t sysargs[6];
-	STAILQ_ENTRY(chained_syscall) link;
+	 STAILQ_ENTRY(chained_syscall) link;
 };
 
 STAILQ_HEAD(chained_syscalls, chained_syscall);
@@ -48,24 +48,27 @@ STAILQ_HEAD(chained_syscalls, chained_syscall);
  * error occurred, otherwise 0.
  */
 int register_chained_syscall(Tracee *tracee, Sysnum sysnum,
-			word_t sysarg_1, word_t sysarg_2, word_t sysarg_3,
-			word_t sysarg_4, word_t sysarg_5, word_t sysarg_6)
+			     word_t sysarg_1, word_t sysarg_2,
+			     word_t sysarg_3, word_t sysarg_4,
+			     word_t sysarg_5, word_t sysarg_6)
 {
 	struct chained_syscall *syscall;
 
 	if (tracee->chain.syscalls == NULL) {
-		tracee->chain.syscalls = talloc_zero(tracee, struct chained_syscalls);
+		tracee->chain.syscalls =
+		    talloc_zero(tracee, struct chained_syscalls);
 		if (tracee->chain.syscalls == NULL)
 			return -ENOMEM;
 
 		STAILQ_INIT(tracee->chain.syscalls);
 	}
 
-	syscall = talloc_zero(tracee->chain.syscalls, struct chained_syscall);
+	syscall =
+	    talloc_zero(tracee->chain.syscalls, struct chained_syscall);
 	if (syscall == NULL)
 		return -ENOMEM;
 
-	syscall->sysnum     = sysnum;
+	syscall->sysnum = sysnum;
 	syscall->sysargs[0] = sysarg_1;
 	syscall->sysargs[1] = sysarg_2;
 	syscall->sysargs[2] = sysarg_3;
@@ -97,7 +100,8 @@ void chain_next_syscall(Tracee *tracee)
 		TALLOC_FREE(tracee->chain.syscalls);
 
 		if (tracee->chain.force_final_result)
-			poke_reg(tracee, SYSARG_RESULT, tracee->chain.final_result);
+			poke_reg(tracee, SYSARG_RESULT,
+				 tracee->chain.final_result);
 
 		tracee->chain.force_final_result = false;
 		tracee->chain.final_result = 0;
@@ -151,11 +155,12 @@ int restart_original_syscall(Tracee *tracee)
 	poke_reg(tracee, SYSARG_4, peek_reg(tracee, ORIGINAL, SYSARG_4));
 	poke_reg(tracee, SYSARG_5, peek_reg(tracee, ORIGINAL, SYSARG_5));
 	poke_reg(tracee, SYSARG_6, peek_reg(tracee, ORIGINAL, SYSARG_6));
-	poke_reg(tracee, SYSTRAP_NUM, peek_reg(tracee, ORIGINAL, SYSARG_NUM));
+	poke_reg(tracee, SYSTRAP_NUM,
+		 peek_reg(tracee, ORIGINAL, SYSARG_NUM));
 
 	/* Move the instruction pointer back to the original trap.  */
 	poke_reg(tracee, INSTR_POINTER,
-		peek_reg(tracee, CURRENT, INSTR_POINTER) - SYSTRAP_SIZE);
+		 peek_reg(tracee, CURRENT, INSTR_POINTER) - SYSTRAP_SIZE);
 
 	return 0;
 }

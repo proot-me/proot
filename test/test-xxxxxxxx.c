@@ -10,7 +10,7 @@ extern char *environ[];
 
 int main(void)
 {
-	char * const argv[] = { "argv0", "argv1", "argv2", NULL };
+	char *const argv[] = { "argv0", "argv1", "argv2", NULL };
 	char tmp_name[] = "/tmp/proot-XXXXXX";
 	int status;
 	int fd;
@@ -35,7 +35,7 @@ int main(void)
 	close(fd);
 
 	status = chmod(tmp_name, 0700);
-	if (status < 0)  {
+	if (status < 0) {
 		perror("chmod");
 		exit(EXIT_FAILURE);
 	}
@@ -46,7 +46,8 @@ int main(void)
 		exit(EXIT_FAILURE);
 	}
 
-	printf("Check the stack integrity: %F + %F\n", (double) status, (double) errno);
+	printf("Check the stack integrity: %F + %F\n", (double) status,
+	       (double) errno);
 
 	exit(EXIT_SUCCESS);
 }

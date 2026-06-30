@@ -1,9 +1,9 @@
-#include <unistd.h> /* syscall(2), */
-#include <stdio.h>  /* perror(3), fprintf(3), */
-#include <limits.h> /* PATH_MAX, */
-#include <stdlib.h> /* exit(3), */
-#include <string.h> /* strcmp */
-#include <fcntl.h> /* openat(2), */
+#include <unistd.h>		/* syscall(2), */
+#include <stdio.h>		/* perror(3), fprintf(3), */
+#include <limits.h>		/* PATH_MAX, */
+#include <stdlib.h>		/* exit(3), */
+#include <string.h>		/* strcmp */
+#include <fcntl.h>		/* openat(2), */
 
 int main(void)
 {

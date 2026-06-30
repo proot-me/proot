@@ -34,8 +34,10 @@ int main()
 	sockaddr.sun_family = AF_UNIX;
 	strcpy(sockaddr.sun_path, sockname);
 
-	mask = umask(S_IXUSR|S_IXGRP|S_IRWXO);
-	status = bind(fd, (const struct sockaddr *) &sockaddr, SUN_LEN(&sockaddr));
+	mask = umask(S_IXUSR | S_IXGRP | S_IRWXO);
+	status =
+	    bind(fd, (const struct sockaddr *) &sockaddr,
+		 SUN_LEN(&sockaddr));
 	if (status < 0) {
 		perror("bind");
 		exit(EXIT_FAILURE);
@@ -58,7 +60,8 @@ int main()
 	}
 
 	if (socklen != SUN_LEN(&sockaddr) + 1) {
-		fprintf(stderr, "socklen: %d != %d + 1\n", socklen, SUN_LEN(&sockaddr));
+		fprintf(stderr, "socklen: %d != %d + 1\n", socklen,
+			SUN_LEN(&sockaddr));
 		exit(EXIT_FAILURE);
 	}
 
@@ -68,7 +71,9 @@ int main()
 	}
 
 	if (socklen == sizeof(sockaddr) + 1)
-		status = strncmp(sockaddr.sun_path, sockname, sizeof(sockaddr.sun_path));
+		status =
+		    strncmp(sockaddr.sun_path, sockname,
+			    sizeof(sockaddr.sun_path));
 	else
 		status = strcmp(sockaddr.sun_path, sockname);
 

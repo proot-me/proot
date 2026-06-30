@@ -5,8 +5,8 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <errno.h>      /* errno(3), */
-#include <sys/user.h>   /* struct user*, */
+#include <errno.h>		/* errno(3), */
+#include <sys/user.h>		/* struct user*, */
 
 int main(int argc, char **argv)
 {
@@ -19,17 +19,18 @@ int main(int argc, char **argv)
 	pid_t pid;
 
 	if (argc <= 1) {
-		fprintf(stderr, "Usage: %s /path/to/exe [args]\n", argv[0]);
+		fprintf(stderr, "Usage: %s /path/to/exe [args]\n",
+			argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	pid = fork();
-	switch(pid) {
+	switch (pid) {
 	case -1:
 		perror("fork()");
 		exit(EXIT_FAILURE);
 
-	case 0: /* child */
+	case 0:		/* child */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		if (status < 0) {
 			perror("ptrace(TRACEME)");
@@ -42,7 +43,7 @@ int main(int argc, char **argv)
 		execvp(argv[1], &argv[1]);
 		exit(EXIT_FAILURE);
 
-	default: /* parent */
+	default:		/* parent */
 		break;
 	}
 
@@ -60,15 +61,15 @@ int main(int argc, char **argv)
 			fprintf(stderr, "pid %d: exited with status %d\n",
 				pid, WEXITSTATUS(tracee_status));
 			last_exit_status = WEXITSTATUS(tracee_status);
-			continue; /* Skip the call to ptrace(SYSCALL). */
-		}
-		else if (WIFSTOPPED(tracee_status)) {
+			continue;	/* Skip the call to ptrace(SYSCALL). */
+		} else if (WIFSTOPPED(tracee_status)) {
 			int signal = tracee_status >> 8;
 			if (signal != SIGTRAP && signal != SIGSTOP) {
 				// We expect a SIGSTOP since the child sends it to itself
 				// and a SIGTRAP from the exec + ptrace.
 				// Anything else is an error.
-				fprintf(stderr, "Unexpected signal recieved from pid: %d.\n",
+				fprintf(stderr,
+					"Unexpected signal recieved from pid: %d.\n",
 					pid);
 				exit(EXIT_FAILURE);
 			}

@@ -23,15 +23,17 @@
 #ifndef EXECVE_H
 #define EXECVE_H
 
-#include <linux/limits.h>    /* PATH_MAX, */
+#include <linux/limits.h>	/* PATH_MAX, */
 
 #include "tracee/tracee.h"
 #include "execve/elf.h"
 #include "arch.h"
 
-extern int translate_execve_enter(Tracee *tracee);
-extern void translate_execve_exit(Tracee *tracee);
-extern int translate_and_check_exec(Tracee *tracee, char host_path[PATH_MAX], const char *user_path);
+extern int translate_execve_enter(Tracee * tracee);
+extern void translate_execve_exit(Tracee * tracee);
+extern int translate_and_check_exec(Tracee * tracee,
+				    char host_path[PATH_MAX],
+				    const char *user_path);
 
 typedef struct mapping {
 	word_t addr;
@@ -61,4 +63,4 @@ typedef struct load_info {
 		&& peek_reg((tracee), ORIGINAL, SYSARG_5) == (word_t) 3	\
 		&& peek_reg((tracee), ORIGINAL, SYSARG_6) == (word_t) 4)
 
-#endif /* EXECVE_H */
+#endif				/* EXECVE_H */

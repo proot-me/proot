@@ -20,13 +20,13 @@
  * 02110-1301 USA.
  */
 
-#include <stdbool.h> /* bool, true, false, */
-#include <string.h>  /* strlen(3), strcpy(3), strcat(3), strcmp(3), */
-#include <stdlib.h>  /* getenv(3), */
-#include <assert.h>  /* assert(3), */
-#include <errno.h>   /* ENOMEM, */
-#include <unistd.h>  /* close(2), */
-#include <linux/limits.h>  /* PATH_MAX, ARG_MAX, */
+#include <stdbool.h>		/* bool, true, false, */
+#include <string.h>		/* strlen(3), strcpy(3), strcat(3), strcmp(3), */
+#include <stdlib.h>		/* getenv(3), */
+#include <assert.h>		/* assert(3), */
+#include <errno.h>		/* ENOMEM, */
+#include <unistd.h>		/* close(2), */
+#include <linux/limits.h>	/* PATH_MAX, ARG_MAX, */
 
 #include "execve/ldso.h"
 #include "execve/elf.h"
@@ -53,7 +53,8 @@ bool is_env_name(const char *variable, const char *name)
  * in @envp at the given @index, otherwise it returns -errno when an
  * error occured.
  */
-int compare_xpointee_env(ArrayOfXPointers *envp, size_t index, const char *reference)
+int compare_xpointee_env(ArrayOfXPointers *envp, size_t index,
+			 const char *reference)
 {
 	char *value;
 	int status;
@@ -67,7 +68,7 @@ int compare_xpointee_env(ArrayOfXPointers *envp, size_t index, const char *refer
 	if (value == NULL)
 		return 0;
 
-	return (int)is_env_name(value, reference);
+	return (int) is_env_name(value, reference);
 }
 
 /**
@@ -97,8 +98,9 @@ int compare_xpointee_env(ArrayOfXPointers *envp, size_t index, const char *refer
  *
  * This funtion returns -errno if an error occured, otherwise 0.
  */
-int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPointers *argv,
-		const char *define, const char *undefine, size_t offset)
+int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp,
+		      ArrayOfXPointers *argv, const char *define,
+		      const char *undefine, size_t offset)
 {
 	bool has_seen_library_path = false;
 	int status;
@@ -113,13 +115,14 @@ int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPoin
 			return status;
 
 		/* Skip variables that do not start with "LD_".  */
-		if (env == NULL || strncmp(env, "LD_", sizeof("LD_") - 1) != 0)
+		if (env == NULL
+		    || strncmp(env, "LD_", sizeof("LD_") - 1) != 0)
 			continue;
 
 		/* When a host program executes a guest program, use
 		 * the value of LD_LIBRARY_PATH as it was before being
 		 * swapped by the mixed-mode support.  */
-		if (   tracee->host_ldso_paths != NULL
+		if (tracee->host_ldso_paths != NULL
 		    && tracee->guest_ldso_paths != NULL
 		    && is_env_name(env, "LD_LIBRARY_PATH")
 		    && strcmp(env, tracee->host_ldso_paths) == 0)
@@ -167,7 +170,9 @@ int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPoin
 		/* Errors are not fatal here.  */
 		status = resize_array_of_xpointers(argv, offset, 2);
 		if (status >= 0) {
-			status = write_xpointees(argv, offset, 2, undefine, "LD_LIBRARY_PATH");
+			status =
+			    write_xpointees(argv, offset, 2, undefine,
+					    "LD_LIBRARY_PATH");
 			if (status < 0)
 				return status;
 		}
@@ -180,7 +185,8 @@ int ldso_env_passthru(const Tracee *tracee, ArrayOfXPointers *envp, ArrayOfXPoin
  * Add to @host_ldso_paths the list of @paths prefixed with the path
  * to the host rootfs.
  */
-static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX], const char *paths)
+static int add_host_ldso_paths(char host_ldso_paths[ARG_MAX],
+			       const char *paths)
 {
 	char *cursor1;
 	const char *cursor2;
@@ -243,25 +249,29 @@ struct find_program_header_data {
  * otherwise 0 or 1.
  */
 static int find_program_header(const ElfHeader *elf_header,
-			const ProgramHeader *program_header, void *data_)
+			       const ProgramHeader *program_header,
+			       void *data_)
 {
 	struct find_program_header_data *data = data_;
 
-	if (PROGRAM_FIELD(*elf_header, *program_header, type) == data->type) {
+	if (PROGRAM_FIELD(*elf_header, *program_header, type) ==
+	    data->type) {
 		uint64_t start;
 		uint64_t end;
 
-		memcpy(data->program_header, program_header, sizeof(ProgramHeader));
+		memcpy(data->program_header, program_header,
+		       sizeof(ProgramHeader));
 
-		if (data->address == (uint64_t) -1)
+		if (data->address == (uint64_t) - 1)
 			return 1;
 
 		start = PROGRAM_FIELD(*elf_header, *program_header, vaddr);
-		end   = start + PROGRAM_FIELD(*elf_header, *program_header, memsz);
+		end =
+		    start + PROGRAM_FIELD(*elf_header, *program_header,
+					  memsz);
 
 		if (start < end
-			&& data->address >= start
-			&& data->address <= end)
+		    && data->address >= start && data->address <= end)
 			return 1;
 	}
 
@@ -273,7 +283,8 @@ static int find_program_header(const ElfHeader *elf_header,
  * referenced by @fd at the given @offset.  This function returns
  * -errno if an error occured, otherwise 0.
  */
-static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpaths)
+static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset,
+		      char **xpaths)
 {
 	char *paths = NULL;
 	char *tmp;
@@ -311,12 +322,12 @@ static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpat
 			return -ENOMEM;
 
 		strcpy(*xpaths, paths);
-	}
-	else {
+	} else {
 		length += strlen(*xpaths);
-		length++; /* ":" separator */
+		length++;	/* ":" separator */
 
-		tmp = talloc_realloc(tracee->ctx, *xpaths, char, length + 1);
+		tmp =
+		    talloc_realloc(tracee->ctx, *xpaths, char, length + 1);
 		if (!tmp)
 			return -ENOMEM;
 		*xpaths = tmp;
@@ -336,13 +347,14 @@ static int add_xpaths(const Tracee *tracee, int fd, uint64_t offset, char **xpat
  * @runpaths respectively.  This function returns -errno if an error
  * occured, otherwise 0.
  */
-static int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_header,
-		char **rpaths, char **runpaths)
+static int read_ldso_rpaths(const Tracee *tracee, int fd,
+			    const ElfHeader *elf_header, char **rpaths,
+			    char **runpaths)
 {
 	ProgramHeader dynamic_segment;
 	ProgramHeader strtab_segment;
 	struct find_program_header_data data;
-	uint64_t strtab_address = (uint64_t) -1;
+	uint64_t strtab_address = (uint64_t) - 1;
 	off_t strtab_offset;
 	int status;
 	size_t i;
@@ -353,14 +365,18 @@ static int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_h
 
 	data.program_header = &dynamic_segment;
 	data.type = PT_DYNAMIC;
-	data.address = (uint64_t) -1;
+	data.address = (uint64_t) - 1;
 
-	status = iterate_program_headers(tracee, fd, elf_header, find_program_header, &data);
+	status =
+	    iterate_program_headers(tracee, fd, elf_header,
+				    find_program_header, &data);
 	if (status <= 0)
 		return status;
 
-	offsetof_dynamic_segment = PROGRAM_FIELD(*elf_header, dynamic_segment, offset);
-	sizeof_dynamic_segment   = PROGRAM_FIELD(*elf_header, dynamic_segment, filesz);
+	offsetof_dynamic_segment =
+	    PROGRAM_FIELD(*elf_header, dynamic_segment, offset);
+	sizeof_dynamic_segment =
+	    PROGRAM_FIELD(*elf_header, dynamic_segment, filesz);
 
 	if (IS_CLASS32(*elf_header))
 		sizeof_dynamic_entry = sizeof(DynamicEntry32);
@@ -400,11 +416,9 @@ static int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_h
 	 * specification doesn't mention if it may have several string
 	 * table references.  */
 	FOREACH_DYNAMIC_ENTRY(DT_STRTAB, {
-		strtab_address = value;
-		break;
-	})
-
-	if (strtab_address == (uint64_t) -1)
+			      strtab_address = value; break;}
+	)
+	    if (strtab_address == (uint64_t) - 1)
 		return 0;
 
 	data.program_header = &strtab_segment;
@@ -412,34 +426,40 @@ static int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_h
 	data.address = strtab_address;
 
 	/* Search the program header that contains the given string table.  */
-	status = iterate_program_headers(tracee, fd, elf_header, find_program_header, &data);
+	status =
+	    iterate_program_headers(tracee, fd, elf_header,
+				    find_program_header, &data);
 	if (status < 0)
 		return status;
 
 	strtab_offset = PROGRAM_FIELD(*elf_header, strtab_segment, offset)
-		+ (strtab_address - PROGRAM_FIELD(*elf_header, strtab_segment, vaddr));
+	    + (strtab_address -
+	       PROGRAM_FIELD(*elf_header, strtab_segment, vaddr));
 
-	FOREACH_DYNAMIC_ENTRY(DT_RPATH,	{
-		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - value)
-			return -ENOEXEC;
-
-		status = add_xpaths(tracee, fd, strtab_offset + value, rpaths);
-		if (status < 0)
-			return status;
-	})
-
-	FOREACH_DYNAMIC_ENTRY(DT_RUNPATH, {
-		if (strtab_offset < 0 || (uint64_t) strtab_offset > UINT64_MAX - value)
-			return -ENOEXEC;
-
-		status = add_xpaths(tracee, fd, strtab_offset + value, runpaths);
-		if (status < 0)
-			return status;
-	})
-
+	FOREACH_DYNAMIC_ENTRY(DT_RPATH, {
+			      if (strtab_offset < 0
+				  || (uint64_t) strtab_offset >
+				  UINT64_MAX - value)
+			      return -ENOEXEC;
+			      status =
+			      add_xpaths(tracee, fd, strtab_offset + value,
+					 rpaths); if (status < 0)
+			      return status;}
+	)
+		FOREACH_DYNAMIC_ENTRY(DT_RUNPATH, {
+				      if (strtab_offset < 0
+					  || (uint64_t) strtab_offset >
+					  UINT64_MAX - value)
+				      return -ENOEXEC;
+				      status =
+				      add_xpaths(tracee, fd,
+						 strtab_offset + value,
+						 runpaths); if (status < 0)
+				      return status;}
+	)
 #undef FOREACH_DYNAMIC_ENTRY
 
-	return 0;
+		return 0;
 }
 
 /**
@@ -448,7 +468,8 @@ static int read_ldso_rpaths(const Tracee* tracee, int fd, const ElfHeader *elf_h
  * LD_LIBRARY_PATH.  This function returns -errno if an error occured,
  * 1 if RPATH/RUNPATH entries were found, 0 otherwise.
  */
-int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], ArrayOfXPointers *envp)
+int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX],
+			    ArrayOfXPointers *envp)
 {
 	static char *initial_ldso_paths = NULL;
 	ElfHeader elf_header;
@@ -456,7 +477,7 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 	char host_ldso_paths[ARG_MAX] = "";
 	bool rpath_found = false;
 
-	char *rpaths   = NULL;
+	char *rpaths = NULL;
 	char *runpaths = NULL;
 
 	size_t length1;
@@ -470,7 +491,8 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 	if (fd < 0)
 		return fd;
 
-	status = read_ldso_rpaths(tracee, fd, &elf_header, &rpaths, &runpaths);
+	status =
+	    read_ldso_rpaths(tracee, fd, &elf_header, &rpaths, &runpaths);
 	close(fd);
 	if (status < 0)
 		return status;
@@ -479,24 +501,27 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 	if (rpaths && !runpaths) {
 		status = add_host_ldso_paths(host_ldso_paths, rpaths);
 		if (status < 0)
-			return 0; /* Not fatal.  */
+			return 0;	/* Not fatal.  */
 		rpath_found = true;
 	}
 
 	/* 2. LD_LIBRARY_PATH  */
 	if (initial_ldso_paths == NULL)
-		initial_ldso_paths = strdup(getenv("LD_LIBRARY_PATH") ?: "/");
+		initial_ldso_paths =
+		    strdup(getenv("LD_LIBRARY_PATH") ? : "/");
 	if (initial_ldso_paths != NULL && initial_ldso_paths[0] != '\0') {
-		status = add_host_ldso_paths(host_ldso_paths, initial_ldso_paths);
+		status =
+		    add_host_ldso_paths(host_ldso_paths,
+					initial_ldso_paths);
 		if (status < 0)
-			return 0; /* Not fatal.  */
+			return 0;	/* Not fatal.  */
 	}
 
 	/* 3. DT_RUNPATH  */
 	if (runpaths) {
 		status = add_host_ldso_paths(host_ldso_paths, runpaths);
 		if (status < 0)
-			return 0; /* Not fatal.  */
+			return 0;	/* Not fatal.  */
 		rpath_found = true;
 	}
 
@@ -507,25 +532,25 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 	if (IS_CLASS32(elf_header))
 		status = add_host_ldso_paths(host_ldso_paths,
 #if defined(ARCH_X86) || defined(ARCH_X86_64)
-					"/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:"
+					     "/lib/i386-linux-gnu:/usr/lib/i386-linux-gnu:"
 #endif
-					"/lib32:/usr/lib32:/usr/local/lib32"
-					":/lib:/usr/lib:/usr/local/lib");
+					     "/lib32:/usr/lib32:/usr/local/lib32"
+					     ":/lib:/usr/lib:/usr/local/lib");
 	else
 		status = add_host_ldso_paths(host_ldso_paths,
 #if defined(ARCH_X86_64)
-					"/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:"
+					     "/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:"
 #elif defined(ARCH_ARM64)
-					"/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu:"
+					     "/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu:"
 #endif
-					"/lib64:/usr/lib64:/usr/local/lib64"
-					":/lib:/usr/lib:/usr/local/lib");
+					     "/lib64:/usr/lib64:/usr/local/lib64"
+					     ":/lib:/usr/lib:/usr/local/lib");
 	if (status < 0)
-		return 0; /* Not fatal.  */
+		return 0;	/* Not fatal.  */
 
 	status = find_xpointee(envp, "LD_LIBRARY_PATH");
 	if (status < 0)
-		return 0; /* Not fatal.  */
+		return 0;	/* Not fatal.  */
 	index = (size_t) status;
 
 	if (index == envp->length) {
@@ -535,9 +560,8 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 		index = (envp->length > 0 ? envp->length - 1 : 0);
 		status = resize_array_of_xpointers(envp, index, 1);
 		if (status < 0)
-			return 0; /* Not fatal.  */
-	}
-	else if (tracee->guest_ldso_paths == NULL) {
+			return 0;	/* Not fatal.  */
+	} else if (tracee->guest_ldso_paths == NULL) {
 		/* Remember guest LD_LIBRARY_PATH in order to restore
 		 * it when a host program will execute a guest
 		 * program.  */
@@ -546,7 +570,8 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 		/* Errors are not fatal here.  */
 		status = read_xpointee_as_string(envp, index, &env);
 		if (status >= 0)
-			tracee->guest_ldso_paths = talloc_strdup(tracee, env);
+			tracee->guest_ldso_paths =
+			    talloc_strdup(tracee, env);
 	}
 
 	/* Forge the new LD_LIBRARY_PATH variable from
@@ -554,10 +579,10 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 	length1 = strlen("LD_LIBRARY_PATH=");
 	length2 = strlen(host_ldso_paths);
 	if (ARG_MAX - length2 - 1 < length1)
-		return 0; /* Not fatal.  */
+		return 0;	/* Not fatal.  */
 
 	memmove(host_ldso_paths + length1, host_ldso_paths, length2 + 1);
-	memcpy(host_ldso_paths, "LD_LIBRARY_PATH=" , length1);
+	memcpy(host_ldso_paths, "LD_LIBRARY_PATH=", length1);
 
 	write_xpointee(envp, index, host_ldso_paths);
 
@@ -565,7 +590,8 @@ int rebuild_host_ldso_paths(Tracee *tracee, const char host_path[PATH_MAX], Arra
 	 * program didn't change it explicitly, so remember its
 	 * initial value.  */
 	if (tracee->host_ldso_paths == NULL)
-		tracee->host_ldso_paths = talloc_strdup(tracee, host_ldso_paths);
+		tracee->host_ldso_paths =
+		    talloc_strdup(tracee, host_ldso_paths);
 
 	return (int) rpath_found;
 }

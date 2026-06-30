@@ -40,12 +40,13 @@
 static inline size_t convert_user_regs_index(size_t index)
 {
 	static size_t mapping[USER32_NB_REGS] = {
-		05, /* ?bx */	11, /* ?cx */	12, /* ?dx */
-		13, /* ?si */	14, /* ?di */	04, /* ?bp */
-		10, /* ?ax */	23, /* ds */	24, /* es */
-		25, /* fs */	26, /* gs */	15, /* orig_?ax */
-		16, /* ?ip */	17, /* cs */	18, /* eflags */
-		19, /* ?sp */	20, /* ss */ };
+		05, /* ?bx */ 11, /* ?cx */ 12,	/* ?dx */
+		13, /* ?si */ 14, /* ?di */ 04,	/* ?bp */
+		10, /* ?ax */ 23, /* ds */ 24,	/* es */
+		25, /* fs */ 26, /* gs */ 15,	/* orig_?ax */
+		16, /* ?ip */ 17, /* cs */ 18,	/* eflags */
+		19, /* ?sp */ 20, /* ss */
+	};
 
 	/* Sanity check.  */
 	assert(index < USER32_NB_REGS);
@@ -85,10 +86,11 @@ static inline size_t convert_user_debugreg_offset(size_t offset)
 
 	/* Sanity check.  */
 	assert(offset >= USER32_DEBUGREG_OFFSET
-	    && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE);
+	       && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE);
 
 	index = (offset - USER32_DEBUGREG_OFFSET) / sizeof(uint32_t);
-	return offsetof(struct user, u_debugreg) + index * sizeof(uint64_t);
+	return offsetof(struct user,
+			u_debugreg) + index * sizeof(uint64_t);
 }
 
 /**
@@ -100,46 +102,51 @@ word_t convert_user_offset(word_t offset)
 {
 	const char *area_name = NULL;
 
-	if (/* offset >= 0 && */ offset < USER32_REGS_OFFSET + USER32_REGS_SIZE) {
+	if ( /* offset >= 0 && */ offset <
+	    USER32_REGS_OFFSET + USER32_REGS_SIZE) {
 		/* Sanity checks.  */
 		if ((offset % sizeof(uint32_t)) != 0)
-			return (word_t) -1;
+			return (word_t) - 1;
 
-		return convert_user_regs_index(offset / sizeof(uint32_t)) * sizeof(uint64_t);
-	}
-	else if (offset == USER32_FPVALID_OFFSET)
-		area_name = "fpvalid"; /* Not yet supported.  */
-	else if (offset >= USER32_I387_OFFSET && offset < USER32_I387_OFFSET + USER32_I387_SIZE)
-		area_name = "i387"; /* Not yet supported.  */
+		return convert_user_regs_index(offset / sizeof(uint32_t)) *
+		    sizeof(uint64_t);
+	} else if (offset == USER32_FPVALID_OFFSET)
+		area_name = "fpvalid";	/* Not yet supported.  */
+	else if (offset >= USER32_I387_OFFSET
+		 && offset < USER32_I387_OFFSET + USER32_I387_SIZE)
+		area_name = "i387";	/* Not yet supported.  */
 	else if (offset == USER32_TSIZE_OFFSET)
-		area_name = "tsize"; /* Not yet supported.  */
+		area_name = "tsize";	/* Not yet supported.  */
 	else if (offset == USER32_DSIZE_OFFSET)
-		area_name = "dsize"; /* Not yet supported.  */
+		area_name = "dsize";	/* Not yet supported.  */
 	else if (offset == USER32_SSIZE_OFFSET)
-		area_name = "ssize"; /* Not yet supported.  */
+		area_name = "ssize";	/* Not yet supported.  */
 	else if (offset == USER32_START_CODE_OFFSET)
-		area_name = "start_code"; /* Not yet supported.  */
+		area_name = "start_code";	/* Not yet supported.  */
 	else if (offset == USER32_START_STACK_OFFSET)
-		area_name = "start_stack"; /* Not yet supported.  */
+		area_name = "start_stack";	/* Not yet supported.  */
 	else if (offset == USER32_SIGNAL_OFFSET)
-		area_name = "signal"; /* Not yet supported.  */
+		area_name = "signal";	/* Not yet supported.  */
 	else if (offset == USER32_RESERVED_OFFSET)
-		area_name = "reserved"; /* Not yet supported.  */
+		area_name = "reserved";	/* Not yet supported.  */
 	else if (offset == USER32_AR0_OFFSET)
-		area_name = "ar0"; /* Not yet supported.  */
+		area_name = "ar0";	/* Not yet supported.  */
 	else if (offset == USER32_FPSTATE_OFFSET)
-		area_name = "fpstate"; /* Not yet supported.  */
+		area_name = "fpstate";	/* Not yet supported.  */
 	else if (offset == USER32_MAGIC_OFFSET)
-		area_name = "magic"; /* Not yet supported.  */
-	else if (offset >= USER32_COMM_OFFSET && offset < USER32_COMM_OFFSET + USER32_COMM_SIZE)
-		area_name = "comm"; /* Not yet supported.  */
-	else if (offset >= USER32_DEBUGREG_OFFSET && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE)
+		area_name = "magic";	/* Not yet supported.  */
+	else if (offset >= USER32_COMM_OFFSET
+		 && offset < USER32_COMM_OFFSET + USER32_COMM_SIZE)
+		area_name = "comm";	/* Not yet supported.  */
+	else if (offset >= USER32_DEBUGREG_OFFSET
+		 && offset < USER32_DEBUGREG_OFFSET + USER32_DEBUGREG_SIZE)
 		return convert_user_debugreg_offset(offset);
 	else
 		area_name = "<unknown>";
 
-	note(NULL, WARNING, INTERNAL, "ptrace user area '%s' not supported yet", area_name);
-	return (word_t) -1;  /* Unknown offset.  */
+	note(NULL, WARNING, INTERNAL,
+	     "ptrace user area '%s' not supported yet", area_name);
+	return (word_t) - 1;	/* Unknown offset.  */
 }
 
 /**
@@ -148,7 +155,7 @@ word_t convert_user_offset(word_t offset)
  * @reverse.
  */
 void convert_user_regs_struct(bool reverse, uint64_t *user_regs64,
-			uint32_t user_regs32[USER32_NB_REGS])
+			      uint32_t user_regs32[USER32_NB_REGS])
 {
 	size_t index32;
 
@@ -157,10 +164,12 @@ void convert_user_regs_struct(bool reverse, uint64_t *user_regs64,
 		assert(index64 != (size_t) -1);
 
 		if (reverse)
-			user_regs64[index64] = (uint64_t) user_regs32[index32];
+			user_regs64[index64] =
+			    (uint64_t) user_regs32[index32];
 		else
-			user_regs32[index32] = (uint32_t) user_regs64[index64];
+			user_regs32[index32] =
+			    (uint32_t) user_regs64[index64];
 	}
 }
 
-#endif /* ARCH_X86_64 */
+#endif				/* ARCH_X86_64 */

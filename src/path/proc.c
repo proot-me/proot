@@ -20,11 +20,11 @@
  * 02110-1301 USA.
  */
 
-#include <stdio.h>   /* snprintf(3), */
-#include <string.h>  /* strcmp(3), */
-#include <stdlib.h>  /* atoi(3), strtol(3), */
-#include <errno.h>   /* E*, */
-#include <assert.h>  /* assert(3), */
+#include <stdio.h>		/* snprintf(3), */
+#include <string.h>		/* strcmp(3), */
+#include <stdlib.h>		/* atoi(3), strtol(3), */
+#include <errno.h>		/* E*, */
+#include <assert.h>		/* assert(3), */
 
 #include "path/proc.h"
 #include "tracee/tracee.h"
@@ -41,11 +41,11 @@
  * to @result.
  */
 Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
-			const char base[PATH_MAX], const char component[NAME_MAX],
-			Comparison comparison)
+		     const char base[PATH_MAX],
+		     const char component[NAME_MAX], Comparison comparison)
 {
 	const Tracee *known_tracee;
-	char proc_path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
+	char proc_path[64];	/* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
 	int status;
 	pid_t pid;
 
@@ -58,7 +58,8 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 		if (strcmp(component, "self") != 0)
 			return DEFAULT;
 
-		status = snprintf(result, PATH_MAX, "/proc/%d", tracee->pid);
+		status =
+		    snprintf(result, PATH_MAX, "/proc/%d", tracee->pid);
 		if (status < 0 || status >= PATH_MAX)
 			return -EPERM;
 
@@ -119,7 +120,8 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 	}
 
 	/* Handle links in "/proc/<PID>/fd/".  */
-	status = snprintf(proc_path, sizeof(proc_path), "/proc/%d/fd", pid);
+	status =
+	    snprintf(proc_path, sizeof(proc_path), "/proc/%d/fd", pid);
 	if (status < 0 || (size_t) status >= sizeof(proc_path))
 		return -EPERM;
 
@@ -142,7 +144,8 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
 		 * Note they are still correctly detranslated in
 		 * syscall/exit.c if a monitored process uses
 		 * readlink() against any of them.  */
-		status = snprintf(result, PATH_MAX, "%s/%s", base, component);
+		status =
+		    snprintf(result, PATH_MAX, "%s/%s", base, component);
 		if (status < 0 || status >= PATH_MAX)
 			return -EPERM;
 
@@ -164,7 +167,8 @@ Action readlink_proc(const Tracee *tracee, char result[PATH_MAX],
  * Unlike readlink(), this function includes the nul terminating byte
  * to @result (but this byte is not counted in the returned value).
  */
-ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char referer[PATH_MAX])
+ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX],
+		       const char referer[PATH_MAX])
 {
 	Action action;
 	char base[PATH_MAX];
@@ -190,6 +194,8 @@ ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX], const char r
 	if (component[0] == '\0')
 		return 0;
 
-	action = readlink_proc(tracee, result, base, component, PATH1_IS_PREFIX);
+	action =
+	    readlink_proc(tracee, result, base, component,
+			  PATH1_IS_PREFIX);
 	return (action == CANONICALIZE ? strlen(result) : 0);
 }

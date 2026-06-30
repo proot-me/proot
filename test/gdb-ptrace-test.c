@@ -48,19 +48,20 @@ static void kill_child(int child_pid)
 		perror("kill()");
 		exit(EXIT_FAILURE);
 	}
-
 	// Sleep some time to let proot handle the kill event
 	// in order to make sure a delayed wait on a dead ptracee works correctly.
 	sleep(2);
 
 	got_pid = waitpid(child_pid, &kill_status, 0);
 	if (got_pid != child_pid) {
-		fprintf(stderr, "waitpid: unexpected result %d.", (int)got_pid);
+		fprintf(stderr, "waitpid: unexpected result %d.",
+			(int) got_pid);
 		exit(EXIT_FAILURE);
 	}
 
 	if (!WIFSIGNALED(kill_status)) {
-		fprintf(stderr, "waitpid: unexpected status %d.", kill_status);
+		fprintf(stderr, "waitpid: unexpected status %d.",
+			kill_status);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -87,25 +88,27 @@ static void test_tracefork(int child_pid)
 
 	ret = waitpid(child_pid, &status, 0);
 	/* Check if we received a fork event notification.  */
-	if (ret == child_pid && WIFSTOPPED(status) && (status >> 16) == PTRACE_EVENT_FORK) {
+	if (ret == child_pid && WIFSTOPPED(status)
+	    && (status >> 16) == PTRACE_EVENT_FORK) {
 		/* We did receive a fork event notification.  Make sure its PID
 		   is reported.  */
 		second_pid = 0;
-		ret = ptrace(PTRACE_GETEVENTMSG, child_pid, 0, &second_pid);
+		ret =
+		    ptrace(PTRACE_GETEVENTMSG, child_pid, 0, &second_pid);
 		if (ret == 0 && second_pid != 0) {
 			int second_status;
 
 			/* Do some cleanup and kill the grandchild.  */
 			waitpid(second_pid, &second_status, 0);
 			kill_child(second_pid);
-		}
-		else {
+		} else {
 			perror("ptrace(PTRACE_GETEVENTMSG)");
 			exit(EXIT_FAILURE);
 		}
-	}
-	else {
-		fprintf(stderr, "Unexpected result from waitpid: pid=%d, status=%d\n", ret, status);
+	} else {
+		fprintf(stderr,
+			"Unexpected result from waitpid: pid=%d, status=%d\n",
+			ret, status);
 		exit(EXIT_FAILURE);
 	}
 }
@@ -120,12 +123,10 @@ static void check_ptrace_features(int do_fork)
 	if (ret == -1) {
 		perror("waitpid()");
 		exit(EXIT_FAILURE);
-	}
-	else if (ret != child_pid) {
+	} else if (ret != child_pid) {
 		fprintf(stderr, "waitpid: unexpected result %d.", ret);
 		exit(EXIT_FAILURE);
-	}
-	else if (!WIFSTOPPED(status)) {
+	} else if (!WIFSTOPPED(status)) {
 		fprintf(stderr, "waitpid: unexpected status %d.", status);
 		exit(EXIT_FAILURE);
 	}
@@ -138,7 +139,7 @@ static void check_ptrace_features(int do_fork)
 
 int main(int argc, char **argv)
 {
-	(void)argv;
+	(void) argv;
 	check_ptrace_features(argc > 1);
 	return 0;
 }

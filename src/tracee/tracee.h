@@ -23,15 +23,15 @@
 #ifndef TRACEE_H
 #define TRACEE_H
 
-#include <sys/types.h> /* pid_t, size_t, */
-#include <sys/user.h>  /* struct user*, */
-#include <stdbool.h>   /* bool,  */
-#include <sys/queue.h> /* LIST_*, */
-#include <sys/ptrace.h>/* enum __ptrace_request */
-#include <talloc.h>    /* talloc_*, */
-#include <stdint.h>    /* *int*_t, */
-#include <sys/wait.h>  /* __WAIT_* */
-#include "arch.h" /* word_t, user_regs_struct, */
+#include <sys/types.h>		/* pid_t, size_t, */
+#include <sys/user.h>		/* struct user*, */
+#include <stdbool.h>		/* bool,  */
+#include <sys/queue.h>		/* LIST_*, */
+#include <sys/ptrace.h>		/* enum __ptrace_request */
+#include <talloc.h>		/* talloc_*, */
+#include <stdint.h>		/* *int*_t, */
+#include <sys/wait.h>		/* __WAIT_* */
+#include "arch.h"		/* word_t, user_regs_struct, */
 #include "compat.h"
 
 #if defined(__GLIBC__)
@@ -41,7 +41,7 @@
 #endif
 
 typedef enum {
-	CURRENT  = 0,
+	CURRENT = 0,
 	ORIGINAL = 1,
 	MODIFIED = 2,
 	NB_REG_VERSION
@@ -98,9 +98,9 @@ typedef struct tracee {
 	 * dedicated to terminated tracees instead.  */
 	bool terminated;
 
-        /* Whether termination of this tracee implies an immediate kill
-         * of all tracees. */
-        bool killall_on_exit;
+	/* Whether termination of this tracee implies an immediate kill
+	 * of all tracees. */
+	bool killall_on_exit;
 
 	/* Parent of this tracee, NULL if none.  */
 	struct tracee *parent;
@@ -111,7 +111,7 @@ typedef struct tracee {
 	/* Support for ptrace emulation (tracer side).  */
 	struct {
 		size_t nb_ptracees;
-		LIST_HEAD(zombies, tracee) zombies;
+		 LIST_HEAD(zombies, tracee) zombies;
 
 		pid_t wait_pid;
 		word_t wait_options;
@@ -128,7 +128,7 @@ typedef struct tracee {
 		struct tracee *ptracer;
 
 		struct {
-			#define STRUCT_EVENT struct { int value; bool pending; }
+#define STRUCT_EVENT struct { int value; bool pending; }
 
 			STRUCT_EVENT proot;
 			STRUCT_EVENT ptracer;
@@ -162,9 +162,9 @@ typedef struct tracee {
 
 	/* State for the special handling of SIGSTOP.  */
 	enum {
-		SIGSTOP_IGNORED = 0,  /* Ignore SIGSTOP (once the parent is known).  */
-		SIGSTOP_ALLOWED,      /* Allow SIGSTOP (once the parent is known).   */
-		SIGSTOP_PENDING,      /* Block SIGSTOP until the parent is unknown.  */
+		SIGSTOP_IGNORED = 0,	/* Ignore SIGSTOP (once the parent is known).  */
+		SIGSTOP_ALLOWED,	/* Allow SIGSTOP (once the parent is known).   */
+		SIGSTOP_PENDING,	/* Block SIGSTOP until the parent is unknown.  */
 	} sigstop;
 
 	/* Context used to collect all the temporary dynamic memory
@@ -275,17 +275,20 @@ typedef struct tracee {
 
 #define TRACEE(a) talloc_get_type_abort(talloc_parent(talloc_parent(a)), Tracee)
 
-extern Tracee *get_tracee(const Tracee *tracee, pid_t pid, bool create);
-extern Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
-			bool only_with_pevent, word_t wait_options);
-extern Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
-				bool only_with_pevent, word_t wait_options);
-extern bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options);
-extern int new_child(Tracee *parent, word_t clone_flags);
-extern Tracee *new_dummy_tracee(TALLOC_CTX *context);
-extern void terminate_tracee(Tracee *tracee);
+extern Tracee *get_tracee(const Tracee * tracee, pid_t pid, bool create);
+extern Tracee *get_ptracee(const Tracee * ptracer, pid_t pid,
+			   bool only_stopped, bool only_with_pevent,
+			   word_t wait_options);
+extern Tracee *get_stopped_ptracee(const Tracee * ptracer, pid_t pid,
+				   bool only_with_pevent,
+				   word_t wait_options);
+extern bool has_ptracees(const Tracee * ptracer, pid_t pid,
+			 word_t wait_options);
+extern int new_child(Tracee * parent, word_t clone_flags);
+extern Tracee *new_dummy_tracee(TALLOC_CTX * context);
+extern void terminate_tracee(Tracee * tracee);
 extern void free_terminated_tracees();
-extern int swap_config(Tracee *tracee1, Tracee *tracee2);
+extern int swap_config(Tracee * tracee1, Tracee * tracee2);
 extern void kill_all_tracees();
 
-#endif /* TRACEE_H */
+#endif				/* TRACEE_H */

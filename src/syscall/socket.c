@@ -20,14 +20,14 @@
  * 02110-1301 USA.
  */
 
-#include <stddef.h>      /* offsetof(3), */
-#include <strings.h>     /* bzero(3), */
-#include <string.h>      /* strncpy(3), strlen(3), */
-#include <assert.h>      /* assert(3), */
-#include <errno.h>       /* E*, */
-#include <sys/socket.h>  /* struct sockaddr_un, AF_UNIX, */
-#include <sys/un.h>      /* struct sockaddr_un, */
-#include <sys/param.h>   /* MIN(), MAX(), */
+#include <stddef.h>		/* offsetof(3), */
+#include <strings.h>		/* bzero(3), */
+#include <string.h>		/* strncpy(3), strlen(3), */
+#include <assert.h>		/* assert(3), */
+#include <errno.h>		/* E*, */
+#include <sys/socket.h>		/* struct sockaddr_un, AF_UNIX, */
+#include <sys/un.h>		/* struct sockaddr_un, */
+#include <sys/param.h>		/* MIN(), MAX(), */
 
 #include "syscall/socket.h"
 #include "tracee/tracee.h"
@@ -43,7 +43,7 @@
  * architectures.  */
 static const off_t offsetof_path = offsetof(struct sockaddr_un, sun_path);
 extern struct sockaddr_un sockaddr_un__;
-static const size_t sizeof_path  = sizeof(sockaddr_un__.sun_path);
+static const size_t sizeof_path = sizeof(sockaddr_un__.sun_path);
 
 /**
  * Copy in @sockaddr the struct sockaddr_un stored in the @tracee
@@ -54,8 +54,9 @@ static const size_t sizeof_path  = sizeof(sockaddr_un__.sun_path);
  * structure was not found (not a sockaddr_un or @size > @max_size),
  * otherwise 1.
  */
-static int read_sockaddr_un(Tracee *tracee, struct sockaddr_un *sockaddr, word_t max_size,
-			char path[PATH_MAX], word_t address, int size)
+static int read_sockaddr_un(Tracee *tracee, struct sockaddr_un *sockaddr,
+			    word_t max_size, char path[PATH_MAX],
+			    word_t address, int size)
 {
 	int status;
 
@@ -101,11 +102,14 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 	if (*address == 0)
 		return 0;
 
-	status = read_sockaddr_un(tracee, &sockaddr, sizeof(sockaddr), user_path, *address, size);
+	status =
+	    read_sockaddr_un(tracee, &sockaddr, sizeof(sockaddr),
+			     user_path, *address, size);
 	if (status <= 0)
 		return status;
 
-	status = translate_path(tracee, host_path, AT_FDCWD, user_path, true);
+	status =
+	    translate_path(tracee, host_path, AT_FDCWD, user_path, true);
 	if (status < 0)
 		return status;
 
@@ -124,16 +128,20 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
 
 		/* The translated path is too long to fit the sun_path
 		 * array, so let's bind it to a shorter path.  */
-		shorter_host_dir = create_temp_directory(tracee->ctx, "proot");
+		shorter_host_dir =
+		    create_temp_directory(tracee->ctx, "proot");
 		if (shorter_host_dir == NULL)
 			return -EINVAL;
 
-		shorter_host_path = talloc_asprintf(tracee->ctx, "%s/s", shorter_host_dir);
+		shorter_host_path =
+		    talloc_asprintf(tracee->ctx, "%s/s", shorter_host_dir);
 		if (strlen(shorter_host_path) > sizeof_path)
 			return -EINVAL;
 
 		/* Bing the guest path to a shorter host path.  */
-		binding = insort_binding3(tracee, tracee->ctx, shorter_host_path, user_path);
+		binding =
+		    insort_binding3(tracee, tracee->ctx, shorter_host_path,
+				    user_path);
 		if (binding == NULL)
 			return -EINVAL;
 
@@ -166,7 +174,8 @@ int translate_socketcall_enter(Tracee *tracee, word_t *address, int size)
  * @size_addr and @max_size parameters.  This function returns -errno
  * if an error occurred, otherwise 0.
  */
-int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr, word_t max_size)
+int translate_socketcall_exit(Tracee *tracee, word_t sock_addr,
+			      word_t size_addr, word_t max_size)
 {
 	struct sockaddr_un sockaddr;
 	bool is_truncated = false;
@@ -182,7 +191,9 @@ int translate_socketcall_exit(Tracee *tracee, word_t sock_addr, word_t size_addr
 		return -errno;
 
 	max_size = MIN(max_size, sizeof(sockaddr));
-	status = read_sockaddr_un(tracee, &sockaddr, max_size, path, sock_addr, size);
+	status =
+	    read_sockaddr_un(tracee, &sockaddr, max_size, path, sock_addr,
+			     size);
 	if (status <= 0)
 		return status;
 

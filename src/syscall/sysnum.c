@@ -52,22 +52,22 @@ static void get_sysnums(Abi abi, Sysnums *sysnums)
 {
 	switch (abi) {
 	case ABI_DEFAULT:
-		sysnums->table  = SYSNUMS_ABI1;
+		sysnums->table = SYSNUMS_ABI1;
 		sysnums->length = sizeof(SYSNUMS_ABI1) / sizeof(Sysnum);
 		sysnums->offset = 0;
 		return;
 #ifdef SYSNUMS_ABI2
 	case ABI_2:
-		sysnums->table  = SYSNUMS_ABI2;
+		sysnums->table = SYSNUMS_ABI2;
 		sysnums->length = sizeof(SYSNUMS_ABI2) / sizeof(Sysnum);
 		sysnums->offset = 0;
 		return;
 #endif
 #ifdef SYSNUMS_ABI3
 	case ABI_3:
-		sysnums->table  = SYSNUMS_ABI3;
+		sysnums->table = SYSNUMS_ABI3;
 		sysnums->length = sizeof(SYSNUMS_ABI3) / sizeof(Sysnum);
-		sysnums->offset = 0x40000000; /* x32 */
+		sysnums->offset = 0x40000000;	/* x32 */
 		return;
 #endif
 	default:
@@ -127,7 +127,8 @@ word_t detranslate_sysnum(Abi abi, Sysnum sysnum)
  */
 Sysnum get_sysnum(const Tracee *tracee, RegVersion version)
 {
-	return translate_sysnum(get_abi(tracee), peek_reg(tracee, version, SYSARG_NUM));
+	return translate_sysnum(get_abi(tracee),
+				peek_reg(tracee, version, SYSARG_NUM));
 }
 
 /**
@@ -137,7 +138,8 @@ Sysnum get_sysnum(const Tracee *tracee, RegVersion version)
  */
 void set_sysnum(Tracee *tracee, Sysnum sysnum)
 {
-	poke_reg(tracee, SYSARG_NUM, detranslate_sysnum(get_abi(tracee), sysnum));
+	poke_reg(tracee, SYSARG_NUM,
+		 detranslate_sysnum(get_abi(tracee), sysnum));
 }
 
 /**
@@ -145,11 +147,11 @@ void set_sysnum(Tracee *tracee, Sysnum sysnum)
  */
 const char *stringify_sysnum(Sysnum sysnum)
 {
-	#define SYSNUM(item) [ PR_ ## item ] = #item,
+#define SYSNUM(item) [ PR_ ## item ] = #item,
 	static const char *names[] = {
-		#include "syscall/sysnums.list"
+#include "syscall/sysnums.list"
 	};
-	#undef SYSNUM
+#undef SYSNUM
 
 	if (sysnum == 0)
 		return "void";

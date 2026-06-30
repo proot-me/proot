@@ -24,7 +24,7 @@
 #define TRACEE_ABI_H
 
 #include <stdbool.h>
-#include <stddef.h> /* offsetof(),  */
+#include <stddef.h>		/* offsetof(),  */
 
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
@@ -34,8 +34,8 @@
 
 typedef enum {
 	ABI_DEFAULT = 0,
-	ABI_2, /* x86_32 on x86_64.  */
-	ABI_3, /* x32 on x86_64.  */
+	ABI_2,			/* x86_32 on x86_64.  */
+	ABI_3,			/* x32 on x86_64.  */
 	NB_MAX_ABIS,
 } Abi;
 
@@ -100,8 +100,7 @@ static inline bool is_32on64_mode(const Tracee *tracee UNUSED)
 static inline size_t sizeof_word(const Tracee *tracee)
 {
 	return (is_32on64_mode(tracee)
-		? sizeof(word_t) / 2
-		: sizeof(word_t));
+		? sizeof(word_t) / 2 : sizeof(word_t));
 }
 
 #include <sys/stat.h>
@@ -113,8 +112,7 @@ static inline size_t sizeof_word(const Tracee *tracee)
 static inline off_t offsetof_stat_uid(const Tracee *tracee)
 {
 	return (is_32on64_mode(tracee)
-		? OFFSETOF_STAT_UID_32
-		: offsetof(struct stat, st_uid));
+		? OFFSETOF_STAT_UID_32 : offsetof(struct stat, st_uid));
 }
 
 /**
@@ -124,8 +122,7 @@ static inline off_t offsetof_stat_uid(const Tracee *tracee)
 static inline off_t offsetof_stat_gid(const Tracee *tracee)
 {
 	return (is_32on64_mode(tracee)
-		? OFFSETOF_STAT_GID_32
-		: offsetof(struct stat, st_gid));
+		? OFFSETOF_STAT_GID_32 : offsetof(struct stat, st_gid));
 }
 
-#endif /* TRACEE_ABI_H */
+#endif				/* TRACEE_ABI_H */

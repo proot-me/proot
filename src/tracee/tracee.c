@@ -20,20 +20,21 @@
  * 02110-1301 USA.
  */
 
-#include <sched.h>      /* CLONE_*,  */
-#include <sys/types.h>  /* pid_t, size_t, */
-#include <stdlib.h>     /* NULL, */
-#include <assert.h>     /* assert(3), */
-#include <string.h>     /* bzero(3), */
-#include <stdbool.h>    /* bool, true, false, */
-#include <sys/queue.h>  /* LIST_*,  */
-#include <talloc.h>     /* talloc_*, */
-#include <signal.h>     /* kill(2), SIGKILL, */
-#include <sys/ptrace.h> /* ptrace(2), PTRACE_*, */
-#include <errno.h>      /* E*, */
-#include <inttypes.h>   /* PRI*, */
+#include <sched.h>		/* CLONE_*,  */
+#include <sys/types.h>		/* pid_t, size_t, */
+#include <stdlib.h>		/* NULL, */
+#include <assert.h>		/* assert(3), */
+#include <string.h>		/* bzero(3), */
+#include <stdbool.h>		/* bool, true, false, */
+#include <sys/queue.h>		/* LIST_*,  */
+#include <talloc.h>		/* talloc_*, */
+#include <signal.h>		/* kill(2), SIGKILL, */
+#include <sys/ptrace.h>		/* ptrace(2), PTRACE_*, */
+#include <errno.h>		/* E*, */
+#include <inttypes.h>		/* PRI*, */
 
 #include "tracee/tracee.h"
+#include "tracee/mem.h"
 #include "tracee/reg.h"
 #include "path/binding.h"
 #include "syscall/sysnum.h"
@@ -68,7 +69,8 @@ static int remove_zombie(Tracee *zombie)
  * type, before it gets unlinked from @tracee_->life_context.
  */
 static void clean_life_span_object(const void *pointer, int depth UNUSED,
-				int max_depth UNUSED, int is_ref UNUSED, void *tracee_)
+				   int max_depth UNUSED, int is_ref UNUSED,
+				   void *tracee_)
 {
 	Binding *binding;
 	Tracee *tracee;
@@ -96,7 +98,8 @@ static int remove_tracee(Tracee *tracee)
 
 	/* Clean objects that are linked to this tracee's life
 	 * span.  */
-	talloc_report_depth_cb(tracee->life_context, 0, 100, clean_life_span_object, tracee);
+	talloc_report_depth_cb(tracee->life_context, 0, 100,
+			       clean_life_span_object, tracee);
 
 	/* This could be optimize by using a dedicated list of
 	 * children and ptracees.  */
@@ -112,15 +115,21 @@ static int remove_tracee(Tracee *tracee)
 
 			if (relative->as_ptracee.event4.proot.pending) {
 				event = handle_tracee_event(relative,
-							relative->as_ptracee.event4.proot.value);
+							    relative->
+							    as_ptracee.
+							    event4.proot.
+							    value);
 				(void) restart_tracee(relative, event);
-			}
-			else if (relative->as_ptracee.event4.ptracer.pending) {
-				event = relative->as_ptracee.event4.proot.value;
+			} else if (relative->as_ptracee.event4.ptracer.
+				   pending) {
+				event =
+				    relative->as_ptracee.event4.proot.
+				    value;
 				(void) restart_tracee(relative, event);
 			}
 
-			bzero(&relative->as_ptracee, sizeof(relative->as_ptracee));
+			bzero(&relative->as_ptracee,
+			      sizeof(relative->as_ptracee));
 		}
 	}
 
@@ -203,7 +212,7 @@ Tracee *new_dummy_tracee(TALLOC_CTX *context)
 
 	return tracee;
 
-no_mem:
+      no_mem:
 	TALLOC_FREE(tracee);
 	return NULL;
 }
@@ -244,7 +253,7 @@ static Tracee *new_tracee(pid_t pid)
  * returns NULL if there's no such ptracee.
  */
 Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
-			bool only_with_pevent, word_t wait_options)
+		    bool only_with_pevent, word_t wait_options)
 {
 	Tracee *ptracee;
 
@@ -302,9 +311,10 @@ Tracee *get_ptracee(const Tracee *ptracer, pid_t pid, bool only_stopped,
  * returned (or NULL).
  */
 Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
-			bool only_with_pevent, word_t wait_options)
+			    bool only_with_pevent, word_t wait_options)
 {
-	return get_ptracee(ptracer, pid, true, only_with_pevent, wait_options);
+	return get_ptracee(ptracer, pid, true, only_with_pevent,
+			   wait_options);
 }
 
 /**
@@ -313,7 +323,8 @@ Tracee *get_stopped_ptracee(const Tracee *ptracer, pid_t pid,
  */
 bool has_ptracees(const Tracee *ptracer, pid_t pid, word_t wait_options)
 {
-	return (get_ptracee(ptracer, pid, false, false, wait_options) != NULL);
+	return (get_ptracee(ptracer, pid, false, false, wait_options) !=
+		NULL);
 }
 
 /**
@@ -329,7 +340,7 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
 	 * the current one: there's likely pointers to the
 	 * sub-allocated data in the caller.  */
 	if (current_tracee != NULL && current_tracee->pid == pid)
-		return (Tracee *)current_tracee;
+		return (Tracee *) current_tracee;
 
 	LIST_FOREACH(tracee, &tracees, link) {
 		if (tracee->pid == pid) {
@@ -349,15 +360,15 @@ Tracee *get_tracee(const Tracee *current_tracee, pid_t pid, bool create)
  */
 void terminate_tracee(Tracee *tracee)
 {
-        tracee->terminated = true;
+	tracee->terminated = true;
 
-        /* Case where the terminated tracee is marked
-           to kill all tracees on exit.
-        */
-        if (tracee->killall_on_exit) {
-                VERBOSE(tracee, 1, "terminating all tracees on exit");
-                kill_all_tracees();
-        }
+	/* Case where the terminated tracee is marked
+	   to kill all tracees on exit.
+	 */
+	if (tracee->killall_on_exit) {
+		VERBOSE(tracee, 1, "terminating all tracees on exit");
+		kill_all_tracees();
+	}
 }
 
 /**
@@ -403,10 +414,11 @@ int new_child(Tracee *parent, word_t clone_flags)
 	status = fetch_regs(parent);
 	if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone)
 		clone_flags = peek_reg(parent, CURRENT, SYSARG_1);
-        else if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone3)
-                // Look at the first word of the clone_args structure, which
-                // contains the usual clone flags.
-                clone_flags = peek_word(parent, peek_reg(parent, CURRENT, SYSARG_1));
+	else if (status >= 0 && get_sysnum(parent, CURRENT) == PR_clone3)
+		// Look at the first word of the clone_args structure, which
+		// contains the usual clone flags.
+		clone_flags =
+		    peek_word(parent, peek_reg(parent, CURRENT, SYSARG_1));
 
 	/* Get the pid of the parent's new child.  */
 	status = ptrace(PTRACE_GETEVENTMSG, parent->pid, NULL, &pid);
@@ -423,15 +435,15 @@ int new_child(Tracee *parent, word_t clone_flags)
 
 	/* Sanity checks.  */
 	assert(child != NULL
-	    && child->exe == NULL
-	    && child->fs->cwd == NULL
-	    && child->fs->bindings.pending == NULL
-	    && child->fs->bindings.guest == NULL
-	    && child->fs->bindings.host == NULL
-	    && child->qemu == NULL
-	    && child->glue == NULL
-	    && child->parent == NULL
-	    && child->as_ptracee.ptracer == NULL);
+	       && child->exe == NULL
+	       && child->fs->cwd == NULL
+	       && child->fs->bindings.pending == NULL
+	       && child->fs->bindings.guest == NULL
+	       && child->fs->bindings.host == NULL
+	       && child->qemu == NULL
+	       && child->glue == NULL
+	       && child->parent == NULL
+	       && child->as_ptracee.ptracer == NULL);
 
 	child->verbose = parent->verbose;
 	child->seccomp = parent->seccomp;
@@ -454,8 +466,8 @@ int new_child(Tracee *parent, word_t clone_flags)
 	 */
 	TALLOC_FREE(child->heap);
 	child->heap = ((clone_flags & CLONE_VM) != 0)
-		? talloc_reference(child, parent->heap)
-		: talloc_memdup(child, parent->heap, sizeof(Heap));
+	    ? talloc_reference(child, parent->heap)
+	    : talloc_memdup(child, parent->heap, sizeof(Heap));
 	if (child->heap == NULL)
 		return -ENOMEM;
 
@@ -482,25 +494,27 @@ int new_child(Tracee *parent, word_t clone_flags)
 
 	/* Depending on how the new process is created, it may be
 	 * automatically traced by the parent's tracer.  */
-	ptrace_options = ( clone_flags == 0			? PTRACE_O_TRACEFORK
-			: (clone_flags & 0xFF) == SIGCHLD	? PTRACE_O_TRACEFORK
-			: (clone_flags & CLONE_VFORK) != 0	? PTRACE_O_TRACEVFORK
-			: 					  PTRACE_O_TRACECLONE);
+	ptrace_options = (clone_flags == 0 ? PTRACE_O_TRACEFORK
+			  : (clone_flags & 0xFF) ==
+			  SIGCHLD ? PTRACE_O_TRACEFORK : (clone_flags &
+							  CLONE_VFORK) !=
+			  0 ? PTRACE_O_TRACEVFORK : PTRACE_O_TRACECLONE);
 	if (parent->as_ptracee.ptracer != NULL
-	    && (   (ptrace_options & parent->as_ptracee.options) != 0
+	    && ((ptrace_options & parent->as_ptracee.options) != 0
 		|| (clone_flags & CLONE_PTRACE) != 0)) {
 		attach_to_ptracer(child, parent->as_ptracee.ptracer);
 
 		/* All these flags are inheritable, no matter why this
 		 * child is being traced.  */
 		child->as_ptracee.options |= (parent->as_ptracee.options
-					      & ( PTRACE_O_TRACECLONE
-						| PTRACE_O_TRACEEXEC
-						| PTRACE_O_TRACEEXIT
-						| PTRACE_O_TRACEFORK
-						| PTRACE_O_TRACESYSGOOD
-						| PTRACE_O_TRACEVFORK
-						| PTRACE_O_TRACEVFORKDONE));
+					      & (PTRACE_O_TRACECLONE
+						 | PTRACE_O_TRACEEXEC
+						 | PTRACE_O_TRACEEXIT
+						 | PTRACE_O_TRACEFORK
+						 | PTRACE_O_TRACESYSGOOD
+						 | PTRACE_O_TRACEVFORK
+						 |
+						 PTRACE_O_TRACEVFORKDONE));
 	}
 
 	/* If CLONE_FS is set, the parent and the child process share
@@ -522,8 +536,7 @@ int new_child(Tracee *parent, word_t clone_flags)
 	if ((clone_flags & CLONE_FS) != 0) {
 		/* File-system name-space is shared.  */
 		child->fs = talloc_reference(child, parent->fs);
-	}
-	else {
+	} else {
 		/* File-system name-space is copied.  */
 		child->fs = talloc_zero(child, FileSystemNameSpace);
 		if (child->fs == NULL)
@@ -538,8 +551,11 @@ int new_child(Tracee *parent, word_t clone_flags)
 		 * "mount --bind" made by a process affects all other processes
 		 * under Linux.  Actually they are copied when a sub
 		 * reconfiguration occured (nested proot or chroot(2)).  */
-		child->fs->bindings.guest = talloc_reference(child->fs, parent->fs->bindings.guest);
-		child->fs->bindings.host  = talloc_reference(child->fs, parent->fs->bindings.host);
+		child->fs->bindings.guest =
+		    talloc_reference(child->fs,
+				     parent->fs->bindings.guest);
+		child->fs->bindings.host =
+		    talloc_reference(child->fs, parent->fs->bindings.host);
 	}
 
 	/* The path to the executable is unshared only once the child
@@ -549,8 +565,10 @@ int new_child(Tracee *parent, word_t clone_flags)
 	child->qemu = talloc_reference(child, parent->qemu);
 	child->glue = talloc_reference(child, parent->glue);
 
-	child->host_ldso_paths  = talloc_reference(child, parent->host_ldso_paths);
-	child->guest_ldso_paths = talloc_reference(child, parent->guest_ldso_paths);
+	child->host_ldso_paths =
+	    talloc_reference(child, parent->host_ldso_paths);
+	child->guest_ldso_paths =
+	    talloc_reference(child, parent->guest_ldso_paths);
 
 	child->tool_name = parent->tool_name;
 
@@ -568,20 +586,23 @@ int new_child(Tracee *parent, word_t clone_flags)
 			/* Sanity check.  */
 			assert(!child->as_ptracee.tracing_started);
 
-			keep_stopped = handle_ptracee_event(child, __W_STOPCODE(SIGSTOP));
+			keep_stopped =
+			    handle_ptracee_event(child,
+						 __W_STOPCODE(SIGSTOP));
 
 			/* Note that this event was already handled by
 			 * PRoot since child->as_ptracee.ptracer was
 			 * NULL up to now.  */
 			child->as_ptracee.event4.proot.pending = false;
-			child->as_ptracee.event4.proot.value   = 0;
+			child->as_ptracee.event4.proot.value = 0;
 		}
 
 		if (!keep_stopped)
 			(void) restart_tracee(child, 0);
 	}
 
-	VERBOSE(child, 1, "vpid %" PRIu64 ": pid %d", child->vpid, child->pid);
+	VERBOSE(child, 1, "vpid %" PRIu64 ": pid %d", child->vpid,
+		child->pid);
 
 	return 0;
 }
@@ -618,7 +639,7 @@ int swap_config(Tracee *tracee1, Tracee *tracee2)
 	if (tmp == NULL)
 		return -ENOMEM;
 
-	reparent_config(tmp,     tracee1);
+	reparent_config(tmp, tracee1);
 	reparent_config(tracee1, tracee2);
 	reparent_config(tracee2, tmp);
 
@@ -631,5 +652,5 @@ void kill_all_tracees()
 	Tracee *tracee;
 
 	LIST_FOREACH(tracee, &tracees, link)
-		kill(tracee->pid, SIGKILL);
+	    kill(tracee->pid, SIGKILL);
 }

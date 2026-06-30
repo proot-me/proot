@@ -20,11 +20,11 @@
  * 02110-1301 USA.
  */
 
-#include <errno.h>  /* errno, */
-#include <string.h> /* strerror(3), */
-#include <stdarg.h> /* va_*, */
-#include <stdio.h>  /* vfprintf(3), */
-#include <limits.h> /* INT_MAX, */
+#include <errno.h>		/* errno, */
+#include <string.h>		/* strerror(3), */
+#include <stdarg.h>		/* va_*, */
+#include <stdio.h>		/* vfprintf(3), */
+#include <limits.h>		/* INT_MAX, */
 
 #include "cli/note.h"
 #include "tracee/tracee.h"
@@ -36,7 +36,8 @@ const char *global_tool_name;
  * Print @message to the standard error stream according to its
  * @severity and @origin.
  */
-void note(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...)
+void note(const Tracee *tracee, Severity severity, Origin origin,
+	  const char *message, ...)
 {
 	const char *tool_name;
 	va_list extra_params;
@@ -44,11 +45,10 @@ void note(const Tracee *tracee, Severity severity, Origin origin, const char *me
 
 	if (tracee == NULL) {
 		verbose_level = global_verbose_level;
-		tool_name     = global_tool_name ?: "";
-	}
-	else {
+		tool_name = global_tool_name ? : "";
+	} else {
 		verbose_level = tracee->verbose;
-		tool_name     = tracee->tool_name;
+		tool_name = tracee->tool_name;
 	}
 
 	if (verbose_level < 0 && severity != ERROR)
@@ -94,4 +94,3 @@ void note(const Tracee *tracee, Severity severity, Origin origin, const char *me
 
 	return;
 }
-

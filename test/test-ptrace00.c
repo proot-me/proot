@@ -16,7 +16,7 @@ int main(void)
 	int status;
 	pid_t pid;
 
-	switch(pid = fork()) {
+	switch (pid = fork()) {
 	case -1:
 		perror("fork");
 		exit(EXIT_FAILURE);
@@ -41,33 +41,32 @@ int main(void)
 		if (pid < 0) {
 			perror("wait");
 			exit(EXIT_FAILURE);
-		}
-		else if (WIFEXITED(status)) {
+		} else if (WIFEXITED(status)) {
 			if (WEXITSTATUS(status) == 0) {
-				fprintf(stderr, ">>> EXITSTATUS(status) == 0\n");
+				fprintf(stderr,
+					">>> EXITSTATUS(status) == 0\n");
 				break;
 			}
 			fprintf(stderr, "WEXITSTATUS != 0\n");
 			exit(EXIT_FAILURE);
-		}
-		else if (WIFSIGNALED(status)) {
+		} else if (WIFSIGNALED(status)) {
 			fprintf(stderr, "WIFSIGNALED\n");
 			exit(EXIT_FAILURE);
-		}
-		else if (!WIFSTOPPED(status)) {
+		} else if (!WIFSTOPPED(status)) {
 			fprintf(stderr, "!WIFSTOPPED\n");
 			exit(EXIT_FAILURE);
-		}
-		else if (WSTOPSIG(status) == SIGSTOP) {
-			fprintf(stderr, ">>> ptrace(PTRACE_SETOPTIONS, ...)\n");
-			status = ptrace(PTRACE_SETOPTIONS, pid, 0,
-					PTRACE_O_TRACESYSGOOD |	PTRACE_O_TRACEEXEC);
+		} else if (WSTOPSIG(status) == SIGSTOP) {
+			fprintf(stderr,
+				">>> ptrace(PTRACE_SETOPTIONS, ...)\n");
+			status =
+			    ptrace(PTRACE_SETOPTIONS, pid, 0,
+				   PTRACE_O_TRACESYSGOOD |
+				   PTRACE_O_TRACEEXEC);
 			if (status < 0) {
 				perror("ptrace(PTRACE_SETOPTIONS)");
 				exit(EXIT_FAILURE);
 			}
-		}
-		else if (WSTOPSIG(status) == (SIGTRAP | 0x80)) {
+		} else if (WSTOPSIG(status) == (SIGTRAP | 0x80)) {
 			fprintf(stderr, ">>> does_work = true\n");
 			does_work = true;
 		}

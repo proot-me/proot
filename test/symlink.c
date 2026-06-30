@@ -1,8 +1,8 @@
-#include <unistd.h> /* syscall(2), */
-#include <stdio.h>  /* perror(3), fprintf(3), */
-#include <stdlib.h> /* exit(3), */
-#include <sys/syscall.h> /* SYS_symlink, */
-#include <fcntl.h> /* AT_FDCWD */
+#include <unistd.h>		/* syscall(2), */
+#include <stdio.h>		/* perror(3), fprintf(3), */
+#include <stdlib.h>		/* exit(3), */
+#include <sys/syscall.h>	/* SYS_symlink, */
+#include <fcntl.h>		/* AT_FDCWD */
 
 int main(int argc, char *argv[])
 {

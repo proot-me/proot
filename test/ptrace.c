@@ -13,12 +13,12 @@ int main(int argc, char **argv)
 	pid_t pid;
 
 	pid = (argc <= 1 ? fork() : vfork());
-	switch(pid) {
+	switch (pid) {
 	case -1:
 		perror("fork()");
 		exit(EXIT_FAILURE);
 
-	case 0: /* child */
+	case 0:		/* child */
 		sleep(2);
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
 		if (status < 0) {
@@ -29,13 +29,12 @@ int main(int argc, char **argv)
 		if (argc <= 1) {
 			kill(getpid(), SIGSTOP);
 			exit(EXIT_SUCCESS);
-		}
-		else {
+		} else {
 			execl("true", "true", NULL);
 			exit(EXIT_FAILURE);
 		}
 
-	default: /* parent */
+	default:		/* parent */
 		pid = waitpid(-1, &child_status, __WALL);
 		if (pid < 0) {
 			perror("waitpid()");

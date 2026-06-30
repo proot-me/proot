@@ -20,10 +20,10 @@
  * 02110-1301 USA.
  */
 
-#include <assert.h>     /* assert(3), */
-#include <talloc.h>     /* talloc_*, */
-#include <sys/queue.h>  /* LIST_*, */
-#include <strings.h>    /* bzero(3), */
+#include <assert.h>		/* assert(3), */
+#include <talloc.h>		/* talloc_*, */
+#include <sys/queue.h>		/* LIST_*, */
+#include <strings.h>		/* bzero(3), */
 
 #include "extension/extension.h"
 #include "cli/note.h"
@@ -52,7 +52,8 @@ static int remove_extension(Extension *extension)
  * its @tracee.  This function returns NULL on error, otherwise the
  * new extension.
  */
-static Extension *new_extension(Tracee *tracee, extension_callback_t callback)
+static Extension *new_extension(Tracee *tracee,
+				extension_callback_t callback)
 {
 	Extension *extension;
 
@@ -101,19 +102,23 @@ Extension *get_extension(Tracee *tracee, extension_callback_t callback)
  * to the command-line interface.  This function return -1 if an error
  * occurred, otherwise 0.
  */
-int initialize_extension(Tracee *tracee, extension_callback_t callback, const char *cli)
+int initialize_extension(Tracee *tracee, extension_callback_t callback,
+			 const char *cli)
 {
 	Extension *extension;
 	int status;
 
 	extension = new_extension(tracee, callback);
 	if (extension == NULL) {
-		note(tracee, WARNING, INTERNAL, "can't create a new extension");
+		note(tracee, WARNING, INTERNAL,
+		     "can't create a new extension");
 		return -1;
 	}
 
 	/* Remove the new extension if its initialized has failed.  */
-	status = extension->callback(extension, INITIALIZATION, (intptr_t) cli, 0);
+	status =
+	    extension->callback(extension, INITIALIZATION, (intptr_t) cli,
+				0);
 	if (status < 0) {
 		TALLOC_FREE(extension);
 		return status;
@@ -141,30 +146,38 @@ void inherit_extensions(Tracee *child, Tracee *parent, word_t clone_flags)
 	LIST_FOREACH(parent_extension, parent->extensions, link) {
 		/* Ask the parent how this extension is
 		 * inheritable.  */
-		status = parent_extension->callback(parent_extension, INHERIT_PARENT,
-						(intptr_t)child, clone_flags);
+		status =
+		    parent_extension->callback(parent_extension,
+					       INHERIT_PARENT,
+					       (intptr_t) child,
+					       clone_flags);
 
 		/* Not inheritable.  */
 		if (status < 0)
 			continue;
 
 		/* Inheritable...  */
-		child_extension = new_extension(child, parent_extension->callback);
+		child_extension =
+		    new_extension(child, parent_extension->callback);
 		if (child_extension == NULL) {
 			note(parent, WARNING, INTERNAL,
-				"can't create a new extension for pid %d", child->pid);
+			     "can't create a new extension for pid %d",
+			     child->pid);
 			continue;
 		}
 
 		if (status == 0) {
 			/* ... with a shared config or ...  */
 			child_extension->config =
-				talloc_reference(child_extension, parent_extension->config);
-		}
-		else {
+			    talloc_reference(child_extension,
+					     parent_extension->config);
+		} else {
 			/* ... with another inheritance model.  */
-			child_extension->callback(child_extension, INHERIT_CHILD,
-						(intptr_t)parent_extension, clone_flags);
+			child_extension->callback(child_extension,
+						  INHERIT_CHILD,
+						  (intptr_t)
+						  parent_extension,
+						  clone_flags);
 		}
 	}
 }

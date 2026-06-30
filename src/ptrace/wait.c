@@ -20,12 +20,12 @@
  * 02110-1301 USA.
  */
 
-#include <sys/ptrace.h> /* PTRACE_*,  */
-#include <errno.h>      /* E*, */
-#include <assert.h>     /* assert(3), */
-#include <stdbool.h>    /* bool, true, false, */
-#include <signal.h>     /* SIG*, */
-#include <talloc.h>     /* talloc*, */
+#include <sys/ptrace.h>		/* PTRACE_*,  */
+#include <errno.h>		/* E*, */
+#include <assert.h>		/* assert(3), */
+#include <stdbool.h>		/* bool, true, false, */
+#include <signal.h>		/* SIG*, */
+#include <talloc.h>		/* talloc*, */
 
 #include "ptrace/wait.h"
 #include "ptrace/ptrace.h"
@@ -55,15 +55,15 @@ static const char *stringify_event(int event)
 			return "stopped: SIGTRAP: 0x80";
 		case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_VFORK";
-		case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+		case SIGTRAP | PTRACE_EVENT_FORK << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_FORK";
-		case SIGTRAP | PTRACE_EVENT_VFORK_DONE  << 8:
+		case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_VFORK_DONE";
 		case SIGTRAP | PTRACE_EVENT_CLONE << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_CLONE";
-		case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
+		case SIGTRAP | PTRACE_EVENT_EXEC << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_EXEC";
-		case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
+		case SIGTRAP | PTRACE_EVENT_EXIT << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_EXIT";
 		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
 			return "stopped: SIGTRAP: PTRACE_EVENT_SECCOMP2";
@@ -100,7 +100,8 @@ int translate_wait_enter(Tracee *ptracer)
 	pid = (pid_t) peek_reg(ptracer, ORIGINAL, SYSARG_1);
 	if (pid != -1) {
 		ptracee = get_ptracee(ptracer, pid, false, true,
-				      peek_reg(ptracer, ORIGINAL, SYSARG_3));
+				      peek_reg(ptracer, ORIGINAL,
+					       SYSARG_3));
 		if (ptracee == NULL || PTRACEE.ptracer != ptracer)
 			return 0;
 	}
@@ -131,7 +132,7 @@ static int update_wait_status(Tracee *ptracer, Tracee *ptracee)
 	 * tracing parent ...  */
 	if (PTRACEE.ptracer == ptracee->parent
 	    && (WIFEXITED(PTRACEE.event4.ptracer.value)
-	     || WIFSIGNALED(PTRACEE.event4.ptracer.value))) {
+		|| WIFSIGNALED(PTRACEE.event4.ptracer.value))) {
 		/* ... So hide this terminating event (toward its
 		 * tracer, ie. PRoot) and make the second one appear
 		 * (towards its parent, ie. the ptracer).  This will
@@ -209,7 +210,8 @@ int translate_wait_exit(Tracee *ptracer, bool *set_result)
 			 * On error, -1 is returned.
 			 *
 			 * -- man 2 waitpid  */
-			return (has_ptracees(ptracer, pid, options) ? 0 : -ECHILD);
+			return (has_ptracees(ptracer, pid, options) ? 0 :
+				-ECHILD);
 		}
 
 		/* Otherwise put this ptracer in the "waiting for
@@ -245,7 +247,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 
 	/* Remember what the event initially was, this will be
 	 * required by PRoot to handle this event later.  */
-	PTRACEE.event4.proot.value   = event;
+	PTRACEE.event4.proot.value = event;
 	PTRACEE.event4.proot.pending = true;
 
 	/* By default, this ptracee should be kept stopped until its
@@ -256,7 +258,8 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	if (WIFSTOPPED(event)) {
 		switch ((event & 0xfff00) >> 8) {
 		case SIGTRAP | 0x80:
-			if (PTRACEE.ignore_syscalls || PTRACEE.ignore_loader_syscalls)
+			if (PTRACEE.ignore_syscalls
+			    || PTRACEE.ignore_loader_syscalls)
 				return false;
 
 			if ((PTRACEE.options & PTRACE_O_TRACESYSGOOD) == 0)
@@ -274,12 +277,12 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 			handled_by_proot_first = true;				\
 			break;
 
-		CASE_FILTER_EVENT(FORK);
-		CASE_FILTER_EVENT(VFORK);
-		CASE_FILTER_EVENT(VFORKDONE);
-		CASE_FILTER_EVENT(CLONE);
-		CASE_FILTER_EVENT(EXIT);
-		CASE_FILTER_EVENT(EXEC);
+			CASE_FILTER_EVENT(FORK);
+			CASE_FILTER_EVENT(VFORK);
+			CASE_FILTER_EVENT(VFORKDONE);
+			CASE_FILTER_EVENT(CLONE);
+			CASE_FILTER_EVENT(EXIT);
+			CASE_FILTER_EVENT(EXEC);
 
 			/* Never reached.  */
 			assert(0);
@@ -314,7 +317,9 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	 * PRoot first.  */
 	if (handled_by_proot_first) {
 		int signal;
-		signal = handle_tracee_event(ptracee, PTRACEE.event4.proot.value);
+		signal =
+		    handle_tracee_event(ptracee,
+					PTRACEE.event4.proot.value);
 		PTRACEE.event4.proot.value = signal;
 
 		/* The computed signal is always 0 since we can come
@@ -326,7 +331,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	/* Remember what the new event is, this will be required by
 	   the ptracer in translate_ptrace_exit() in order to restart
 	   this ptracee.  */
-	PTRACEE.event4.ptracer.value   = event;
+	PTRACEE.event4.ptracer.value = event;
 	PTRACEE.event4.ptracer.pending = true;
 
 	/* Notify asynchronously the ptracer about this event, as the
@@ -336,7 +341,7 @@ bool handle_ptracee_event(Tracee *ptracee, int event)
 	/* Note: wait_pid is set in translate_wait_exit() if no
 	 * ptracee event was pending when the ptracer started to
 	 * wait.  */
-	if (   (PTRACER.wait_pid == -1 || PTRACER.wait_pid == ptracee->pid)
+	if ((PTRACER.wait_pid == -1 || PTRACER.wait_pid == ptracee->pid)
 	    && EXPECTED_WAIT_CLONE(PTRACER.wait_options, ptracee)) {
 		bool restarted;
 		int status;

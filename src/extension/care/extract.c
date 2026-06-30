@@ -20,21 +20,21 @@
  * 02110-1301 USA.
  */
 
-#include <sys/types.h>  /* open(2), fstat(2), lseek(2), */
-#include <sys/stat.h>   /* open(2), fstat(2), */
-#include <sys/stat.h>   /* open(2), */
-#include <fcntl.h>      /* open(2), */
-#include <stdint.h>     /* *int*_t, *INT*_MAX, */
-#include <unistd.h>     /* fstat(2), read(2), lseek(2), */
-#include <sys/mman.h>   /* mmap(2), MAP_*, */
-#include <stdbool.h>    /* bool, true, false, */
-#include <assert.h>     /* assert(3), */
-#include <errno.h>      /* errno(3), */
-#include <string.h>     /* strerror(3), */
-#include <inttypes.h>   /* PRI*, */
-#include <endian.h>     /* be64toh(3), */
-#include <archive.h>    /* archive_*(3), */
-#include <archive_entry.h> /* archive_entry*(3), */
+#include <sys/types.h>		/* open(2), fstat(2), lseek(2), */
+#include <sys/stat.h>		/* open(2), fstat(2), */
+#include <sys/stat.h>		/* open(2), */
+#include <fcntl.h>		/* open(2), */
+#include <stdint.h>		/* *int*_t, *INT*_MAX, */
+#include <unistd.h>		/* fstat(2), read(2), lseek(2), */
+#include <sys/mman.h>		/* mmap(2), MAP_*, */
+#include <stdbool.h>		/* bool, true, false, */
+#include <assert.h>		/* assert(3), */
+#include <errno.h>		/* errno(3), */
+#include <string.h>		/* strerror(3), */
+#include <inttypes.h>		/* PRI*, */
+#include <endian.h>		/* be64toh(3), */
+#include <archive.h>		/* archive_*(3), */
+#include <archive_entry.h>	/* archive_entry*(3), */
 
 #include "extension/care/extract.h"
 #include "cli/note.h"
@@ -50,10 +50,9 @@ static int extract_archive(struct archive *archive)
 	int status;
 
 	int flags = ARCHIVE_EXTRACT_PERM
-		  | ARCHIVE_EXTRACT_TIME
-		  | ARCHIVE_EXTRACT_ACL
-		  | ARCHIVE_EXTRACT_FFLAGS
-		  | ARCHIVE_EXTRACT_XATTR;
+	    | ARCHIVE_EXTRACT_TIME
+	    | ARCHIVE_EXTRACT_ACL
+	    | ARCHIVE_EXTRACT_FFLAGS | ARCHIVE_EXTRACT_XATTR;
 
 	/* Avoid spurious warnings.  One should test for the CAP_CHOWN
 	 * capability instead but libarchive only does this test: */
@@ -65,18 +64,19 @@ static int extract_archive(struct archive *archive)
 		switch (status) {
 		case ARCHIVE_WARN:
 			note(NULL, WARNING, INTERNAL, "%s: %s",
-				archive_error_string(archive),
-				strerror(archive_errno(archive)));
+			     archive_error_string(archive),
+			     strerror(archive_errno(archive)));
 			/* FALLTHROUGH */
 		case ARCHIVE_OK:
-			note(NULL, INFO, USER, "extracted: %s", archive_entry_pathname(entry));
+			note(NULL, INFO, USER, "extracted: %s",
+			     archive_entry_pathname(entry));
 			break;
 
 		default:
 			result = -1;
 			note(NULL, ERROR, INTERNAL, "%s: %s",
-				archive_error_string(archive),
-				strerror(archive_errno(archive)));
+			     archive_error_string(archive),
+			     strerror(archive_errno(archive)));
 			break;
 		}
 	}
@@ -85,8 +85,7 @@ static int extract_archive(struct archive *archive)
 }
 
 /* Data used by archive_[open/read/close] callbacks.  */
-typedef struct
-{
+typedef struct {
 	uint8_t buffer[4096];
 	const char *path;
 	size_t size_remaining;
@@ -127,8 +126,10 @@ static int open_callback(struct archive *archive, void *data_)
 	if (statf.st_size < (off_t) sizeof(AutoExtractInfo))
 		return ARCHIVE_OK;
 
-	offset = lseek(data->fd, statf.st_size - sizeof(AutoExtractInfo), SEEK_SET);
-	if (offset == (off_t) -1) {
+	offset =
+	    lseek(data->fd, statf.st_size - sizeof(AutoExtractInfo),
+		  SEEK_SET);
+	if (offset == (off_t) - 1) {
 		archive_set_error(archive, errno, "can't seek in archive");
 		return ARCHIVE_FATAL;
 	}
@@ -139,19 +140,20 @@ static int open_callback(struct archive *archive, void *data_)
 		return ARCHIVE_FATAL;
 	}
 
-	if (   status == sizeof(AutoExtractInfo)
+	if (status == sizeof(AutoExtractInfo)
 	    && strcmp(info.signature, AUTOEXTRACT_SIGNATURE) == 0) {
 		/* This is a self-extracting archive, retrieve it's
 		 * offset and size.  */
 
 		data->size_remaining = be64toh(info.size);
-		offset = statf.st_size - data->size_remaining - sizeof(AutoExtractInfo);
+		offset =
+		    statf.st_size - data->size_remaining -
+		    sizeof(AutoExtractInfo);
 
 		note(NULL, INFO, USER,
-			"archive found: offset = %" PRIu64 ", size = %" PRIu64 "",
-			(uint64_t) offset, data->size_remaining);
-	}
-	else {
+		     "archive found: offset = %" PRIu64 ", size = %" PRIu64
+		     "", (uint64_t) offset, data->size_remaining);
+	} else {
 		/* This is not a self-extracting archive, assume it's
 		 * a regular one...  */
 		offset = 0;
@@ -164,7 +166,7 @@ static int open_callback(struct archive *archive, void *data_)
 	}
 
 	offset = lseek(data->fd, offset, SEEK_SET);
-	if (offset == (off_t) -1) {
+	if (offset == (off_t) - 1) {
 		archive_set_error(archive, errno, "can't seek in archive");
 		return ARCHIVE_FATAL;
 	}
@@ -185,7 +187,8 @@ static int open_callback(struct archive *archive, void *data_)
  *
  *  -- man 3 archive_read_open.
  */
-static ssize_t read_callback(struct archive *archive, void *data_, const void **buffer)
+static ssize_t read_callback(struct archive *archive, void *data_,
+			     const void **buffer)
 {
 	CallbackData *data = talloc_get_type_abort(data_, CallbackData);
 	ssize_t size = sizeof(data->buffer);
@@ -244,7 +247,8 @@ int extract_archive_from_file(const char *path)
 
 	archive = archive_read_new();
 	if (archive == NULL) {
-		note(NULL, ERROR, INTERNAL, "can't initialize archive structure");
+		note(NULL, ERROR, INTERNAL,
+		     "can't initialize archive structure");
 		status = -1;
 		goto end;
 	}
@@ -252,11 +256,10 @@ int extract_archive_from_file(const char *path)
 	status = archive_read_support_format_cpio(archive);
 	if (status == ARCHIVE_WARN) {
 		note(NULL, WARNING, INTERNAL, "set archive format: %s",
-			archive_error_string(archive));
-	}
-	else if (status != ARCHIVE_OK) {
+		     archive_error_string(archive));
+	} else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't set archive format: %s",
-			archive_error_string(archive));
+		     archive_error_string(archive));
 		status = -1;
 		goto end;
 	}
@@ -264,11 +267,10 @@ int extract_archive_from_file(const char *path)
 	status = archive_read_support_format_gnutar(archive);
 	if (status == ARCHIVE_WARN) {
 		note(NULL, WARNING, INTERNAL, "set archive format: %s",
-			archive_error_string(archive));
-	}
-	else if (status != ARCHIVE_OK) {
+		     archive_error_string(archive));
+	} else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't set archive format: %s",
-			archive_error_string(archive));
+		     archive_error_string(archive));
 		status = -1;
 		goto end;
 	}
@@ -276,11 +278,10 @@ int extract_archive_from_file(const char *path)
 	status = archive_read_support_filter_gzip(archive);
 	if (status == ARCHIVE_WARN) {
 		note(NULL, WARNING, INTERNAL, "add archive filter: %s",
-			archive_error_string(archive));
-	}
-	else if (status != ARCHIVE_OK) {
+		     archive_error_string(archive));
+	} else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
-			archive_error_string(archive));
+		     archive_error_string(archive));
 		status = -1;
 		goto end;
 	}
@@ -288,18 +289,18 @@ int extract_archive_from_file(const char *path)
 	status = archive_read_support_filter_lzop(archive);
 	if (status == ARCHIVE_WARN) {
 		note(NULL, WARNING, INTERNAL, "add archive filter: %s",
-			archive_error_string(archive));
-	}
-	else if (status != ARCHIVE_OK) {
+		     archive_error_string(archive));
+	} else if (status != ARCHIVE_OK) {
 		note(NULL, ERROR, INTERNAL, "can't add archive filter: %s",
-			archive_error_string(archive));
+		     archive_error_string(archive));
 		status = -1;
 		goto end;
 	}
 
 	data = talloc_zero(NULL, CallbackData);
 	if (data == NULL) {
-		note(NULL, ERROR, INTERNAL, "can't allocate callback data");
+		note(NULL, ERROR, INTERNAL,
+		     "can't allocate callback data");
 		status = -1;
 		goto end;
 
@@ -307,41 +308,46 @@ int extract_archive_from_file(const char *path)
 
 	data->path = talloc_strdup(data, path);
 	if (data->path == NULL) {
-		note(NULL, ERROR, INTERNAL, "can't allocate callback data path");
+		note(NULL, ERROR, INTERNAL,
+		     "can't allocate callback data path");
 		status = -1;
 		goto end;
 
 	}
 
-	status = archive_read_open(archive, data, open_callback, read_callback, close_callback);
+	status =
+	    archive_read_open(archive, data, open_callback, read_callback,
+			      close_callback);
 	if (status == ARCHIVE_WARN) {
 		if (archive_error_string(archive) != NULL)
 			note(NULL, WARNING, INTERNAL, "read archive: %s",
-				archive_error_string(archive));
-	}
-	else if (status != ARCHIVE_OK) {
+			     archive_error_string(archive));
+	} else if (status != ARCHIVE_OK) {
 		/* Don't complain if no error message were registered,
 		 * ie. when testing for a self-extracting archive.  */
 		if (archive_error_string(archive) != NULL)
-			note(NULL, ERROR, INTERNAL, "can't read archive: %s",
-				archive_error_string(archive));
+			note(NULL, ERROR, INTERNAL,
+			     "can't read archive: %s",
+			     archive_error_string(archive));
 		status = -1;
 		goto end;
 	}
 
 	status = extract_archive(archive);
-end:
+      end:
 	if (archive != NULL) {
 		status2 = archive_read_close(archive);
 		if (status2 != ARCHIVE_OK) {
-			note(NULL, WARNING, INTERNAL, "can't close archive: %s",
-				archive_error_string(archive));
+			note(NULL, WARNING, INTERNAL,
+			     "can't close archive: %s",
+			     archive_error_string(archive));
 		}
 
 		status2 = archive_read_free(archive);
 		if (status2 != ARCHIVE_OK) {
-			note(NULL, WARNING, INTERNAL, "can't free archive: %s",
-				archive_error_string(archive));
+			note(NULL, WARNING, INTERNAL,
+			     "can't free archive: %s",
+			     archive_error_string(archive));
 		}
 	}
 

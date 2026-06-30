@@ -20,15 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <fcntl.h>  /* open(2), */
-#include <unistd.h> /* read(2), close(2), */
-#include <errno.h>  /* EACCES, ENOTSUP, */
-#include <stdint.h> /* UINT64_MAX, */
-#include <limits.h> /* PATH_MAX, */
-#include <string.h> /* str*(3), memcpy(3), */
-#include <assert.h> /* assert(3), */
-#include <talloc.h> /* talloc_*, */
-#include <stdbool.h> /* bool, true, false,  */
+#include <fcntl.h>		/* open(2), */
+#include <unistd.h>		/* read(2), close(2), */
+#include <errno.h>		/* EACCES, ENOTSUP, */
+#include <stdint.h>		/* UINT64_MAX, */
+#include <limits.h>		/* PATH_MAX, */
+#include <string.h>		/* str*(3), memcpy(3), */
+#include <assert.h>		/* assert(3), */
+#include <talloc.h>		/* talloc_*, */
+#include <stdbool.h>		/* bool, true, false,  */
 
 #include "execve/elf.h"
 #include "tracee/tracee.h"
@@ -71,14 +71,14 @@ int open_elf(const char *t_path, ElfHeader *elf_header)
 	}
 
 	/* Check if it is a known class (32-bit or 64-bit).  */
-	if (   !IS_CLASS32(*elf_header)
+	if (!IS_CLASS32(*elf_header)
 	    && !IS_CLASS64(*elf_header)) {
 		status = -ENOEXEC;
 		goto end;
 	}
 
 	status = 0;
-end:
+      end:
 	/* Delayed error handling.  */
 	if (status < 0) {
 		close(fd);
@@ -94,8 +94,10 @@ end:
  * This function returns -errno if an error occured, or it returns
  * immediately the value != 0 returned by @callback, otherwise 0.
  */
-int iterate_program_headers(const Tracee *tracee, int fd, const ElfHeader *elf_header,
-			program_headers_iterator_t callback, void *data)
+int iterate_program_headers(const Tracee *tracee, int fd,
+			    const ElfHeader *elf_header,
+			    program_headers_iterator_t callback,
+			    void *data)
 {
 	ProgramHeader program_header;
 
@@ -107,9 +109,9 @@ int iterate_program_headers(const Tracee *tracee, int fd, const ElfHeader *elf_h
 	int i;
 
 	/* Get class-specific fields. */
-	elf_phnum     = ELF_FIELD(*elf_header, phnum);
+	elf_phnum = ELF_FIELD(*elf_header, phnum);
 	elf_phentsize = ELF_FIELD(*elf_header, phentsize);
-	elf_phoff     = ELF_FIELD(*elf_header, phoff);
+	elf_phoff = ELF_FIELD(*elf_header, phoff);
 
 	/*
 	 * Some sanity checks regarding the current
@@ -117,12 +119,14 @@ int iterate_program_headers(const Tracee *tracee, int fd, const ElfHeader *elf_h
 	 */
 
 	if (elf_phnum >= 0xffff) {
-		note(tracee, WARNING, INTERNAL, "%d: big PH tables are not yet supported.", fd);
+		note(tracee, WARNING, INTERNAL,
+		     "%d: big PH tables are not yet supported.", fd);
 		return -ENOTSUP;
 	}
 
 	if (!KNOWN_PHENTSIZE(*elf_header, elf_phentsize)) {
-		note(tracee, WARNING, INTERNAL, "%d: unsupported size of program header.", fd);
+		note(tracee, WARNING, INTERNAL,
+		     "%d: unsupported size of program header.", fd);
 		return -ENOTSUP;
 	}
 
@@ -156,7 +160,8 @@ bool is_host_elf(const Tracee *tracee, const char *host_path)
 	int i;
 
 	if (force_foreign < 0)
-		force_foreign = (getenv("PROOT_FORCE_FOREIGN_BINARY") != NULL);
+		force_foreign =
+		    (getenv("PROOT_FORCE_FOREIGN_BINARY") != NULL);
 
 	if (force_foreign > 0 || !tracee->qemu)
 		return false;
@@ -169,7 +174,8 @@ bool is_host_elf(const Tracee *tracee, const char *host_path)
 	elf_machine = ELF_FIELD(elf_header, machine);
 	for (i = 0; host_elf_machine[i] != 0; i++) {
 		if (host_elf_machine[i] == elf_machine) {
-			VERBOSE(tracee, 1, "'%s' is a host ELF", host_path);
+			VERBOSE(tracee, 1, "'%s' is a host ELF",
+				host_path);
 			return true;
 		}
 	}

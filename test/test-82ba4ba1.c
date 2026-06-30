@@ -12,14 +12,16 @@ int main(void)
 	status = getresuid(&ruid, &euid, &suid);
 	if (status != 0 || ruid != 0 || euid != 0 || suid != 0) {
 		perror("getresuid");
-		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid, (unsigned long) euid, (unsigned long) suid);
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid,
+			(unsigned long) euid, (unsigned long) suid);
 		exit(EXIT_FAILURE);
 	}
 
 	status = getresgid(&rgid, &egid, &sgid);
 	if (status != 0 || rgid != 0 || egid != 0 || sgid != 0) {
 		perror("getresgid");
-		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid, (unsigned long) euid, (unsigned long) suid);
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid,
+			(unsigned long) euid, (unsigned long) suid);
 		exit(EXIT_FAILURE);
 	}
 
@@ -32,13 +34,15 @@ int main(void)
 	status = getresgid(&rgid, &egid, &sgid);
 	if (status != 0 || rgid != 1 || egid != 1 || sgid != 1) {
 		perror("getresgid");
-		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) rgid, (unsigned long) egid, (unsigned long) sgid);
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) rgid,
+			(unsigned long) egid, (unsigned long) sgid);
 		exit(EXIT_FAILURE);
 	}
 
 	if (status != 0 || rgid != 1 || egid != 1 || sgid != 1) {
 		perror("getresgid");
-		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid, (unsigned long) euid, (unsigned long) suid);
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid,
+			(unsigned long) euid, (unsigned long) suid);
 		exit(EXIT_FAILURE);
 	}
 
@@ -51,7 +55,8 @@ int main(void)
 	status = getresuid(&ruid, &euid, &suid);
 	if (status != 0 || ruid != 1 || euid != 1 || suid != 1) {
 		perror("getresuid");
-		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid, (unsigned long) euid, (unsigned long) suid);
+		fprintf(stderr, "%ld %ld %ld\n", (unsigned long) ruid,
+			(unsigned long) euid, (unsigned long) suid);
 		exit(EXIT_FAILURE);
 	}
 

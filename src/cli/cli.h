@@ -14,7 +14,8 @@ typedef struct {
 } Argument;
 
 struct Cli;
-typedef int (*option_handler_t)(Tracee *tracee, const struct Cli *cli, const char *value);
+typedef int (*option_handler_t)(Tracee * tracee, const struct Cli * cli,
+				const char *value);
 
 typedef struct {
 	const char *class;
@@ -31,8 +32,9 @@ typedef struct {
 			 .detail = NULL								\
 			}
 
-typedef int (*initialization_hook_t)(Tracee *tracee, const struct Cli *cli,
-				size_t argc, char *const argv[], size_t cursor);
+typedef int (*initialization_hook_t)(Tracee * tracee,
+				     const struct Cli * cli, size_t argc,
+				     char *const argv[], size_t cursor);
 typedef struct Cli {
 	const char *name;
 	const char *version;
@@ -52,14 +54,16 @@ typedef struct Cli {
 	const Option options[];
 } Cli;
 
-extern const Cli *get_proot_cli(TALLOC_CTX *context);
-extern const Cli * WEAK get_care_cli(TALLOC_CTX *context);
+extern const Cli *get_proot_cli(TALLOC_CTX * context);
+extern const Cli *WEAK get_care_cli(TALLOC_CTX * context);
 
-extern void print_usage(Tracee *tracee, const Cli *cli, bool detailed);
-extern void print_version(const Cli *cli);
-extern int parse_integer_option(const Tracee *tracee, int *variable, const char *value, const char *option);
-extern const char *expand_front_variable(TALLOC_CTX *context, const char *string);
+extern void print_usage(Tracee * tracee, const Cli * cli, bool detailed);
+extern void print_version(const Cli * cli);
+extern int parse_integer_option(const Tracee * tracee, int *variable,
+				const char *value, const char *option);
+extern const char *expand_front_variable(TALLOC_CTX * context,
+					 const char *string);
 
 extern bool exit_failure;
 
-#endif /* CLI_H */
+#endif				/* CLI_H */

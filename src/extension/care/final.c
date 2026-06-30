@@ -20,16 +20,16 @@
  * 02110-1301 USA.
  */
 
-#include <unistd.h>       /* lstat(2), readlink(2), getpid(2), wirte(2), lseek(2), get*id(2), */
-#include <sys/types.h>    /* get*id(2), */
-#include <sys/stat.h>     /* struct stat, fchmod(2), */
-#include <linux/limits.h> /* PATH_MAX, */
-#include <sys/utsname.h>  /* uname(2), */
-#include <stdio.h>        /* fprintf(3), fclose(3), */
-#include <errno.h>        /* errno, ENAMETOOLONG, */
-#include <string.h>       /* strcpy(3), */
-#include <endian.h>       /* htobe64(3), */
-#include <assert.h>       /* assert(3), */
+#include <unistd.h>		/* lstat(2), readlink(2), getpid(2), wirte(2), lseek(2), get*id(2), */
+#include <sys/types.h>		/* get*id(2), */
+#include <sys/stat.h>		/* struct stat, fchmod(2), */
+#include <linux/limits.h>	/* PATH_MAX, */
+#include <sys/utsname.h>	/* uname(2), */
+#include <stdio.h>		/* fprintf(3), fclose(3), */
+#include <errno.h>		/* errno, ENAMETOOLONG, */
+#include <string.h>		/* strcpy(3), */
+#include <endian.h>		/* htobe64(3), */
+#include <assert.h>		/* assert(3), */
 
 #include "extension/care/final.h"
 #include "extension/care/care.h"
@@ -67,7 +67,8 @@ extern char **environ;
  * occured, otherwise 0.  Note: this function is called in @care's
  * destructor.
  */
-static int archive_close_file(const Care *care, FILE *file, const char *name)
+static int archive_close_file(const Care *care, FILE *file,
+			      const char *name)
 {
 	char path[PATH_MAX];
 	struct stat statl;
@@ -89,19 +90,21 @@ static int archive_close_file(const Care *care, FILE *file, const char *name)
 
 	location = talloc_asprintf(care, "%s/%s", care->prefix, name);
 	if (location == NULL) {
-		note(NULL, ERROR, INTERNAL, "can't allocate location for '%s'", name);
+		note(NULL, ERROR, INTERNAL,
+		     "can't allocate location for '%s'", name);
 		status = -1;
 		goto end;
 	}
 
 	status = readlink_proc_pid_fd(getpid(), fd, path);
 	if (status < 0) {
-		note(NULL, ERROR, INTERNAL, "can't readlink(/proc/self/fd/%d)", fd);
+		note(NULL, ERROR, INTERNAL,
+		     "can't readlink(/proc/self/fd/%d)", fd);
 		goto end;
 	}
 
 	status = archive(NULL, care->archive, path, location, &statl);
-end:
+      end:
 	(void) fclose(file);
 	return status;
 }
@@ -125,9 +128,11 @@ static const char *escape_quote(TALLOC_CTX *context, const char *input)
 		char buffer[2] = { input[i], '\0' };
 
 		if (buffer[0] == '\'')
-			output = talloc_strdup_append_buffer(output, "'\\''");
+			output =
+			    talloc_strdup_append_buffer(output, "'\\''");
 		else
-			output = talloc_strdup_append_buffer(output, buffer);
+			output =
+			    talloc_strdup_append_buffer(output, buffer);
 		if (output == NULL)
 			return NULL;
 	}
@@ -162,13 +167,15 @@ static int archive_re_execute_sh(Care *care)
 
 	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
-		note(NULL, ERROR, INTERNAL, "can't create temporary file for 're-execute.sh'");
+		note(NULL, ERROR, INTERNAL,
+		     "can't create temporary file for 're-execute.sh'");
 		return -1;
 	}
 
 	status = fchmod(fileno(file), 0755);
 	if (status < 0)
-		note(NULL, WARNING, SYSTEM, "can't make 're-execute.sh' executable");
+		note(NULL, WARNING, SYSTEM,
+		     "can't make 're-execute.sh' executable");
 
 	N("#! /bin/sh");
 	N("");
@@ -214,8 +221,9 @@ static int archive_re_execute_sh(Care *care)
 		if (volatile_envar != NULL)
 			C("'%1$s'=\"$%1$s\" ", volatile_envar);
 		else {
-			const char *string = escape_quote(care, environ[i]);
-			C("'%s' ", string ?: environ[i]);
+			const char *string =
+			    escape_quote(care, environ[i]);
+			C("'%s' ", string ? : environ[i]);
 		}
 	}
 
@@ -232,7 +240,8 @@ static int archive_re_execute_sh(Care *care)
 		STAILQ_FOREACH(item, care->volatile_paths, link) {
 			const char *name = talloc_get_name(item);
 			if (name[0] == '$')
-				C("-b \"%s:%s\" ", name, (char *) item->load);
+				C("-b \"%s:%s\" ", name,
+				  (char *) item->load);
 			else
 				C("-b \"%s\" ", (char *) item->load);
 		}
@@ -242,15 +251,12 @@ static int archive_re_execute_sh(Care *care)
 	if (status < 0) {
 		note(NULL, WARNING, SYSTEM, "can't get kernel release");
 		C("-k 3.17.0");
-	}
-	else {
+	} else {
 		C("-k '\\%s\\%s\\%s\\%s\\%s\\%s\\0\\' ",
-			utsname.sysname,
-			utsname.nodename,
-			utsname.release,
-			utsname.version,
-			utsname.machine,
-			utsname.domainname);
+		  utsname.sysname,
+		  utsname.nodename,
+		  utsname.release,
+		  utsname.version, utsname.machine, utsname.domainname);
 	}
 
 	C("-i %d:%d", getuid(), getgid());
@@ -264,7 +270,8 @@ static int archive_re_execute_sh(Care *care)
 	N("");
 
 	N("status=$?");
-	N("if [ $status -ne %d ] && [ $nbargs -eq 0 ]; then", care->last_exit_status);
+	N("if [ $status -ne %d ] && [ $nbargs -eq 0 ]; then",
+	  care->last_exit_status);
 	N("echo \"care: The reproduced execution didn't return the same exit status as the\"");
 	N("echo \"care: original execution.  If it is unexpected, please report this bug\"");
 	N("echo \"care: to CARE/PRoot developers:\"");
@@ -295,12 +302,12 @@ static int archive_concealed_accesses_txt(const Care *care)
 	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
 		note(NULL, WARNING, INTERNAL,
-			"can't create temporary file for 'concealed-accesses.txt'");
+		     "can't create temporary file for 'concealed-accesses.txt'");
 		return -1;
 	}
 
 	STAILQ_FOREACH(item, care->concealed_accesses, link)
-		N("%s", (char *) item->load);
+	    N("%s", (char *) item->load);
 
 	return archive_close_file(care, file, "concealed-accesses.txt");
 }
@@ -316,7 +323,8 @@ static int archive_readme_txt(const Care *care)
 
 	file = open_temp_file(NULL, "care");
 	if (file == NULL) {
-		note(NULL, WARNING, INTERNAL, "can't create temporary file for 'README.txt'");
+		note(NULL, WARNING, INTERNAL,
+		     "can't create temporary file for 'README.txt'");
 		return -1;
 	}
 
@@ -380,7 +388,8 @@ static int archive_myself(const Care *care)
 		errno = ENAMETOOLONG;
 	}
 	if (status < 0) {
-		note(NULL, ERROR, SYSTEM, "can't readlink '/proc/self/exe'");
+		note(NULL, ERROR, SYSTEM,
+		     "can't readlink '/proc/self/exe'");
 		return status;
 	}
 	path[status] = '\0';
@@ -393,7 +402,8 @@ static int archive_myself(const Care *care)
 
 	location = talloc_asprintf(care, "%s/proot", care->prefix);
 	if (location == NULL) {
-		note(NULL, ERROR, INTERNAL, "can't allocate location for 'proot'");
+		note(NULL, ERROR, INTERNAL,
+		     "can't allocate location for 'proot'");
 		return -1;
 	}
 
@@ -412,17 +422,20 @@ int finalize_care(Care *care)
 	/* Generate & archive the "re-execute.sh" script. */
 	status = archive_re_execute_sh(care);
 	if (status < 0)
-		note(NULL, WARNING, INTERNAL, "can't archive 're-execute.sh'");
+		note(NULL, WARNING, INTERNAL,
+		     "can't archive 're-execute.sh'");
 
 	/* Generate & archive the "concealed-accesses.txt" file. */
 	status = archive_concealed_accesses_txt(care);
 	if (status < 0)
-		note(NULL, WARNING, INTERNAL, "can't archive 'concealed-accesses.txt'");
+		note(NULL, WARNING, INTERNAL,
+		     "can't archive 'concealed-accesses.txt'");
 
 	/* Generate & archive the "README.txt" file. */
 	status = archive_readme_txt(care);
 	if (status < 0)
-		note(NULL, WARNING, INTERNAL, "can't archive 'README.txt'");
+		note(NULL, WARNING, INTERNAL,
+		     "can't archive 'README.txt'");
 
 #if defined(CARE_BINARY_IS_PORTABLE)
 	/* Archive "care" as "proot", these are the same binary. */
@@ -447,30 +460,39 @@ int finalize_care(Care *care)
 
 		status = write(care->archive->fd, &info, sizeof(info));
 		if (status != sizeof(info))
-			note(NULL, WARNING, SYSTEM, "can't write extracting information");
+			note(NULL, WARNING, SYSTEM,
+			     "can't write extracting information");
 
 		(void) close(care->archive->fd);
 		care->archive->fd = -1;
 
 		if (care->archive->offset == strlen("RAW"))
-			extractor = talloc_asprintf(care, "`care -x %s`", care->output);
+			extractor =
+			    talloc_asprintf(care, "`care -x %s`",
+					    care->output);
 		else
-			extractor = talloc_asprintf(care, "`%2$s%1$s` or `care -x %1$s`",
-						care->output, care->output[0] == '/' ? "" : "./");
-	}
-	else if (care->output[strlen(care->output) - 1] != '/')
-		extractor = talloc_asprintf(care, "`care -x %s`", care->output);
+			extractor =
+			    talloc_asprintf(care,
+					    "`%2$s%1$s` or `care -x %1$s`",
+					    care->output,
+					    care->output[0] ==
+					    '/' ? "" : "./");
+	} else if (care->output[strlen(care->output) - 1] != '/')
+		extractor =
+		    talloc_asprintf(care, "`care -x %s`", care->output);
 	else
 		extractor = NULL;
 
 	note(NULL, INFO, USER,
-		"----------------------------------------------------------------------");
+	     "----------------------------------------------------------------------");
 	note(NULL, INFO, USER, "Hints:");
 	note(NULL, INFO, USER,
-		"  - search for \"conceal\" in `care -h` if the execution didn't go as expected.");
+	     "  - search for \"conceal\" in `care -h` if the execution didn't go as expected.");
 
 	if (extractor != NULL)
-		note(NULL, INFO, USER, "  - run %s to extract the output archive correctly.", extractor);
+		note(NULL, INFO, USER,
+		     "  - run %s to extract the output archive correctly.",
+		     extractor);
 
 	return 0;
 }

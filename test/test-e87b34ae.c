@@ -1,9 +1,9 @@
-#include <unistd.h> /* syscall(2), fork(2), usleep(3), */
-#include <stdio.h>  /* perror(3), printf(3), */
-#include <limits.h> /* PATH_MAX, */
-#include <stdlib.h> /* exit(3), */
-#include <sys/syscall.h> /* SYS_readlink, SYS_getcwd, */
-#include <errno.h> /* errno, */
+#include <unistd.h>		/* syscall(2), fork(2), usleep(3), */
+#include <stdio.h>		/* perror(3), printf(3), */
+#include <limits.h>		/* PATH_MAX, */
+#include <stdlib.h>		/* exit(3), */
+#include <sys/syscall.h>	/* SYS_readlink, SYS_getcwd, */
+#include <errno.h>		/* errno, */
 
 int main(void)
 {
@@ -22,10 +22,10 @@ int main(void)
 			perror("fork()");
 			exit(EXIT_FAILURE);
 
-		case 0: /* child */
+		case 0:	/* child */
 			exit(EXIT_SUCCESS);
 
-		default: /* parent */
+		default:	/* parent */
 			break;
 		}
 	}

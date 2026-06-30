@@ -13,7 +13,7 @@ static void *routine(void *path)
 	status = chdir(path);
 	if (status < 0) {
 		perror("chdir");
-		pthread_exit((void *)-1);
+		pthread_exit((void *) -1);
 	}
 	pthread_exit(NULL);
 }
@@ -46,7 +46,8 @@ void check_cwd(const char *expected)
 	path[status] = '\0';
 
 	if (strcmp(path, expected) != 0) {
-		fprintf(stderr, "readlink /proc/self/cwd: %s != %s\n", path, expected);
+		fprintf(stderr, "readlink /proc/self/cwd: %s != %s\n",
+			path, expected);
 		exit(EXIT_FAILURE);
 	}
 
@@ -81,7 +82,7 @@ int main(int argc, char *argv[])
 		perror("readlink");
 		exit(EXIT_FAILURE);
 
-	case 0: /* child */
+	case 0:		/* child */
 		status = chdir("/etc");
 		if (status < 0) {
 			perror("chdir");
@@ -101,4 +102,3 @@ int main(int argc, char *argv[])
 
 	exit(EXIT_SUCCESS);
 }
-

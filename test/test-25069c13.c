@@ -1,6 +1,6 @@
-#include <unistd.h> /* execv(2), */
-#include <stdlib.h> /* exit(3), getenv(3), setenv(3), */
-#include <string.h> /* strcmp(3), */
+#include <unistd.h>		/* execv(2), */
+#include <stdlib.h>		/* exit(3), getenv(3), setenv(3), */
+#include <string.h>		/* strcmp(3), */
 
 int main(int argc, char *argv[])
 {

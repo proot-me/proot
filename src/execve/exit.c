@@ -20,15 +20,15 @@
  * 02110-1301 USA.
  */
 
-#include <linux/auxvec.h>  /* AT_*,  */
-#include <talloc.h>     /* talloc*, */
-#include <sys/mman.h>   /* MAP_*, */
-#include <assert.h>     /* assert(3), */
-#include <string.h>     /* strlen(3), strerror(3), */
-#include <strings.h>    /* bzero(3), */
-#include <signal.h>     /* kill(2), SIG*, */
-#include <unistd.h>     /* write(2), */
-#include <errno.h>      /* E*, */
+#include <linux/auxvec.h>	/* AT_*,  */
+#include <talloc.h>		/* talloc*, */
+#include <sys/mman.h>		/* MAP_*, */
+#include <assert.h>		/* assert(3), */
+#include <string.h>		/* strlen(3), strerror(3), */
+#include <strings.h>		/* bzero(3), */
+#include <signal.h>		/* kill(2), SIG*, */
+#include <unistd.h>		/* write(2), */
+#include <errno.h>		/* E*, */
 
 #include "execve/execve.h"
 #include "execve/elf.h"
@@ -48,7 +48,7 @@
  * @ptracee's current ABI.
  */
 static int fill_file_with_auxv(const Tracee *ptracee, const char *path,
-			const ElfAuxVector *vectors)
+			       const ElfAuxVector *vectors)
 {
 	const ssize_t current_sizeof_word = sizeof_word(ptracee);
 	ssize_t status;
@@ -75,7 +75,7 @@ static int fill_file_with_auxv(const Tracee *ptracee, const char *path,
 	} while (vectors[i++].type != AT_NULL);
 
 	status = 0;
-end:
+      end:
 	if (fd >= 0)
 		(void) close(fd);
 
@@ -105,14 +105,17 @@ static int bind_proc_pid_auxv(const Tracee *ptracee)
 		return -1;
 
 	/* Path to these ELF auxiliary vectors.  */
-	guest_path = talloc_asprintf(ptracee->ctx, "/proc/%d/auxv", ptracee->pid);
+	guest_path =
+	    talloc_asprintf(ptracee->ctx, "/proc/%d/auxv", ptracee->pid);
 	if (guest_path == NULL)
 		return -1;
 
 	/* Remove binding to this path, if any.  It contains ELF
 	 * auxiliary vectors of the previous execve(2).  */
 	binding = get_binding(ptracee, GUEST, guest_path);
-	if (binding != NULL && compare_paths(binding->guest.path, guest_path) == PATHS_ARE_EQUAL) {
+	if (binding != NULL
+	    && compare_paths(binding->guest.path,
+			     guest_path) == PATHS_ARE_EQUAL) {
 		remove_binding_from_all_lists(ptracee, binding);
 		TALLOC_FREE(binding);
 	}
@@ -126,7 +129,9 @@ static int bind_proc_pid_auxv(const Tracee *ptracee)
 		return -1;
 
 	/* Note: this binding will be removed once ptracee gets freed.  */
-	binding = insort_binding3(ptracee, ptracee->life_context, host_path, guest_path);
+	binding =
+	    insort_binding3(ptracee, ptracee->life_context, host_path,
+			    guest_path);
 	if (binding == NULL)
 		return -1;
 
@@ -155,9 +160,9 @@ static void *transcript_mappings(void *cursor, const Mapping *mappings)
 		else
 			statement->action = LOAD_ACTION_MMAP_FILE;
 
-		statement->mmap.addr   = mappings[i].addr;
+		statement->mmap.addr = mappings[i].addr;
 		statement->mmap.length = mappings[i].length;
-		statement->mmap.prot   = mappings[i].prot;
+		statement->mmap.prot = mappings[i].prot;
 		statement->mmap.offset = mappings[i].offset;
 		statement->mmap.clear_length = mappings[i].clear_length;
 
@@ -173,7 +178,8 @@ static void *transcript_mappings(void *cursor, const Mapping *mappings)
  */
 static int transfer_load_script(Tracee *tracee)
 {
-	const word_t stack_pointer = peek_reg(tracee, CURRENT, STACK_POINTER);
+	const word_t stack_pointer =
+	    peek_reg(tracee, CURRENT, STACK_POINTER);
 	static word_t page_size = 0;
 	static word_t page_mask = 0;
 
@@ -206,8 +212,9 @@ static int transfer_load_script(Tracee *tracee)
 	}
 
 	needs_executable_stack = (tracee->load_info->needs_executable_stack
-				|| (   tracee->load_info->interp != NULL
-				    && tracee->load_info->interp->needs_executable_stack));
+				  || (tracee->load_info->interp != NULL
+				      && tracee->load_info->interp->
+				      needs_executable_stack));
 
 	/* Strings addresses are required to generate the load script,
 	 * for "open" actions.  Since I want to generate it in one
@@ -217,34 +224,43 @@ static int transfer_load_script(Tracee *tracee)
 	string1_size = strlen(tracee->load_info->user_path) + 1;
 
 	string2_size = (tracee->load_info->interp == NULL ? 0
-			: strlen(tracee->load_info->interp->user_path) + 1);
+			: strlen(tracee->load_info->interp->user_path) +
+			1);
 
-	string3_size = (tracee->load_info->raw_path == tracee->load_info->user_path ? 0
-			: strlen(tracee->load_info->raw_path) + 1);
+	string3_size =
+	    (tracee->load_info->raw_path ==
+	     tracee->load_info->user_path ? 0 : strlen(tracee->load_info->
+						       raw_path) + 1);
 
 	/* A padding will be appended at the end of the load script
 	 * (a.k.a "strings area") to ensure this latter is aligned properly. */
-	padding_size = (stack_pointer - string1_size - string2_size - string3_size)
-			% STACK_ALIGNMENT;
+	padding_size =
+	    (stack_pointer - string1_size - string2_size - string3_size)
+	    % STACK_ALIGNMENT;
 
-	strings_size = string1_size + string2_size + string3_size + padding_size;
+	strings_size =
+	    string1_size + string2_size + string3_size + padding_size;
 	string1_address = stack_pointer - strings_size;
 	string2_address = stack_pointer - strings_size + string1_size;
 	string3_address = (string3_size == 0
-			? string1_address
-			: stack_pointer - strings_size + string1_size + string2_size);
+			   ? string1_address
+			   : stack_pointer - strings_size + string1_size +
+			   string2_size);
 
 	/* Compute the size of the load script.  */
-	script_size =
-		LOAD_STATEMENT_SIZE(*statement, open)
-		+ (LOAD_STATEMENT_SIZE(*statement, mmap)
-			* talloc_array_length(tracee->load_info->mappings))
-		+ (tracee->load_info->interp == NULL ? 0
-			: LOAD_STATEMENT_SIZE(*statement, open)
-			+ (LOAD_STATEMENT_SIZE(*statement, mmap)
-				* talloc_array_length(tracee->load_info->interp->mappings)))
-		+ (needs_executable_stack ? LOAD_STATEMENT_SIZE(*statement, make_stack_exec) : 0)
-		+ LOAD_STATEMENT_SIZE(*statement, start);
+	script_size = LOAD_STATEMENT_SIZE(*statement, open)
+	    + (LOAD_STATEMENT_SIZE(*statement, mmap)
+	       * talloc_array_length(tracee->load_info->mappings))
+	    + (tracee->load_info->interp == NULL ? 0
+	       : LOAD_STATEMENT_SIZE(*statement, open)
+	       + (LOAD_STATEMENT_SIZE(*statement, mmap)
+		  *
+		  talloc_array_length(tracee->load_info->interp->
+				      mappings)))
+	    +
+	    (needs_executable_stack ?
+	     LOAD_STATEMENT_SIZE(*statement, make_stack_exec) : 0)
+	    + LOAD_STATEMENT_SIZE(*statement, start);
 
 	/* Allocate enough room for both the load script and the
 	 * strings area.  */
@@ -274,19 +290,25 @@ static int transfer_load_script(Tracee *tracee)
 		cursor += LOAD_STATEMENT_SIZE(*statement, open);
 
 		/* Load script statements: mmap.  */
-		cursor = transcript_mappings(cursor, tracee->load_info->interp->mappings);
+		cursor =
+		    transcript_mappings(cursor,
+					tracee->load_info->interp->
+					mappings);
 
-		entry_point = ELF_FIELD(tracee->load_info->interp->elf_header, entry);
-	}
-	else
-		entry_point = ELF_FIELD(tracee->load_info->elf_header, entry);
+		entry_point =
+		    ELF_FIELD(tracee->load_info->interp->elf_header,
+			      entry);
+	} else
+		entry_point =
+		    ELF_FIELD(tracee->load_info->elf_header, entry);
 
 	if (needs_executable_stack) {
 		/* Load script statement: stack_exec.  */
 		statement = cursor;
 
 		statement->action = LOAD_ACTION_MAKE_STACK_EXEC;
-		statement->make_stack_exec.start = stack_pointer & page_mask;
+		statement->make_stack_exec.start =
+		    stack_pointer & page_mask;
 
 		cursor += LOAD_STATEMENT_SIZE(*statement, make_stack_exec);
 	}
@@ -301,12 +323,16 @@ static int transfer_load_script(Tracee *tracee)
 		statement->action = LOAD_ACTION_START;
 
 	statement->start.stack_pointer = stack_pointer;
-	statement->start.entry_point   = entry_point;
-	statement->start.at_phent = ELF_FIELD(tracee->load_info->elf_header, phentsize);
-	statement->start.at_phnum = ELF_FIELD(tracee->load_info->elf_header, phnum);
-	statement->start.at_entry = ELF_FIELD(tracee->load_info->elf_header, entry);
-	statement->start.at_phdr  = ELF_FIELD(tracee->load_info->elf_header, phoff)
-				  + tracee->load_info->mappings[0].addr;
+	statement->start.entry_point = entry_point;
+	statement->start.at_phent =
+	    ELF_FIELD(tracee->load_info->elf_header, phentsize);
+	statement->start.at_phnum =
+	    ELF_FIELD(tracee->load_info->elf_header, phnum);
+	statement->start.at_entry =
+	    ELF_FIELD(tracee->load_info->elf_header, entry);
+	statement->start.at_phdr =
+	    ELF_FIELD(tracee->load_info->elf_header, phoff)
+	    + tracee->load_info->mappings[0].addr;
 	statement->start.at_execfn = string3_address;
 
 	cursor += LOAD_STATEMENT_SIZE(*statement, start);
@@ -318,7 +344,8 @@ static int transfer_load_script(Tracee *tracee)
 	if (is_32on64_mode(tracee)) {
 		int i;
 		for (i = 0; buffer + i * sizeof(uint64_t) < cursor; i++)
-			((uint32_t *) buffer)[i] = ((uint64_t *) buffer)[i];
+			((uint32_t *) buffer)[i] =
+			    ((uint64_t *) buffer)[i];
 	}
 
 	/* Concatenate the load script and the strings.  */
@@ -326,7 +353,8 @@ static int transfer_load_script(Tracee *tracee)
 	cursor += string1_size;
 
 	if (string2_size != 0) {
-		memcpy(cursor, tracee->load_info->interp->user_path, string2_size);
+		memcpy(cursor, tracee->load_info->interp->user_path,
+		       string2_size);
 		cursor += string2_size;
 	}
 
@@ -349,7 +377,9 @@ static int transfer_load_script(Tracee *tracee)
 	poke_reg(tracee, USERARG_1, stack_pointer - buffer_size);
 
 	/* Copy everything in the tracee's memory at once.  */
-	status = write_data(tracee, stack_pointer - buffer_size, buffer, buffer_size);
+	status =
+	    write_data(tracee, stack_pointer - buffer_size, buffer,
+		       buffer_size);
 	if (status < 0)
 		return status;
 
@@ -413,8 +443,10 @@ void translate_execve_exit(Tracee *tracee)
 		 * - the rtld_fini pointer
 		 * - the state flags
 		 */
-		poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, SYSARG_2));
-		poke_reg(tracee, INSTR_POINTER, peek_reg(tracee, ORIGINAL, SYSARG_3));
+		poke_reg(tracee, STACK_POINTER,
+			 peek_reg(tracee, ORIGINAL, SYSARG_2));
+		poke_reg(tracee, INSTR_POINTER,
+			 peek_reg(tracee, ORIGINAL, SYSARG_3));
 		poke_reg(tracee, RTLD_FINI, 0);
 		poke_reg(tracee, STATE_FLAGS, 0);
 
@@ -465,7 +497,8 @@ void translate_execve_exit(Tracee *tracee)
 		talloc_unlink(tracee, tracee->heap);
 		tracee->heap = talloc_zero(tracee, Heap);
 		if (!tracee->heap)
-			note(tracee, ERROR, INTERNAL, "can't allocate heap");
+			note(tracee, ERROR, INTERNAL,
+			     "can't allocate heap");
 	} else {
 		bzero(tracee->heap, sizeof(Heap));
 	}
@@ -473,7 +506,8 @@ void translate_execve_exit(Tracee *tracee)
 	/* Transfer the load script to the loader.  */
 	status = transfer_load_script(tracee);
 	if (status < 0)
-		note(tracee, ERROR, INTERNAL, "can't transfer load script: %s", strerror(-status));
+		note(tracee, ERROR, INTERNAL,
+		     "can't transfer load script: %s", strerror(-status));
 
 	return;
 }

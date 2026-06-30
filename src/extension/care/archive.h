@@ -38,10 +38,11 @@ typedef struct {
 	int fd;
 } Archive;
 
-extern Archive *new_archive(TALLOC_CTX *context, const Tracee* tracee,
-				const char *output, size_t *prefix_length);
-extern int finalize_archive(Archive *archive);
-extern int archive(const Tracee* tracee, Archive *archive,
-		const char *path, const char *alternate_path, const struct stat *statl);
+extern Archive *new_archive(TALLOC_CTX * context, const Tracee * tracee,
+			    const char *output, size_t *prefix_length);
+extern int finalize_archive(Archive * archive);
+extern int archive(const Tracee * tracee, Archive * archive,
+		   const char *path, const char *alternate_path,
+		   const struct stat *statl);
 
-#endif /* ARCHIVE_H */
+#endif				/* ARCHIVE_H */

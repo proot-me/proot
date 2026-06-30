@@ -5,7 +5,7 @@
 
 int main(int argc, char **ignored)
 {
-	char *const argv[] = { "true", NULL};
+	char *const argv[] = { "true", NULL };
 	char *const envp[] = { NULL };
 
 	pid_t pid;
@@ -16,10 +16,10 @@ int main(int argc, char **ignored)
 	case -1:
 		exit(EXIT_FAILURE);
 
-	case 0: /* child */
+	case 0:		/* child */
 		exit(execve("/bin/true", argv, envp));
 
-	default: /* parent */
+	default:		/* parent */
 		if (wait(&status) < 0 || !WIFEXITED(status))
 			exit(EXIT_FAILURE);
 		exit(WEXITSTATUS(status));

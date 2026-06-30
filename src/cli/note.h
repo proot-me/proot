@@ -42,13 +42,14 @@ typedef enum {
 } Severity;
 
 #define VERBOSE(tracee, level, message, args...) do {			\
-		if (tracee == NULL || tracee->verbose >= (level))	\
+		if ((tracee) == NULL || ((const Tracee *)(tracee))->verbose >= (level))	\
 			note(tracee, INFO, INTERNAL, (message), ## args); \
 	} while (0)
 
-extern void note(const Tracee *tracee, Severity severity, Origin origin, const char *message, ...) FORMAT(printf, 4, 5);
+extern void note(const Tracee *tracee, Severity severity, Origin origin,
+		 const char *message, ...) FORMAT(printf, 4, 5);
 
 extern int global_verbose_level;
 extern const char *global_tool_name;
 
-#endif /* NOTE_H */
+#endif				/* NOTE_H */

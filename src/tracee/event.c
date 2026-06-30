@@ -21,21 +21,21 @@
  */
 
 #include <stdio.h>
-#include <sched.h>      /* CLONE_*,  */
-#include <sys/types.h>  /* pid_t, */
-#include <sys/ptrace.h> /* ptrace(1), PTRACE_*, */
-#include <sys/types.h>  /* waitpid(2), */
-#include <sys/wait.h>   /* waitpid(2), */
-#include <sys/utsname.h> /* uname(2), */
-#include <unistd.h>     /* fork(2), chdir(2), getpid(2), */
-#include <string.h>     /* strcmp(3), */
-#include <errno.h>      /* errno(3), */
-#include <stdbool.h>    /* bool, true, false, */
-#include <assert.h>     /* assert(3), */
-#include <stdlib.h>     /* atexit(3), getenv(3), */
-#include <talloc.h>     /* talloc_*, */
-#include <inttypes.h>   /* PRI*, */
-#include <linux/version.h> /* KERNEL_VERSION, */
+#include <sched.h>		/* CLONE_*,  */
+#include <sys/types.h>		/* pid_t, */
+#include <sys/ptrace.h>		/* ptrace(1), PTRACE_*, */
+#include <sys/types.h>		/* waitpid(2), */
+#include <sys/wait.h>		/* waitpid(2), */
+#include <sys/utsname.h>	/* uname(2), */
+#include <unistd.h>		/* fork(2), chdir(2), getpid(2), */
+#include <string.h>		/* strcmp(3), */
+#include <errno.h>		/* errno(3), */
+#include <stdbool.h>		/* bool, true, false, */
+#include <assert.h>		/* assert(3), */
+#include <stdlib.h>		/* atexit(3), getenv(3), */
+#include <talloc.h>		/* talloc_*, */
+#include <inttypes.h>		/* PRI*, */
+#include <linux/version.h>	/* KERNEL_VERSION, */
 
 #include "tracee/event.h"
 #include "cli/note.h"
@@ -66,12 +66,12 @@ int launch_process(Tracee *tracee, char *const argv[])
 	list_open_fd(tracee);
 
 	pid = fork();
-	switch(pid) {
+	switch (pid) {
 	case -1:
 		note(tracee, ERROR, SYSTEM, "fork()");
 		return -errno;
 
-	case 0: /* child */
+	case 0:		/* child */
 		/* Declare myself as ptraceable before executing the
 		 * requested program. */
 		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
@@ -99,7 +99,7 @@ int launch_process(Tracee *tracee, char *const argv[])
 		execvp(tracee->exe, argv[0] != NULL ? argv : default_argv);
 		return -errno;
 
-	default: /* parent */
+	default:		/* parent */
 		/* We know the pid of the first tracee now.  */
 		tracee->pid = pid;
 		return 0;
@@ -111,10 +111,11 @@ int launch_process(Tracee *tracee, char *const argv[])
 
 /* Send the KILL signal to all tracees when PRoot has received a fatal
  * signal.  */
-static void kill_all_tracees2(int signum, siginfo_t *siginfo UNUSED, void *ucontext UNUSED)
+static void kill_all_tracees2(int signum, siginfo_t *siginfo UNUSED,
+			      void *ucontext UNUSED)
 {
 	note(NULL, WARNING, INTERNAL, "signal %d received from process %d",
-		signum, siginfo->si_pid);
+	     signum, siginfo->si_pid);
 	kill_all_tracees();
 
 	/* Exit immediately for system signals (segmentation fault,
@@ -127,8 +128,9 @@ static void kill_all_tracees2(int signum, siginfo_t *siginfo UNUSED, void *ucont
 /**
  * Helper for print_talloc_hierarchy().
  */
-static void print_talloc_chunk(const void *ptr, int depth, int max_depth UNUSED,
-			int is_ref, void *data UNUSED)
+static void print_talloc_chunk(const void *ptr, int depth,
+			       int max_depth UNUSED, int is_ref,
+			       void *data UNUSED)
 {
 	const char *name;
 	size_t count;
@@ -149,25 +151,26 @@ static void print_talloc_chunk(const void *ptr, int depth, int max_depth UNUSED,
 	if (is_ref)
 		fprintf(stderr, "-> %-8p", ptr);
 	else {
-		fprintf(stderr, "%-8p  %zd bytes  %zd ref'", ptr, size, count);
+		fprintf(stderr, "%-8p  %zd bytes  %zd ref'", ptr, size,
+			count);
 
 		if (name[0] == '$') {
-			fprintf(stderr, "\t(\"%s\")", (char *)ptr);
+			fprintf(stderr, "\t(\"%s\")", (char *) ptr);
 		}
 		if (name[0] == '@') {
 			char **argv;
 			int i;
 
 			fprintf(stderr, "\t(");
-			for (i = 0, argv = (char **)ptr; argv[i] != NULL; i++)
+			for (i = 0, argv = (char **) ptr; argv[i] != NULL;
+			     i++)
 				fprintf(stderr, "\"%s\", ", argv[i]);
 			fprintf(stderr, ")");
-		}
-		else if (strcmp(name, "Tracee") == 0) {
+		} else if (strcmp(name, "Tracee") == 0) {
 			fprintf(stderr, "\t(pid = %d, parent = %p)",
-				((Tracee *)ptr)->pid, ((Tracee *)ptr)->parent);
-		}
-		else if (strcmp(name, "Bindings") == 0) {
+				((Tracee *) ptr)->pid,
+				((Tracee *) ptr)->parent);
+		} else if (strcmp(name, "Bindings") == 0) {
 			Tracee *tracee;
 
 			tracee = TRACEE(ptr);
@@ -178,10 +181,10 @@ static void print_talloc_chunk(const void *ptr, int depth, int max_depth UNUSED,
 				fprintf(stderr, "\t(guest)");
 			else if (ptr == tracee->fs->bindings.host)
 				fprintf(stderr, "\t(host)");
-		}
-		else if (strcmp(name, "Binding") == 0) {
-			Binding *binding = (Binding *)ptr;
-			fprintf(stderr, "\t(%s:%s)", binding->host.path, binding->guest.path);
+		} else if (strcmp(name, "Binding") == 0) {
+			Binding *binding = (Binding *) ptr;
+			fprintf(stderr, "\t(%s:%s)", binding->host.path,
+				binding->guest.path);
 		}
 	}
 
@@ -189,11 +192,13 @@ static void print_talloc_chunk(const void *ptr, int depth, int max_depth UNUSED,
 }
 
 /* Print on stderr the complete talloc hierarchy.  */
-static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED, void *ucontext UNUSED)
+static void print_talloc_hierarchy(int signum, siginfo_t *siginfo UNUSED,
+				   void *ucontext UNUSED)
 {
 	switch (signum) {
 	case SIGUSR1:
-		talloc_report_depth_cb(NULL, 0, 100, print_talloc_chunk, NULL);
+		talloc_report_depth_cb(NULL, 0, 100, print_talloc_chunk,
+				       NULL);
 		break;
 
 	case SIGUSR2:
@@ -247,7 +252,8 @@ static void check_architecture(Tracee *tracee)
 	if (tracee->exe == NULL)
 		return;
 
-	status = translate_path(tracee, path, AT_FDCWD, tracee->exe, false);
+	status =
+	    translate_path(tracee, path, AT_FDCWD, tracee->exe, false);
 	if (status < 0)
 		return;
 
@@ -260,8 +266,8 @@ static void check_architecture(Tracee *tracee)
 		return;
 
 	note(tracee, ERROR, USER,
-		"'%s' is a 64-bit program whereas this version of "
-		"%s handles 32-bit programs only", path, tracee->tool_name);
+	     "'%s' is a 64-bit program whereas this version of "
+	     "%s handles 32-bit programs only", path, tracee->tool_name);
 
 	status = uname(&utsname);
 	if (status < 0)
@@ -271,7 +277,7 @@ static void check_architecture(Tracee *tracee)
 		return;
 
 	note(tracee, INFO, USER,
-		"A 64-bit version that supports 32-bit binaries is required");
+	     "A 64-bit version that supports 32-bit binaries is required");
 }
 
 /**
@@ -316,7 +322,8 @@ int event_loop()
 		case SIGUSR2:
 			/* Print on stderr the complete talloc
 			 * hierarchy, useful for debug purpose.  */
-			signal_action.sa_sigaction = print_talloc_hierarchy;
+			signal_action.sa_sigaction =
+			    print_talloc_hierarchy;
 			break;
 
 		case SIGCHLD:
@@ -332,13 +339,14 @@ int event_loop()
 		default:
 			/* Ignore all other signals, including
 			 * terminating ones (^C for instance). */
-			signal_action.sa_sigaction = (void *)SIG_IGN;
+			signal_action.sa_sigaction = (void *) SIG_IGN;
 			break;
 		}
 
 		status = sigaction(signum, &signal_action, NULL);
 		if (status < 0 && errno != EINVAL)
-			note(NULL, WARNING, SYSTEM, "sigaction(%d)", signum);
+			note(NULL, WARNING, SYSTEM, "sigaction(%d)",
+			     signum);
 	}
 
 	while (1) {
@@ -369,12 +377,15 @@ int event_loop()
 		VERBOSE(tracee, 6, "vpid %" PRIu64 ": got event %x",
 			tracee->vpid, tracee_status);
 
-		status = notify_extensions(tracee, NEW_STATUS, tracee_status, 0);
+		status =
+		    notify_extensions(tracee, NEW_STATUS, tracee_status,
+				      0);
 		if (status != 0)
 			continue;
 
 		if (tracee->as_ptracee.ptracer != NULL) {
-			bool keep_stopped = handle_ptracee_event(tracee, tracee_status);
+			bool keep_stopped =
+			    handle_ptracee_event(tracee, tracee_status);
 			if (keep_stopped)
 				continue;
 		}
@@ -392,10 +403,11 @@ int event_loop()
  * This function returns the "computed" signal that should be used to
  * restart the given @tracee.
  */
-static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
+static int handle_tracee_event_kernel_4_8(Tracee *tracee,
+					  int tracee_status)
 {
 	static bool seccomp_detected = false;
-	static bool seccomp_enabled = false; /* added for 4.8.0 */
+	static bool seccomp_enabled = false;	/* added for 4.8.0 */
 	long status;
 	int signal;
 
@@ -425,15 +437,13 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 			"vpid %" PRIu64 ": exited with status %d",
 			tracee->vpid, last_exit_status);
 		terminate_tracee(tracee);
-	}
-	else if (WIFSIGNALED(tracee_status)) {
+	} else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
 		VERBOSE(tracee, 1,
 			"vpid %" PRIu64 ": terminated with signal %d",
 			tracee->vpid, WTERMSIG(tracee_status));
 		terminate_tracee(tracee);
-	}
-	else if (WIFSTOPPED(tracee_status)) {
+	} else if (WIFSTOPPED(tracee_status)) {
 		/* Don't use WSTOPSIG() to extract the signal
 		 * since it clears the PTRACE_EVENT_* bits. */
 		signal = (tracee_status & 0xfff00) >> 8;
@@ -441,59 +451,69 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 		switch (signal) {
 			static bool deliver_sigtrap = false;
 
-		case SIGTRAP: {
-			const unsigned long default_ptrace_options = (
-				PTRACE_O_TRACESYSGOOD	|
-				PTRACE_O_TRACEFORK	|
-				PTRACE_O_TRACEVFORK	|
-				PTRACE_O_TRACEVFORKDONE	|
-				PTRACE_O_TRACEEXEC	|
-				PTRACE_O_TRACECLONE	|
-				PTRACE_O_TRACEEXIT);
+		case SIGTRAP:{
+				const unsigned long default_ptrace_options
+				    =
+				    (PTRACE_O_TRACESYSGOOD |
+				     PTRACE_O_TRACEFORK |
+				     PTRACE_O_TRACEVFORK |
+				     PTRACE_O_TRACEVFORKDONE |
+				     PTRACE_O_TRACEEXEC |
+				     PTRACE_O_TRACECLONE |
+				     PTRACE_O_TRACEEXIT);
 
-			/* Distinguish some events from others and
-			 * automatically trace each new process with
-			 * the same options.
-			 *
-			 * Note that only the first bare SIGTRAP is
-			 * related to the tracing loop, others SIGTRAP
-			 * carry tracing information because of
-			 * TRACE*FORK/CLONE/EXEC.  */
-			if (deliver_sigtrap)
-				break;  /* Deliver this signal as-is.  */
+				/* Distinguish some events from others and
+				 * automatically trace each new process with
+				 * the same options.
+				 *
+				 * Note that only the first bare SIGTRAP is
+				 * related to the tracing loop, others SIGTRAP
+				 * carry tracing information because of
+				 * TRACE*FORK/CLONE/EXEC.  */
+				if (deliver_sigtrap)
+					break;	/* Deliver this signal as-is.  */
 
-			deliver_sigtrap = true;
+				deliver_sigtrap = true;
 
-			/* Try to enable seccomp mode 2...  */
-			status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
-					default_ptrace_options | PTRACE_O_TRACESECCOMP);
-			if (status < 0) {
-				seccomp_enabled = false;
-				/* ... otherwise use default options only.  */
-				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
-						default_ptrace_options);
+				/* Try to enable seccomp mode 2...  */
+				status =
+				    ptrace(PTRACE_SETOPTIONS, tracee->pid,
+					   NULL,
+					   default_ptrace_options |
+					   PTRACE_O_TRACESECCOMP);
 				if (status < 0) {
-					note(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
-					exit(EXIT_FAILURE);
+					seccomp_enabled = false;
+					/* ... otherwise use default options only.  */
+					status =
+					    ptrace(PTRACE_SETOPTIONS,
+						   tracee->pid, NULL,
+						   default_ptrace_options);
+					if (status < 0) {
+						note(tracee, ERROR, SYSTEM,
+						     "ptrace(PTRACE_SETOPTIONS)");
+						exit(EXIT_FAILURE);
+					}
+				} else {
+					if (getenv("PROOT_NO_SECCOMP") ==
+					    NULL)
+						seccomp_enabled = true;
 				}
 			}
-			else {
-				if (getenv("PROOT_NO_SECCOMP") == NULL)
-					seccomp_enabled = true;
-			}
-		}
 			/* Fall through. */
 		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
 		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8:
 
 			if (!seccomp_detected && seccomp_enabled) {
-				VERBOSE(tracee, 1, "ptrace acceleration (seccomp mode 2) enabled");
+				VERBOSE(tracee, 1,
+					"ptrace acceleration (seccomp mode 2) enabled");
 				tracee->seccomp = ENABLED;
 				seccomp_detected = true;
 			}
 
-			if (signal == (SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8) ||
-			    signal == (SIGTRAP | PTRACE_EVENT_SECCOMP << 8)) {
+			if (signal ==
+			    (SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8)
+			    || signal ==
+			    (SIGTRAP | PTRACE_EVENT_SECCOMP << 8)) {
 
 				unsigned long flags = 0;
 				signal = 0;
@@ -503,7 +523,9 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 				if (tracee->seccomp != ENABLED)
 					break;
 
-				status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
+				status =
+				    ptrace(PTRACE_GETEVENTMSG, tracee->pid,
+					   NULL, &flags);
 				if (status < 0)
 					break;
 
@@ -512,7 +534,8 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 					translate_syscall(tracee);
 
 					if (tracee->seccomp == DISABLING)
-						tracee->restart_how = PTRACE_SYSCALL;
+						tracee->restart_how =
+						    PTRACE_SYSCALL;
 					break;
 				}
 			}
@@ -527,7 +550,7 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 			   stage; just discard this spurious tracee/event.  */
 
 			if (tracee->exe == NULL) {
-				tracee->restart_how = PTRACE_CONT; /* SYSCALL OR CONT */
+				tracee->restart_how = PTRACE_CONT;	/* SYSCALL OR CONT */
 				return 0;
 			}
 
@@ -536,10 +559,10 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 				if (IS_IN_SYSENTER(tracee)) {
 					/* sysenter: ensure the sysexit
 					 * stage will be hit under seccomp.  */
-					tracee->restart_how = PTRACE_SYSCALL;
+					tracee->restart_how =
+					    PTRACE_SYSCALL;
 					tracee->sysexit_pending = true;
-				}
-				else {
+				} else {
 					/* sysexit: the next sysenter
 					 * will be notified by seccomp.  */
 					tracee->restart_how = PTRACE_CONT;
@@ -551,7 +574,8 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 
 				/* This syscall has disabled seccomp.  */
 				if (tracee->seccomp == DISABLING) {
-					tracee->restart_how = PTRACE_SYSCALL;
+					tracee->restart_how =
+					    PTRACE_SYSCALL;
 					tracee->seccomp = DISABLED;
 				}
 
@@ -573,15 +597,15 @@ static int handle_tracee_event_kernel_4_8(Tracee *tracee, int tracee_status)
 			(void) new_child(tracee, CLONE_VFORK);
 			break;
 
-		case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+		case SIGTRAP | PTRACE_EVENT_FORK << 8:
 		case SIGTRAP | PTRACE_EVENT_CLONE << 8:
 			signal = 0;
 			(void) new_child(tracee, 0);
 			break;
 
 		case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
-		case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
-		case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
+		case SIGTRAP | PTRACE_EVENT_EXEC << 8:
+		case SIGTRAP | PTRACE_EVENT_EXIT << 8:
 			signal = 0;
 			break;
 
@@ -627,7 +651,8 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 	int signal;
 
 	if (is_kernel_4_8())
-		return handle_tracee_event_kernel_4_8(tracee, tracee_status);
+		return handle_tracee_event_kernel_4_8(tracee,
+						      tracee_status);
 	/* Don't overwrite restart_how if it is explicitly set
 	 * elsewhere, i.e in the ptrace emulation when single
 	 * stepping.  */
@@ -654,15 +679,13 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 			"vpid %" PRIu64 ": exited with status %d",
 			tracee->vpid, last_exit_status);
 		terminate_tracee(tracee);
-	}
-	else if (WIFSIGNALED(tracee_status)) {
+	} else if (WIFSIGNALED(tracee_status)) {
 		check_architecture(tracee);
 		VERBOSE(tracee, 1,
 			"vpid %" PRIu64 ": terminated with signal %d",
 			tracee->vpid, WTERMSIG(tracee_status));
 		terminate_tracee(tracee);
-	}
-	else if (WIFSTOPPED(tracee_status)) {
+	} else if (WIFSTOPPED(tracee_status)) {
 		/* Don't use WSTOPSIG() to extract the signal
 		 * since it clears the PTRACE_EVENT_* bits. */
 		signal = (tracee_status & 0xfff00) >> 8;
@@ -670,42 +693,49 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 		switch (signal) {
 			static bool deliver_sigtrap = false;
 
-		case SIGTRAP: {
-			const unsigned long default_ptrace_options = (
-				PTRACE_O_TRACESYSGOOD	|
-				PTRACE_O_TRACEFORK	|
-				PTRACE_O_TRACEVFORK	|
-				PTRACE_O_TRACEVFORKDONE	|
-				PTRACE_O_TRACEEXEC	|
-				PTRACE_O_TRACECLONE	|
-				PTRACE_O_TRACEEXIT);
+		case SIGTRAP:{
+				const unsigned long default_ptrace_options
+				    =
+				    (PTRACE_O_TRACESYSGOOD |
+				     PTRACE_O_TRACEFORK |
+				     PTRACE_O_TRACEVFORK |
+				     PTRACE_O_TRACEVFORKDONE |
+				     PTRACE_O_TRACEEXEC |
+				     PTRACE_O_TRACECLONE |
+				     PTRACE_O_TRACEEXIT);
 
-			/* Distinguish some events from others and
-			 * automatically trace each new process with
-			 * the same options.
-			 *
-			 * Note that only the first bare SIGTRAP is
-			 * related to the tracing loop, others SIGTRAP
-			 * carry tracing information because of
-			 * TRACE*FORK/CLONE/EXEC.  */
-			if (deliver_sigtrap)
-				break;  /* Deliver this signal as-is.  */
+				/* Distinguish some events from others and
+				 * automatically trace each new process with
+				 * the same options.
+				 *
+				 * Note that only the first bare SIGTRAP is
+				 * related to the tracing loop, others SIGTRAP
+				 * carry tracing information because of
+				 * TRACE*FORK/CLONE/EXEC.  */
+				if (deliver_sigtrap)
+					break;	/* Deliver this signal as-is.  */
 
-			deliver_sigtrap = true;
+				deliver_sigtrap = true;
 
-			/* Try to enable seccomp mode 2...  */
-			status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
-					default_ptrace_options | PTRACE_O_TRACESECCOMP);
-			if (status < 0) {
-				/* ... otherwise use default options only.  */
-				status = ptrace(PTRACE_SETOPTIONS, tracee->pid, NULL,
-						default_ptrace_options);
+				/* Try to enable seccomp mode 2...  */
+				status =
+				    ptrace(PTRACE_SETOPTIONS, tracee->pid,
+					   NULL,
+					   default_ptrace_options |
+					   PTRACE_O_TRACESECCOMP);
 				if (status < 0) {
-					note(tracee, ERROR, SYSTEM, "ptrace(PTRACE_SETOPTIONS)");
-					exit(EXIT_FAILURE);
+					/* ... otherwise use default options only.  */
+					status =
+					    ptrace(PTRACE_SETOPTIONS,
+						   tracee->pid, NULL,
+						   default_ptrace_options);
+					if (status < 0) {
+						note(tracee, ERROR, SYSTEM,
+						     "ptrace(PTRACE_SETOPTIONS)");
+						exit(EXIT_FAILURE);
+					}
 				}
 			}
-		}
 
 			/* Fall through. */
 		case SIGTRAP | 0x80:
@@ -715,7 +745,7 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 			   sysenter stage but the kernel reports the sysexit
 			   stage; just discard this spurious tracee/event.  */
 			if (tracee->exe == NULL) {
-				tracee->restart_how = PTRACE_CONT; /* SYSCALL OR CONT */
+				tracee->restart_how = PTRACE_CONT;	/* SYSCALL OR CONT */
 				return 0;
 			}
 
@@ -724,10 +754,10 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 				if (IS_IN_SYSENTER(tracee)) {
 					/* sysenter: ensure the sysexit
 					 * stage will be hit under seccomp.  */
-					tracee->restart_how = PTRACE_SYSCALL;
+					tracee->restart_how =
+					    PTRACE_SYSCALL;
 					tracee->sysexit_pending = true;
-				}
-				else {
+				} else {
 					/* sysexit: the next sysenter
 					 * will be notified by seccomp.  */
 					tracee->restart_how = PTRACE_CONT;
@@ -739,7 +769,8 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 
 				/* This syscall has disabled seccomp.  */
 				if (tracee->seccomp == DISABLING) {
-					tracee->restart_how = PTRACE_SYSCALL;
+					tracee->restart_how =
+					    PTRACE_SYSCALL;
 					tracee->seccomp = DISABLED;
 				}
 
@@ -757,60 +788,65 @@ int handle_tracee_event(Tracee *tracee, int tracee_status)
 			break;
 
 		case SIGTRAP | PTRACE_EVENT_SECCOMP2 << 8:
-		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8: {
-			unsigned long flags = 0;
+		case SIGTRAP | PTRACE_EVENT_SECCOMP << 8:{
+				unsigned long flags = 0;
 
-			signal = 0;
+				signal = 0;
 
-			if (!seccomp_detected) {
-				VERBOSE(tracee, 1, "ptrace acceleration (seccomp mode 2) enabled");
-				tracee->seccomp = ENABLED;
-				seccomp_detected = true;
+				if (!seccomp_detected) {
+					VERBOSE(tracee, 1,
+						"ptrace acceleration (seccomp mode 2) enabled");
+					tracee->seccomp = ENABLED;
+					seccomp_detected = true;
+				}
+
+				/* Use the common ptrace flow if seccomp was
+				 * explicitely disabled for this tracee.  */
+				if (tracee->seccomp != ENABLED)
+					break;
+
+				status =
+				    ptrace(PTRACE_GETEVENTMSG, tracee->pid,
+					   NULL, &flags);
+				if (status < 0)
+					break;
+
+				/* Use the common ptrace flow when
+				 * sysexit has to be handled.  */
+				if ((flags & FILTER_SYSEXIT) != 0) {
+					tracee->restart_how =
+					    PTRACE_SYSCALL;
+					break;
+				}
+
+				/* Otherwise, handle the sysenter
+				 * stage right now.  */
+				tracee->restart_how = PTRACE_CONT;
+				translate_syscall(tracee);
+
+				/* This syscall has disabled seccomp, so move
+				 * the ptrace flow back to the common path to
+				 * ensure its sysexit will be handled.  */
+				if (tracee->seccomp == DISABLING)
+					tracee->restart_how =
+					    PTRACE_SYSCALL;
+				break;
 			}
-
-			/* Use the common ptrace flow if seccomp was
-			 * explicitely disabled for this tracee.  */
-			if (tracee->seccomp != ENABLED)
-				break;
-
-			status = ptrace(PTRACE_GETEVENTMSG, tracee->pid, NULL, &flags);
-			if (status < 0)
-				break;
-
-			/* Use the common ptrace flow when
-			 * sysexit has to be handled.  */
-			if ((flags & FILTER_SYSEXIT) != 0) {
-				tracee->restart_how = PTRACE_SYSCALL;
-				break;
-			}
-
-			/* Otherwise, handle the sysenter
-			 * stage right now.  */
-			tracee->restart_how = PTRACE_CONT;
-			translate_syscall(tracee);
-
-			/* This syscall has disabled seccomp, so move
-			 * the ptrace flow back to the common path to
-			 * ensure its sysexit will be handled.  */
-			if (tracee->seccomp == DISABLING)
-				tracee->restart_how = PTRACE_SYSCALL;
-			break;
-		}
 
 		case SIGTRAP | PTRACE_EVENT_VFORK << 8:
 			signal = 0;
 			(void) new_child(tracee, CLONE_VFORK);
 			break;
 
-		case SIGTRAP | PTRACE_EVENT_FORK  << 8:
+		case SIGTRAP | PTRACE_EVENT_FORK << 8:
 		case SIGTRAP | PTRACE_EVENT_CLONE << 8:
 			signal = 0;
 			(void) new_child(tracee, 0);
 			break;
 
 		case SIGTRAP | PTRACE_EVENT_VFORK_DONE << 8:
-		case SIGTRAP | PTRACE_EVENT_EXEC  << 8:
-		case SIGTRAP | PTRACE_EVENT_EXIT  << 8:
+		case SIGTRAP | PTRACE_EVENT_EXEC << 8:
+		case SIGTRAP | PTRACE_EVENT_EXIT << 8:
 			signal = 0;
 			break;
 
@@ -860,9 +896,10 @@ bool restart_tracee(Tracee *tracee, int signal)
 	 * at the next entry or exit of a system call. */
 	status = ptrace(tracee->restart_how, tracee->pid, NULL, signal);
 	if (status < 0)
-		return false; /* The process likely died in a syscall.  */
+		return false;	/* The process likely died in a syscall.  */
 
-	VERBOSE(tracee, 6, "vpid %" PRIu64 ": restarted using %d, signal %d",
+	VERBOSE(tracee, 6,
+		"vpid %" PRIu64 ": restarted using %d, signal %d",
 		tracee->vpid, tracee->restart_how, signal);
 
 	tracee->restart_how = 0;

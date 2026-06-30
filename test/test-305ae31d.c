@@ -11,7 +11,7 @@ int main()
 	int fd;
 	int fd_dir;
 	int fd_file;
-	char path[64]; /* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
+	char path[64];		/* 64 > sizeof("/proc//fd/") + 2 * sizeof(#ULONG_MAX) */
 	int status;
 
 	fd_dir = open("/bin", O_RDONLY);
@@ -22,7 +22,9 @@ int main()
 	if (fd_file < 0)
 		exit(EXIT_FAILURE);
 
-	status = snprintf(path, sizeof(path), "/proc/%d/fd/%d/", getpid(), fd_dir);
+	status =
+	    snprintf(path, sizeof(path), "/proc/%d/fd/%d/", getpid(),
+		     fd_dir);
 	if (status < 0 || status >= sizeof(path))
 		exit(EXIT_FAILURE);
 
@@ -31,7 +33,9 @@ int main()
 		exit(EXIT_FAILURE);
 	close(fd);
 
-	status = snprintf(path, sizeof(path), "/proc/%d/fd/%d/..", getpid(), fd_dir);
+	status =
+	    snprintf(path, sizeof(path), "/proc/%d/fd/%d/..", getpid(),
+		     fd_dir);
 	if (status < 0 || status >= sizeof(path))
 		exit(EXIT_FAILURE);
 
@@ -40,7 +44,9 @@ int main()
 		exit(EXIT_FAILURE);
 	close(fd);
 
-	status = snprintf(path, sizeof(path), "/proc/%d/fd/%d/..", getpid(), fd_file);
+	status =
+	    snprintf(path, sizeof(path), "/proc/%d/fd/%d/..", getpid(),
+		     fd_file);
 	if (status < 0 || status >= sizeof(path))
 		exit(EXIT_FAILURE);
 
@@ -48,7 +54,9 @@ int main()
 	if (fd >= 0 || errno != ENOTDIR)
 		exit(EXIT_FAILURE);
 
-	status = snprintf(path, sizeof(path), "/proc/%d/fd/999999/..", getpid());
+	status =
+	    snprintf(path, sizeof(path), "/proc/%d/fd/999999/..",
+		     getpid());
 	if (status < 0 || status >= sizeof(path))
 		exit(EXIT_FAILURE);
 
