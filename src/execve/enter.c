@@ -525,13 +525,15 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 
     if (wants_32bit_version) {
 	start = (void *) _binary_loader_m32_elf_start;
-	/* uintptr_t cast avoids pointer subtraction between different arrays (S5658) */
-	size = (size_t) ((uintptr_t) _binary_loader_m32_elf_end
-			 - (uintptr_t) _binary_loader_m32_elf_start);
+	/* NOSONAR S5658: _start/_end are adjacent linker symbols in the same section */
+	size =
+	    (size_t) (_binary_loader_m32_elf_end -
+		      _binary_loader_m32_elf_start);
     } else {
 	start = (void *) _binary_loader_elf_start;
-	size = (size_t) ((uintptr_t) _binary_loader_elf_end
-			 - (uintptr_t) _binary_loader_elf_start);
+	/* NOSONAR S5658: _start/_end are adjacent linker symbols in the same section */
+	size =
+	    (size_t) (_binary_loader_elf_end - _binary_loader_elf_start);
     }
 
     status2 = write(fd, start, size);
@@ -711,8 +713,8 @@ int translate_execve_enter(Tracee *tracee)
 						     tracee->load_info,
 						     raw_path)
 				   : talloc_reference(tracee->load_info,
-						      tracee->load_info->
-						      user_path));
+						      tracee->
+						      load_info->user_path));
     if (tracee->load_info->raw_path == NULL)
 	return -ENOMEM;
 
