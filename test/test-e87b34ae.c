@@ -7,28 +7,28 @@
 
 int main(void)
 {
-	pid_t pid;
-	int status;
-	int i;
+    pid_t pid;
+    int status;
+    int i;
 
-	for (i = 0; i < 1000; i++) {
-		pid = fork();
-		switch (pid) {
-		case -1:
-			/* Is the maximum number of processes
-			 * reached?  */
-			if (errno == EAGAIN)
-				break;
-			perror("fork()");
-			exit(EXIT_FAILURE);
+    for (i = 0; i < 1000; i++) {
+	pid = fork();
+	switch (pid) {
+	case -1:
+	    /* Is the maximum number of processes
+	     * reached?  */
+	    if (errno == EAGAIN)
+		break;
+	    perror("fork()");
+	    exit(EXIT_FAILURE);
 
-		case 0:	/* child */
-			exit(EXIT_SUCCESS);
+	case 0:		/* child */
+	    exit(EXIT_SUCCESS);
 
-		default:	/* parent */
-			break;
-		}
+	default:		/* parent */
+	    break;
 	}
+    }
 
-	exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 }

@@ -4,12 +4,12 @@
 
 int main(int argc, char *argv[])
 {
-	char *void_array[] = { NULL };
+    char *void_array[] = { NULL };
 
-	if (getenv("PROC_SELF_EXE") != NULL)
-		exit(EXIT_SUCCESS);
+    if (getenv("PROC_SELF_EXE") != NULL)
+	exit(EXIT_SUCCESS);
 
-	setenv("PROC_SELF_EXE", "1", 1);
-	execv("/proc/self/exe", void_array);
-	exit(EXIT_FAILURE);
+    setenv("PROC_SELF_EXE", "1", 1);
+    execv("/proc/self/exe", void_array);
+    exit(EXIT_FAILURE);
 }

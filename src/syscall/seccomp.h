@@ -29,14 +29,14 @@
 #include "arch.h"
 
 typedef struct {
-	Sysnum value;
-	word_t flags;
+    Sysnum value;
+    word_t flags;
 } FilteredSysnum;
 
 typedef struct {
-	unsigned int value;
-	size_t nb_abis;
-	Abi abis[NB_MAX_ABIS];
+    unsigned int value;
+    size_t nb_abis;
+    Abi abis[NB_MAX_ABIS];
 } SeccompArch;
 
 #define FILTERED_SYSNUM_END { PR_void, 0 }

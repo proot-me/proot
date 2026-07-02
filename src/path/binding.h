@@ -30,17 +30,17 @@
 #include "path.h"
 
 typedef struct binding {
-	Path host;
-	Path guest;
+    Path host;
+    Path guest;
 
-	bool need_substitution;
-	bool must_exist;
+    bool need_substitution;
+    bool must_exist;
 
-	struct {
-		CIRCLEQ_ENTRY(binding) pending;
-		CIRCLEQ_ENTRY(binding) guest;
-		CIRCLEQ_ENTRY(binding) host;
-	} link;
+    struct {
+	CIRCLEQ_ENTRY(binding) pending;
+	CIRCLEQ_ENTRY(binding) guest;
+	CIRCLEQ_ENTRY(binding) host;
+    } link;
 } Binding;
 
 typedef CIRCLEQ_HEAD(bindings, binding) Bindings;

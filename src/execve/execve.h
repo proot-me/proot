@@ -36,24 +36,24 @@ extern int translate_and_check_exec(Tracee * tracee,
 				    const char *user_path);
 
 typedef struct mapping {
-	word_t addr;
-	word_t length;
-	word_t clear_length;
-	word_t prot;
-	word_t flags;
-	word_t fd;
-	word_t offset;
+    word_t addr;
+    word_t length;
+    word_t clear_length;
+    word_t prot;
+    word_t flags;
+    word_t fd;
+    word_t offset;
 } Mapping;
 
 typedef struct load_info {
-	char *host_path;
-	char *user_path;
-	char *raw_path;
-	Mapping *mappings;
-	ElfHeader elf_header;
-	bool needs_executable_stack;
+    char *host_path;
+    char *user_path;
+    char *raw_path;
+    Mapping *mappings;
+    ElfHeader elf_header;
+    bool needs_executable_stack;
 
-	struct load_info *interp;
+    struct load_info *interp;
 } LoadInfo;
 
 #define IS_NOTIFICATION_PTRACED_LOAD_DONE(tracee) (			\

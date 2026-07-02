@@ -44,48 +44,48 @@
  */
 int open_elf(const char *t_path, ElfHeader *elf_header)
 {
-	int fd;
-	int status;
+    int fd;
+    int status;
 
-	/*
-	 * Read the ELF header.
-	 */
+    /*
+     * Read the ELF header.
+     */
 
-	fd = open(t_path, O_RDONLY);
-	if (fd < 0)
-		return -errno;
+    fd = open(t_path, O_RDONLY);
+    if (fd < 0)
+	return -errno;
 
-	/* Check if it is an ELF file.  */
-	status = read(fd, elf_header, sizeof(ElfHeader));
-	if (status < 0) {
-		status = -errno;
-		goto end;
-	}
-	if ((size_t) status < sizeof(ElfHeader)
-	    || ELF_IDENT(*elf_header, 0) != 0x7f
-	    || ELF_IDENT(*elf_header, 1) != 'E'
-	    || ELF_IDENT(*elf_header, 2) != 'L'
-	    || ELF_IDENT(*elf_header, 3) != 'F') {
-		status = -ENOEXEC;
-		goto end;
-	}
+    /* Check if it is an ELF file.  */
+    status = read(fd, elf_header, sizeof(ElfHeader));
+    if (status < 0) {
+	status = -errno;
+	goto end;
+    }
+    if ((size_t) status < sizeof(ElfHeader)
+	|| ELF_IDENT(*elf_header, 0) != 0x7f
+	|| ELF_IDENT(*elf_header, 1) != 'E'
+	|| ELF_IDENT(*elf_header, 2) != 'L'
+	|| ELF_IDENT(*elf_header, 3) != 'F') {
+	status = -ENOEXEC;
+	goto end;
+    }
 
-	/* Check if it is a known class (32-bit or 64-bit).  */
-	if (!IS_CLASS32(*elf_header)
-	    && !IS_CLASS64(*elf_header)) {
-		status = -ENOEXEC;
-		goto end;
-	}
+    /* Check if it is a known class (32-bit or 64-bit).  */
+    if (!IS_CLASS32(*elf_header)
+	&& !IS_CLASS64(*elf_header)) {
+	status = -ENOEXEC;
+	goto end;
+    }
 
-	status = 0;
-      end:
-	/* Delayed error handling.  */
-	if (status < 0) {
-		close(fd);
-		return status;
-	}
+    status = 0;
+  end:
+    /* Delayed error handling.  */
+    if (status < 0) {
+	close(fd);
+	return status;
+    }
 
-	return fd;
+    return fd;
 }
 
 /**
@@ -99,52 +99,52 @@ int iterate_program_headers(const Tracee *tracee, int fd,
 			    program_headers_iterator_t callback,
 			    void *data)
 {
-	ProgramHeader program_header;
+    ProgramHeader program_header;
 
-	uint64_t elf_phoff;
-	uint16_t elf_phentsize;
-	uint16_t elf_phnum;
+    uint64_t elf_phoff;
+    uint16_t elf_phentsize;
+    uint16_t elf_phnum;
 
-	int status;
-	int i;
+    int status;
+    int i;
 
-	/* Get class-specific fields. */
-	elf_phnum = ELF_FIELD(*elf_header, phnum);
-	elf_phentsize = ELF_FIELD(*elf_header, phentsize);
-	elf_phoff = ELF_FIELD(*elf_header, phoff);
+    /* Get class-specific fields. */
+    elf_phnum = ELF_FIELD(*elf_header, phnum);
+    elf_phentsize = ELF_FIELD(*elf_header, phentsize);
+    elf_phoff = ELF_FIELD(*elf_header, phoff);
 
-	/*
-	 * Some sanity checks regarding the current
-	 * support of the ELF specification in PRoot.
-	 */
+    /*
+     * Some sanity checks regarding the current
+     * support of the ELF specification in PRoot.
+     */
 
-	if (elf_phnum >= 0xffff) {
-		note(tracee, WARNING, INTERNAL,
-		     "%d: big PH tables are not yet supported.", fd);
-		return -ENOTSUP;
-	}
+    if (elf_phnum >= 0xffff) {
+	note(tracee, WARNING, INTERNAL,
+	     "%d: big PH tables are not yet supported.", fd);
+	return -ENOTSUP;
+    }
 
-	if (!KNOWN_PHENTSIZE(*elf_header, elf_phentsize)) {
-		note(tracee, WARNING, INTERNAL,
-		     "%d: unsupported size of program header.", fd);
-		return -ENOTSUP;
-	}
+    if (!KNOWN_PHENTSIZE(*elf_header, elf_phentsize)) {
+	note(tracee, WARNING, INTERNAL,
+	     "%d: unsupported size of program header.", fd);
+	return -ENOTSUP;
+    }
 
-	status = (int) lseek(fd, elf_phoff, SEEK_SET);
-	if (status < 0)
-		return -errno;
+    status = (int) lseek(fd, elf_phoff, SEEK_SET);
+    if (status < 0)
+	return -errno;
 
-	for (i = 0; i < elf_phnum; i++) {
-		status = read(fd, &program_header, elf_phentsize);
-		if (status != elf_phentsize)
-			return (status < 0 ? -errno : -ENOTSUP);
+    for (i = 0; i < elf_phnum; i++) {
+	status = read(fd, &program_header, elf_phentsize);
+	if (status != elf_phentsize)
+	    return (status < 0 ? -errno : -ENOTSUP);
 
-		status = callback(elf_header, &program_header, data);
-		if (status != 0)
-			return status;
-	}
+	status = callback(elf_header, &program_header, data);
+	if (status != 0)
+	    return status;
+    }
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -152,33 +152,31 @@ int iterate_program_headers(const Tracee *tracee, int fd,
  */
 bool is_host_elf(const Tracee *tracee, const char *host_path)
 {
-	int host_elf_machine[] = HOST_ELF_MACHINE;
-	static int force_foreign = -1;
-	ElfHeader elf_header;
-	uint16_t elf_machine;
-	int fd;
-	int i;
+    int host_elf_machine[] = HOST_ELF_MACHINE;
+    static int force_foreign = -1;
+    ElfHeader elf_header;
+    uint16_t elf_machine;
+    int fd;
+    int i;
 
-	if (force_foreign < 0)
-		force_foreign =
-		    (getenv("PROOT_FORCE_FOREIGN_BINARY") != NULL);
+    if (force_foreign < 0)
+	force_foreign = (getenv("PROOT_FORCE_FOREIGN_BINARY") != NULL);
 
-	if (force_foreign > 0 || !tracee->qemu)
-		return false;
-
-	fd = open_elf(host_path, &elf_header);
-	if (fd < 0)
-		return false;
-	close(fd);
-
-	elf_machine = ELF_FIELD(elf_header, machine);
-	for (i = 0; host_elf_machine[i] != 0; i++) {
-		if (host_elf_machine[i] == elf_machine) {
-			VERBOSE(tracee, 1, "'%s' is a host ELF",
-				host_path);
-			return true;
-		}
-	}
-
+    if (force_foreign > 0 || !tracee->qemu)
 	return false;
+
+    fd = open_elf(host_path, &elf_header);
+    if (fd < 0)
+	return false;
+    close(fd);
+
+    elf_machine = ELF_FIELD(elf_header, machine);
+    for (i = 0; host_elf_machine[i] != 0; i++) {
+	if (host_elf_machine[i] == elf_machine) {
+	    VERBOSE(tracee, 1, "'%s' is a host ELF", host_path);
+	    return true;
+	}
+    }
+
+    return false;
 }

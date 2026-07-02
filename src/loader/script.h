@@ -27,35 +27,35 @@
 #include "attribute.h"
 
 struct load_statement {
-	word_t action;
+    word_t action;
 
-	union {
-		struct {
-			word_t string_address;
-		} open;
+    union {
+	struct {
+	    word_t string_address;
+	} open;
 
-		struct {
-			word_t addr;
-			word_t length;
-			word_t prot;
-			word_t offset;
-			word_t clear_length;
-		} mmap;
+	struct {
+	    word_t addr;
+	    word_t length;
+	    word_t prot;
+	    word_t offset;
+	    word_t clear_length;
+	} mmap;
 
-		struct {
-			word_t start;
-		} make_stack_exec;
+	struct {
+	    word_t start;
+	} make_stack_exec;
 
-		struct {
-			word_t stack_pointer;
-			word_t entry_point;
-			word_t at_phdr;
-			word_t at_phent;
-			word_t at_phnum;
-			word_t at_entry;
-			word_t at_execfn;
-		} start;
-	};
+	struct {
+	    word_t stack_pointer;
+	    word_t entry_point;
+	    word_t at_phdr;
+	    word_t at_phent;
+	    word_t at_phnum;
+	    word_t at_entry;
+	    word_t at_execfn;
+	} start;
+    };
 } PACKED;
 
 typedef struct load_statement LoadStatement;

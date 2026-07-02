@@ -40,9 +40,9 @@
 #endif
 
 typedef struct {
-	const Sysnum *table;
-	word_t offset;
-	word_t length;
+    const Sysnum *table;
+    word_t offset;
+    word_t length;
 } Sysnums;
 
 /**
@@ -50,29 +50,29 @@ typedef struct {
  */
 static void get_sysnums(Abi abi, Sysnums *sysnums)
 {
-	switch (abi) {
-	case ABI_DEFAULT:
-		sysnums->table = SYSNUMS_ABI1;
-		sysnums->length = sizeof(SYSNUMS_ABI1) / sizeof(Sysnum);
-		sysnums->offset = 0;
-		return;
+    switch (abi) {
+    case ABI_DEFAULT:
+	sysnums->table = SYSNUMS_ABI1;
+	sysnums->length = sizeof(SYSNUMS_ABI1) / sizeof(Sysnum);
+	sysnums->offset = 0;
+	return;
 #ifdef SYSNUMS_ABI2
-	case ABI_2:
-		sysnums->table = SYSNUMS_ABI2;
-		sysnums->length = sizeof(SYSNUMS_ABI2) / sizeof(Sysnum);
-		sysnums->offset = 0;
-		return;
+    case ABI_2:
+	sysnums->table = SYSNUMS_ABI2;
+	sysnums->length = sizeof(SYSNUMS_ABI2) / sizeof(Sysnum);
+	sysnums->offset = 0;
+	return;
 #endif
 #ifdef SYSNUMS_ABI3
-	case ABI_3:
-		sysnums->table = SYSNUMS_ABI3;
-		sysnums->length = sizeof(SYSNUMS_ABI3) / sizeof(Sysnum);
-		sysnums->offset = 0x40000000;	/* x32 */
-		return;
+    case ABI_3:
+	sysnums->table = SYSNUMS_ABI3;
+	sysnums->length = sizeof(SYSNUMS_ABI3) / sizeof(Sysnum);
+	sysnums->offset = 0x40000000;	/* x32 */
+	return;
 #endif
-	default:
-		assert(0);
-	}
+    default:
+	assert(0);
+    }
 }
 
 /**
@@ -80,22 +80,22 @@ static void get_sysnums(Abi abi, Sysnums *sysnums)
  */
 static Sysnum translate_sysnum(Abi abi, word_t sysnum)
 {
-	Sysnums sysnums;
-	word_t index;
+    Sysnums sysnums;
+    word_t index;
 
-	get_sysnums(abi, &sysnums);
+    get_sysnums(abi, &sysnums);
 
-	/* Sanity checks.  */
-	if (sysnum < sysnums.offset)
-		return PR_void;
+    /* Sanity checks.  */
+    if (sysnum < sysnums.offset)
+	return PR_void;
 
-	index = sysnum - sysnums.offset;
+    index = sysnum - sysnums.offset;
 
-	/* Sanity checks.  */
-	if (index > sysnums.length)
-		return PR_void;
+    /* Sanity checks.  */
+    if (index > sysnums.length)
+	return PR_void;
 
-	return sysnums.table[index];
+    return sysnums.table[index];
 }
 
 /**
@@ -103,23 +103,23 @@ static Sysnum translate_sysnum(Abi abi, word_t sysnum)
  */
 word_t detranslate_sysnum(Abi abi, Sysnum sysnum)
 {
-	Sysnums sysnums;
-	size_t i;
+    Sysnums sysnums;
+    size_t i;
 
-	/* Very special case.  */
-	if (sysnum == PR_void)
-		return SYSCALL_AVOIDER;
-
-	get_sysnums(abi, &sysnums);
-
-	for (i = 0; i < sysnums.length; i++) {
-		if (sysnums.table[i] != sysnum)
-			continue;
-
-		return i + sysnums.offset;
-	}
-
+    /* Very special case.  */
+    if (sysnum == PR_void)
 	return SYSCALL_AVOIDER;
+
+    get_sysnums(abi, &sysnums);
+
+    for (i = 0; i < sysnums.length; i++) {
+	if (sysnums.table[i] != sysnum)
+	    continue;
+
+	return i + sysnums.offset;
+    }
+
+    return SYSCALL_AVOIDER;
 }
 
 /**
@@ -127,8 +127,8 @@ word_t detranslate_sysnum(Abi abi, Sysnum sysnum)
  */
 Sysnum get_sysnum(const Tracee *tracee, RegVersion version)
 {
-	return translate_sysnum(get_abi(tracee),
-				peek_reg(tracee, version, SYSARG_NUM));
+    return translate_sysnum(get_abi(tracee),
+			    peek_reg(tracee, version, SYSARG_NUM));
 }
 
 /**
@@ -138,8 +138,8 @@ Sysnum get_sysnum(const Tracee *tracee, RegVersion version)
  */
 void set_sysnum(Tracee *tracee, Sysnum sysnum)
 {
-	poke_reg(tracee, SYSARG_NUM,
-		 detranslate_sysnum(get_abi(tracee), sysnum));
+    poke_reg(tracee, SYSARG_NUM,
+	     detranslate_sysnum(get_abi(tracee), sysnum));
 }
 
 /**
@@ -148,16 +148,16 @@ void set_sysnum(Tracee *tracee, Sysnum sysnum)
 const char *stringify_sysnum(Sysnum sysnum)
 {
 #define SYSNUM(item) [ PR_ ## item ] = #item,
-	static const char *names[] = {
+    static const char *names[] = {
 #include "syscall/sysnums.list"
-	};
+    };
 #undef SYSNUM
 
-	if (sysnum == 0)
-		return "void";
+    if (sysnum == 0)
+	return "void";
 
-	if (sysnum >= PR_NB_SYSNUM)
-		return "";
+    if (sysnum >= PR_NB_SYSNUM)
+	return "";
 
-	return names[sysnum];
+    return names[sysnum];
 }

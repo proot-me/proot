@@ -28,17 +28,17 @@
 
 /* Specify where a notice is coming from. */
 typedef enum {
-	SYSTEM,
-	INTERNAL,
-	USER,
-	TALLOC,
+    SYSTEM,
+    INTERNAL,
+    USER,
+    TALLOC,
 } Origin;
 
 /* Specify the severity of a notice. */
 typedef enum {
-	ERROR,
-	WARNING,
-	INFO,
+    ERROR,
+    WARNING,
+    INFO,
 } Severity;
 
 #define VERBOSE(tracee, level, message, args...) do {			\

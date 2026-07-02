@@ -39,36 +39,36 @@ typedef int (*sizeof_xpointee_t)(ArrayOfXPointers * array, size_t index);
 
 typedef struct mixed_pointer XPointer;
 struct array_of_xpointers {
-	XPointer *_xpointers;
-	size_t length;
+    XPointer *_xpointers;
+    size_t length;
 
-	read_xpointee_t read_xpointee;
-	write_xpointee_t write_xpointee;
-	compare_xpointee_t compare_xpointee;
-	sizeof_xpointee_t sizeof_xpointee;
+    read_xpointee_t read_xpointee;
+    write_xpointee_t write_xpointee;
+    compare_xpointee_t compare_xpointee;
+    sizeof_xpointee_t sizeof_xpointee;
 };
 
 static inline int read_xpointee(ArrayOfXPointers *array, size_t index,
 				void **object)
 {
-	return array->read_xpointee(array, index, object);
+    return array->read_xpointee(array, index, object);
 }
 
 static inline int write_xpointee(ArrayOfXPointers *array, size_t index,
 				 const void *object)
 {
-	return array->write_xpointee(array, index, object);
+    return array->write_xpointee(array, index, object);
 }
 
 static inline int compare_xpointee(ArrayOfXPointers *array, size_t index,
 				   const void *reference)
 {
-	return array->compare_xpointee(array, index, reference);
+    return array->compare_xpointee(array, index, reference);
 }
 
 static inline int sizeof_xpointee(ArrayOfXPointers *array, size_t index)
 {
-	return array->sizeof_xpointee(array, index);
+    return array->sizeof_xpointee(array, index);
 }
 
 extern int find_xpointee(ArrayOfXPointers * array, const void *reference);

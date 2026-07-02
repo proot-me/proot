@@ -56,15 +56,15 @@ extern int clear_mem(const Tracee * tracee, word_t address, size_t size);
 static inline int read_path(const Tracee *tracee,
 			    char dest_tracer[PATH_MAX], word_t src_tracee)
 {
-	int status;
+    int status;
 
-	status = read_string(tracee, dest_tracer, src_tracee, PATH_MAX);
-	if (status < 0)
-		return status;
-	if (status >= PATH_MAX)
-		return -ENAMETOOLONG;
-
+    status = read_string(tracee, dest_tracer, src_tracee, PATH_MAX);
+    if (status < 0)
 	return status;
+    if (status >= PATH_MAX)
+	return -ENAMETOOLONG;
+
+    return status;
 }
 
 /**

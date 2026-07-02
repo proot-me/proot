@@ -31,9 +31,9 @@
 
 #define SYSNUM(item) PR_ ## item,
 typedef enum {
-	PR_void = 0,
+    PR_void = 0,
 #include "syscall/sysnums.list"
-	PR_NB_SYSNUM
+    PR_NB_SYSNUM
 } Sysnum;
 #undef SYSNUM
 

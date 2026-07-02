@@ -27,8 +27,8 @@
 #include "arch.h"
 
 typedef struct elf_aux_vector {
-	word_t type;
-	word_t value;
+    word_t type;
+    word_t value;
 } ElfAuxVector;
 
 extern word_t get_elf_aux_vectors_address(const Tracee * tracee);

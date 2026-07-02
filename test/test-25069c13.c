@@ -4,10 +4,10 @@
 
 int main(int argc, char *argv[])
 {
-	if (getenv("PROC_SELF_EXE") != NULL)
-		exit(EXIT_SUCCESS);
+    if (getenv("PROC_SELF_EXE") != NULL)
+	exit(EXIT_SUCCESS);
 
-	setenv("PROC_SELF_EXE", "1", 1);
-	execv("/proc/self/exe", NULL);
-	exit(EXIT_FAILURE);
+    setenv("PROC_SELF_EXE", "1", 1);
+    execv("/proc/self/exe", NULL);
+    exit(EXIT_FAILURE);
 }

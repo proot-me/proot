@@ -12,13 +12,13 @@
 #define PORTMAP_VERBOSITY 1
 
 typedef struct PortMapEntry {
-	uint16_t port_in;
-	uint16_t port_out;
+    uint16_t port_in;
+    uint16_t port_out;
 } PortMapEntry;
 
 typedef struct PortMap {
-	PortMapEntry map[PORTMAP_SIZE];
-	uint16_t table_mask;
+    PortMapEntry map[PORTMAP_SIZE];
+    uint16_t table_mask;
 } PortMap;
 
 void initialize_portmap(PortMap * portmap);

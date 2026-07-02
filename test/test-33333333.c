@@ -9,15 +9,15 @@
 
 int main(void)
 {
-	switch (fork()) {
-	case -1:
-		exit(EXIT_FAILURE);
+    switch (fork()) {
+    case -1:
+	exit(EXIT_FAILURE);
 
-	case 0:		/* Child: XXX */
-		sleep(2);
-		return 0;
+    case 0:			/* Child: XXX */
+	sleep(2);
+	return 0;
 
-	default:		/* Parent: "look child, no wait(2)!" */
-		return 1;
-	}
+    default:			/* Parent: "look child, no wait(2)!" */
+	return 1;
+    }
 }

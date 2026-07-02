@@ -32,43 +32,43 @@
 
 /* File type.  */
 typedef enum {
-	REGULAR,
-	SYMLINK,
+    REGULAR,
+    SYMLINK,
 } Type;
 
 /* Path point-of-view.  */
 typedef enum {
-	GUEST,
-	HOST,
+    GUEST,
+    HOST,
 
-	/* Used for bindings as specified by the user but not
-	 * canonicalized yet (new_binding, initialize_binding).  */
-	PENDING,
+    /* Used for bindings as specified by the user but not
+     * canonicalized yet (new_binding, initialize_binding).  */
+    PENDING,
 } Side;
 
 /* Path with cached attributes.  */
 typedef struct {
-	char path[PATH_MAX];
-	size_t length;
-	Side side;
+    char path[PATH_MAX];
+    size_t length;
+    Side side;
 } Path;
 
 /* Path ending type.  */
 typedef enum {
-	NOT_FINAL,
-	FINAL_NORMAL,
-	FINAL_SLASH,
-	FINAL_DOT
+    NOT_FINAL,
+    FINAL_NORMAL,
+    FINAL_SLASH,
+    FINAL_DOT
 } Finality;
 
 #define IS_FINAL(a) ((a) != NOT_FINAL)
 
 /* Comparison between two paths.  */
 typedef enum Comparison {
-	PATHS_ARE_EQUAL,
-	PATH1_IS_PREFIX,
-	PATH2_IS_PREFIX,
-	PATHS_ARE_NOT_COMPARABLE,
+    PATHS_ARE_EQUAL,
+    PATH1_IS_PREFIX,
+    PATH2_IS_PREFIX,
+    PATHS_ARE_NOT_COMPARABLE,
 } Comparison;
 
 extern int which(Tracee * tracee, const char *paths,

@@ -4,12 +4,12 @@
 
 int main()
 {
-	uid_t rid;
-	uid_t eid;
-	uid_t sid;
+    uid_t rid;
+    uid_t eid;
+    uid_t sid;
 
-	getresuid(&rid, &eid, &sid);
-	printf("%d %d %d\n", rid, eid, sid);
+    getresuid(&rid, &eid, &sid);
+    printf("%d %d %d\n", rid, eid, sid);
 
-	return 0;
+    return 0;
 }

@@ -27,19 +27,19 @@
 #include "arch.h"
 
 typedef enum {
-	SYSARG_NUM = 0,
-	SYSARG_1,
-	SYSARG_2,
-	SYSARG_3,
-	SYSARG_4,
-	SYSARG_5,
-	SYSARG_6,
-	SYSARG_RESULT,
-	STACK_POINTER,
-	INSTR_POINTER,
-	RTLD_FINI,
-	STATE_FLAGS,
-	USERARG_1,
+    SYSARG_NUM = 0,
+    SYSARG_1,
+    SYSARG_2,
+    SYSARG_3,
+    SYSARG_4,
+    SYSARG_5,
+    SYSARG_6,
+    SYSARG_RESULT,
+    STACK_POINTER,
+    INSTR_POINTER,
+    RTLD_FINI,
+    STATE_FLAGS,
+    USERARG_1,
 } Reg;
 
 extern int fetch_regs(Tracee * tracee);

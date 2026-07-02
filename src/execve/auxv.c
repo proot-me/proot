@@ -43,33 +43,33 @@
  */
 int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value)
 {
-	ElfAuxVector *tmp;
-	size_t nb_vectors;
+    ElfAuxVector *tmp;
+    size_t nb_vectors;
 
-	assert(*vectors != NULL);
+    assert(*vectors != NULL);
 
-	nb_vectors = talloc_array_length(*vectors);
+    nb_vectors = talloc_array_length(*vectors);
 
-	/* Sanity checks.  */
-	assert(nb_vectors > 0);
-	assert((*vectors)[nb_vectors - 1].type == AT_NULL);
+    /* Sanity checks.  */
+    assert(nb_vectors > 0);
+    assert((*vectors)[nb_vectors - 1].type == AT_NULL);
 
-	tmp =
-	    talloc_realloc(talloc_parent(*vectors), *vectors, ElfAuxVector,
-			   nb_vectors + 1);
-	if (tmp == NULL)
-		return -ENOMEM;
-	*vectors = tmp;
+    tmp =
+	talloc_realloc(talloc_parent(*vectors), *vectors, ElfAuxVector,
+		       nb_vectors + 1);
+    if (tmp == NULL)
+	return -ENOMEM;
+    *vectors = tmp;
 
-	/* Replace the sentinel with the new vector.  */
-	(*vectors)[nb_vectors - 1].type = type;
-	(*vectors)[nb_vectors - 1].value = value;
+    /* Replace the sentinel with the new vector.  */
+    (*vectors)[nb_vectors - 1].type = type;
+    (*vectors)[nb_vectors - 1].value = value;
 
-	/* Restore the sentinel.  */
-	(*vectors)[nb_vectors].type = AT_NULL;
-	(*vectors)[nb_vectors].value = 0;
+    /* Restore the sentinel.  */
+    (*vectors)[nb_vectors].type = AT_NULL;
+    (*vectors)[nb_vectors].value = 0;
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -78,35 +78,35 @@ int add_elf_aux_vector(ElfAuxVector **vectors, word_t type, word_t value)
  */
 word_t get_elf_aux_vectors_address(const Tracee *tracee)
 {
-	word_t address;
-	word_t data;
+    word_t address;
+    word_t data;
 
-	/* Sanity check: this works only in execve sysexit.  */
-	assert(IS_IN_SYSEXIT2(tracee, PR_execve));
+    /* Sanity check: this works only in execve sysexit.  */
+    assert(IS_IN_SYSEXIT2(tracee, PR_execve));
 
-	/* Right after execve, the stack layout is:
-	 *
-	 *     argc, argv[0], ..., 0, envp[0], ..., 0, auxv[0].type, auxv[0].value, ..., 0, 0
-	 */
-	address = peek_reg(tracee, CURRENT, STACK_POINTER);
+    /* Right after execve, the stack layout is:
+     *
+     *     argc, argv[0], ..., 0, envp[0], ..., 0, auxv[0].type, auxv[0].value, ..., 0, 0
+     */
+    address = peek_reg(tracee, CURRENT, STACK_POINTER);
 
-	/* Read: argc */
+    /* Read: argc */
+    data = peek_word(tracee, address);
+    if (errno != 0)
+	return 0;
+
+    /* Skip: argc, argv, 0 */
+    address += (1 + data + 1) * sizeof_word(tracee);
+
+    /* Skip: envp, 0 */
+    do {
 	data = peek_word(tracee, address);
 	if (errno != 0)
-		return 0;
+	    return 0;
+	address += sizeof_word(tracee);
+    } while (data != 0);
 
-	/* Skip: argc, argv, 0 */
-	address += (1 + data + 1) * sizeof_word(tracee);
-
-	/* Skip: envp, 0 */
-	do {
-		data = peek_word(tracee, address);
-		if (errno != 0)
-			return 0;
-		address += sizeof_word(tracee);
-	} while (data != 0);
-
-	return address;
+    return address;
 }
 
 /**
@@ -118,39 +118,37 @@ word_t get_elf_aux_vectors_address(const Tracee *tracee)
  */
 ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 {
-	ElfAuxVector *vectors = NULL;
-	ElfAuxVector vector;
-	int status;
+    ElfAuxVector *vectors = NULL;
+    ElfAuxVector vector;
+    int status;
 
-	/* It is assumed the sentinel always exists.  */
-	vectors = talloc_array(tracee->ctx, ElfAuxVector, 1);
-	if (vectors == NULL)
-		return NULL;
-	vectors[0].type = AT_NULL;
-	vectors[0].value = 0;
+    /* It is assumed the sentinel always exists.  */
+    vectors = talloc_array(tracee->ctx, ElfAuxVector, 1);
+    if (vectors == NULL)
+	return NULL;
+    vectors[0].type = AT_NULL;
+    vectors[0].value = 0;
 
-	while (1) {
-		vector.type = peek_word(tracee, address);
-		if (errno != 0)
-			return NULL;
-		address += sizeof_word(tracee);
+    while (1) {
+	vector.type = peek_word(tracee, address);
+	if (errno != 0)
+	    return NULL;
+	address += sizeof_word(tracee);
 
-		if (vector.type == AT_NULL)
-			break;	/* Already added.  */
+	if (vector.type == AT_NULL)
+	    break;		/* Already added.  */
 
-		vector.value = peek_word(tracee, address);
-		if (errno != 0)
-			return NULL;
-		address += sizeof_word(tracee);
+	vector.value = peek_word(tracee, address);
+	if (errno != 0)
+	    return NULL;
+	address += sizeof_word(tracee);
 
-		status =
-		    add_elf_aux_vector(&vectors, vector.type,
-				       vector.value);
-		if (status < 0)
-			return NULL;
-	}
+	status = add_elf_aux_vector(&vectors, vector.type, vector.value);
+	if (status < 0)
+	    return NULL;
+    }
 
-	return vectors;
+    return vectors;
 }
 
 /**
@@ -161,29 +159,29 @@ ElfAuxVector *fetch_elf_aux_vectors(const Tracee *tracee, word_t address)
 int push_elf_aux_vectors(const Tracee *tracee, ElfAuxVector *vectors,
 			 word_t address)
 {
-	size_t i;
+    size_t i;
 
-	for (i = 0; vectors[i].type != AT_NULL; i++) {
-		poke_word(tracee, address, vectors[i].type);
-		if (errno != 0)
-			return -errno;
-		address += sizeof_word(tracee);
-
-		poke_word(tracee, address, vectors[i].value);
-		if (errno != 0)
-			return -errno;
-		address += sizeof_word(tracee);
-	}
-
-	poke_word(tracee, address, AT_NULL);
+    for (i = 0; vectors[i].type != AT_NULL; i++) {
+	poke_word(tracee, address, vectors[i].type);
 	if (errno != 0)
-		return -errno;
+	    return -errno;
 	address += sizeof_word(tracee);
 
-	poke_word(tracee, address, 0);
+	poke_word(tracee, address, vectors[i].value);
 	if (errno != 0)
-		return -errno;
+	    return -errno;
 	address += sizeof_word(tracee);
+    }
 
-	return 0;
+    poke_word(tracee, address, AT_NULL);
+    if (errno != 0)
+	return -errno;
+    address += sizeof_word(tracee);
+
+    poke_word(tracee, address, 0);
+    if (errno != 0)
+	return -errno;
+    address += sizeof_word(tracee);
+
+    return 0;
 }

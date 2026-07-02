@@ -8,46 +8,46 @@
 
 int main(int argc, char **argv)
 {
-	int child_status;
-	long status;
-	pid_t pid;
+    int child_status;
+    long status;
+    pid_t pid;
 
-	pid = (argc <= 1 ? fork() : vfork());
-	switch (pid) {
-	case -1:
-		perror("fork()");
-		exit(EXIT_FAILURE);
+    pid = (argc <= 1 ? fork() : vfork());
+    switch (pid) {
+    case -1:
+	perror("fork()");
+	exit(EXIT_FAILURE);
 
-	case 0:		/* child */
-		sleep(2);
-		status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
-		if (status < 0) {
-			perror("ptrace(TRACEME)");
-			exit(EXIT_FAILURE);
-		}
-
-		if (argc <= 1) {
-			kill(getpid(), SIGSTOP);
-			exit(EXIT_SUCCESS);
-		} else {
-			execl("true", "true", NULL);
-			exit(EXIT_FAILURE);
-		}
-
-	default:		/* parent */
-		pid = waitpid(-1, &child_status, __WALL);
-		if (pid < 0) {
-			perror("waitpid()");
-			exit(EXIT_FAILURE);
-		}
-
-		if (argc <= 1) {
-			if (!WIFSTOPPED(child_status))
-				exit(EXIT_FAILURE);
-		}
-
-		exit(EXIT_SUCCESS);
+    case 0:			/* child */
+	sleep(2);
+	status = ptrace(PTRACE_TRACEME, 0, NULL, NULL);
+	if (status < 0) {
+	    perror("ptrace(TRACEME)");
+	    exit(EXIT_FAILURE);
 	}
 
-	return 0;
+	if (argc <= 1) {
+	    kill(getpid(), SIGSTOP);
+	    exit(EXIT_SUCCESS);
+	} else {
+	    execl("true", "true", NULL);
+	    exit(EXIT_FAILURE);
+	}
+
+    default:			/* parent */
+	pid = waitpid(-1, &child_status, __WALL);
+	if (pid < 0) {
+	    perror("waitpid()");
+	    exit(EXIT_FAILURE);
+	}
+
+	if (argc <= 1) {
+	    if (!WIFSTOPPED(child_status))
+		exit(EXIT_FAILURE);
+	}
+
+	exit(EXIT_SUCCESS);
+    }
+
+    return 0;
 }

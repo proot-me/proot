@@ -33,10 +33,10 @@
 #include "attribute.h"
 
 typedef enum {
-	ABI_DEFAULT = 0,
-	ABI_2,			/* x86_32 on x86_64.  */
-	ABI_3,			/* x32 on x86_64.  */
-	NB_MAX_ABIS,
+    ABI_DEFAULT = 0,
+    ABI_2,			/* x86_32 on x86_64.  */
+    ABI_3,			/* x32 on x86_64.  */
+    NB_MAX_ABIS,
 } Abi;
 
 /**
@@ -45,20 +45,20 @@ typedef enum {
 #if defined(ARCH_X86_64)
 static inline Abi get_abi(const Tracee *tracee)
 {
-	/* The ABI can be changed by a syscall ("execve" typically),
-	 * however the change is only effective once the syscall has
-	 * *fully* returned, hence the use of _regs[ORIGINAL].  */
-	switch (tracee->_regs[ORIGINAL].cs) {
-	case 0x23:
-		return ABI_2;
+    /* The ABI can be changed by a syscall ("execve" typically),
+     * however the change is only effective once the syscall has
+     * *fully* returned, hence the use of _regs[ORIGINAL].  */
+    switch (tracee->_regs[ORIGINAL].cs) {
+    case 0x23:
+	return ABI_2;
 
-	case 0x33:
-		if (tracee->_regs[ORIGINAL].ds == 0x2B)
-			return ABI_3;
-		/* Fall through.  */
-	default:
-		return ABI_DEFAULT;
-	}
+    case 0x33:
+	if (tracee->_regs[ORIGINAL].ds == 0x2B)
+	    return ABI_3;
+	/* Fall through.  */
+    default:
+	return ABI_DEFAULT;
+    }
 }
 
 /**
@@ -67,29 +67,29 @@ static inline Abi get_abi(const Tracee *tracee)
  */
 static inline bool is_32on64_mode(const Tracee *tracee)
 {
-	/* Unlike the ABI, 32-bit/64-bit mode change is effective
-	 * immediately, hence _regs[CURRENT].cs.  */
-	switch (tracee->_regs[CURRENT].cs) {
-	case 0x23:
-		return true;
+    /* Unlike the ABI, 32-bit/64-bit mode change is effective
+     * immediately, hence _regs[CURRENT].cs.  */
+    switch (tracee->_regs[CURRENT].cs) {
+    case 0x23:
+	return true;
 
-	case 0x33:
-		if (tracee->_regs[CURRENT].ds == 0x2B)
-			return true;
-		/* Fall through.  */
-	default:
-		return false;
-	}
+    case 0x33:
+	if (tracee->_regs[CURRENT].ds == 0x2B)
+	    return true;
+	/* Fall through.  */
+    default:
+	return false;
+    }
 }
 #else
 static inline Abi get_abi(const Tracee *tracee UNUSED)
 {
-	return ABI_DEFAULT;
+    return ABI_DEFAULT;
 }
 
 static inline bool is_32on64_mode(const Tracee *tracee UNUSED)
 {
-	return false;
+    return false;
 }
 #endif
 
@@ -99,8 +99,8 @@ static inline bool is_32on64_mode(const Tracee *tracee UNUSED)
  */
 static inline size_t sizeof_word(const Tracee *tracee)
 {
-	return (is_32on64_mode(tracee)
-		? sizeof(word_t) / 2 : sizeof(word_t));
+    return (is_32on64_mode(tracee)
+	    ? sizeof(word_t) / 2 : sizeof(word_t));
 }
 
 #include <sys/stat.h>
@@ -111,8 +111,8 @@ static inline size_t sizeof_word(const Tracee *tracee)
  */
 static inline off_t offsetof_stat_uid(const Tracee *tracee)
 {
-	return (is_32on64_mode(tracee)
-		? OFFSETOF_STAT_UID_32 : offsetof(struct stat, st_uid));
+    return (is_32on64_mode(tracee)
+	    ? OFFSETOF_STAT_UID_32 : offsetof(struct stat, st_uid));
 }
 
 /**
@@ -121,8 +121,8 @@ static inline off_t offsetof_stat_uid(const Tracee *tracee)
  */
 static inline off_t offsetof_stat_gid(const Tracee *tracee)
 {
-	return (is_32on64_mode(tracee)
-		? OFFSETOF_STAT_GID_32 : offsetof(struct stat, st_gid));
+    return (is_32on64_mode(tracee)
+	    ? OFFSETOF_STAT_GID_32 : offsetof(struct stat, st_gid));
 }
 
 #endif				/* TRACEE_ABI_H */

@@ -17,20 +17,20 @@
 
 int main()
 {
-	int status;
-	struct utsname s;
-	for (int i = 0; i < 5; i++) {
-		fork();
-	}
-	uname(&s);
-	int child_status;
-	while ((status = wait(&child_status)) >= 0) {
-		if (!WIFEXITED(child_status)
-		    || (WEXITSTATUS(child_status) == EXIT_FAILURE))
-			exit(EXIT_FAILURE);
-	}
-	if (strcmp("3.4242XX", s.release) == 0) {
-		exit(EXIT_SUCCESS);
-	}
-	exit(EXIT_FAILURE);
+    int status;
+    struct utsname s;
+    for (int i = 0; i < 5; i++) {
+	fork();
+    }
+    uname(&s);
+    int child_status;
+    while ((status = wait(&child_status)) >= 0) {
+	if (!WIFEXITED(child_status)
+	    || (WEXITSTATUS(child_status) == EXIT_FAILURE))
+	    exit(EXIT_FAILURE);
+    }
+    if (strcmp("3.4242XX", s.release) == 0) {
+	exit(EXIT_SUCCESS);
+    }
+    exit(EXIT_FAILURE);
 }

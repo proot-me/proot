@@ -39,58 +39,58 @@ const char *global_tool_name;
 void note(const Tracee *tracee, Severity severity, Origin origin,
 	  const char *message, ...)
 {
-	const char *tool_name;
-	va_list extra_params;
-	int verbose_level;
+    const char *tool_name;
+    va_list extra_params;
+    int verbose_level;
 
-	if (tracee == NULL) {
-		verbose_level = global_verbose_level;
-		tool_name = global_tool_name ? : "";
-	} else {
-		verbose_level = tracee->verbose;
-		tool_name = tracee->tool_name;
-	}
+    if (tracee == NULL) {
+	verbose_level = global_verbose_level;
+	tool_name = global_tool_name ? : "";
+    } else {
+	verbose_level = tracee->verbose;
+	tool_name = tracee->tool_name;
+    }
 
-	if (verbose_level < 0 && severity != ERROR)
-		return;
-
-	switch (severity) {
-	case WARNING:
-		fprintf(stderr, "%s warning: ", tool_name);
-		break;
-
-	case ERROR:
-		fprintf(stderr, "%s error: ", tool_name);
-		break;
-
-	case INFO:
-	default:
-		fprintf(stderr, "%s info: ", tool_name);
-		break;
-	}
-
-	if (origin == TALLOC)
-		fprintf(stderr, "talloc: ");
-
-	va_start(extra_params, message);
-	vfprintf(stderr, message, extra_params);
-	va_end(extra_params);
-
-	switch (origin) {
-	case SYSTEM:
-		fprintf(stderr, ": ");
-		perror(NULL);
-		break;
-
-	case TALLOC:
-		break;
-
-	case INTERNAL:
-	case USER:
-	default:
-		fprintf(stderr, "\n");
-		break;
-	}
-
+    if (verbose_level < 0 && severity != ERROR)
 	return;
+
+    switch (severity) {
+    case WARNING:
+	fprintf(stderr, "%s warning: ", tool_name);
+	break;
+
+    case ERROR:
+	fprintf(stderr, "%s error: ", tool_name);
+	break;
+
+    case INFO:
+    default:
+	fprintf(stderr, "%s info: ", tool_name);
+	break;
+    }
+
+    if (origin == TALLOC)
+	fprintf(stderr, "talloc: ");
+
+    va_start(extra_params, message);
+    vfprintf(stderr, message, extra_params);
+    va_end(extra_params);
+
+    switch (origin) {
+    case SYSTEM:
+	fprintf(stderr, ": ");
+	perror(NULL);
+	break;
+
+    case TALLOC:
+	break;
+
+    case INTERNAL:
+    case USER:
+    default:
+	fprintf(stderr, "\n");
+	break;
+    }
+
+    return;
 }

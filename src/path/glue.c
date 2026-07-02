@@ -44,23 +44,23 @@
  */
 static int remove_placeholder(char *path)
 {
-	struct stat statl;
-	int status;
+    struct stat statl;
+    int status;
 
-	status = lstat(path, &statl);
-	if (status)
-		return 0;	/* Not fatal.  */
+    status = lstat(path, &statl);
+    if (status)
+	return 0;		/* Not fatal.  */
 
-	if (!S_ISDIR(statl.st_mode)) {
-		if (statl.st_size != 0)
-			return 0;	/* Not fatal.  */
-		status = unlink(path);
-	} else
-		status = rmdir(path);
-	if (status)
-		return 0;	/* Not fatal.  */
+    if (!S_ISDIR(statl.st_mode)) {
+	if (statl.st_size != 0)
+	    return 0;		/* Not fatal.  */
+	status = unlink(path);
+    } else
+	status = rmdir(path);
+    if (status)
+	return 0;		/* Not fatal.  */
 
-	return 0;
+    return 0;
 }
 
 /**
@@ -69,18 +69,18 @@ static int remove_placeholder(char *path)
  */
 static void set_placeholder_destructor(const char *path)
 {
-	TALLOC_CTX *autofreed;
-	char *placeholder;
+    TALLOC_CTX *autofreed;
+    char *placeholder;
 
-	autofreed = talloc_autofree_context();
-	if (autofreed == NULL)
-		return;
+    autofreed = talloc_autofree_context();
+    if (autofreed == NULL)
+	return;
 
-	placeholder = talloc_strdup(autofreed, path);
-	if (placeholder == NULL)
-		return;
+    placeholder = talloc_strdup(autofreed, path);
+    if (placeholder == NULL)
+	return;
 
-	talloc_set_destructor(placeholder, remove_placeholder);
+    talloc_set_destructor(placeholder, remove_placeholder);
 }
 
 /**
@@ -105,93 +105,89 @@ static void set_placeholder_destructor(const char *path)
 mode_t build_glue(Tracee *tracee, const char *guest_path,
 		  char host_path[PATH_MAX], Finality finality)
 {
-	bool belongs_to_gluefs;
-	Comparison comparison;
-	Binding *binding;
-	mode_t type;
-	mode_t mode;
-	int status;
+    bool belongs_to_gluefs;
+    Comparison comparison;
+    Binding *binding;
+    mode_t type;
+    mode_t mode;
+    int status;
 
-	assert(tracee->glue_type != 0);
+    assert(tracee->glue_type != 0);
 
-	/* Create the temporary directory where the "glue" rootfs will
-	 * lie.  */
+    /* Create the temporary directory where the "glue" rootfs will
+     * lie.  */
+    if (tracee->glue == NULL) {
+	tracee->glue = create_temp_directory(NULL, tracee->tool_name);
 	if (tracee->glue == NULL) {
-		tracee->glue =
-		    create_temp_directory(NULL, tracee->tool_name);
-		if (tracee->glue == NULL) {
-			note(tracee, ERROR, INTERNAL,
-			     "can't create glue rootfs");
-			return 0;
-		}
-		talloc_set_name_const(tracee->glue, "$glue");
+	    note(tracee, ERROR, INTERNAL, "can't create glue rootfs");
+	    return 0;
 	}
+	talloc_set_name_const(tracee->glue, "$glue");
+    }
 
-	comparison = compare_paths(tracee->glue, host_path);
-	belongs_to_gluefs = (comparison == PATHS_ARE_EQUAL
-			     || comparison == PATH1_IS_PREFIX);
+    comparison = compare_paths(tracee->glue, host_path);
+    belongs_to_gluefs = (comparison == PATHS_ARE_EQUAL
+			 || comparison == PATH1_IS_PREFIX);
 
-	/* If it's not a final component then it is a directory.  I definitely
-	 * hate how the potential type of the final component is propagated
-	 * from initialize_binding() down to here, sadly there's no elegant way
-	 * to know its type at this stage.  */
-	if (IS_FINAL(finality)) {
-		type = tracee->glue_type;
-		mode = (belongs_to_gluefs ? 0777 : 0);
-	} else {
-		type = S_IFDIR;
-		mode = 0777;
-	}
+    /* If it's not a final component then it is a directory.  I definitely
+     * hate how the potential type of the final component is propagated
+     * from initialize_binding() down to here, sadly there's no elegant way
+     * to know its type at this stage.  */
+    if (IS_FINAL(finality)) {
+	type = tracee->glue_type;
+	mode = (belongs_to_gluefs ? 0777 : 0);
+    } else {
+	type = S_IFDIR;
+	mode = 0777;
+    }
 
-	if (getenv("PROOT_DONT_POLLUTE_ROOTFS") != NULL
-	    && !belongs_to_gluefs)
-		goto create_binding;
+    if (getenv("PROOT_DONT_POLLUTE_ROOTFS") != NULL && !belongs_to_gluefs)
+	goto create_binding;
 
-	/* Try to create this component into the "guest" or "glue"
-	 * rootfs (depending if there were a glue previously).  */
-	if (S_ISDIR(type))
-		status = mkdir(host_path, mode);
-	else			/* S_IFREG, S_IFCHR, S_IFBLK, S_IFIFO or S_IFSOCK.  */
-		status = mknod(host_path, mode | type, 0);
+    /* Try to create this component into the "guest" or "glue"
+     * rootfs (depending if there were a glue previously).  */
+    if (S_ISDIR(type))
+	status = mkdir(host_path, mode);
+    else			/* S_IFREG, S_IFCHR, S_IFBLK, S_IFIFO or S_IFSOCK.  */
+	status = mknod(host_path, mode | type, 0);
 
-	/* Remove placeholders from the guest rootfs once PRoot is
-	 * terminated.  */
-	if (status >= 0 && !belongs_to_gluefs)
-		set_placeholder_destructor(host_path);
+    /* Remove placeholders from the guest rootfs once PRoot is
+     * terminated.  */
+    if (status >= 0 && !belongs_to_gluefs)
+	set_placeholder_destructor(host_path);
 
-	/* Nothing else to do if the path already exists or if it is
-	 * the final component since it will be pointed to by the
-	 * binding being initialized (from the example,
-	 * "$GUEST/black/holes/and/revelations" -> "$HOST/opt").  */
-	if (status >= 0 || errno == EEXIST || IS_FINAL(finality))
-		return type;
-
-	/* mkdir/mknod are supposed to always succeed in
-	 * tracee->glue.  */
-	if (belongs_to_gluefs) {
-		note(tracee, WARNING, SYSTEM, "mkdir/mknod");
-		return 0;
-	}
-
-      create_binding:
-	/* Sanity checks.  */
-	if (strnlen(tracee->glue, PATH_MAX) >= PATH_MAX
-	    || strnlen(guest_path, PATH_MAX) >= PATH_MAX) {
-		note(tracee, WARNING, INTERNAL,
-		     "installing the binding: guest path too long");
-		return 0;
-	}
-
-	/* From the example, create the binding "/black" ->
-	 * "$GLUE/black".  */
-	binding =
-	    insort_binding3(tracee, tracee->glue, tracee->glue,
-			    guest_path);
-	if (binding == NULL)
-		return 0;
-
-	/* TODO: emulation of getdents(parent(guest_path)) to finalize
-	 * the glue, "black" in getdents("/") from the example.  */
-
+    /* Nothing else to do if the path already exists or if it is
+     * the final component since it will be pointed to by the
+     * binding being initialized (from the example,
+     * "$GUEST/black/holes/and/revelations" -> "$HOST/opt").  */
+    if (status >= 0 || errno == EEXIST || IS_FINAL(finality))
 	return type;
+
+    /* mkdir/mknod are supposed to always succeed in
+     * tracee->glue.  */
+    if (belongs_to_gluefs) {
+	note(tracee, WARNING, SYSTEM, "mkdir/mknod");
+	return 0;
+    }
+
+  create_binding:
+    /* Sanity checks.  */
+    if (strnlen(tracee->glue, PATH_MAX) >= PATH_MAX
+	|| strnlen(guest_path, PATH_MAX) >= PATH_MAX) {
+	note(tracee, WARNING, INTERNAL,
+	     "installing the binding: guest path too long");
+	return 0;
+    }
+
+    /* From the example, create the binding "/black" ->
+     * "$GLUE/black".  */
+    binding =
+	insort_binding3(tracee, tracee->glue, tracee->glue, guest_path);
+    if (binding == NULL)
+	return 0;
+
+    /* TODO: emulation of getdents(parent(guest_path)) to finalize
+     * the glue, "black" in getdents("/") from the example.  */
+
+    return type;
 }

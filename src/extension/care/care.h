@@ -30,48 +30,48 @@
 
 /* Generic item for a STAILQ list.  */
 typedef struct item {
-	const void *load;
-	 STAILQ_ENTRY(item) link;
+    const void *load;
+     STAILQ_ENTRY(item) link;
 } Item;
 
 typedef STAILQ_HEAD(list, item) List;
 
 /* CARE CLI configuration.  */
 typedef struct {
-	const char *output;
-	char *const *command;
+    const char *output;
+    char *const *command;
 
-	List *concealed_paths;
-	List *revealed_paths;
-	List *volatile_paths;
-	List *volatile_envars;
+    List *concealed_paths;
+    List *revealed_paths;
+    List *volatile_paths;
+    List *volatile_envars;
 
-	bool ignore_default_config;
+    bool ignore_default_config;
 
-	int max_size;
+    int max_size;
 } Options;
 
 /* CARE internal configuration.  */
 typedef struct {
-	struct Entry *entries;
-	struct Entry *dentries;
+    struct Entry *entries;
+    struct Entry *dentries;
 
-	char *const *command;
-	List *volatile_paths;
-	List *volatile_envars;
-	List *concealed_accesses;
+    char *const *command;
+    List *volatile_paths;
+    List *volatile_envars;
+    List *concealed_accesses;
 
-	const char *prefix;
-	const char *output;
-	const char *initial_cwd;
-	bool ipc_are_volatile;
+    const char *prefix;
+    const char *output;
+    const char *initial_cwd;
+    bool ipc_are_volatile;
 
-	Archive *archive;
-	int64_t max_size;
+    Archive *archive;
+    int64_t max_size;
 
-	int last_exit_status;
+    int last_exit_status;
 
-	bool is_ready;
+    bool is_ready;
 } Care;
 
 extern Item *queue_item(TALLOC_CTX *context, List **list,

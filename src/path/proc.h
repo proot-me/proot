@@ -30,9 +30,9 @@
 
 /* Action to do after a call to readlink_proc().  */
 typedef enum {
-	DEFAULT,		/* Nothing special to do, treat it as a regular link.  */
-	CANONICALIZE,		/* The symlink was dereferenced, now canonicalize it.  */
-	DONT_CANONICALIZE,	/* The symlink shouldn't be dereferenced nor canonicalized.  */
+    DEFAULT,			/* Nothing special to do, treat it as a regular link.  */
+    CANONICALIZE,		/* The symlink was dereferenced, now canonicalize it.  */
+    DONT_CANONICALIZE,		/* The symlink shouldn't be dereferenced nor canonicalized.  */
 } Action;
 
 
