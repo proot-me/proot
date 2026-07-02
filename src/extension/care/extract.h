@@ -31,7 +31,8 @@
 typedef struct {
     char signature[sizeof(AUTOEXTRACT_SIGNATURE)];
     uint64_t size;
-} PACKED AutoExtractInfo;
+}
+PACKED AutoExtractInfo;
 
 extern int WEAK extract_archive_from_file(const char *path);
 

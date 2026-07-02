@@ -115,8 +115,8 @@ static int remove_tracee(Tracee *tracee)
 
 	    if (relative->as_ptracee.event4.proot.pending) {
 		event = handle_tracee_event(relative,
-					    relative->as_ptracee.event4.
-					    proot.value);
+					    relative->as_ptracee.
+					    event4.proot.value);
 		(void) restart_tracee(relative, event);
 	    } else if (relative->as_ptracee.event4.ptracer.pending) {
 		event = relative->as_ptracee.event4.proot.value;

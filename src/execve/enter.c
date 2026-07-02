@@ -711,8 +711,8 @@ int translate_execve_enter(Tracee *tracee)
 						     tracee->load_info,
 						     raw_path)
 				   : talloc_reference(tracee->load_info,
-						      tracee->
-						      load_info->user_path));
+						      tracee->load_info->
+						      user_path));
     if (tracee->load_info->raw_path == NULL)
 	return -ENOMEM;
 

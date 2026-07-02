@@ -212,8 +212,8 @@ static int transfer_load_script(Tracee *tracee)
 
     needs_executable_stack = (tracee->load_info->needs_executable_stack
 			      || (tracee->load_info->interp != NULL
-				  && tracee->load_info->
-				  interp->needs_executable_stack));
+				  && tracee->load_info->interp->
+				  needs_executable_stack));
 
     /* Strings addresses are required to generate the load script,
      * for "open" actions.  Since I want to generate it in one
@@ -227,9 +227,8 @@ static int transfer_load_script(Tracee *tracee)
 
     string3_size =
 	(tracee->load_info->raw_path ==
-	 tracee->load_info->user_path ? 0 : strlen(tracee->
-						   load_info->raw_path) +
-	 1);
+	 tracee->load_info->user_path ? 0 : strlen(tracee->load_info->
+						   raw_path) + 1);
 
     /* A padding will be appended at the end of the load script
      * (a.k.a "strings area") to ensure this latter is aligned properly. */

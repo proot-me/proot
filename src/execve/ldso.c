@@ -410,9 +410,7 @@ static int read_ldso_rpaths(const Tracee *tracee, int fd,
      * specification doesn't mention if it may have several string
      * table references.  */
     FOREACH_DYNAMIC_ENTRY(DT_STRTAB, {
-			  strtab_address = value;
-			  break;
-			  }
+			  strtab_address = value; break;}
     )
 	if (strtab_address == (uint64_t) - 1)
 	return 0;
