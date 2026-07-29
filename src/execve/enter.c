@@ -542,13 +542,9 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 	goto end;
     }
 
-    /*
-     * NOSONAR: world r-x is required because the loader must be
-     * executable by traced processes running as any uid
-     */
-    status =
-	fchmod(fd,
-	       S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+    status = fchmod(fd,		/* NOSONAR: world r-x required; loader must be executable by traced processes running as any uid */
+		    S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
+		    S_IXOTH);
     if (status < 0) {
 	note(tracee, ERROR, SYSTEM,
 	     "can't change loader permissions (u+rx)");
@@ -713,8 +709,8 @@ int translate_execve_enter(Tracee *tracee)
 						     tracee->load_info,
 						     raw_path)
 				   : talloc_reference(tracee->load_info,
-						      tracee->
-						      load_info->user_path));
+						      tracee->load_info->
+						      user_path));
     if (tracee->load_info->raw_path == NULL)
 	return -ENOMEM;
 

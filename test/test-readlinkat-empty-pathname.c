@@ -20,10 +20,10 @@ int main()
     char target[PATH_MAX];
     ssize_t len;
     int fd;
-    const char *tmpdir = getenv("TMPDIR");
+    const char *tmpdir = getenv("TMPDIR");	/* NOSONAR */
 
     if (tmpdir == NULL)
-	tmpdir = "/tmp";
+	tmpdir = "/tmp";	/* NOSONAR */
 
     snprintf(link_path, sizeof(link_path), "%s/test-bug-182-%d",
 	     tmpdir, (int) getpid());
@@ -39,11 +39,7 @@ int main()
 	exit(EXIT_FAILURE);
     }
 
-    /*
-     * NOSONAR: TOCTOU is inherent to this test since
-     * open(O_PATH|O_NOFOLLOW) is the syscall under test
-     */
-    fd = open(link_path, O_PATH | O_NOFOLLOW);
+    fd = open(link_path, O_PATH | O_NOFOLLOW);	/* NOSONAR: TOCTOU inherent; open(O_PATH|O_NOFOLLOW) is the syscall under test */
     if (fd < 0) {
 	unlink(link_path);
 	if (errno == EINVAL)
@@ -58,7 +54,7 @@ int main()
      * compare_paths2 because detranslate_path received an empty
      * referrer.
      */
-    len = readlinkat(fd, "", target, sizeof(target) - 1);
+    len = readlinkat(fd, "", target, sizeof(target) - 1);	/* NOSONAR: empty pathname is the syscall behavior under test */
     if (len < 0) {
 	close(fd);
 	unlink(link_path);

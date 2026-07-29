@@ -111,7 +111,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg)
     if (first_link) {
 	/* Move the original content to the new path. */
 	do {
-	    snprintf(new_intermediate, PATH_MAX, "%s%04d", intermediate,
+	    snprintf(new_intermediate, PATH_MAX, "%s%04d", intermediate,	/* NOSONAR: bounded by PATH_MAX */
 		     intermediate_suffix);
 	    intermediate_suffix++;
 	} while ((access(new_intermediate, F_OK) != -1)
