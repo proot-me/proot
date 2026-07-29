@@ -226,7 +226,7 @@ static void override_permissions(const Tracee *tracee, const char *path,
      * called in reverse order.  */
     talloc_set_destructor(node, restore_mode);
 
-    (void) chmod(path, new_mode);	/* lgtm[cpp/toctou-race-condition] */
+    (void) chmod(path, new_mode);	// lgtm[cpp/toctou-race-condition]
 
     return;
 }
