@@ -214,7 +214,7 @@ int translate_port(Tracee *tracee, Config *config, word_t sockfd,
 
     /* we allocate a new memory place for the modified socket address */
     *sock_addr = alloc_mem(tracee, sizeof(sockaddr));
-    if (sock_addr == 0)
+    if (*sock_addr == 0)
 	return -EFAULT;
 
     /* we write the modified socket in this new address */
