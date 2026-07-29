@@ -1,6 +1,6 @@
-FROM proot-me/proot:centos-x86_64
+FROM ghcr.io/proot-me/proot:centos-x86_64
 
-RUN yum install -y \
+RUN dnf install -y \
       clang \
       clang-analyzer
 

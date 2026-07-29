@@ -1,6 +1,5 @@
-FROM proot-me/proot:alpine-x86_64
+FROM ghcr.io/proot-me/proot:debian-x86_64
 
-RUN apt install -y \
+RUN apt-get update && apt-get install -y \
       clang \
-      clang-tools-4.0
-
+      clang-tools

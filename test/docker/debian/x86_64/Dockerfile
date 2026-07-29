@@ -1,4 +1,4 @@
-FROM proot-me/proot:debian
+FROM ghcr.io/proot-me/proot:debian
 
 RUN apt update && \
     apt install -y \

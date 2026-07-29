@@ -1,4 +1,4 @@
-FROM proot-me/proot:alpine-x86_64
+FROM ghcr.io/proot-me/proot:alpine-x86_64
 
 RUN apk add clang clang-analyzer
 

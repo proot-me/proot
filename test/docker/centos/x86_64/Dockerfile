@@ -1,17 +1,19 @@
-FROM proot-me/proot:centos
+FROM ghcr.io/proot-me/proot:centos
 
-RUN yum update -y && \
-    yum install -y yum-utils && \
-    yum-config-manager --enable extras && \
-    yum makecache && \
-    yum group install -y 'Development Tools' && \
-    yum install -y \
+RUN dnf install -y \
+      https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
+      dnf-plugins-core && \
+    dnf config-manager --set-enabled crb && \
+    dnf update -y && \
+    dnf install -y \
+      gcc \
       git \
       libarchive-devel \
       libtalloc-devel \
-      python-devel \
-      sloccount \
+      lzop \
+      make \
+      pkg-config \
+      python3-devel \
       strace \
       swig \
       uthash-devel
-

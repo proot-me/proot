@@ -39,3 +39,21 @@ Resources
 - `How To Ask Questions The Smart Way <http://www.catb.org/esr/faqs/smart-questions.html>`_
 
 - `Indentation Style - Wikipedia <https://en.wikipedia.org/wiki/Indentation_style#K&R_style>`_
+
+**Tracking Linux kernel and ABI changes**
+
+PRoot intercepts syscalls via ptrace and translates paths at the syscall ABI
+level, so kernel changes can directly affect correctness and completeness.
+Contributors working on core ptrace or syscall handling should monitor:
+
+- `linux-api@vger.kernel.org <https://lore.kernel.org/linux-api/>`_ —
+  list where all proposed syscall and ABI changes
+  are reviewed before merging
+- `LWN.net <https://lwn.net>`_ — in-depth coverage of kernel development
+- `kernelnewbies.org/LinuxChanges <https://kernelnewbies.org/LinuxChanges>`_ —
+  per-release summaries of user-visible kernel changes
+- `torvalds/linux`_: ``arch/x86/entry/syscalls/syscall_64.tbl``,
+  ``syscall_32.tbl``, ``include/uapi/linux/ptrace.h`` — syscall tables and
+  ptrace API
+
+.. _torvalds/linux: https://github.com/torvalds/linux

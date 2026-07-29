@@ -1,4 +1,4 @@
-FROM proot-me/proot:alpine
+FROM ghcr.io/proot-me/proot:alpine
 
 RUN apk update && \
     apk upgrade && \
