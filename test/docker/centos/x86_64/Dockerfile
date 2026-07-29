@@ -1,5 +1,7 @@
 FROM ghcr.io/proot-me/proot:centos
 
+USER root
+
 RUN dnf install -y \
       https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm \
       dnf-plugins-core && \
@@ -17,3 +19,5 @@ RUN dnf install -y \
       strace \
       swig \
       uthash-devel
+
+USER proot

@@ -1,5 +1,7 @@
 FROM ghcr.io/proot-me/proot:alpine
 
+USER root
+
 RUN apk update && \
     apk upgrade && \
     apk add \
@@ -22,3 +24,4 @@ RUN apk update && \
       talloc-dev \
       uthash-dev
 
+USER proot

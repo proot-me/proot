@@ -29,7 +29,7 @@ jobs:
           build-mode: manual
 
       - name: Install build dependencies
-        run: sudo apt-get install -qq libarchive-dev libtalloc-dev pkg-config swig uthash-dev python3-dev lzop
+        run: sudo apt-get update -qq && sudo apt-get install -qq libarchive-dev libtalloc-dev pkg-config swig uthash-dev python3-dev lzop
 
       - name: Build
         run: make -C src clean loader.elf loader-m32.elf build.h proot care
