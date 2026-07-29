@@ -1,0 +1,21 @@
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /test/docker/alpine
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /test/docker/centos
+    schedule:
+      interval: monthly
+
+  - package-ecosystem: docker
+    directory: /test/docker/debian
+    schedule:
+      interval: monthly
