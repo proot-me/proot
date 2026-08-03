@@ -6,6 +6,7 @@
  * with an empty referrer string, which then passed length=0 to
  * compare_paths2, triggering assert(length2 > 0) and aborting the tracer.
  */
+#define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
