@@ -542,9 +542,9 @@ static char *extract_loader(const Tracee *tracee, bool wants_32bit_version)
 	goto end;
     }
 
-    status = fchmod(fd,		/* NOSONAR: world r-x required; loader must be executable by traced processes running as any uid */
+    status = fchmod(fd,
 		    S_IRUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH |
-		    S_IXOTH);
+		    S_IXOTH);	/* NOSONAR: world r-x required; loader must be executable by traced processes running as any uid */
     if (status < 0) {
 	note(tracee, ERROR, SYSTEM,
 	     "can't change loader permissions (u+rx)");
