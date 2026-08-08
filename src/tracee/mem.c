@@ -128,6 +128,7 @@ int write_data(const Tracee *tracee, word_t dest_tracee, const void *src_tracer,
 	/* Copy the bytes in the last word carefully since we have to
 	 * overwrite only the relevant ones. */
 
+	errno = 0;
 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, dest + i, NULL);
 	if (errno != 0) {
 		note(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
@@ -229,6 +230,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
+		errno = 0;
 		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0) {
 			note(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
@@ -243,6 +245,7 @@ int read_data(const Tracee *tracee, void *dest_tracer, word_t src_tracee, word_t
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond @dest_tracer. */
 
+	errno = 0;
 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0) {
 		note(tracee, WARNING, SYSTEM, "ptrace(PEEKDATA)");
@@ -356,6 +359,7 @@ fallback:
 
 	/* Copy one word by one word, except for the last one. */
 	for (i = 0; i < nb_full_words; i++) {
+		errno = 0;
 		word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 		if (errno != 0)
 			return -EFAULT;
@@ -372,6 +376,7 @@ fallback:
 	/* Copy the bytes from the last word carefully since we have
 	 * to not overwrite the bytes lying beyond @dest_tracer. */
 
+	errno = 0;
 	word = ptrace(PTRACE_PEEKDATA, tracee->pid, src + i, NULL);
 	if (errno != 0)
 		return -EFAULT;
