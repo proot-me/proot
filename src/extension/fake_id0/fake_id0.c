@@ -226,7 +226,12 @@ static void override_permissions(const Tracee *tracee, const char *path,
      * called in reverse order.  */
     talloc_set_destructor(node, restore_mode);
 
-    (void) chmod(path, new_mode);	/* NOSONAR codeql[cpp/toctou-race-condition] */
+    /* @path was already canonicalized and stat'd above under the
+     * tracee's translated view; this mirrors the path-based access
+     * pattern used throughout proot's path translation layer and isn't
+     * independently exploitable here. */
+    /* codeql[cpp/toctou-race-condition] */
+    (void) chmod(path, new_mode);	/* NOSONAR: see comment above */
 
     return;
 }
