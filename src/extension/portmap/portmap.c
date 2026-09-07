@@ -154,6 +154,8 @@ int prepare_getsockname_chained_syscall(Tracee *tracee, Config *config,
 
 	status =
 	    write_data(tracee, args_addr, &args, 6 * sizeof_word(tracee));
+	if (status < 0)
+	    return status;
 
 	status = register_chained_syscall(tracee, PR_socketcall, SYS_GETSOCKNAME, args_addr,	// SYS_ARG1, socket file descriptor.
 					  0, 0, 0, 0);
