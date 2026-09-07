@@ -296,7 +296,7 @@ void chop_finality(char *path)
  */
 int readlink_proc_pid_fd(pid_t pid, int fd, char path[PATH_MAX])
 {
-    char link[32];		/* 32 > sizeof("/proc//cwd") +
+    char link[32];		/* 32 > sizeof("/proc/pid/cwd") +
 				 * sizeof(#ULONG_MAX) */
     int status;
 
@@ -642,7 +642,7 @@ static int foreach_fd(const Tracee *tracee, foreach_fd_t callback)
 {
     struct dirent *dirent;
     char path[PATH_MAX];
-    char proc_fd[32];		/* 32 > sizeof("/proc//fd") +
+    char proc_fd[32];		/* 32 > sizeof("/proc/pid/fd") +
 				 * sizeof(#ULONG_MAX) */
     int status;
     DIR *dirp;
