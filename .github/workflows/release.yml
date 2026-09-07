@@ -1,0 +1,70 @@
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build and attach release assets
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3
+        with:
+          fetch-depth: 0
+
+      - name: Check the release tag against the documented version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          doc_version="$(sed -n 's/^:Version: *//p' doc/proot/manual.rst)"
+          header_version="$(sed -n 's/^#define VERSION "\(.*\)"/\1/p' src/cli/proot.h)"
+
+          if [ "$tag" != "$doc_version" ]; then
+            echo "::error::release tag v$tag does not match :Version: $doc_version in doc/proot/manual.rst" >&2
+            exit 1
+          fi
+
+          if [ "$tag" != "$header_version" ]; then
+            echo "::error::release tag v$tag does not match VERSION \"$header_version\" in src/cli/proot.h" >&2
+            exit 1
+          fi
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq libarchive-dev libtalloc-dev pkg-config swig uthash-dev python3-dev lzop
+
+      - name: Build static proot and care binaries
+        run: |
+          make -C src clean loader.elf loader-m32.elf build.h
+          LDFLAGS="${LDFLAGS} -static" make -C src proot care
+
+      - name: Verify the embedded version string matches the tag
+        run: |
+          built="$(src/proot --version | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+[A-Za-z0-9.-]*' | head -n1)"
+          case "$built" in
+            "${GITHUB_REF_NAME}"|"${GITHUB_REF_NAME}"-*) ;;
+            *)
+              echo "::error::built proot reports version '$built', expected it to start with '${GITHUB_REF_NAME}'" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Package release assets
+        run: |
+          mkdir -p dist
+          cp src/proot src/care dist/
+          cd dist
+          sha256sum proot care > SHA256SUMS
+          md5sum proot care > MD5SUMS
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${GITHUB_REF_NAME}" dist/proot dist/care dist/SHA256SUMS dist/MD5SUMS --clobber --repo "${GITHUB_REPOSITORY}"
