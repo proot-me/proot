@@ -578,8 +578,8 @@ int translate_ptrace_exit(Tracee *tracee)
 	    if (status < 0)
 		return status;
 
-	    remote_iovec_len = local_iovec.iov_len =
-		MIN(remote_iovec_len, local_iovec.iov_len);
+	    local_iovec.iov_len = MIN(remote_iovec_len, local_iovec.iov_len);
+	    remote_iovec_len = local_iovec.iov_len;
 
 	    /* Update remote vector content.  */
 	    status =
