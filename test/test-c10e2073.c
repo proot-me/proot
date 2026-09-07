@@ -28,7 +28,7 @@ int main(void)
 
     if (status != strlen(path)) {
 	fprintf(stderr,
-		"readlink() returned the wrong size %d != %z.\n",
+		"readlink() returned the wrong size %d != %zu.\n",
 		status, strlen(path));
 	exit(EXIT_FAILURE);
     }
@@ -41,7 +41,7 @@ int main(void)
 
     if (status != strlen(path) + 1) {
 	fprintf(stderr,
-		"getcwd() returned the wrong size %d != %z.\n",
+		"getcwd() returned the wrong size %d != %zu.\n",
 		status, strlen(path));
 	exit(EXIT_FAILURE);
     }
