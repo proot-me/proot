@@ -1,4 +1,4 @@
-FROM debian:12
+FROM debian:13
 
 COPY . /usr/src/proot
 
