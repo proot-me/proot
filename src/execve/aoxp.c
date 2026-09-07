@@ -286,8 +286,8 @@ int resize_array_of_xpointers(ArrayOfXPointers *array, size_t index,
 		array->_xpointers + index,
 		nb_moved_entries * sizeof(XPointer));
 
-	bzero(array->_xpointers + index,
-	      delta_nb_entries * sizeof(XPointer));
+	memset(array->_xpointers + index, 0,
+	       delta_nb_entries * sizeof(XPointer));
     } else {
 	assert(delta_nb_entries <= 0);
 	assert(index >= (size_t) -delta_nb_entries);
