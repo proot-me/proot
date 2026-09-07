@@ -367,13 +367,13 @@ static int handle_sysexit_end(Tracee *tracee)
 	    if (strncmp(name, PREFIX, strlen(PREFIX)) != 0)
 		return 0;
 
-	  intermediate_proc:size =
-		my_readlink(intermediate,
-			    final);
+	  intermediate_proc:
+	    size = my_readlink(intermediate, final);
 	    if (size < 0)
 		return size;
 
-	  final_proc:status = lstat(final, &finalStat);
+	  final_proc:
+	    status = lstat(final, &finalStat);
 	    if (status < 0)
 		return status;
 
