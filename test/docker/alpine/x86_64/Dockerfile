@@ -2,9 +2,7 @@ FROM ghcr.io/proot-me/proot:alpine
 
 USER root
 
-RUN apk update && \
-    apk upgrade && \
-    apk add \
+RUN apk add --no-cache \
       bash \
       bsd-compat-headers \
       coreutils \
@@ -17,8 +15,8 @@ RUN apk update && \
       make \
       mcookie \
       musl-dev \
-      python3-dev \
       py3-docutils \
+      python3-dev \
       strace \
       swig \
       talloc-dev \
