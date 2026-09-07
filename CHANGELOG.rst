@@ -11,6 +11,34 @@ Unreleased
 
 Please see `Unreleased Changes`_ for more information.
 
+5.4.1 - 2026-09-07
+------------------
+
+Added
+~~~~~
+
+- clone3 syscall support
+- CodeQL static analysis workflow and Dependabot version tracking
+
+Changed
+~~~~~~~
+
+- Reformatted all sources with indent -kr
+- Modernized Docker test images: replaced EOL centos/debian bases, moved
+  built images to ghcr.io, dropped to a non-root build user
+- Migrated SonarCloud scanning to its automatic PR analysis and pinned
+  GitHub Actions to commit SHA hashes
+
+Fixed
+~~~~~
+
+- readlinkat(2) with an empty pathname on a dirfd opened with
+  O_PATH|O_NOFOLLOW no longer aborts the tracer (#182)
+- Broken Ubuntu rootfs link in the docs
+- Assorted CodeQL/SonarCloud findings: unchecked write_data() return in
+  the portmap extension, deprecated bzero, an invalid %z format
+  specifier, and stale comments
+
 5.4.0 - 2023-05-13
 ------------------
 
