@@ -119,9 +119,9 @@ endif
 ######################################################################
 # Auto-configuration
 
-GIT_VERSION := $(shell git describe --tags `git rev-list --tags --max-count=1`)
+GIT_VERSION := $(shell git describe --tags --always 2>/dev/null)
 
-GIT_COMMIT := $(shell git rev-list --all --max-count=1 | cut -c 1-8)
+GIT_COMMIT := $(shell git rev-parse --short=8 HEAD 2>/dev/null)
 
 VERSION = $(GIT_VERSION)-$(GIT_COMMIT)
 
