@@ -123,7 +123,7 @@ GIT_VERSION := $(shell git describe --tags --always 2>/dev/null)
 
 GIT_COMMIT := $(shell git rev-parse --short=8 HEAD 2>/dev/null)
 
-VERSION = $(GIT_VERSION)-$(GIT_COMMIT)
+VERSION = $(if $(or $(GIT_VERSION),$(GIT_COMMIT)),$(GIT_VERSION)-$(GIT_COMMIT))
 
 CHECK_VERSION = if [ ! -z "$(VERSION)" ]; \
                 then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$(VERSION)\""; \
