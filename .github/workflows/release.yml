@@ -61,10 +61,9 @@ jobs:
           cp src/proot src/care dist/
           cd dist
           sha256sum proot care > SHA256SUMS
-          md5sum proot care > MD5SUMS
 
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release upload "${GITHUB_REF_NAME}" dist/proot dist/care dist/SHA256SUMS dist/MD5SUMS --clobber --repo "${GITHUB_REPOSITORY}"
+          gh release upload "${GITHUB_REF_NAME}" dist/proot dist/care dist/SHA256SUMS --clobber --repo "${GITHUB_REPOSITORY}"
