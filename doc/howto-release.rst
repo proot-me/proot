@@ -2,7 +2,7 @@ How to make a release of PRoot?
 ===============================
 
 This document summarizes checks that must be performed before
-releasing PRoot or CARE.
+releasing PRoot or CARE, and the steps to actually publish a release.
 
 Checks
 ------
@@ -34,28 +34,84 @@ Checks
 
 + Static analysis: :code:`gcov`/:code:`lcov` and clang :code:`scan-build`
   must not report new issues. All shell scripts must pass :code:`shellcheck`.
-  
-Static Binaries
----------------
+  The :code:`pull-request` and :code:`CodeQL` GitHub Actions workflows and
+  the SonarCloud quality gate must be green on the release branch.
 
-The following commands will generate statically-linked binaries
-which can be optionally distributed for each release::
+Version Bump
+------------
 
-    make -C src clean loader.elf loader-m32.elf build.h
-    LDFLAGS="${LDFLAGS} -static" make -C src proot care
+The release version is recorded in three places, and all three must
+agree before publishing (the ``release`` GitHub Actions workflow
+enforces the first two automatically, see `Publishing the Release`_
+below, but it can't catch a missed changelog entry):
 
-Documentation Update
---------------------
+1. :code:`doc/proot/manual.rst`: update the :code:`:Date:` and
+   :code:`:Version:` fields.
 
-1. Update the :code:`doc/changelog.rst` file.
+2. :code:`src/cli/proot.h`: update the :code:`#define VERSION "..."`
+   fallback to match. This file is nominally "automatically generated
+   from the documentation", but in practice this line is still hand
+   edited to match step 1 -- there's no build step that regenerates
+   and copies it over automatically yet.
 
-2. Update the release number in the :code:`doc/proot/manual.rst` file.
+3. :code:`CHANGELOG.rst` (top level, *not* :code:`doc/changelog.rst`):
+   move the relevant entries out of ``Unreleased`` into a new
+   dated section for the release, following `Keep a Changelog`_.
 
-3. Generate the documentation::
+If CARE changed since its last release, its own version needs the
+same treatment in :code:`doc/care/manual.rst` and :code:`src/cli/care.h`;
+CARE and PRoot are versioned independently.
 
-     make -C doc
+Commit these as a single "prepare for release" commit/PR and get it
+merged to :code:`master` before tagging.
 
-4. Regenerate the website::
+.. _Keep a Changelog: https://keepachangelog.com/en/1.0.0
 
-     SITE_DIR=../../proot-me.github.io
-     make -eC doc dist # relative to doc directory
+Publishing the Release
+-----------------------
+
+Once the version-bump PR is merged to :code:`master`:
+
+1. On GitHub, draft a new release targeting :code:`master`, creating a
+   new tag :code:`vX.Y.Z` (matching the :code:`:Version:` from step 1
+   above, with a ``v`` prefix).
+
+2. Publish it. Publishing (not just creating the tag) is what triggers
+   the :code:`release` GitHub Actions workflow
+   (:code:`.github/workflows/release.yml`).
+
+3. The workflow will:
+
+   * fail immediately if the tag doesn't match the version recorded in
+     :code:`doc/proot/manual.rst` or :code:`src/cli/proot.h` -- this is
+     the automated check for the version-bump step above;
+   * build static :code:`proot` and :code:`care` binaries, equivalent to::
+
+       make -C src clean loader.elf loader-m32.elf build.h
+       LDFLAGS="${LDFLAGS} -static" make -C src proot care
+
+   * verify the built :code:`proot --version` output actually reports
+     the tagged version;
+   * attach :code:`proot`, :code:`care`, and a :code:`SHA256SUMS` file
+     to the GitHub release as downloadable assets.
+
+4. Check the workflow run and confirm the assets show up on the
+   release page before announcing anything.
+
+This replaced the previous process of manually building static
+binaries and uploading them to GitLab Pages -- GitHub Releases are now
+the canonical place users and distro packagers should download
+official binaries from.
+
+Not yet automated: multi-architecture binaries (only x86_64 is built),
+artifact signing, and SLSA build provenance attestation.
+
+Website
+-------
+
+Regenerating the documentation website is separate from the binary
+release above::
+
+    make -C doc
+    SITE_DIR=../../proot-me.github.io
+    make -eC doc dist # relative to doc directory
