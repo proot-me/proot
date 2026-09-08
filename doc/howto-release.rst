@@ -98,14 +98,6 @@ Once the version-bump PR is merged to :code:`master`:
 4. Check the workflow run and confirm the assets show up on the
    release page before announcing anything.
 
-This replaced the previous process of manually building static
-binaries and uploading them to GitLab Pages -- GitHub Releases are now
-the canonical place users and distro packagers should download
-official binaries from.
-
-Not yet automated: multi-architecture binaries (only x86_64 is built),
-artifact signing, and SLSA build provenance attestation.
-
 Website
 -------
 
