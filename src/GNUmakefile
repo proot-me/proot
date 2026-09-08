@@ -40,27 +40,6 @@ CFLAGS   += $(shell pkg-config --cflags talloc)
 LDFLAGS  += -Wl,-z,noexecstack
 LDFLAGS  += $(shell pkg-config --libs talloc)
 
-# A plain `pkg-config --libs` only lists libarchive itself; when linking
-# statically (LDFLAGS containing -static, as the release build does) its
-# own transitive dependencies (nettle, lzma, zstd, ...) need pulling in
-# too, which only the --static form of pkg-config includes.
-#
-# That's not the whole story either: Ubuntu's libarchive.pc hardcodes
-# -lxml2 directly in its own Libs.private instead of declaring a proper
-# Requires.private: libxml-2.0, so pkg-config has no way to know it
-# should also recurse into libxml-2.0's *own* static dependencies (ICU,
-# in particular) -- those have to be pulled in by hand.
-#
-# One more wrinkle: ICU is itself a C++ library (uses std::mutex,
-# RTTI, exceptions, ...), but care links via plain gcc (CC/LD above),
-# not g++, so libstdc++ doesn't get pulled in automatically the way it
-# would for a real C++ link. Add it explicitly.
-#
-# None of this is guaranteed to come out in an order plain left-to-right
-# static linking can resolve in one pass, so wrap the lot in
-# --start-group/--end-group to let ld re-scan until everything resolves,
-# and add -lm/-lstdc++ explicitly since they're needed but not always
-# declared by the .pc files above.
 ifneq ($(findstring -static,$(LDFLAGS)),)
 CARE_LDFLAGS  = -Wl,--start-group $(shell pkg-config --libs --static libarchive) \
                 $(shell pkg-config --exists libxml-2.0 && pkg-config --libs --static libxml-2.0) \
