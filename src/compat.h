@@ -259,6 +259,15 @@
 #define NT_ARM_SYSTEM_CALL		0x404
 #endif
 
+/* compat.h is also pulled in by the freestanding, -nostdlib loader
+ * build (see src/GNUmakefile's build_loader), which has no libc
+ * available at all -- <sys/user.h> may not even exist there (e.g. no
+ * 32-bit multilib headers for the m32 loader). The register-transfer
+ * structs below are only ever needed by hosted code that does ptrace
+ * (tracee.h / ptrace.c); the loader never touches them. Skip this
+ * whole block for freestanding translation units.  */
+#if !defined(__STDC_HOSTED__) || __STDC_HOSTED__
+
 /* Some older glibc (e.g. 2.17, as shipped by RHEL/CentOS 7's initial
  * aarch64 port) never added struct user_regs_struct as a source
  * compatibility alias for the kernel's struct user_pt_regs: the name
@@ -295,5 +304,7 @@ struct user_fpregs_struct {
     unsigned int __reserved[2];
 };
 #endif
+
+#endif				/* !defined(__STDC_HOSTED__) || __STDC_HOSTED__ */
 
 #endif				/* COMPAT_H */
