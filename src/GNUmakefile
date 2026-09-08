@@ -22,6 +22,20 @@ HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/n
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
 CFLAGS   += -g -Wall -Wextra -O2
+
+# pkg-config silently returns an empty string for --cflags/--libs when it
+# can't find talloc.pc, which used to surface much later and much more
+# confusingly as "undefined reference to talloc_*" at link time (see
+# https://github.com/proot-me/proot/issues/233). Fail here instead, with
+# a message that points at the actual problem.
+ifeq ($(shell pkg-config --exists talloc && echo yes),)
+$(error talloc development files not found by pkg-config. Install the \
+talloc headers package for your distribution (e.g. libtalloc-dev on \
+Debian/Ubuntu, libtalloc-devel on Fedora/RHEL/CentOS) and make sure \
+pkg-config can find talloc.pc (check the PKG_CONFIG_PATH environment \
+variable if it's installed in a non-standard location))
+endif
+
 CFLAGS   += $(shell pkg-config --cflags talloc)
 LDFLAGS  += -Wl,-z,noexecstack
 LDFLAGS  += $(shell pkg-config --libs talloc)
