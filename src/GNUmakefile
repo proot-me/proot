@@ -24,6 +24,7 @@ HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/n
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
 CFLAGS   += -g -Wall -Wextra -O2
+
 # pkg-config silently returns an empty string for --cflags/--libs when it
 # can't find talloc.pc, which used to surface much later and much more
 # confusingly as "undefined reference to talloc_*" at link time (see
