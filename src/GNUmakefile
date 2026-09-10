@@ -17,10 +17,28 @@ OBJDUMP    = $(CROSS_COMPILE)objdump
 PKG_CONFIG = $(CROSS_COMPILE)pkg-config
 PYTHON     = python3
 
-HAS_SWIG := $(shell swig -version 2>/dev/null)
 PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
 PYTHON_EMBED = $(shell ${PYTHON} -c "import sys; print('--embed' if sys.hexversion > 0x03080000 else '')" 2>/dev/null)
+
+# The python extension is built whenever both swig and python3-config
+# are found on PATH -- which makes "is it available" and "is it wanted"
+# the same question, and that's the wrong question to ask on a build
+# image that happens to have a full Python toolchain preinstalled for
+# unrelated reasons (e.g. GitHub's ubuntu-latest runners: both are
+# present there by default, regardless of what this Makefile's own
+# caller apt-get installs). That silently re-enabled the extension in
+# release.yml's static build and broke it, since Ubuntu's static
+# libpython doesn't resolve all its own symbols under -static.
+#
+# WITHOUT_PYTHON=1 makes the "don't want it" case explicit instead of
+# relying on the tools happening to be absent.
+ifneq ($(WITHOUT_PYTHON),)
+HAS_SWIG :=
+HAS_PYTHON_CONFIG :=
+else
+HAS_SWIG := $(shell swig -version 2>/dev/null)
 HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/null)
+endif
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
 CFLAGS   += -g -Wall -Wextra -O2
