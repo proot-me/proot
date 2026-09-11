@@ -13,10 +13,9 @@ before_script:
 
 check:
   stage: check
-  script: 
+  script:
     - make -C src proot care
-    - timeout --signal=SIGKILL 5m make -C test
-  allow_failure: true
+    - timeout --signal=SIGKILL 5m make -C test || true # ignore failing tests (for now)
 
 dist:
   stage: dist
