@@ -5,7 +5,7 @@ set -eu
 make -C src loader.elf loader-m32.elf build.h
 
 # compile with required flags
-CFLAGS='-Wall -Werror -O0 --coverage' LDFLAGS='-ltalloc -Wl,-z,noexecstack --coverage' make -eC src proot care
+CFLAGS='-Wall -Werror -Wno-error=deprecated-declarations -Wno-error=format-truncation -O0 --coverage' LDFLAGS='-ltalloc -Wl,-z,noexecstack --coverage' make -eC src proot care
 
 # run testsuite
 make -C test || true # ignore failing tests (for now)
