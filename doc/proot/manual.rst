@@ -646,7 +646,7 @@ Public material about PRoot or CARE
   QUF'11
 
 * tutorial "`How to install nix in home (on another distribution)
-  <https://nixos.wiki/wiki/Nix_Installation_Guide#PRoot>`_"
+  <https://wiki.nixos.org/wiki/Nix_Installation_Guide#PRoot>`_"
 
 
 Companies using PRoot or CARE internally
