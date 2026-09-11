@@ -45,6 +45,7 @@
 #include "cli/note.h"
 
 #include "compat.h"
+#include "mem.h"
 
 #ifndef __W_STOPCODE
 #define __W_STOPCODE(sig)	((sig) <<8 | 0x7f)
