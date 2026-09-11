@@ -5,28 +5,68 @@
 VPATH := $(dir $(lastword $(MAKEFILE_LIST)))
 SRC    = $(dir $(firstword $(MAKEFILE_LIST)))
 
-GIT      = git
-RM       = rm
-INSTALL  = install
-CC       = $(CROSS_COMPILE)gcc
-LD       = $(CC)
-STRIP    = $(CROSS_COMPILE)strip
-OBJCOPY  = $(CROSS_COMPILE)objcopy
-OBJDUMP  = $(CROSS_COMPILE)objdump
-PYTHON   = python3
+GIT        = git
+RM         = rm
+INSTALL    = install
+CC         = $(CROSS_COMPILE)gcc
+LD         = $(CC)
+LD_CMD     = $(CROSS_COMPILE)ld
+STRIP      = $(CROSS_COMPILE)strip
+OBJCOPY    = $(CROSS_COMPILE)objcopy
+OBJDUMP    = $(CROSS_COMPILE)objdump
+PKG_CONFIG = $(CROSS_COMPILE)pkg-config
+PYTHON     = python3
 
-HAS_SWIG := $(shell swig -version 2>/dev/null)
 PYTHON_MAJOR_VERSION = $(shell ${PYTHON} -c "import sys; print(sys.version_info.major)" 2>/dev/null)
 PYTHON_EMBED = $(shell ${PYTHON} -c "import sys; print('--embed' if sys.hexversion > 0x03080000 else '')" 2>/dev/null)
+
+# The python extension is built whenever both swig and python3-config
+# are found on PATH -- which makes "is it available" and "is it wanted"
+# the same question, and that's the wrong question to ask on a build
+# image that happens to have a full Python toolchain preinstalled for
+# unrelated reasons (e.g. GitHub's ubuntu-latest runners: both are
+# present there by default, regardless of what this Makefile's own
+# caller apt-get installs). That silently re-enabled the extension in
+# release.yml's static build and broke it, since Ubuntu's static
+# libpython doesn't resolve all its own symbols under -static.
+#
+# WITHOUT_PYTHON=1 makes the "don't want it" case explicit instead of
+# relying on the tools happening to be absent.
+ifneq ($(WITHOUT_PYTHON),)
+HAS_SWIG :=
+HAS_PYTHON_CONFIG :=
+else
+HAS_SWIG := $(shell swig -version 2>/dev/null)
 HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/null)
+endif
 
 CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
 CFLAGS   += -g -Wall -Wextra -O2
-CFLAGS   += $(shell pkg-config --cflags talloc)
-LDFLAGS  += -Wl,-z,noexecstack
-LDFLAGS  += $(shell pkg-config --libs talloc)
 
-CARE_LDFLAGS  = $(shell pkg-config --libs libarchive)
+# pkg-config silently returns an empty string for --cflags/--libs when it
+# can't find talloc.pc, which used to surface much later and much more
+# confusingly as "undefined reference to talloc_*" at link time (see
+# https://github.com/proot-me/proot/issues/233). Fail here instead, with
+# a message that points at the actual problem.
+ifeq ($(shell ${PKG_CONFIG} --exists talloc && echo yes),)
+$(error talloc development files not found by pkg-config. Install the \
+talloc headers package for your distribution (e.g. libtalloc-dev on \
+Debian/Ubuntu, libtalloc-devel on Fedora/RHEL/CentOS) and make sure \
+pkg-config can find talloc.pc (check the PKG_CONFIG_PATH environment \
+variable if it's installed in a non-standard location))
+endif
+
+CFLAGS   += $(shell ${PKG_CONFIG} --cflags talloc)
+LDFLAGS  += -Wl,-z,noexecstack
+LDFLAGS  += $(shell ${PKG_CONFIG} --libs talloc)
+
+ifneq ($(findstring -static,$(LDFLAGS)),)
+CARE_LDFLAGS  = -Wl,--start-group $(shell ${PKG_CONFIG} --libs --static libarchive) \
+                $(shell ${PKG_CONFIG} --exists libxml-2.0 && ${PKG_CONFIG} --libs --static libxml-2.0) \
+                -lm -lstdc++ -Wl,--end-group
+else
+CARE_LDFLAGS  = $(shell ${PKG_CONFIG} --libs libarchive)
+endif
 
 OBJECTS += \
 	cli/cli.o		\
@@ -119,11 +159,11 @@ endif
 ######################################################################
 # Auto-configuration
 
-GIT_VERSION := $(shell git describe --tags `git rev-list --tags --max-count=1`)
+GIT_VERSION := $(shell git describe --tags --always 2>/dev/null)
 
-GIT_COMMIT := $(shell git rev-list --all --max-count=1 | cut -c 1-8)
+GIT_COMMIT := $(shell git rev-parse --short=8 HEAD 2>/dev/null)
 
-VERSION = $(GIT_VERSION)-$(GIT_COMMIT)
+VERSION = $(if $(or $(GIT_VERSION),$(GIT_COMMIT)),$(GIT_VERSION)-$(GIT_COMMIT))
 
 CHECK_VERSION = if [ ! -z "$(VERSION)" ]; \
                 then /bin/echo -e "\#undef VERSION\n\#define VERSION \"$(VERSION)\""; \
@@ -159,7 +199,7 @@ build.h: $(CHECK_RESULTS)
 	$(Q)cat $^                      >> $@
 	$(Q)echo "#endif /* BUILD_H */" >> $@
 
-BUILD_ID_NONE := $(shell if ld --build-id=none --version >/dev/null 2>&1; then echo ',--build-id=none'; fi)
+BUILD_ID_NONE := $(shell if ${LD_CMD} --build-id=none --version >/dev/null 2>&1; then echo ',--build-id=none'; fi)
 
 ######################################################################
 # Build rules

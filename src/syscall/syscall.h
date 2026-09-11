@@ -23,16 +23,18 @@
 #ifndef SYSCALL_H
 #define SYSCALL_H
 
-#include <limits.h>     /* PATH_MAX, */
+#include <limits.h>		/* PATH_MAX, */
 
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 
-extern int get_sysarg_path(const Tracee *tracee, char path[PATH_MAX], Reg reg);
-extern int set_sysarg_path(Tracee *tracee, const char path[PATH_MAX], Reg reg);
+extern int get_sysarg_path(const Tracee * tracee, char path[PATH_MAX],
+			   Reg reg);
+extern int set_sysarg_path(Tracee * tracee, const char path[PATH_MAX],
+			   Reg reg);
 
-extern void translate_syscall(Tracee *tracee);
-extern int  translate_syscall_enter(Tracee *tracee);
-extern void translate_syscall_exit(Tracee *tracee);
+extern void translate_syscall(Tracee * tracee);
+extern int translate_syscall_enter(Tracee * tracee);
+extern void translate_syscall_exit(Tracee * tracee);
 
-#endif /* SYSCALL_H */
+#endif				/* SYSCALL_H */
