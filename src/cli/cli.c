@@ -23,7 +23,8 @@
 #include <stdio.h>		/* printf(3), */
 #include <stdbool.h>		/* bool, true, false,  */
 #include <linux/limits.h>	/* ARG_MAX, PATH_MAX, */
-#include <string.h>		/* str*(3), basename(3),  */
+#include <string.h>		/* str*(3), */
+#include <libgen.h>		/* basename(3), */
 #include <talloc.h>		/* talloc*,  */
 #include <stdlib.h>		/* exit(3), EXIT_*, strtol(3), {g,s}etenv(3), */
 #include <assert.h>		/* assert(3),  */
@@ -31,7 +32,6 @@
 #include <unistd.h>		/* getpid(2),  */
 #include <errno.h>		/* errno(3), */
 #include <limits.h>		/* INT_MAX, */
-#include <libgen.h>
 
 /* execinfo.h is GNU extension, disable it not using glibc */
 #if defined(__GLIBC__)
