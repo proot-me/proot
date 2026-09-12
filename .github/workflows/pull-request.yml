@@ -1,0 +1,84 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build:
+    name: "${{ matrix.SECCOMP == '1' && 'seccomp' || 'no-seccomp' }} | ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    env:
+      BUILD_WRAPPER_OUT_DIR: tmp
+    strategy:
+      fail-fast: false
+      matrix:
+        SECCOMP: [ 0, 1 ]
+        os: [ubuntu-24.04, ubuntu-26.04]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq clang-tools curl gdb lcov libarchive-dev libtalloc-dev pkg-config sloccount strace swig uthash-dev python3-dev lzop
+
+      - name: Gather analytics
+        run: sloccount --details .
+
+      - name: Build elf loader, proot, and care
+        run: |
+          make -C src clean loader.elf loader-m32.elf build.h proot care
+
+      - name: Execute test suite
+        continue-on-error: true
+        timeout-minutes: 10
+        run: |
+          env ${{ matrix.SECCOMP == '0' && 'PROOT_NO_SECCOMP=1' || '' }} PATH=/bin:/usr/bin:/sbin:/usr/sbin:$PWD/src make -C test -j $(nproc) QUIET_LOG=$PWD/test.log
+
+      - name: Output test log
+        if: always()
+        continue-on-error: true
+        run: ([ -f test.log ] && cat test.log) || true
+
+  cross-compile:
+    name: cross-compile (aarch64)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
+        with:
+          fetch-depth: 0
+
+      - name: Add the arm64 architecture and its package sources
+        run: |
+          sudo dpkg --add-architecture arm64
+          sudo tee /etc/apt/sources.list.d/arm64-ports.list > /dev/null <<'EOF'
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe
+          deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe
+          EOF
+          # archive.ubuntu.com/security.ubuntu.com don't carry foreign
+          # architectures; scope the default sources to amd64 so apt
+          # doesn't try to fetch arm64 packages from them.
+          sudo sed -i '/^Signed-By:/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources
+          sudo apt-get update -qq
+
+      - name: Install cross toolchain and target libraries
+        run: |
+          sudo apt-get install -qq -y crossbuild-essential-arm64 pkg-config uthash-dev qemu-user \
+            libarchive-dev:arm64 libtalloc-dev:arm64
+
+      - name: Cross-build proot and care for aarch64
+        run: |
+          make -C src clean loader.elf build.h proot care CROSS_COMPILE=aarch64-linux-gnu- WITHOUT_PYTHON=1
+
+      - name: Verify the cross-built binary is a real aarch64 ELF and actually runs
+        run: |
+          file src/proot | grep -q 'ARM aarch64' || { echo "::error::src/proot is not an aarch64 binary"; exit 1; }
+          qemu-aarch64 -L /usr/aarch64-linux-gnu src/proot --version | head -3

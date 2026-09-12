@@ -4,13 +4,13 @@ int check = 0;
 
 static void __attribute__((constructor)) init(void)
 {
-	if (check > 0)
-		_exit(1);
+    if (check > 0)
+	_exit(1);
 
-	check++;
+    check++;
 }
 
 int main(void)
 {
-	return 0;
+    return 0;
 }

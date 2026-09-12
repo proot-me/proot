@@ -5,17 +5,17 @@
 
 int main(void)
 {
-	char buffer[2 * PATH_MAX];
+    char buffer[2 * PATH_MAX];
 
-	if (!getcwd(buffer, sizeof(buffer))) {
-		perror("getcwd");
-		exit(EXIT_FAILURE);
-	}
+    if (!getcwd(buffer, sizeof(buffer))) {
+	perror("getcwd");
+	exit(EXIT_FAILURE);
+    }
 
-	if (readlink("/bin/abs-true", buffer, sizeof(buffer)) < 0) {
-		perror("readlink");
-		exit(EXIT_FAILURE);
-	}
+    if (readlink("/bin/abs-true", buffer, sizeof(buffer)) < 0) {
+	perror("readlink");
+	exit(EXIT_FAILURE);
+    }
 
-	exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 }

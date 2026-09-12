@@ -33,8 +33,8 @@
 #define USER32_NB_FPREGS 27
 
 extern word_t convert_user_offset(word_t offset);
-extern void convert_user_regs_struct(bool reverse, uint64_t *user_regs64,
-				uint32_t user_regs32[USER32_NB_REGS]);
+extern void convert_user_regs_struct(bool reverse, uint64_t * user_regs64,
+				     uint32_t user_regs32[USER32_NB_REGS]);
 
 #else
 
@@ -43,14 +43,16 @@ extern void convert_user_regs_struct(bool reverse, uint64_t *user_regs64,
 
 static inline word_t convert_user_offset(word_t offset UNUSED)
 {
-	assert(0);
+    assert(0);
 }
 
 static inline void convert_user_regs_struct(bool reverse UNUSED,
-					uint64_t *user_regs64 UNUSED,
-					uint32_t user_regs32[USER32_NB_REGS] UNUSED)
+					    uint64_t *user_regs64 UNUSED,
+					    uint32_t
+					    user_regs32[USER32_NB_REGS]
+					    UNUSED)
 {
-	assert(0);
+    assert(0);
 }
 
 #endif

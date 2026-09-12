@@ -29,4 +29,4 @@
 #define PACKED __attribute__((packed))
 #define WEAK   __attribute__((weak))
 
-#endif /* ATTRIBUTE_H */
+#endif				/* ATTRIBUTE_H */
