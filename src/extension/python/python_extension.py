@@ -8,7 +8,7 @@ client = None
 def python_callback(extension, event, data1, data2):
     global client
     res = 0
-    if event == 11:
+    if event == INITIALIZATION:
         if client:
             print("Already have a client => refuse to use %s" % (ctypes.string_at(data1).decode('utf-8')))
         else:
