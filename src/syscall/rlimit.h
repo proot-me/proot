@@ -26,6 +26,7 @@
 #include <stdbool.h>
 #include "tracee/tracee.h"
 
-extern int translate_setrlimit_exit(const Tracee *tracee, bool is_prlimit);
+extern int translate_setrlimit_exit(const Tracee * tracee,
+				    bool is_prlimit);
 
-#endif /* RLIMIT_H */
+#endif				/* RLIMIT_H */

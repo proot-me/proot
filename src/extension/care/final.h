@@ -25,6 +25,6 @@
 
 #include "care.h"
 
-extern int finalize_care(Care *care);
+extern int finalize_care(Care * care);
 
-#endif /* CARE_FINAL_H */
+#endif				/* CARE_FINAL_H */
