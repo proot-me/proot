@@ -2,30 +2,12 @@
  * Regression test for readlink(2) of a top-level "/proc" entry, eg.
  * "/proc/self", "/proc/mounts", "/proc/thread-self", "/proc/net".
  *
- * detranslate_path() special-cases any readlink(2) referrer under
- * "/proc" by calling readlink_proc2(), which strips the last path
- * component off the referrer to get a "base" and then hardcoded
- * PATH1_IS_PREFIX as base's relationship to "/proc" when forwarding to
- * readlink_proc(). That's only true when the referrer has two or more
- * path segments under /proc (eg. "/proc/self/cwd" -> base
- * "/proc/self"). For a direct child of /proc, stripping the last
- * component leaves base as "/proc" itself -- PATHS_ARE_EQUAL, not
- * PATH1_IS_PREFIX -- which used to trip an assertion in
- * readlink_proc() and abort the tracer (or, in a non-assert build,
- * misparse a pid out of adjacent stack memory).
- *
- * The crash only manifests for a referrer whose target is itself an
- * absolute path (eg. "/proc/device-tree" -> "/sys/firmware/..." on
- * ARM systems with device-tree firmware data) -- detranslate_path()
- * has an earlier guard that skips any non-absolute-looking target
- * before ever reaching the /proc-specific code, and every top-level
- * /proc entry on a generic x86_64 machine (self, mounts, net,
- * thread-self) happens to have a relative target. There is no way to
- * construct a real, on-disk, absolute-target top-level /proc entry
- * from userspace, so this test cannot reproduce the crash itself; it
- * instead verifies the surrounding, always-reachable mechanism
- * (readlink of a top-level /proc entry, relative-target case) keeps
- * behaving correctly, as a regression guard for this code.
+ * readlink_proc2() used to mishandle these (see the fix in proc.c),
+ * but only for entries with an absolute target (eg.
+ * "/proc/device-tree" on ARM systems with device-tree firmware) --
+ * none of which exist on generic x86_64 hardware. This test covers
+ * the always-reachable relative-target case instead, as a general
+ * regression guard.
  */
 #include <errno.h>
 #include <limits.h>

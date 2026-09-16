@@ -192,14 +192,8 @@ ssize_t readlink_proc2(const Tracee *tracee, char result[PATH_MAX],
     if (component[0] == '\0')
 	return 0;
 
-    /* @referer's relationship to "/proc" doesn't tell us @base's:
-     * for a direct child of "/proc" (eg. "/proc/self"), @base is
-     * "/proc" itself once the last component is stripped off, so
-     * comparison is PATHS_ARE_EQUAL, not PATH1_IS_PREFIX.  Passing
-     * a hardcoded PATH1_IS_PREFIX here used to either trip the
-     * assertion in readlink_proc() or, in a non-assert build, make
-     * it parse "/proc"+strlen("/proc/") as a pid out of whatever
-     * bytes happened to follow the truncated @base buffer.  */
+    /* @base can be "/proc" itself for a direct child of "/proc"
+     * (eg. "/proc/self"), not just a strict subpath of it.  */
     comparison = compare_paths("/proc", base);
 
     action = readlink_proc(tracee, result, base, component, comparison);
