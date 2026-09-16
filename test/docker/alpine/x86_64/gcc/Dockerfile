@@ -1,8 +1,11 @@
-FROM proot-me/proot:alpine-x86_64
+FROM ghcr.io/proot-me/proot:alpine-x86_64
 
-RUN apk add \
-      --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing \
+USER root
+
+RUN apk add --no-cache \
+      --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing \
       gcc \
       gdb \
       lcov
 
+USER proot

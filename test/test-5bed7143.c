@@ -15,59 +15,59 @@
 
 int main()
 {
-	char *path1;
-	char *path2;
-	char *cwd;
-	int status;
+    char *path1;
+    char *path2;
+    char *cwd;
+    int status;
 
-	path1 = mkdtemp(strdup(TEMPLATE));
-	if (path1 == NULL)
-		exit(EXIT_FAILURE);
+    path1 = mkdtemp(strdup(TEMPLATE));
+    if (path1 == NULL)
+	exit(EXIT_FAILURE);
 
-	status = chdir(path1);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    status = chdir(path1);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	status = mkdir(COOKIE1, 0777);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    status = mkdir(COOKIE1, 0777);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	status = chdir(COOKIE1);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    status = chdir(COOKIE1);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	status = creat(COOKIE2, O_RDWR);
-	if (status < 0)
-		exit(EXIT_FAILURE);
-	close(status);
+    status = creat(COOKIE2, O_RDWR);
+    if (status < 0)
+	exit(EXIT_FAILURE);
+    close(status);
 
-	path2 = mktemp(strdup(TEMPLATE));
-	status = rename(path1, path2);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    path2 = mktemp(strdup(TEMPLATE));
+    status = rename(path1, path2);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	status = access(COOKIE2, F_OK);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    status = access(COOKIE2, F_OK);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	cwd = get_current_dir_name();
-	if (cwd == NULL || memcmp(cwd, path2, strlen(path2)) != 0)
-		exit(EXIT_FAILURE);
+    cwd = get_current_dir_name();
+    if (cwd == NULL || memcmp(cwd, path2, strlen(path2)) != 0)
+	exit(EXIT_FAILURE);
 
-	status = unlink(COOKIE2);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    status = unlink(COOKIE2);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	status = rmdir(cwd);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    status = rmdir(cwd);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	if (get_current_dir_name() != NULL || errno != ENOENT)
-		exit(EXIT_FAILURE);
+    if (get_current_dir_name() != NULL || errno != ENOENT)
+	exit(EXIT_FAILURE);
 
-	status = rmdir(path2);
-	if (status < 0)
-		exit(EXIT_FAILURE);
+    status = rmdir(path2);
+    if (status < 0)
+	exit(EXIT_FAILURE);
 
-	exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 }

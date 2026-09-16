@@ -28,6 +28,14 @@ check-%.sh: %.sh setup
 check-%.c: $(ROOTFS)/bin/% setup
 	$(call check_c,$*,$(PROOT) -b /proc -r $(ROOTFS) /bin/$*)
 
+C_SHORT_TESTS = $(patsubst %.c,check-%,$(wildcard test-*.c))
+SH_SHORT_TESTS = $(patsubst %.sh,check-%,$(wildcard test-*.sh))
+.PHONY: $(C_SHORT_TESTS) $(SH_SHORT_TESTS)
+$(C_SHORT_TESTS): check-%: check-%.c
+$(SH_SHORT_TESTS): check-%: check-%.sh
+
+
+
 # Special cases.
 check-test-sysexit.c: test-sysexit
 	$(call check_c,$<,env PROOT_FORCE_KOMPAT=1 $(PROOT) -k 3.4242XX ./$<)
@@ -84,6 +92,9 @@ check-test-9c07fad8.c: test-9c07fad8
 	$(call check_c,$<,$(PROOT) ./$<)
 
 check-test-fa205b56.c: test-fa205b56
+	$(call check_c,$<,$(PROOT) ./$<)
+
+check-test-bug-182.c: test-bug-182
 	$(call check_c,$<,$(PROOT) ./$<)
 
 check_c = $(Q)if [ -e $< ]; then			\
@@ -201,6 +212,9 @@ test-9c07fad8: test-9c07fad8.c
 
 test-fa205b56: test-fa205b56.c
 	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
+
+#test-bug-182: test-bug-182.c
+#	$(Q)$(CC) $< -o $@ $(silently) || true
 
 test-c47aeb7d: test-c47aeb7d.c
 	$(Q)$(CC) $< -pthread -o $@ $(silently) || true

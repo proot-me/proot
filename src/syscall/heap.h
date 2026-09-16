@@ -25,7 +25,7 @@
 
 #include "tracee/tracee.h"
 
-extern void translate_brk_enter(Tracee *tracee);
-extern void translate_brk_exit(Tracee *tracee);
+extern void translate_brk_enter(Tracee * tracee);
+extern void translate_brk_exit(Tracee * tracee);
 
-#endif /* HEAP_H */
+#endif				/* HEAP_H */
