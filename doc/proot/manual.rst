@@ -62,7 +62,7 @@ if they were "normal" host programs.
 .. _CARE: https://proot-me.github.io/care
 
 Project Status Tags
-=========
+====================
 [ACTIVE] — The project is actively maintained or has recent contributions as of the documentation date.
 
 [OUTDATED] — The project hasn’t been updated or contributed to for a long time and may be incompatible with current systems.
