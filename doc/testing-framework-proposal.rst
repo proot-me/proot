@@ -94,12 +94,11 @@ scratch:
   each holding several named ``@test`` cases, rather than one file per
   test case.
 
-Overlap with proot's suite is real. proot-rs's ``bind.bats`` and
-``cwd.bats`` cover the same ground as proot's own
-``test-305ae31d.sh``/``test-22222222.sh`` (bind) and
-``chdir_getcwd.c``/``test-5bed7141.c`` (cwd). Same behavior, tested
-twice, in two different styles, against two different implementations
-of the same tool.
+proot-rs's ``bind.bats`` and ``cwd.bats`` cover the same ground as
+proot's own ``test-305ae31d.sh``/``test-22222222.sh`` (bind) and
+``chdir_getcwd.c``/``test-5bed7141.c`` (cwd): the same behavior,
+tested twice, in two different styles, against two different
+implementations of the same tool.
 
 Sharing is partial, not total
 --------------------------------
