@@ -50,7 +50,7 @@ Pulled directly from the Linux kernel and glibc source, not assumed:
 
 + **ELF/audit constants** (``include/uapi/linux/audit.h``):
   ``AUDIT_ARCH_S390 = EM_S390``, ``AUDIT_ARCH_S390X = EM_S390 |
-  __AUDIT_ARCH_64BIT`` -- notably *no* ``__AUDIT_ARCH_LE`` flag.
+  __AUDIT_ARCH_64BIT``, notably with no ``__AUDIT_ARCH_LE`` flag.
 
 + **Syscall table source** (``arch/s390/kernel/syscalls/syscall.tbl``):
   same 4-column ``<nr> <abi> <name> <entry>`` format already used to
@@ -76,11 +76,10 @@ s390x's audit-arch constant is the first concrete signal that this
 port is different in kind, not just another ``reg_offset[]`` table.
 
 Anywhere PRoot reads or writes tracee memory as anything other than
-opaque bytes -- register values, struct layouts read via
-``read_data``/``write_data``, path/buffer length fields -- needs
-auditing for a host/guest byte-order assumption before this port can
-be trusted. This needs its own investigation pass; it is not scoped
-out further here.
+opaque bytes needs auditing for a host/guest byte-order assumption
+before this port can be trusted: register values, struct layouts read
+via ``read_data``/``write_data``, path/buffer length fields. This
+needs its own investigation pass; it is not scoped out further here.
 
 31-bit compat mode: out of scope for v1
 ------------------------------------------
@@ -102,22 +101,21 @@ liveness check; the same shape would work for a cross-compiled s390x
 build.
 
 That only proves the binary starts, not that ptrace-based tracing
-works. Running actual traced *guest* programs under ``qemu-user``
-(proot itself, not just what it traces, running emulated) is a
-meaningfully bigger ask -- ptrace-of-a-process-under-emulation is a
-known-fragile combination, not something to assume works without
+works. A meaningfully bigger ask is running proot itself, not just
+what it traces, under ``qemu-user``. ptrace-of-a-process-under-emulation
+is a known-fragile combination, not something to assume works without
 hands-on verification on either real s390x hardware or a full-system
 QEMU install.
 
 Proposed phases
 -------------------
 
-1. This document -- sourced references, open questions flagged.
+1. This document: sourced references, open questions flagged.
 2. Byte-order audit of ``read_data``/``write_data`` and any
    struct-layout-dependent code, before writing s390x-specific code.
 3. Core port: ``arch.h``, ``tracee/reg.c``, ``sysnums-s390x.h``
-   (generated from the kernel's ``syscall.tbl``, not hand-typed --
-   worth writing this generator once and reusing it for future ports),
+   (generated from the kernel's ``syscall.tbl``, not hand-typed; worth
+   writing this generator once and reusing it for future ports),
    ``loader/assembly-s390x.h``.
 4. Verify the open ``SYSARG_1``/``orig_gpr2`` question and the
    byte-order audit's findings against a real or QEMU-emulated s390x
