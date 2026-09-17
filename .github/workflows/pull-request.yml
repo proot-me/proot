@@ -55,7 +55,7 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -qq clang-tools curl gdb lcov libarchive-dev libtalloc-dev pkg-config sloccount strace swig uthash-dev python3-dev lzop
+          sudo apt-get install -qq bats clang-tools curl gdb lcov libarchive-dev libtalloc-dev pkg-config sloccount strace swig uthash-dev python3-dev lzop
 
       - name: Gather analytics
         run: sloccount --details .
@@ -74,6 +74,14 @@ jobs:
         if: always()
         continue-on-error: true
         run: ([ -f test.log ] && cat test.log) || true
+
+      - name: Execute Bats suite
+        timeout-minutes: 5
+        run: |
+          make -C test setup
+          env PROOT=$PWD/src/proot ROOTFS=$PWD/test/rootfs \
+            ${{ matrix.SECCOMP == '0' && 'PROOT_NO_SECCOMP=1' || '' }} \
+            bats test/bind.bats test/cwd.bats
 
   cross-compile:
     name: cross-compile (aarch64)
