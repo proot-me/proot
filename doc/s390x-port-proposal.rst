@@ -2,8 +2,8 @@ s390x port proposal
 ====================
 
 This document scopes out issue `#324`_ (milestone v5.6.0), the next
-architecture-support issue in line after the multi-arch work was
-split across per-version milestones.
+architecture-support issue after the multi-arch work was split across
+per-version milestones.
 
 .. _#324: https://github.com/proot-me/proot/issues/324
 
@@ -101,8 +101,8 @@ liveness check; the same shape would work for a cross-compiled s390x
 build.
 
 That only proves the binary starts, not that ptrace-based tracing
-works. A meaningfully bigger ask is running proot itself, not just
-what it traces, under ``qemu-user``. ptrace-of-a-process-under-emulation
+works. A bigger ask is running proot itself, not just what it traces,
+under ``qemu-user``. ptrace-of-a-process-under-emulation
 is a known-fragile combination, not something to assume works without
 hands-on verification on either real s390x hardware or a full-system
 QEMU install.
