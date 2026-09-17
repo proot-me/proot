@@ -22,4 +22,6 @@ test/*
 !test/*.c
 !test/*.py
 !test/*.mk
+!test/*.bats
+!test/helper.bash
 !test/docker
