@@ -15,7 +15,7 @@ Current state
 *through* the real ``proot`` binary via ``ptrace``, checking the exit
 code. 156 test files, driven entirely by ``test/GNUmakefile``.
 
-Measured directly against the current suite:
+Measured against the current suite:
 
 + **60% of test files use opaque hash names**, like
   ``test-5bed7141.c`` and ``test-33333333.c``. That's the exact
@@ -33,7 +33,7 @@ Measured directly against the current suite:
   Every test hand-rolls its own ``strcmp`` + ``fprintf`` + ``exit``
   boilerplate to report a failure.
 
-+ **No structured output.** No TAP, no JUnit XML. Just plain
++ **No structured output.** No TAP, no JUnit XML. Just
   ``CHECK <name> ok/FAILED/skipped`` text. CI has nothing
   machine-parseable to work with.
 
@@ -53,7 +53,7 @@ Where libcheck fits, and where it doesn't
 libcheck is a unit-testing framework. It calls a C function
 in-process and asserts on the return value. Most of what ``test/``
 checks is traced-process behavior under ``ptrace``, which requires
-actually spawning and running through the real ``proot`` binary.
+spawning and running through the real ``proot`` binary.
 libcheck doesn't fit that layer. But proot has a second, currently
 nonexistent layer libcheck fits well: unit tests of its own internal
 functions.
@@ -64,11 +64,11 @@ What proot-rs already does
 proot-rs, this project's Rust implementation, already solved the same
 black-box-testing problem, with `Bats`_ (bats-core). Its
 ``tests/README.md`` documents why: they considered ShellSpec and
-shUnit2 too, and picked Bats specifically for testing a CLI program.
+shUnit2 too, and picked Bats for testing a CLI program.
 
 .. _Bats: https://github.com/bats-core/bats-core
 
-This gives them several things this proposal was going to build from
+This already gives them what this proposal was going to build from
 scratch:
 
 + **Real structured output.** Bats produces TAP natively.
@@ -130,7 +130,7 @@ no mocking required::
     int join_paths(int number_paths, char result[PATH_MAX], ...);
     Comparison compare_paths(const char *path1, const char *path2);
 
-Investigation into `#438`_ turned up a real
+Investigation into `#438`_ turned up a
 ``compare_paths()``/``readlink_proc()`` comparison-logic bug, found by
 manually tracing ``base``/``comparison`` values through a debug build
 under Docker, since there was no faster way to check whether
@@ -180,7 +180,7 @@ Proposal
    own ``PROOT_RS`` override, so the same Bats file can run as a
    conformance check against both proot and proot-rs. That turns
    "these two projects should behave the same" from an assumption
-   into something CI actually verifies.
+   into something CI verifies.
 
 5. **Add libcheck as a second, separate test binary** for proot's
    internal functions, starting with the already-pure candidates
