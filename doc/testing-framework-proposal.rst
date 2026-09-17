@@ -144,10 +144,9 @@ needing a full local test-suite run to notice 7 tests broke.
 
 .. _#438: https://github.com/proot-me/proot/pull/438
 
-libcheck fits here for a reason beyond being the issue's own
-suggestion. It isolates each test in a forked child process by
-default, so a function under test that hits one of this codebase's
-many ``assert()`` calls aborts that test, not the whole suite. That's
+libcheck isolates each test in a forked child process by default, so
+a function under test that hits one of this codebase's many
+``assert()`` calls aborts that test, not the whole suite. That's
 exactly the failure mode ``readlink_proc()``'s assertion crash in
 #438 was. It's available as the Debian/Ubuntu ``check`` package, the
 same kind of lightweight apt-installable dependency proot already has
