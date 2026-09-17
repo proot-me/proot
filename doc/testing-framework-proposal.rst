@@ -56,23 +56,87 @@ they're testing traced-process behavior under ``ptrace``, which
 requires actually spawning and running through the real ``proot``
 binary. Adopting libcheck as-is doesn't fit this suite's shape.
 
+What proot-rs already does
+-----------------------------
+
+proot-rs (this project's Rust implementation) solved the same
+black-box-testing problem already, with `Bats`_ (bats-core), and
+documented why in ``tests/README.md``: they considered ShellSpec and
+shUnit2 too, and picked Bats specifically for testing a CLI program.
+
+.. _Bats: https://github.com/bats-core/bats-core
+
+Concretely, this gives them several things this proposal was going to
+build from scratch:
+
++ **Real structured output.** Bats produces TAP natively.
+
++ **``skip`` as a first-class primitive**, not a job-wide
+  ``allow_failure``::
+
+    @test "test --bind with getdents64() results" {
+        skip "this is an enhancement, see https://github.com/proot-me/proot-rs/issues/43"
+        ...
+    }
+
++ **A shared helper** (``tests/helper.bash``) providing a ``runp()``
+  wrapper that echoes the command, exit status, and output to stderr
+  on failure -- directly solving the "opaque failure" problem --
+  plus ``compile_c_static``/``compile_c_dynamic`` and
+  ``check_if_command_exists`` (skip if a dependency is missing), the
+  same shape as proot's own pattern rules and dependency checks, just
+  reusable instead of copy-pasted per test.
+
++ **Tests grouped by category** (``cli.bats``, ``bind.bats``,
+  ``cwd.bats``, ``execve/``, ``multi-tracee/``), each holding several
+  named ``@test`` cases, rather than one file per test case.
+
+Overlap with proot's suite is real: proot-rs's ``bind.bats`` and
+``cwd.bats`` cover the same ground as proot's own
+``test-305ae31d.sh``/``test-22222222.sh`` (bind) and
+``chdir_getcwd.c``/``test-5bed7141.c`` (cwd) -- same behavior, tested
+twice, in two different styles, against two different implementations
+of the same tool.
+
+Sharing is partial, not total
+--------------------------------
+
+proot-rs's CLI (``proot-rs/src/cli.rs``) currently implements only
+``-r``/``--rootfs``, ``-b``/``--bind``, ``-w``/``--cwd``, and a bare
+command -- no ``-q`` (qemu), ``-v`` (verbose), ``-0``/``-i``
+(id-faking), ``-k`` (kernel-release), ``-p`` (port map), and none of
+proot's extensions (``care``, ``fake_id0``, ``kompat``,
+``link2symlink``, ``portmap``, the python extension). Only the
+common-denominator surface -- rootfs, bind, cwd, execve/shebang
+handling, fork/clone/multi-tracee path translation -- has a
+proot-rs equivalent to run the same test against. The rest of
+proot's suite is proot-specific by definition, and stays that way
+until proot-rs implements the corresponding feature.
+
 Proposal
 --------
 
-Three separable, incremental pieces:
+1. **Adopt Bats** for proot's black-box suite instead of building a
+   bespoke assertion header/TAP wrapper -- proot-rs already validated
+   the choice, documented the alternatives it ruled out, and a shared
+   framework is a prerequisite for (4) below.
 
-1. **A small local assertion-helper header**, not a full framework, to
-   cut the repetitive ``strcmp`` + ``fprintf`` + ``exit`` boilerplate
-   every test currently hand-rolls.
+2. **Port a small number of existing tests as a proof of concept**
+   first, not a big-bang rewrite -- ``cwd.bats`` and ``bind.bats``
+   have the most direct 1:1 overlap with proot's own cwd/bind tests
+   and are small enough to validate the approach before committing to
+   it project-wide.
 
-2. **Structured (TAP-style) output** from the test runner, so CI gets
-   per-test pass/fail/skip instead of grepping text, and known-flaky
-   tests can be marked explicitly instead of hidden behind a job-wide
-   ``allow_failure``.
+3. **Rename hash-named tests descriptively** as part of the same
+   pass, folding in `#164`_, since grouping tests into Bats files by
+   category is the natural point to also give each case a real name.
 
-3. **Rename hash-named tests descriptively**, folding in `#164`_, since
-   touching every test file for (1)/(2) is the natural point to also
-   give it a real name.
+4. **Parameterize the common-denominator tests by binary** (``$PROOT``
+   pointing at either implementation, mirroring proot-rs's own
+   ``PROOT_RS`` override), so the same Bats file can run as a
+   conformance check against both proot and proot-rs -- turning
+   "these two projects should behave the same" from an assumption into
+   something CI actually verifies.
 
 Non-goals
 ---------
@@ -84,3 +148,8 @@ Non-goals
 + Fixing the 6 currently-failing tests as part of this effort. They
   should be triaged separately; this proposal only makes their status
   visible instead of silently tolerated.
+
++ Migrating proot-specific tests (extensions, ``-p``/``-k``/``-q``,
+  etc.) to Bats in this pass -- those have no proot-rs counterpart to
+  share with, so there's no shared-framework benefit driving that work
+  yet. They can move later on their own merits, if any.
