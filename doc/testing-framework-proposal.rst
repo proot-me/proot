@@ -131,11 +131,10 @@ no mocking required::
     int join_paths(int number_paths, char result[PATH_MAX], ...);
     Comparison compare_paths(const char *path1, const char *path2);
 
-This isn't hypothetical. This session's own investigation into
-`#438`_ was a ``compare_paths()``/``readlink_proc()``
-comparison-logic bug. Finding it meant manually tracing
-``base``/``comparison`` values through a debug build under Docker,
-since there was no faster way to check whether
+Investigation into `#438`_ turned up a real
+``compare_paths()``/``readlink_proc()`` comparison-logic bug, found by
+manually tracing ``base``/``comparison`` values through a debug build
+under Docker, since there was no faster way to check whether
 ``compare_paths("/proc", "/proc")`` returns what it should than a
 full end-to-end ptrace run. A unit test calling ``compare_paths()``
 directly, or ``readlink_proc()`` with a crafted ``base``, would have
