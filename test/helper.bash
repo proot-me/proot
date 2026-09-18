@@ -3,7 +3,7 @@
 export LC_ALL=C
 
 # The root directory of the test files.
-TEST_ROOT=$(dirname "$(readlink -f "$BASH_SOURCE")")
+TEST_ROOT=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
 
 # The root directory of this project.
 PROJECT_ROOT="$TEST_ROOT/.."
@@ -25,8 +25,10 @@ fi
 # actually happened instead of just "not ok".
 function runp() {
     run "$@"
-    echo "command: $@" >&2
+    echo "command: $*" >&2
+    # shellcheck disable=SC2154 # set by bats' run(), not by this function
     echo "status:  $status" >&2
+    # shellcheck disable=SC2154 # set by bats' run(), not by this function
     echo "output:  $output" >&2
 }
 
