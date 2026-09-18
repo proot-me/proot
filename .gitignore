@@ -25,3 +25,4 @@ test/*
 !test/*.bats
 !test/helper.bash
 !test/docker
+!test/unit
