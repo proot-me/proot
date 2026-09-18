@@ -8,6 +8,34 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
+        with:
+          fetch-depth: 0
+
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -qq shellcheck
+
+      - name: Lint changed shell scripts
+        run: |
+          if [ "$GITHUB_BASE_REF" ]; then
+            before_commit="${{ github.event.pull_request.base.sha }}"
+          elif [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+            before_commit="$(git rev-parse HEAD~1)"
+          else
+            before_commit="${{ github.event.before }}"
+          fi
+
+          git diff --name-only --diff-filter=d "${before_commit}..${GITHUB_SHA}" \
+            | grep -E '\.(sh|bash|bats)$' \
+            | xargs --no-run-if-empty shellcheck
+
   build:
     name: "${{ matrix.SECCOMP == '1' && 'seccomp' || 'no-seccomp' }} | ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
