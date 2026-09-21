@@ -1,0 +1,121 @@
+name: docker-images
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - test/docker/**
+      - util/parse-docker-tag.awk
+      - .github/workflows/docker-images.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY_IMAGE: ghcr.io/proot-me/proot
+
+jobs:
+  alpine:
+    name: publish alpine test images
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
+
+      - name: Log in to the GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push alpine
+        run: |
+          tag=$(echo test/docker/alpine/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/alpine/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push alpine-x86_64
+        run: |
+          tag=$(echo test/docker/alpine/x86_64/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/alpine/x86_64/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push alpine-x86_64-gcc
+        run: |
+          tag=$(echo test/docker/alpine/x86_64/gcc/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/alpine/x86_64/gcc/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push alpine-x86_64-clang
+        run: |
+          tag=$(echo test/docker/alpine/x86_64/clang/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/alpine/x86_64/clang/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+  centos:
+    name: publish centos test images
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
+
+      - name: Log in to the GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push centos
+        run: |
+          tag=$(echo test/docker/centos/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/centos/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push centos-x86_64
+        run: |
+          tag=$(echo test/docker/centos/x86_64/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/centos/x86_64/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push centos-x86_64-gcc
+        run: |
+          tag=$(echo test/docker/centos/x86_64/gcc/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/centos/x86_64/gcc/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push centos-x86_64-clang
+        run: |
+          tag=$(echo test/docker/centos/x86_64/clang/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/centos/x86_64/clang/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+  debian:
+    name: publish debian test images
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
+
+      - name: Log in to the GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push debian
+        run: |
+          tag=$(echo test/docker/debian/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/debian/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push debian-x86_64
+        run: |
+          tag=$(echo test/docker/debian/x86_64/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/debian/x86_64/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push debian-x86_64-gcc
+        run: |
+          tag=$(echo test/docker/debian/x86_64/gcc/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/debian/x86_64/gcc/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
+
+      - name: Build and push debian-x86_64-clang
+        run: |
+          tag=$(echo test/docker/debian/x86_64/clang/Dockerfile | util/parse-docker-tag.awk)
+          docker build -t "$REGISTRY_IMAGE:$tag" -f test/docker/debian/x86_64/clang/Dockerfile .
+          docker push "$REGISTRY_IMAGE:$tag"
