@@ -10,10 +10,6 @@ on:
       - .github/workflows/docker-images.yml
   workflow_dispatch:
 
-permissions:
-  contents: read
-  packages: write
-
 env:
   REGISTRY_IMAGE: ghcr.io/proot-me/proot
 
@@ -21,6 +17,9 @@ jobs:
   alpine:
     name: publish alpine test images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
@@ -55,6 +54,9 @@ jobs:
   centos:
     name: publish centos test images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
@@ -89,6 +91,9 @@ jobs:
   debian:
     name: publish debian test images
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v3
