@@ -461,29 +461,44 @@ void translate_syscall_exit(Tracee *tracee)
 	goto end;
 
     case PR_prctl:{
-	    uint8_t vectors[4096];
-	    word_t address;
-	    size_t size;
+	    word_t option = peek_reg(tracee, ORIGINAL, SYSARG_1);
 
 	    /* PR_GET_AUXV copies out the vector the kernel saved
 	     * for the loader: make its AT_EXECFN name the program,
 	     * as the loader did on the stack.  */
-	    if (peek_reg(tracee, ORIGINAL, SYSARG_1) != PR_GET_AUXV
-		|| (int) syscall_result < 0 || tracee->execfn_addr == 0)
+	    if (option == PR_GET_AUXV) {
+		uint8_t vectors[4096];
+		word_t address;
+		size_t size;
+
+		if ((int) syscall_result < 0 || tracee->execfn_addr == 0)
+		    goto end;
+
+		/* The result is the size of the whole vector, which is
+		 * copied out only as far as the buffer goes.  */
+		address = peek_reg(tracee, ORIGINAL, SYSARG_2);
+		size =
+		    MIN(syscall_result,
+			peek_reg(tracee, ORIGINAL, SYSARG_3));
+		size = MIN(size, sizeof(vectors));
+
+		status = read_data(tracee, vectors, address, size);
+		if (status < 0 || !fix_up_execfn(tracee, vectors, size))
+		    goto end;
+
+		(void) write_data(tracee, address, vectors, size);
 		goto end;
+	    }
 
-	    /* The result is the size of the whole vector, which is
-	     * copied out only as far as the buffer goes.  */
-	    address = peek_reg(tracee, ORIGINAL, SYSARG_2);
-	    size =
-		MIN(syscall_result, peek_reg(tracee, ORIGINAL, SYSARG_3));
-	    size = MIN(size, sizeof(vectors));
+	    /* See translate_syscall_enter().  */
+	    if (option == PR_GET_NO_NEW_PRIVS) {
+		if (get_sysnum(tracee, MODIFIED) != PR_void)
+		    goto end;
 
-	    status = read_data(tracee, vectors, address, size);
-	    if (status < 0 || !fix_up_execfn(tracee, vectors, size))
-		goto end;
+		status = tracee->no_new_privs ? 1 : 0;
+		break;
+	    }
 
-	    (void) write_data(tracee, address, vectors, size);
 	    goto end;
 	}
 

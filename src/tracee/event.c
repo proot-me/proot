@@ -36,6 +36,7 @@
 #include <talloc.h>		/* talloc_*, */
 #include <inttypes.h>		/* PRI*, */
 #include <linux/version.h>	/* KERNEL_VERSION, */
+#include <sys/prctl.h>		/* prctl(2), PR_*, */
 
 #include "tracee/event.h"
 #include "cli/note.h"
@@ -64,6 +65,10 @@ int launch_process(Tracee *tracee, char *const argv[])
     /* Warn about open file descriptors. They won't be
      * translated until they are closed. */
     list_open_fd(tracee);
+
+    /* The program would inherit the no_new_privs flag of PRoot's
+     * caller, whatever PRoot sets for itself.  */
+    tracee->no_new_privs = (prctl(PR_GET_NO_NEW_PRIVS, 0, 0, 0, 0) == 1);
 
     pid = fork();
     switch (pid) {
