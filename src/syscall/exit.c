@@ -21,6 +21,7 @@
  */
 
 #include <errno.h>		/* errno(3), E* */
+#include <sys/param.h>		/* MIN(), */
 #include <sys/utsname.h>	/* struct utsname, */
 #include <linux/net.h>		/* SYS_*, */
 #include <string.h>		/* strlen(3), */
@@ -32,6 +33,7 @@
 #include "syscall/heap.h"
 #include "syscall/rlimit.h"
 #include "execve/execve.h"
+#include "execve/auxv.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
@@ -442,6 +444,33 @@ void translate_syscall_exit(Tracee *tracee)
     case PR_execve:
 	translate_execve_exit(tracee);
 	goto end;
+
+    case PR_prctl:{
+	    uint8_t vectors[4096];
+	    word_t address;
+	    size_t size;
+
+	    /* PR_GET_AUXV copies out the vector the kernel saved
+	     * for the loader: make its AT_EXECFN name the program,
+	     * as the loader did on the stack.  */
+	    if (peek_reg(tracee, ORIGINAL, SYSARG_1) != PR_GET_AUXV
+		|| (int) syscall_result < 0 || tracee->execfn_addr == 0)
+		goto end;
+
+	    /* The result is the size of the whole vector, which is
+	     * copied out only as far as the buffer goes.  */
+	    address = peek_reg(tracee, ORIGINAL, SYSARG_2);
+	    size =
+		MIN(syscall_result, peek_reg(tracee, ORIGINAL, SYSARG_3));
+	    size = MIN(size, sizeof(vectors));
+
+	    status = read_data(tracee, vectors, address, size);
+	    if (status < 0 || !fix_up_execfn(tracee, vectors, size))
+		goto end;
+
+	    (void) write_data(tracee, address, vectors, size);
+	    goto end;
+	}
 
     case PR_ptrace:
 	status = translate_ptrace_exit(tracee);

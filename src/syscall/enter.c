@@ -26,7 +26,9 @@
 #include <linux/net.h>		/* SYS_*, */
 #include <fcntl.h>		/* AT_FDCWD, */
 #include <limits.h>		/* PATH_MAX, */
+#include <stdio.h>		/* snprintf(3), */
 #include <string.h>		/* strcpy */
+#include <unistd.h>		/* read(2), write(2), close(2), */
 #include <sys/prctl.h>		/* PR_SET_DUMPABLE */
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
@@ -36,12 +38,14 @@
 #include "syscall/heap.h"
 #include "extension/extension.h"
 #include "execve/execve.h"
+#include "execve/auxv.h"
 #include "tracee/tracee.h"
 #include "tracee/reg.h"
 #include "tracee/mem.h"
 #include "tracee/abi.h"
 #include "path/path.h"
 #include "path/canon.h"
+#include "path/temp.h"
 #include "arch.h"
 
 /**
@@ -84,6 +88,72 @@ static int translate_sysarg(Tracee *tracee, Reg reg, Type type)
 	return status;
 
     return translate_path2(tracee, AT_FDCWD, old_path, reg, type);
+}
+
+/**
+ * Make the @reg argument of the current syscall point to a copy of
+ * @tracee's auxiliary vector with AT_EXECFN fixed up, if @user_path
+ * names the tracee's own auxv file -- as "/proc/self/auxv" or
+ * "/proc/<pid>/auxv", the spellings QEMU's user-mode emulation answers
+ * too -- and @flags open it for reading only.  The kernel shows there
+ * the vector it saved for the loader, whose AT_EXECFN names the loader
+ * instead of the program.
+ */
+static void redirect_own_auxv(Tracee *tracee,
+			      const char user_path[PATH_MAX], int flags,
+			      Reg reg)
+{
+    char host_path[PATH_MAX];
+    char proc_path[64];
+    uint8_t vectors[4096];
+    ssize_t size;
+    ssize_t status;
+    int fd;
+
+    if (tracee->execfn_addr == 0 || (flags & O_ACCMODE) != O_RDONLY
+	|| strncmp(user_path, "/proc/", strlen("/proc/")) != 0)
+	return;
+
+    (void) snprintf(proc_path, sizeof(proc_path), "/proc/%d/auxv",
+		    tracee->pid);
+    if (strcmp(user_path, "/proc/self/auxv") != 0
+	&& strcmp(user_path, proc_path) != 0)
+	return;
+
+    /* A binding over this file, such as the one bind_proc_pid_auxv()
+     * makes for a ptraced tracee, is left alone.  */
+    if (get_sysarg_path(tracee, host_path, reg) < 0
+	|| strcmp(host_path, proc_path) != 0)
+	return;
+
+    if (tracee->auxv_path == NULL) {
+	fd = open(proc_path, O_RDONLY);
+	if (fd < 0)
+	    return;
+	size = read(fd, vectors, sizeof(vectors));
+	(void) close(fd);
+
+	/* A vector filling the buffer might have been cut short, and
+	 * a truncated copy would be worse than the kernel's own.  */
+	if (size <= 0 || (size_t) size == sizeof(vectors)
+	    || !fix_up_execfn(tracee, vectors, size))
+	    return;
+
+	tracee->auxv_path = (char *) create_temp_file(tracee, "auxv");
+	if (tracee->auxv_path == NULL)
+	    return;
+
+	fd = open(tracee->auxv_path, O_WRONLY);
+	status = (fd < 0 ? -1 : write(fd, vectors, size));
+	if (fd >= 0)
+	    (void) close(fd);
+	if (status != size) {
+	    TALLOC_FREE(tracee->auxv_path);
+	    return;
+	}
+    }
+
+    (void) set_sysarg_path(tracee, tracee->auxv_path, reg);
 }
 
 /**
@@ -387,11 +457,19 @@ int translate_syscall_enter(Tracee *tracee)
     case PR_open:
 	flags = peek_reg(tracee, CURRENT, SYSARG_2);
 
+	status = get_sysarg_path(tracee, path, SYSARG_1);
+	if (status < 0)
+	    break;
+
 	if (((flags & O_NOFOLLOW) != 0)
 	    || ((flags & O_EXCL) != 0 && (flags & O_CREAT) != 0))
-	    status = translate_sysarg(tracee, SYSARG_1, SYMLINK);
+	    status =
+		translate_path2(tracee, AT_FDCWD, path, SYSARG_1, SYMLINK);
 	else
-	    status = translate_sysarg(tracee, SYSARG_1, REGULAR);
+	    status =
+		translate_path2(tracee, AT_FDCWD, path, SYSARG_1, REGULAR);
+	if (status >= 0)
+	    redirect_own_auxv(tracee, path, flags, SYSARG_1);
 	break;
 
     case PR_fchownat:
@@ -537,6 +615,8 @@ int translate_syscall_enter(Tracee *tracee)
 	else
 	    status =
 		translate_path2(tracee, dirfd, path, SYSARG_2, REGULAR);
+	if (status >= 0)
+	    redirect_own_auxv(tracee, path, flags, SYSARG_2);
 	break;
 
     case PR_readlinkat:
@@ -603,6 +683,14 @@ int translate_syscall_enter(Tracee *tracee)
 	if (peek_reg(tracee, CURRENT, SYSARG_1) == PR_SET_DUMPABLE) {
 	    set_sysnum(tracee, PR_void);
 	    status = 0;
+	}
+
+	/* The vector PR_GET_AUXV copies out is fixed up at the exit
+	 * stage, which has to be hit under seccomp as well.  */
+	if (peek_reg(tracee, CURRENT, SYSARG_1) == PR_GET_AUXV
+	    && tracee->execfn_addr != 0) {
+	    tracee->restart_how = PTRACE_SYSCALL;
+	    tracee->sysexit_pending = true;
 	}
 	break;
     }

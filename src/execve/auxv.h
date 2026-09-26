@@ -38,5 +38,7 @@ extern int add_elf_aux_vector(ElfAuxVector ** vectors, word_t type,
 			      word_t value);
 extern int push_elf_aux_vectors(const Tracee * tracee,
 				ElfAuxVector * vectors, word_t address);
+extern bool fix_up_execfn(const Tracee * tracee, void *vectors,
+			  size_t size);
 
 #endif				/* AUXV */

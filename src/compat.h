@@ -204,6 +204,9 @@
 #ifndef TALLOC_FREE
 #define TALLOC_FREE(ctx) do { talloc_free(ctx); ctx = NULL; } while(0)
 #endif
+#ifndef PR_GET_AUXV
+#define PR_GET_AUXV		0x41555856
+#endif
 #ifndef PR_SET_NAME
 #define PR_SET_NAME		15
 #endif
