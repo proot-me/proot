@@ -443,6 +443,15 @@ void translate_syscall_exit(Tracee *tracee)
 	translate_execve_exit(tracee);
 	goto end;
 
+    case PR_prctl:
+	/* See translate_syscall_enter().  */
+	if (peek_reg(tracee, ORIGINAL, SYSARG_1) != PR_GET_NO_NEW_PRIVS
+	    || get_sysnum(tracee, MODIFIED) != PR_void)
+	    goto end;
+
+	status = tracee->no_new_privs ? 1 : 0;
+	break;
+
     case PR_ptrace:
 	status = translate_ptrace_exit(tracee);
 	break;
