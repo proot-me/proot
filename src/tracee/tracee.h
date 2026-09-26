@@ -220,6 +220,16 @@ typedef struct tracee {
     /* Ensure the sysexit stage is always hit under seccomp.  */
     bool sysexit_pending;
 
+    /* The no_new_privs flag as this tracee sees it: inherited from
+     * PRoot's caller, or set by the program itself.  The kernel's
+     * flag doesn't tell, since PRoot sets it to install its seccomp
+     * filter.  */
+    bool no_new_privs;
+
+    /* Whether the first program has been executed: PRoot's own
+     * PR_SET_NO_NEW_PRIVS comes before.  */
+    bool seen_execve;
+
 
 	/**********************************************************************
 	 * Shared or private resources, depending on the CLONE_FS/VM flags.   *

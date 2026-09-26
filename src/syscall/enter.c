@@ -597,14 +597,41 @@ int translate_syscall_enter(Tracee *tracee)
 	    translate_path2(tracee, newdirfd, newpath, SYSARG_3, SYMLINK);
 	break;
 
-    case PR_prctl:
-	/* Prevent tracees from setting dumpable flag.
-	 * (Otherwise it could break tracee memory access)  */
-	if (peek_reg(tracee, CURRENT, SYSARG_1) == PR_SET_DUMPABLE) {
-	    set_sysnum(tracee, PR_void);
-	    status = 0;
+    case PR_prctl:{
+	    word_t option = peek_reg(tracee, CURRENT, SYSARG_1);
+	    word_t arg2 = peek_reg(tracee, CURRENT, SYSARG_2);
+	    bool no_more_args;
+
+	    no_more_args = (peek_reg(tracee, CURRENT, SYSARG_3) == 0
+			    && peek_reg(tracee, CURRENT, SYSARG_4) == 0
+			    && peek_reg(tracee, CURRENT, SYSARG_5) == 0);
+
+	    /* Prevent tracees from setting dumpable flag.
+	     * (Otherwise it could break tracee memory access)  */
+	    if (option == PR_SET_DUMPABLE) {
+		set_sysnum(tracee, PR_void);
+		status = 0;
+	    }
+
+	    /* PRoot sets no_new_privs itself, before the program starts,
+	     * to install its seccomp filter, so the kernel would answer
+	     * PR_GET_NO_NEW_PRIVS for PRoot: answer it at the exit stage
+	     * from the program's own flag instead.  Other arguments get
+	     * the kernel's EINVAL.  */
+	    if (option == PR_GET_NO_NEW_PRIVS && arg2 == 0 && no_more_args) {
+		set_sysnum(tracee, PR_void);
+		tracee->restart_how = PTRACE_SYSCALL;
+		tracee->sysexit_pending = true;
+		status = 0;
+	    }
+
+	    /* The kernel accepts only these arguments, and the flag
+	     * cannot be cleared once set.  */
+	    if (option == PR_SET_NO_NEW_PRIVS && arg2 == 1 && no_more_args
+		&& tracee->seen_execve)
+		tracee->no_new_privs = true;
+	    break;
 	}
-	break;
     }
 
   end:

@@ -210,6 +210,9 @@
 #ifndef PR_SET_NO_NEW_PRIVS
 #define PR_SET_NO_NEW_PRIVS	38
 #endif
+#ifndef PR_GET_NO_NEW_PRIVS
+#define PR_GET_NO_NEW_PRIVS	39
+#endif
 #ifndef PR_SET_SECCOMP
 #define PR_SET_SECCOMP		22
 #endif

@@ -473,6 +473,10 @@ void translate_execve_exit(Tracee *tracee)
     if ((int) syscall_result < 0)
 	return;
 
+    /* PR_SET_NO_NEW_PRIVS belongs to the program from now on, see
+     * translate_syscall_enter().  */
+    tracee->seen_execve = true;
+
     /* Execve happened; commit the new "/proc/self/exe".  */
     if (tracee->new_exe != NULL) {
 	(void) talloc_unlink(tracee, tracee->exe);
