@@ -27,6 +27,7 @@
 #include <sys/types.h>		/* open(2), */
 #include <sys/stat.h>		/* open(2), */
 #include <fcntl.h>		/* open(2), */
+#include <string.h>		/* memcpy(3), */
 
 #include "execve/auxv.h"
 #include "syscall/sysnum.h"
@@ -184,4 +185,64 @@ int push_elf_aux_vectors(const Tracee *tracee, ElfAuxVector *vectors,
     address += sizeof_word(tracee);
 
     return 0;
+}
+
+/**
+ * Return the word of @tracee's size stored at @address.
+ */
+static word_t load_word(const Tracee *tracee, const uint8_t *address)
+{
+    uint32_t word32;
+    uint64_t word64;
+
+    if (sizeof_word(tracee) == sizeof(word32)) {
+	memcpy(&word32, address, sizeof(word32));
+	return word32;
+    }
+
+    memcpy(&word64, address, sizeof(word64));
+    return word64;
+}
+
+/**
+ * Store @value as a word of @tracee's size at @address.
+ */
+static void store_word(const Tracee *tracee, uint8_t *address,
+		       word_t value)
+{
+    uint32_t word32 = value;
+    uint64_t word64 = value;
+
+    if (sizeof_word(tracee) == sizeof(word32))
+	memcpy(address, &word32, sizeof(word32));
+    else
+	memcpy(address, &word64, sizeof(word64));
+}
+
+/**
+ * Point AT_EXECFN to @tracee->execfn_addr in the first @size bytes of
+ * the auxiliary vector at @vectors, laid out as the kernel hands it
+ * to @tracee through PR_GET_AUXV or /proc/self/auxv.  This function
+ * returns false if these bytes hold no AT_EXECFN entry.
+ */
+bool fix_up_execfn(const Tracee *tracee, void *vectors, size_t size)
+{
+    const size_t entry_size = 2 * sizeof_word(tracee);
+    uint8_t *entry;
+
+    for (entry = vectors; entry + entry_size <= (uint8_t *) vectors + size;
+	 entry += entry_size) {
+	word_t type = load_word(tracee, entry);
+
+	if (type == AT_NULL)
+	    break;
+
+	if (type == AT_EXECFN) {
+	    store_word(tracee, entry + sizeof_word(tracee),
+		       tracee->execfn_addr);
+	    return true;
+	}
+    }
+
+    return false;
 }

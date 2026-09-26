@@ -210,6 +210,14 @@ static int transfer_load_script(Tracee *tracee)
 	page_mask = ~(page_size - 1);
     }
 
+    /* The loader points AT_EXECFN to argv[0] on the stack (see
+     * loader/loader.c): remember where it is to answer PR_GET_AUXV
+     * and /proc/self/auxv the same way.  */
+    tracee->execfn_addr =
+	peek_word(tracee, stack_pointer + sizeof_word(tracee));
+    if (errno != 0)
+	tracee->execfn_addr = 0;
+
     needs_executable_stack = (tracee->load_info->needs_executable_stack
 			      || (tracee->load_info->interp != NULL
 				  && tracee->load_info->interp->
@@ -491,6 +499,10 @@ void translate_execve_exit(Tracee *tracee)
     } else {
 	bzero(tracee->heap, sizeof(Heap));
     }
+
+    /* The copy of the previous program's auxiliary vector, if
+     * any, is obsolete.  */
+    TALLOC_FREE(tracee->auxv_path);
 
     /* Transfer the load script to the loader.  */
     status = transfer_load_script(tracee);
