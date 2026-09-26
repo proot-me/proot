@@ -24,6 +24,7 @@
 #include <sys/utsname.h>	/* struct utsname, */
 #include <linux/net.h>		/* SYS_*, */
 #include <string.h>		/* strlen(3), */
+#include <unistd.h>		/* readlink(2), */
 
 #include "syscall/syscall.h"
 #include "syscall/sysnum.h"
@@ -371,6 +372,20 @@ void translate_syscall_exit(Tracee *tracee)
 	    if (status >= PATH_MAX) {
 		status = -ENAMETOOLONG;
 		break;
+	    }
+
+	    /* A buffer the kernel filled may hold a target cut short.
+	     * The host path is longer than the guest path it stands
+	     * for, so detranslating the cut one would report a shorter,
+	     * wrong guest path, and callers that grow their buffer only
+	     * when readlink(2) fills it (libglnx, bubblewrap...) would
+	     * take it as complete.  Read the whole target instead.  */
+	    if (old_size == max_size) {
+		ssize_t size =
+		    readlink(referer, referee, sizeof(referee) - 1);
+
+		if (size > 0)
+		    referee[size] = '\0';
 	    }
 
 	    status = detranslate_path(tracee, referee, referer);
