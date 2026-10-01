@@ -8,6 +8,7 @@ RUN dnf install -y \
     dnf config-manager --set-enabled crb && \
     dnf update -y && \
     dnf install -y \
+      check-devel \
       gcc \
       git \
       libarchive-devel \

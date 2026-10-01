@@ -5,6 +5,7 @@ USER root
 RUN apk add --no-cache \
       bash \
       bsd-compat-headers \
+      check-dev \
       coreutils \
       git \
       grep \
