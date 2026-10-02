@@ -32,7 +32,12 @@ jobs:
             before_commit="${{ github.event.before }}"
           fi
 
-          git diff --name-only --diff-filter=d "${before_commit}..${GITHUB_SHA}" \
+          # -M detects renames; a pure rename (R100, byte-identical
+          # content under a new name) isn't newly introduced content,
+          # so skip it instead of linting a file's pre-existing issues
+          # for the first time just because its path changed.
+          git diff --name-status --diff-filter=d -M "${before_commit}..${GITHUB_SHA}" \
+            | awk -F'\t' '$1 != "R100" {print $NF}' \
             | grep -E '\.(sh|bash|bats)$' \
             | xargs --no-run-if-empty shellcheck
 

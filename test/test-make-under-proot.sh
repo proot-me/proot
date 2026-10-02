@@ -1,5 +1,7 @@
-if [ -z `which make` ]; then
+#!/bin/sh
+
+if [ -z "$(which make)" ]; then
     exit 125;
 fi
 
-${PROOT} make -f ${PWD}/test-make-under-proot.mk
+${PROOT} make -f "${PWD}"/test-make-under-proot.mk
