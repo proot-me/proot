@@ -124,7 +124,7 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/exec-suid $(ROOTFS)/bin/exec-sgid $(ROOTFS)/bin/exec-m32-suid \
        $(ROOTFS)/bin/exec-m32-sgid $(ROOTFS)/bin/getresuid $(ROOTFS)/bin/getresgid \
        $(ROOTFS)/bin/chroot $(ROOTFS)/bin/execfn $(ROOTFS)/bin/execfn-m32 \
-       $(ROOTFS)/bin/readlink-fd
+       $(ROOTFS)/bin/readlink-fd $(ROOTFS)/bin/no-new-privs
 
 ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 
