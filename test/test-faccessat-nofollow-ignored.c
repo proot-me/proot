@@ -11,7 +11,7 @@ int main(void)
     char *path;
     int fd;
 
-    path = strdup("/tmp/proot-test-faccessat-nofollow-ignored-XXXXXX");
+    path = strdup("/tmp/proot-test-iiiiiiii-XXXXXX");
     if (path == NULL) {
 	result = 125;
 	goto end;

@@ -10,14 +10,14 @@
 
 int main()
 {
-    const char *sockname = "/test-unix-socket-socket";
+    const char *sockname = "/test-nnnnnnnn-socket";
     struct sockaddr_un sockaddr;
     socklen_t socklen;
     mode_t mask;
     int status;
     int fd;
 
-    /* root can create $hostfs/test-unix-socket-socket.  */
+    /* root can create $hostfs/test-nnnnnnnn-socket.  */
     if (getuid() == 0)
 	return 125;
 
