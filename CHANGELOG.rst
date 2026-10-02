@@ -11,6 +11,53 @@ Unreleased
 
 Please see `Unreleased Changes`_ for more information.
 
+5.5.0 - 2026-10-02
+------------------
+
+Added
+~~~~~
+
+- fchmodat2 syscall support (#408)
+- A Bats-based black-box test suite (``bind.bats``, ``cwd.bats``,
+  ``auxv.bats``, ``readlink.bats``, ``no-new-privs.bats``), parameterized
+  to run the same ``bind``/``cwd`` cases as a conformance check against
+  both proot and proot-rs
+- A libcheck-based unit test layer for internal functions such as
+  ``compare_paths()`` and ``join_paths()``
+- A shellcheck CI job covering every changed shell script
+- Docker test images for every supported distro, published to the
+  GitHub Container Registry
+- CI coverage for Ubuntu 26.04 and an aarch64 cross-compile smoke test
+
+Changed
+~~~~~~~
+
+- Renamed the 122 hash-named test files (``test-5bed7141.c``,
+  ``test-33333333.c``, etc.) to names that describe what they actually
+  test (#164)
+- GitLab CI updated to a current gcc image, with pass/fail behavior
+  brought back in line with GitHub Actions
+
+Fixed
+~~~~~
+
+- ``errno`` not cleared before ``PTRACE_PEEKDATA``, which could
+  misreport a valid ``-1`` result as an error
+- ``readlink(2)`` crashing on a top-level ``/proc`` entry (#438)
+- ``readlink(2)`` silently truncating and reporting a wrong guest path
+  when the host-side target is longer than the caller's buffer
+- ``AT_EXECFN`` naming the loader instead of the traced program, which
+  broke Rust coreutils (uutils) under PRoot
+- ``PR_GET_NO_NEW_PRIVS`` reporting PRoot's own flag instead of the
+  traced program's, which broke ``sudo-rs``
+- The ``-P`` python extension failing to load; ``WITHOUT_PYTHON`` not
+  fully disabling it in some build configurations
+- ``pkg-config`` and ``ld`` not respecting ``CROSS_COMPILE``
+- A missing ``basename`` include breaking the build against glibc's
+  ``libgen.h`` (#378)
+- Python 2's ``imp`` import, incompatible with Python 3 (#398)
+- Outdated documentation links
+
 5.4.1 - 2026-09-07
 ------------------
 
@@ -274,6 +321,6 @@ Fixed
 
 -  Non-executable stack for binaries.
 
-.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.4.0...master
+.. _Unreleased Changes: https://github.com/proot-me/proot/compare/v5.5.0...master
 .. _Keep a Changelog: https://keepachangelog.com/en/1.0.0
 .. _Semantic Versioning: https://semver.org/spec/v2.0.0.html

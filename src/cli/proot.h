@@ -6,7 +6,7 @@
 #include "cli/cli.h"
 
 #ifndef VERSION
-#define VERSION "5.4.1"
+#define VERSION "5.5.0"
 #endif
 
 static const char *recommended_bindings[] = {
