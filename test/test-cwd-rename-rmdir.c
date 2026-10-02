@@ -9,7 +9,7 @@
 #include <limits.h>
 #include <errno.h>
 
-#define TEMPLATE "/tmp/proot-test-5bed7143-XXXXXX"
+#define TEMPLATE "/tmp/proot-test-cwd-rename-rmdir-XXXXXX"
 #define COOKIE1 "2fde3df3558fa30bec1b8ebad42df20f"
 #define COOKIE2 "2ba90289e48d1896e0601239ac25f764"
 

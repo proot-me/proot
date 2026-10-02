@@ -1,0 +1,4 @@
+[remote "origin"]
+	url = https://github.com/proot-me/proot
+[remote "gitlab"]
+	url = git@gitlab.com:proot/proot.git
