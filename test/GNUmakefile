@@ -123,7 +123,7 @@ ROOTFS_BIN = $(ROOTFS)/bin/true $(ROOTFS)/bin/false    				 \
        $(ROOTFS)/bin/puts_proc_self_exe $(ROOTFS)/bin/exec $(ROOTFS)/bin/exec-m32 \
        $(ROOTFS)/bin/exec-suid $(ROOTFS)/bin/exec-sgid $(ROOTFS)/bin/exec-m32-suid \
        $(ROOTFS)/bin/exec-m32-sgid $(ROOTFS)/bin/getresuid $(ROOTFS)/bin/getresgid \
-       $(ROOTFS)/bin/chroot
+       $(ROOTFS)/bin/chroot $(ROOTFS)/bin/execfn $(ROOTFS)/bin/execfn-m32
 
 ROOTFS_DIR = $(ROOTFS)/bin $(ROOTFS)/tmp
 
@@ -141,6 +141,9 @@ $(ROOTFS)/bin/rel-true:
 	$(Q)ln -fs ./true $@
 
 $(ROOTFS)/bin/exec-m32: exec.c
+	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true
+
+$(ROOTFS)/bin/execfn-m32: execfn.c
 	$(Q)$(CC) -m32 -static $^ -o $@ $(silently) || true
 
 $(ROOTFS)/bin/exec-suid: $(ROOTFS)/bin/exec

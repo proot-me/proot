@@ -98,7 +98,7 @@ jobs:
           make -C test setup
           env PROOT=$PWD/src/proot ROOTFS=$PWD/test/rootfs \
             ${{ matrix.SECCOMP == '0' && 'PROOT_NO_SECCOMP=1' || '' }} \
-            bats test/bind.bats test/cwd.bats
+            bats test/bind.bats test/cwd.bats test/auxv.bats
 
   cross-compile:
     name: cross-compile (aarch64)
