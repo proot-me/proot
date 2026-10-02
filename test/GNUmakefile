@@ -40,37 +40,37 @@ $(SH_SHORT_TESTS): check-%: check-%.sh
 check-test-sysexit.c: test-sysexit
 	$(call check_c,$<,env PROOT_FORCE_KOMPAT=1 $(PROOT) -k 3.4242XX ./$<)
 
-check-test-bdc90417.c: test-bdc90417
+check-test-rlimit-stack-brk.c: test-rlimit-stack-brk
 	$(call check_c,$<,$(PROOT) -w . ./$<)
 
-check-test-5bed7141.c: test-5bed7141
+check-test-chdir-thread-fork.c: test-chdir-thread-fork
 	$(call check_c,$<,$(PROOT) ./$<)
 
-check-test-5bed7143.c: test-5bed7143
+check-test-cwd-rename-rmdir.c: test-cwd-rename-rmdir
 	$(call check_c,$<,$(PROOT) -r $(ROOTFS) -b . ./$<)
 	$(call check_c,$<,$(PROOT) ./$<)
 
-check-test-16573e73.c: test-16573e73
+check-test-fork-vfork-execve.c: test-fork-vfork-execve
 	$(call check_c,$<,$(PROOT) ./$<)
 	$(call check_c,$<,$(PROOT) ./$< 1)
 
-check-test-82ba4ba1.c: test-82ba4ba1
+check-test-getresuid-getresgid-syscalls.c: test-getresuid-getresgid-syscalls
 	$(call check_c,$<,$(PROOT) -0 ./$<)
 	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
-check-test-kkkkkkkk.c: test-kkkkkkkk
+check-test-brk-syscall.c: test-brk-syscall
 	$(call check_c,$<,$(PROOT) ./$<)
 
-check-test-25069c12.c: test-25069c12
+check-test-exec-proc-self-exe.c: test-exec-proc-self-exe
 	$(call check_c,$<,$(PROOT) ./$<)
 
-check-test-25069c13.c: test-25069c13
+check-test-exec-proc-self-exe-null-argv.c: test-exec-proc-self-exe-null-argv
 	$(call check_c,$<,$(PROOT) ./$<)
 
-check-test-1ffc8309.c: test-1ffc8309
+check-test-pipe2-nonblock.c: test-pipe2-nonblock
 	$(call check_c,$<,env PROOT_FORCE_KOMPAT=1 $(PROOT) -k $(shell uname -r) ./$<)
 
-check-test-c5a7a0f0.c: test-c5a7a0f0
+check-test-setuid-thread-vs-process.c: test-setuid-thread-vs-process
 	$(call check_c,$<,$(PROOT) -0 ./$<)
 	$(call check_c,$<,! $(PROOT) -i 123:456 ./$<)
 
@@ -82,16 +82,16 @@ check-test-c5a7a0f0.c: test-c5a7a0f0
 #	@which gdb >/dev/null 2>&1 || rm -f $<
 #	$(call check_c,$<,$(PROOT) gdb -return-child-result -ex run -ex quit ./$<)
 
-check-test-fdf487a0.c: test-fdf487a0
+check-test-openat-fd-edge-cases.c: test-openat-fd-edge-cases
 	$(call check_c,$<,echo test | $(PROOT) ./$<)
 
-check-test-iiiiiiii.c: test-iiiiiiii
+check-test-faccessat-nofollow-ignored.c: test-faccessat-nofollow-ignored
 	$(call check_c,$<,echo test | env PROOT_DONT_POLLUTE_ROOTFS=1 $(PROOT) -b /bin:/this_shall_not_exist_outside_proot ./$<)
 
-check-test-9c07fad8.c: test-9c07fad8
+check-test-constructor-runs-once.c: test-constructor-runs-once
 	$(call check_c,$<,$(PROOT) ./$<)
 
-check-test-fa205b56.c: test-fa205b56
+check-test-thread-execve-nyi.c: test-thread-execve-nyi
 	$(call check_c,$<,$(PROOT) ./$<)
 
 check-test-bug-182.c: test-bug-182
@@ -168,53 +168,53 @@ $(ROOTFS)/bin/%: %.c
 	$(Q)$(CC) -static $*.c -o $@ $(silently) || true
 
 # Special cases.
-test-bdc90417: test-bdc90417.c
+test-rlimit-stack-brk: test-rlimit-stack-brk.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
 # Not supported anymore.
-# test-af062114: test-af062114.c
+# test-proc-self-cmdline-read: test-proc-self-cmdline-read.c
 # 	$(Q)$(CC) $< -Wl,-rpath=foo -o $@ $(silently) || true
 
-test-5bed7141: test-5bed7141.c
+test-chdir-thread-fork: test-chdir-thread-fork.c
 	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
 
-test-16573e73: test-16573e73.c
+test-fork-vfork-execve: test-fork-vfork-execve.c
 	$(Q)$(CC) $< -static -o $@ $(silently) || true
 
-test-82ba4ba1: test-82ba4ba1.c
+test-getresuid-getresgid-syscalls: test-getresuid-getresgid-syscalls.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-kkkkkkkk: test-kkkkkkkk.c
+test-brk-syscall: test-brk-syscall.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-25069c12: test-25069c12.c
+test-exec-proc-self-exe: test-exec-proc-self-exe.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-25069c13: test-25069c13.c
+test-exec-proc-self-exe-null-argv: test-exec-proc-self-exe-null-argv.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-5bed7143: test-5bed7143.c
+test-cwd-rename-rmdir: test-cwd-rename-rmdir.c
 	$(Q)$(CC) $< -static -o $@ $(silently) || true
 
-test-1ffc8309: test-1ffc8309.c
+test-pipe2-nonblock: test-pipe2-nonblock.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-c5a7a0f0: test-c5a7a0f0.c
+test-setuid-thread-vs-process: test-setuid-thread-vs-process.c
 	$(Q)$(CC) $< -pthread -static -o $@ $(silently) || true
 
 test-a3e68988: test-a3e68988.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-fdf487a0: test-fdf487a0.c
+test-openat-fd-edge-cases: test-openat-fd-edge-cases.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-iiiiiiii: test-iiiiiiii.c
+test-faccessat-nofollow-ignored: test-faccessat-nofollow-ignored.c
 	$(Q)$(CC) $< -o $@ $(silently) || true
 
-test-9c07fad8: test-9c07fad8.c
+test-constructor-runs-once: test-constructor-runs-once.c
 	$(Q)$(CC) -fPIE -pie $< -o $@ $(silently) || true
 
-test-fa205b56: test-fa205b56.c
+test-thread-execve-nyi: test-thread-execve-nyi.c
 	$(Q)$(CC) $< -pthread -o $@ $(silently) || true
 
 #test-bug-182: test-bug-182.c

@@ -16,6 +16,7 @@ src/build.h
 src/care*
 src/loader*
 src/proot*
+.gitremotes
 test/*
 !test/*.sh.*
 !test/*.sh
