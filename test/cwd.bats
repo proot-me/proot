@@ -5,19 +5,23 @@
 # chdir(2) inside the traced process), adapted to use this project's
 # own test/pwd.c and test/chdir_getcwd.c instead of /bin/sh, since the
 # minimal test/rootfs has no shell.
+#
+# Parameterized by binary, per doc/testing-framework-proposal.rst:
+# point $PROOT at a proot-rs build and set PROOT_IMPL=proot-rs to run
+# these same cases as a conformance check against it.
 
 load helper
 
 
 @test "test -w sets the initial working directory" {
-    run proot -r "$ROOTFS" -w /bin /bin/pwd
+    run proot -r "$ROOTFS" -w /bin -- /bin/pwd
     [ "$status" -eq 0 ]
     [ "$output" = "/bin" ]
 }
 
 
 @test "test chdir(2) inside the traced process" {
-    run proot -r "$ROOTFS" -w / /bin/chdir_getcwd /bin
+    run proot -r "$ROOTFS" -w / -- /bin/chdir_getcwd /bin
     [ "$status" -eq 0 ]
     [ "$output" = "/bin" ]
 }
