@@ -14,6 +14,14 @@ if [ -z "${PROOT}" ]; then
     PROOT="$PROJECT_ROOT/src/proot"
 fi
 
+# Which CLI dialect $PROOT speaks: "proot" (default) or "proot-rs".
+# Set this to "proot-rs" to point $PROOT at a proot-rs build and run
+# the same conformance tests against it, as proposed in
+# doc/testing-framework-proposal.rst.
+if [ -z "${PROOT_IMPL}" ]; then
+    PROOT_IMPL="proot"
+fi
+
 # Path to the test rootfs built by `make -C test setup`, matching the
 # $ROOTFS convention already used by test/GNUmakefile.
 if [ -z "${ROOTFS}" ]; then
@@ -32,9 +40,26 @@ function runp() {
     echo "output:  $output" >&2
 }
 
-# A wrapper function for the proot binary.
+# A wrapper function for the proot binary. Tests write the traced
+# command after a literal "--", mirroring proot-rs's own CLI
+# convention, since that's required by proot-rs's clap-based parser to
+# stop it from reading the traced command's own flags. This
+# implementation's getopt-style parser rejects that separator outright
+# instead of treating it as a no-op, so strip it here when targeting
+# proot, and only pass it through for proot-rs.
 function proot() {
-    "$PROOT" "$@"
+    local args=()
+    local stripped=false
+
+    for arg in "$@"; do
+	if [ "$stripped" = false ] && [ "$arg" = "--" ] && [ "${PROOT_IMPL}" != "proot-rs" ]; then
+	    stripped=true
+	    continue
+	fi
+	args+=("$arg")
+    done
+
+    "$PROOT" "${args[@]}"
 }
 
 # Compile a single C source file ($2) to a statically linked binary ($1).
